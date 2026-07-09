@@ -1,6 +1,5 @@
 import { Link } from '@inertiajs/react';
-import type { LucideIcon } from 'lucide-react';
-import { Apple, Eye, Monitor, Smartphone, Terminal } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import {
     Card,
     CardContent,
@@ -13,18 +12,12 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { MockResource } from '@/data/mock-resources';
+import { getPlatformIcon } from '@/lib/platform-icons';
 import { cn } from '@/lib/utils';
 import { show as resourceShow } from '@/routes/resources';
 
 type Props = {
     resource: MockResource;
-};
-
-const platformIcons: Record<string, LucideIcon> = {
-    Windows: Monitor,
-    Android: Smartphone,
-    macOS: Apple,
-    Linux: Terminal,
 };
 
 const languageAbbrev: Record<string, string> = {
@@ -42,10 +35,6 @@ const overlayChipClassName = cn(
     'bg-background/80 text-xs font-medium text-foreground',
     'ring-1 ring-foreground/10 backdrop-blur-md',
 );
-
-function getPlatformIcon(platform: string): LucideIcon {
-    return platformIcons[platform] ?? Monitor;
-}
 
 function abbreviateLanguage(language: string): string {
     return languageAbbrev[language] ?? language.slice(0, 2).toUpperCase();

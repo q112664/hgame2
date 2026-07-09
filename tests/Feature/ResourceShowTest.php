@@ -14,7 +14,6 @@ test('resource show page renders a known resource', function () {
             ->component('resources/show')
             ->where('resource.id', $resource['id'])
             ->where('resource.title', $resource['title'])
-            ->has('related', 4)
         );
 });
 

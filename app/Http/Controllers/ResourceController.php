@@ -20,10 +20,6 @@ class ResourceController extends Controller
 
         return Inertia::render('resources/show', [
             'resource' => $item,
-            'related' => MockResources::cards()
-                ->where('id', '!=', $item['id'])
-                ->take(4)
-                ->values(),
         ]);
     }
 }

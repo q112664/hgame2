@@ -143,6 +143,23 @@ export function SiteHeader() {
         <header className="sticky top-0 z-40 border-b border-black/5 bg-background/75 backdrop-blur-md dark:border-white/10 supports-backdrop-filter:bg-background/65">
             <Collapsible open={open} onOpenChange={setOpen}>
                 <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+                    <CollapsibleTrigger asChild>
+                        <button
+                            type="button"
+                            className={cn(
+                                iconButtonClassName,
+                                '-ml-1 shrink-0 aria-expanded:bg-black/5 dark:aria-expanded:bg-white/10 md:hidden',
+                            )}
+                            aria-label={open ? 'Close menu' : 'Open menu'}
+                        >
+                            {open ? (
+                                <X className="size-4" />
+                            ) : (
+                                <Menu className="size-4" />
+                            )}
+                        </button>
+                    </CollapsibleTrigger>
+
                     <div className="flex min-w-0 flex-1 items-center gap-6">
                         <Link
                             href={home()}
@@ -174,23 +191,6 @@ export function SiteHeader() {
                                 </Button>
                             </div>
                         )}
-
-                        <CollapsibleTrigger asChild>
-                            <button
-                                type="button"
-                                className={cn(
-                                    iconButtonClassName,
-                                    'aria-expanded:bg-black/5 dark:aria-expanded:bg-white/10 md:hidden',
-                                )}
-                                aria-label={open ? 'Close menu' : 'Open menu'}
-                            >
-                                {open ? (
-                                    <X className="size-4" />
-                                ) : (
-                                    <Menu className="size-4" />
-                                )}
-                            </button>
-                        </CollapsibleTrigger>
                     </div>
                 </div>
 

@@ -1,7 +1,8 @@
 import { Head } from '@inertiajs/react';
 import { Download, Heart } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useLayoutEffect, useRef, useState } from 'react';
+import { PlatformIcon } from '@/components/site/platform-icon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,7 +13,6 @@ import {
 } from '@/components/ui/tooltip';
 import type { MockResourceDetail } from '@/data/mock-resources';
 import { SiteLayout } from '@/layouts/site-layout';
-import { getPlatformIcon } from '@/lib/platform-icons';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -52,7 +52,7 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function ResourceShow({ resource }: Props) {
-    const PlatformIcon = getPlatformIcon(resource.platform);
+    const shouldReduceMotion = useReducedMotion();
     const [activeTab, setActiveTab] = useState<ResourceTab>('details');
     const [isFavorite, setIsFavorite] = useState(false);
     const tabsListRef = useRef<HTMLDivElement>(null);
@@ -86,6 +86,18 @@ export default function ResourceShow({ resource }: Props) {
         return () => window.removeEventListener('resize', updatePill);
     }, [activeTab]);
 
+    const showDownloads = () => {
+        setActiveTab('downloads');
+
+        requestAnimationFrame(() => {
+            tabsListRef.current?.scrollIntoView({
+                behavior: shouldReduceMotion ? 'auto' : 'smooth',
+                block: 'start',
+            });
+            tabRefs.current.downloads?.focus({ preventScroll: true });
+        });
+    };
+
     return (
         <SiteLayout>
             <Head title={`${resource.title} - hgame`} />
@@ -108,7 +120,10 @@ export default function ResourceShow({ resource }: Props) {
                                     {resource.category}
                                 </Badge>
                                 <Badge variant="outline">
-                                    <PlatformIcon data-icon="inline-start" />
+                                    <PlatformIcon
+                                        platform={resource.platform}
+                                        data-icon="inline-start"
+                                    />
                                     {resource.platform}
                                 </Badge>
                                 <Badge variant="outline">
@@ -130,10 +145,7 @@ export default function ResourceShow({ resource }: Props) {
                             </p>
 
                             <div className="mt-auto flex items-center gap-2 pt-1">
-                                <Button
-                                    size="lg"
-                                    onClick={() => setActiveTab('downloads')}
-                                >
+                                <Button size="lg" onClick={showDownloads}>
                                     <Download data-icon="inline-start" />
                                     Download
                                 </Button>
@@ -186,7 +198,7 @@ export default function ResourceShow({ resource }: Props) {
                 >
                     <TabsList
                         ref={tabsListRef}
-                        className="relative grid h-auto w-full grid-cols-3 gap-0.5 rounded-xl bg-card p-1 ring-1 ring-foreground/10 group-data-horizontal/tabs:h-auto sm:inline-grid sm:w-auto"
+                        className="relative grid h-auto w-full scroll-mt-20 grid-cols-3 gap-0.5 rounded-xl bg-card p-1 ring-1 ring-foreground/10 group-data-horizontal/tabs:h-auto sm:inline-grid sm:w-auto"
                     >
                         {pill.ready ? (
                             <motion.span
@@ -197,11 +209,15 @@ export default function ResourceShow({ resource }: Props) {
                                     left: pill.left,
                                     width: pill.width,
                                 }}
-                                transition={{
-                                    type: 'spring',
-                                    stiffness: 420,
-                                    damping: 34,
-                                }}
+                                transition={
+                                    shouldReduceMotion
+                                        ? { duration: 0 }
+                                        : {
+                                              type: 'spring',
+                                              stiffness: 420,
+                                              damping: 34,
+                                          }
+                                }
                             />
                         ) : null}
                         {resourceTabs.map((tab) => (
@@ -270,10 +286,6 @@ export default function ResourceShow({ resource }: Props) {
                     <TabsContent value="downloads">
                         <div className="flex flex-col gap-3">
                             {resource.downloadLinks.map((link) => {
-                                const LinkPlatformIcon = getPlatformIcon(
-                                    link.platform,
-                                );
-
                                 return (
                                     <article
                                         key={link.label}
@@ -297,7 +309,12 @@ export default function ResourceShow({ resource }: Props) {
 
                                                 <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
                                                     <span className="inline-flex items-center gap-1.5">
-                                                        <LinkPlatformIcon className="size-3.5" />
+                                                        <PlatformIcon
+                                                            platform={
+                                                                link.platform
+                                                            }
+                                                            className="size-3.5"
+                                                        />
                                                         {link.platform}
                                                     </span>
                                                     <span>{link.language}</span>

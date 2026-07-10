@@ -14,6 +14,7 @@ test('resource show page renders a known resource', function () {
             ->component('resources/show')
             ->where('resource.id', $resource['id'])
             ->where('resource.title', $resource['title'])
+            ->where('resource.platform', $resource['platform'])
             ->has('resource.screenshots')
             ->has('resource.downloadLinks')
             ->where('resource.screenshots.0', $resource['screenshots'][0])

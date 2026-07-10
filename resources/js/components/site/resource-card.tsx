@@ -1,18 +1,13 @@
 import { Link } from '@inertiajs/react';
 import { Eye } from 'lucide-react';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { PlatformIcon } from '@/components/site/platform-icon';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { MockResource } from '@/data/mock-resources';
-import { getPlatformIcon } from '@/lib/platform-icons';
 import { cn } from '@/lib/utils';
 import { show as resourceShow } from '@/routes/resources';
 
@@ -55,8 +50,6 @@ function formatDate(date: string): string {
 }
 
 export function ResourceCard({ resource }: Props) {
-    const PlatformIcon = getPlatformIcon(resource.platform);
-
     return (
         <Card
             size="sm"
@@ -89,7 +82,10 @@ export function ResourceCard({ resource }: Props) {
                                     )}
                                     aria-label={resource.platform}
                                 >
-                                    <PlatformIcon className="size-3.5" />
+                                    <PlatformIcon
+                                        platform={resource.platform}
+                                        className="size-3.5"
+                                    />
                                 </span>
                             </TooltipTrigger>
                             <TooltipContent side="bottom">

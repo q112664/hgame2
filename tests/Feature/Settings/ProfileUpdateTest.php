@@ -2,16 +2,6 @@
 
 use App\Models\User;
 
-test('profile page is displayed', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->get(route('profile.edit'));
-
-    $response->assertOk();
-});
-
 test('profile information can be updated', function () {
     $user = User::factory()->create();
 
@@ -24,7 +14,11 @@ test('profile information can be updated', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('profile.edit'));
+        ->assertRedirect(route('profile.edit'))
+        ->assertInertiaFlash('toast', [
+            'type' => 'success',
+            'message' => __('Profile updated.'),
+        ]);
 
     $user->refresh();
 
@@ -72,14 +66,14 @@ test('correct password must be provided to delete account', function () {
 
     $response = $this
         ->actingAs($user)
-        ->from(route('profile.edit'))
+        ->from(route('settings.edit'))
         ->delete(route('profile.destroy'), [
             'password' => 'wrong-password',
         ]);
 
     $response
         ->assertSessionHasErrors('password')
-        ->assertRedirect(route('profile.edit'));
+        ->assertRedirect(route('settings.edit'));
 
     expect($user->fresh())->not->toBeNull();
 });

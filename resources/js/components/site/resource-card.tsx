@@ -27,8 +27,8 @@ const categoryAbbrev: Record<string, string> = {
 
 const overlayChipClassName = cn(
     'inline-flex h-6 items-center justify-center rounded-md px-2',
-    'bg-background/80 text-xs font-medium text-foreground',
-    'ring-1 ring-foreground/10 backdrop-blur-md',
+    'bg-background/90 text-xs font-medium text-foreground shadow-xs',
+    'ring-1 ring-foreground/10',
 );
 
 function abbreviateLanguage(language: string): string {

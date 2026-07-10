@@ -2,7 +2,6 @@ import { Link, usePage } from '@inertiajs/react';
 import { Menu, Moon, Bell, Search, Sun, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SiteSearchDialog } from '@/components/site/site-search-dialog';
-import { UserMenuContent } from '@/components/user-menu-content';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +15,12 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { UserMenuContent } from '@/components/user-menu-content';
 import { useAppearance } from '@/hooks/use-appearance';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
@@ -91,15 +96,22 @@ function NavLinks({
 function NotificationButton() {
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <button
-                    type="button"
-                    className={iconButtonClassName}
-                    aria-label="Notifications"
-                >
-                    <Bell className="size-4" />
-                </button>
-            </DropdownMenuTrigger>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                        <button
+                            type="button"
+                            className={iconButtonClassName}
+                            aria-label="Notifications"
+                        >
+                            <Bell className="size-4" />
+                        </button>
+                    </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={4}>
+                    Notifications
+                </TooltipContent>
+            </Tooltip>
             <DropdownMenuContent className="w-80" align="end">
                 <div className="border-b border-foreground/10 px-3 py-2">
                     <p className="text-sm font-medium text-foreground">
@@ -117,16 +129,28 @@ function NotificationButton() {
 function ThemeToggle() {
     const { resolvedAppearance, updateAppearance } = useAppearance();
     const isDark = resolvedAppearance === 'dark';
+    const actionLabel = isDark ? 'Switch to light mode' : 'Switch to dark mode';
 
     return (
-        <button
-            type="button"
-            className={iconButtonClassName}
-            onClick={() => updateAppearance(isDark ? 'light' : 'dark')}
-            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-            {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-        </button>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <button
+                    type="button"
+                    className={iconButtonClassName}
+                    onClick={() => updateAppearance(isDark ? 'light' : 'dark')}
+                    aria-label={actionLabel}
+                >
+                    {isDark ? (
+                        <Sun className="size-4" />
+                    ) : (
+                        <Moon className="size-4" />
+                    )}
+                </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={4}>
+                {actionLabel}
+            </TooltipContent>
+        </Tooltip>
     );
 }
 
@@ -214,14 +238,21 @@ export function SiteHeader() {
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                        <button
-                            type="button"
-                            className={iconButtonClassName}
-                            onClick={() => setSearchOpen(true)}
-                            aria-label="Search resources"
-                        >
-                            <Search className="size-4" />
-                        </button>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    className={iconButtonClassName}
+                                    onClick={() => setSearchOpen(true)}
+                                    aria-label="Search resources"
+                                >
+                                    <Search className="size-4" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" sideOffset={4}>
+                                Search resources
+                            </TooltipContent>
+                        </Tooltip>
 
                         <NotificationButton />
 

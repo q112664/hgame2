@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Tooltip,
@@ -55,6 +56,9 @@ export default function ResourceShow({ resource }: Props) {
     const shouldReduceMotion = useReducedMotion();
     const [activeTab, setActiveTab] = useState<ResourceTab>('details');
     const [isFavorite, setIsFavorite] = useState(false);
+    const [loadedScreenshots, setLoadedScreenshots] = useState<Set<string>>(
+        () => new Set(),
+    );
     const tabsListRef = useRef<HTMLDivElement>(null);
     const tabRefs = useRef<
         Partial<Record<ResourceTab, HTMLButtonElement | null>>
@@ -96,6 +100,10 @@ export default function ResourceShow({ resource }: Props) {
             });
             tabRefs.current.downloads?.focus({ preventScroll: true });
         });
+    };
+
+    const markScreenshotLoaded = (screenshot: string) => {
+        setLoadedScreenshots((loaded) => new Set(loaded).add(screenshot));
     };
 
     return (
@@ -235,51 +243,72 @@ export default function ResourceShow({ resource }: Props) {
                     </TabsList>
 
                     <TabsContent value="details">
-                        <div className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
-                            <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
-                                About
-                            </h2>
-                            <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
-                                {resource.description}
-                            </p>
+                        <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(18rem,3fr)] lg:gap-6">
+                            <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+                                <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
+                                    About
+                                </h2>
+                                <p className="text-sm leading-relaxed text-muted-foreground">
+                                    {resource.description}
+                                </p>
+                            </section>
 
-                            <h2 className="mb-1 font-heading text-base font-semibold text-foreground">
-                                Information
-                            </h2>
-                            <dl className="text-sm">
-                                <MetaRow
-                                    label="Developer"
-                                    value={resource.developer}
-                                />
-                                <MetaRow
-                                    label="Release date"
-                                    value={resource.releaseDate}
-                                />
-                                <MetaRow
-                                    label="Published"
-                                    value={resource.publishedAt}
-                                />
-                                <MetaRow
-                                    label="Platform"
-                                    value={resource.platform}
-                                />
-                                <MetaRow
-                                    label="Language"
-                                    value={resource.language}
-                                />
-                                <MetaRow
-                                    label="File size"
-                                    value={resource.fileSize}
-                                />
-                                <MetaRow
-                                    label="Views"
-                                    value={formatCount(resource.views)}
-                                />
-                                <MetaRow
-                                    label="Downloads"
-                                    value={formatCount(resource.downloads)}
-                                />
-                            </dl>
+                            <div className="flex flex-col gap-4">
+                                <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+                                    <h2 className="mb-1 font-heading text-base font-semibold text-foreground">
+                                        Information
+                                    </h2>
+                                    <dl className="text-sm">
+                                        <MetaRow
+                                            label="Developer"
+                                            value={resource.developer}
+                                        />
+                                        <MetaRow
+                                            label="Release date"
+                                            value={resource.releaseDate}
+                                        />
+                                        <MetaRow
+                                            label="Published"
+                                            value={resource.publishedAt}
+                                        />
+                                        <MetaRow
+                                            label="Platform"
+                                            value={resource.platform}
+                                        />
+                                        <MetaRow
+                                            label="Language"
+                                            value={resource.language}
+                                        />
+                                        <MetaRow
+                                            label="File size"
+                                            value={resource.fileSize}
+                                        />
+                                        <MetaRow
+                                            label="Views"
+                                            value={formatCount(resource.views)}
+                                        />
+                                        <MetaRow
+                                            label="Downloads"
+                                            value={formatCount(
+                                                resource.downloads,
+                                            )}
+                                        />
+                                    </dl>
+                                </section>
+
+                                <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+                                    <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
+                                        Tags
+                                    </h2>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {resource.tags.map((tag) => (
+                                            <Badge key={tag} variant="outline">
+                                                {tag}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </section>
+                            </div>
                         </div>
                     </TabsContent>
 
@@ -350,14 +379,29 @@ export default function ResourceShow({ resource }: Props) {
                             {resource.screenshots.map((screenshot, index) => (
                                 <div
                                     key={screenshot}
-                                    className="aspect-video overflow-hidden rounded-md bg-muted ring-1 ring-foreground/10"
+                                    className="relative aspect-video overflow-hidden rounded-md bg-muted ring-1 ring-foreground/10"
                                 >
+                                    {!loadedScreenshots.has(screenshot) ? (
+                                        <Skeleton className="absolute inset-0 rounded-none" />
+                                    ) : null}
                                     <img
                                         src={screenshot}
                                         alt={`${resource.title} screenshot ${index + 1}`}
-                                        className="size-full object-cover"
+                                        className={cn(
+                                            'size-full object-cover transition-opacity duration-200',
+                                            loadedScreenshots.has(screenshot)
+                                                ? 'opacity-100'
+                                                : 'opacity-0',
+                                        )}
                                         loading="lazy"
+                                        decoding="async"
                                         referrerPolicy="no-referrer"
+                                        onLoad={() =>
+                                            markScreenshotLoaded(screenshot)
+                                        }
+                                        onError={() =>
+                                            markScreenshotLoaded(screenshot)
+                                        }
                                     />
                                 </div>
                             ))}

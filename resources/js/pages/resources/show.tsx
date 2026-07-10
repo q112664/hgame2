@@ -1,15 +1,15 @@
 import { Head } from '@inertiajs/react';
-import { Download, Eye } from 'lucide-react';
+import { Download, Heart } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@/components/ui/tabs';
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { MockResourceDetail } from '@/data/mock-resources';
 import { SiteLayout } from '@/layouts/site-layout';
 import { getPlatformIcon } from '@/lib/platform-icons';
@@ -34,7 +34,7 @@ const tabTriggerClassName = cn(
     'data-active:border-transparent data-active:bg-transparent data-active:text-foreground data-active:shadow-none',
     'data-active:hover:bg-transparent data-active:hover:text-foreground',
     'group-data-[variant=default]/tabs-list:data-active:shadow-none',
-    'dark:data-active:border-transparent dark:data-active:bg-transparent dark:hover:text-foreground/80',
+    'dark:hover:text-foreground/80 dark:data-active:border-transparent dark:data-active:bg-transparent',
     'dark:data-active:hover:bg-transparent dark:data-active:hover:text-foreground',
 );
 
@@ -54,10 +54,11 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 export default function ResourceShow({ resource }: Props) {
     const PlatformIcon = getPlatformIcon(resource.platform);
     const [activeTab, setActiveTab] = useState<ResourceTab>('details');
+    const [isFavorite, setIsFavorite] = useState(false);
     const tabsListRef = useRef<HTMLDivElement>(null);
-    const tabRefs = useRef<Partial<Record<ResourceTab, HTMLButtonElement | null>>>(
-        {},
-    );
+    const tabRefs = useRef<
+        Partial<Record<ResourceTab, HTMLButtonElement | null>>
+    >({});
     const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
 
     useLayoutEffect(() => {
@@ -124,26 +125,53 @@ export default function ResourceShow({ resource }: Props) {
                                 {resource.title}
                             </h1>
 
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                                <span>{resource.developer}</span>
-                                <span className="inline-flex items-center gap-1">
-                                    <Eye className="size-3.5" />
-                                    {formatCount(resource.views)}
-                                </span>
-                                <span>
-                                    {formatCount(resource.downloads)} downloads
-                                </span>
-                            </div>
-
-                            <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-                                {resource.description}
+                            <p className="text-sm text-muted-foreground">
+                                {resource.developer}
                             </p>
 
-                            <div className="mt-auto pt-1">
-                                <Button size="lg">
+                            <div className="mt-auto flex items-center gap-2 pt-1">
+                                <Button
+                                    size="lg"
+                                    onClick={() => setActiveTab('downloads')}
+                                >
                                     <Download data-icon="inline-start" />
                                     Download
                                 </Button>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant={
+                                                isFavorite
+                                                    ? 'secondary'
+                                                    : 'outline'
+                                            }
+                                            size="icon-lg"
+                                            aria-label={
+                                                isFavorite
+                                                    ? 'Remove from favorites'
+                                                    : 'Add to favorites'
+                                            }
+                                            aria-pressed={isFavorite}
+                                            onClick={() =>
+                                                setIsFavorite(!isFavorite)
+                                            }
+                                        >
+                                            <Heart
+                                                className={
+                                                    isFavorite
+                                                        ? 'fill-current'
+                                                        : undefined
+                                                }
+                                            />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        {isFavorite
+                                            ? 'Remove from favorites'
+                                            : 'Add to favorites'}
+                                    </TooltipContent>
+                                </Tooltip>
                             </div>
                         </div>
                     </div>
@@ -158,7 +186,7 @@ export default function ResourceShow({ resource }: Props) {
                 >
                     <TabsList
                         ref={tabsListRef}
-                        className="relative grid h-auto w-full grid-cols-3 gap-0.5 rounded-xl bg-card p-1 ring-1 ring-foreground/10 group-data-horizontal/tabs:h-auto sm:w-auto sm:inline-grid"
+                        className="relative grid h-auto w-full grid-cols-3 gap-0.5 rounded-xl bg-card p-1 ring-1 ring-foreground/10 group-data-horizontal/tabs:h-auto sm:inline-grid sm:w-auto"
                     >
                         {pill.ready ? (
                             <motion.span
@@ -192,14 +220,14 @@ export default function ResourceShow({ resource }: Props) {
 
                     <TabsContent value="details">
                         <div className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
-                            <h2 className="font-heading mb-3 text-base font-semibold text-foreground">
+                            <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
                                 About
                             </h2>
                             <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
                                 {resource.description}
                             </p>
 
-                            <h2 className="font-heading mb-1 text-base font-semibold text-foreground">
+                            <h2 className="mb-1 font-heading text-base font-semibold text-foreground">
                                 Information
                             </h2>
                             <dl className="text-sm">

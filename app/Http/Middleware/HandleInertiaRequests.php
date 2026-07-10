@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\MockResources;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -42,6 +43,14 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'searchResources' => MockResources::cards()
+                ->map(fn (array $resource): array => [
+                    'id' => $resource['id'],
+                    'title' => $resource['title'],
+                    'thumbnail' => $resource['thumbnail'],
+                ])
+                ->values()
+                ->all(),
         ];
     }
 }

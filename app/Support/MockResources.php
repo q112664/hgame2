@@ -30,7 +30,7 @@ class MockResources
             [
                 'id' => '5329',
                 'title' => 'Amairo Chocolate 3',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/cv/50/53050.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/972/image/6a6033e3-eaeb-4493-a0c5-00d9edb376df.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Windows',
                 'language' => 'Chinese',
@@ -46,7 +46,7 @@ class MockResources
             [
                 'id' => '64',
                 'title' => 'Senren＊Banka',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/cv/00/0-19073.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/708/image/0a0d7c75-f091-4505-a47d-7078a76721d6.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Windows',
                 'language' => 'Chinese',
@@ -62,7 +62,7 @@ class MockResources
             [
                 'id' => '5327',
                 'title' => 'Tachibana Lemonade Capriccio',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/cv/58/131658.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/962/image/9dede7a2-1b63-4d90-a0b5-70c4d9b5fd14.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Windows',
                 'language' => 'Japanese',
@@ -78,7 +78,7 @@ class MockResources
             [
                 'id' => '5326',
                 'title' => 'Amairo Chocolate 2',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/cv/31/21731.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/725/image/735a6d41-3c4e-4173-8efd-30355a00926f.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Windows',
                 'language' => 'Chinese',
@@ -94,7 +94,7 @@ class MockResources
             [
                 'id' => '4440',
                 'title' => 'The Magical Girl and the Witch Trial',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/cv/54/115154.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/1101/image/9a854eaa-24b2-4a0c-b41b-b0325c396e87.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Windows',
                 'language' => 'Chinese',
@@ -110,7 +110,7 @@ class MockResources
             [
                 'id' => '5080',
                 'title' => 'Café Stella and the Reaper’s Butterflies',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/cv/35/15635.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/709/image/0b922056-fa93-4093-820a-1e65cce7a7ea.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Windows',
                 'language' => 'Chinese',
@@ -126,7 +126,7 @@ class MockResources
             [
                 'id' => '4030',
                 'title' => 'A Reunion at First Sight',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/cv/02/111702.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/1099/image/382791b5-d320-4980-8893-fa24f58f5ac0.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Windows',
                 'language' => 'Chinese',
@@ -142,7 +142,7 @@ class MockResources
             [
                 'id' => '5323',
                 'title' => 'Midori no Umi',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/cv/44/134244.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/500/image/e55269d4-28ac-4c10-953c-c2fb918e34ba.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Windows',
                 'language' => 'Japanese',
@@ -158,7 +158,7 @@ class MockResources
             [
                 'id' => '5301',
                 'title' => 'Amairo Chocolate 2+',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/cv/49/114449.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/726/image/d59c2fd4-214d-4b99-b773-81473ecbe66b.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Windows',
                 'language' => 'Chinese',
@@ -174,7 +174,7 @@ class MockResources
             [
                 'id' => '1427',
                 'title' => 'Rakuen',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/cv/37/104937.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/528/image/9736f2db-93e5-4b53-ad25-0fbc073bbb49.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Windows',
                 'language' => 'Chinese',
@@ -190,7 +190,7 @@ class MockResources
             [
                 'id' => '5321',
                 'title' => 'Haikyo Shoujo Gaiden',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/dv/1783081627158.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/1971/image/9612be21-22c8-4189-9bbb-f7f5c66d0f30.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Windows',
                 'language' => 'Chinese',
@@ -206,7 +206,7 @@ class MockResources
             [
                 'id' => '5320',
                 'title' => 'Koiin Tenshi!!',
-                'thumbnail' => 'https://img.m.cn.cname4593.yjs-cdn.com/cv/30/81430.jpg',
+                'thumbnail' => 'https://t.shionlib.com/game/899/image/4b8f7537-d91f-4edd-8bf3-0a1f069c57eb.webp',
                 'category' => 'Visual Novel',
                 'platform' => 'Android',
                 'language' => 'Chinese',
@@ -237,12 +237,107 @@ class MockResources
      *     developer: string,
      *     releaseDate: string,
      *     fileSize: string,
-     *     downloads: int
+     *     downloads: int,
+     *     screenshots: list<string>,
+     *     downloadLinks: list<array{
+     *         label: string,
+     *         url: string,
+     *         note: string|null,
+     *         description: string,
+     *         platform: string,
+     *         language: string,
+     *         fileSize: string,
+     *         publishedAt: string
+     *     }>
      * }|null
      */
     public static function find(string $id): ?array
     {
-        return self::all()->firstWhere('id', $id);
+        $resource = self::all()->firstWhere('id', $id);
+
+        if ($resource === null) {
+            return null;
+        }
+
+        return [
+            ...$resource,
+            'screenshots' => self::screenshotsFor($resource),
+            'downloadLinks' => self::downloadLinksFor($resource),
+        ];
+    }
+
+    /**
+     * @param  array{thumbnail: string}  $resource
+     * @return list<string>
+     */
+    private static function screenshotsFor(array $resource): array
+    {
+        $extra = self::all()
+            ->pluck('thumbnail')
+            ->filter(fn (string $url): bool => $url !== $resource['thumbnail'])
+            ->take(3)
+            ->values()
+            ->all();
+
+        return array_values(array_unique([
+            $resource['thumbnail'],
+            ...$extra,
+        ]));
+    }
+
+    /**
+     * @param  array{
+     *     platform: string,
+     *     language: string,
+     *     fileSize: string,
+     *     publishedAt: string,
+     *     title: string
+     * }  $resource
+     * @return list<array{
+     *     label: string,
+     *     url: string,
+     *     note: string|null,
+     *     description: string,
+     *     platform: string,
+     *     language: string,
+     *     fileSize: string,
+     *     publishedAt: string
+     * }>
+     */
+    private static function downloadLinksFor(array $resource): array
+    {
+        return [
+            [
+                'label' => 'Baidu Netdisk',
+                'url' => '#',
+                'note' => 'Extract code: hgame',
+                'description' => "Full package of {$resource['title']} with Chinese translation and common patches included.",
+                'platform' => $resource['platform'],
+                'language' => $resource['language'],
+                'fileSize' => $resource['fileSize'],
+                'publishedAt' => $resource['publishedAt'],
+            ],
+            [
+                'label' => 'Mega',
+                'url' => '#',
+                'note' => null,
+                'description' => "Mirror upload for {$resource['title']}. Suitable for international downloads with stable transfer speeds.",
+                'platform' => $resource['platform'],
+                'language' => $resource['language'],
+                'fileSize' => $resource['fileSize'],
+                'publishedAt' => $resource['publishedAt'],
+            ],
+            [
+                'label' => 'Direct Download',
+                'url' => '#',
+                'note' => null,
+                'description' => "Direct file host for {$resource['title']}. No third-party client required.",
+                'platform' => $resource['platform'],
+                'language' => $resource['language'],
+                'fileSize' => $resource['fileSize'],
+                'publishedAt' => $resource['publishedAt'],
+            ],
+        ];
     }
 
     /**

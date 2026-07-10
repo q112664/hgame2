@@ -14,6 +14,15 @@ test('resource show page renders a known resource', function () {
             ->component('resources/show')
             ->where('resource.id', $resource['id'])
             ->where('resource.title', $resource['title'])
+            ->has('resource.screenshots')
+            ->has('resource.downloadLinks')
+            ->where('resource.screenshots.0', $resource['screenshots'][0])
+            ->where('resource.downloadLinks.0.label', 'Baidu Netdisk')
+            ->where('resource.downloadLinks.0.platform', $resource['platform'])
+            ->where('resource.downloadLinks.0.language', $resource['language'])
+            ->where('resource.downloadLinks.0.fileSize', $resource['fileSize'])
+            ->where('resource.downloadLinks.0.publishedAt', $resource['publishedAt'])
+            ->has('resource.downloadLinks.0.description')
         );
 });
 
@@ -28,5 +37,6 @@ test('home page receives resource cards', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('welcome')
             ->has('resources', MockResources::cards()->count())
+            ->has('searchResources', MockResources::cards()->count())
         );
 });

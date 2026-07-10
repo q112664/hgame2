@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Menu, Moon, Sun, X } from 'lucide-react';
-import { useState } from 'react';
+import { Menu, Moon, Bell, Search, Sun, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { SiteSearchDialog } from '@/components/site/site-search-dialog';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -87,6 +88,32 @@ function NavLinks({
     );
 }
 
+function NotificationButton() {
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <button
+                    type="button"
+                    className={iconButtonClassName}
+                    aria-label="Notifications"
+                >
+                    <Bell className="size-4" />
+                </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-80" align="end">
+                <div className="border-b border-foreground/10 px-3 py-2">
+                    <p className="text-sm font-medium text-foreground">
+                        Notifications
+                    </p>
+                </div>
+                <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+                    No notifications yet.
+                </div>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
 function ThemeToggle() {
     const { resolvedAppearance, updateAppearance } = useAppearance();
     const isDark = resolvedAppearance === 'dark';
@@ -137,10 +164,25 @@ function UserAvatarMenu({ user }: { user: User }) {
 export function SiteHeader() {
     const { auth } = usePage().props;
     const [open, setOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
     const closeMenu = () => setOpen(false);
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+                event.preventDefault();
+                setSearchOpen(true);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     return (
         <header className="sticky top-0 z-40 border-b border-black/5 bg-background/75 backdrop-blur-md dark:border-white/10 supports-backdrop-filter:bg-background/65">
+            <SiteSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
             <Collapsible open={open} onOpenChange={setOpen}>
                 <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
                     <CollapsibleTrigger asChild>
@@ -172,6 +214,17 @@ export function SiteHeader() {
                     </div>
 
                     <div className="flex items-center gap-1.5">
+                        <button
+                            type="button"
+                            className={iconButtonClassName}
+                            onClick={() => setSearchOpen(true)}
+                            aria-label="Search resources"
+                        >
+                            <Search className="size-4" />
+                        </button>
+
+                        <NotificationButton />
+
                         <ThemeToggle />
 
                         {auth.user ? (
@@ -196,6 +249,22 @@ export function SiteHeader() {
 
                 <CollapsibleContent className="border-t border-black/5 dark:border-white/10 md:hidden">
                     <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2 sm:px-6">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                                softButtonClassName,
+                                'h-9 w-full justify-start gap-2',
+                            )}
+                            onClick={() => {
+                                closeMenu();
+                                setSearchOpen(true);
+                            }}
+                        >
+                            <Search className="size-4" />
+                            Search
+                        </Button>
+
                         <NavLinks
                             className="grid grid-cols-2 gap-1 [&>a]:h-9 [&>a]:justify-center"
                             onNavigate={closeMenu}

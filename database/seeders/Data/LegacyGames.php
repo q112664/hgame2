@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Support;
+namespace Database\Seeders\Data;
 
 use Illuminate\Support\Collection;
 
-class MockResources
+class LegacyGames
 {
     /**
      * @return Collection<int, array{
@@ -242,7 +242,6 @@ class MockResources
      *     downloadLinks: list<array{
      *         label: string,
      *         url: string,
-     *         note: string|null,
      *         description: string,
      *         platform: string,
      *         language: string,
@@ -296,7 +295,6 @@ class MockResources
      * @return list<array{
      *     label: string,
      *     url: string,
-     *     note: string|null,
      *     description: string,
      *     platform: string,
      *     language: string,
@@ -310,7 +308,6 @@ class MockResources
             [
                 'label' => 'Baidu Netdisk',
                 'url' => '#',
-                'note' => 'Extract code: hgame',
                 'description' => "Full package of {$resource['title']} with Chinese translation and common patches included.",
                 'platform' => $resource['platform'],
                 'language' => $resource['language'],
@@ -320,7 +317,6 @@ class MockResources
             [
                 'label' => 'Mega',
                 'url' => '#',
-                'note' => null,
                 'description' => "Mirror upload for {$resource['title']}. Suitable for international downloads with stable transfer speeds.",
                 'platform' => $resource['platform'],
                 'language' => $resource['language'],
@@ -330,7 +326,6 @@ class MockResources
             [
                 'label' => 'Direct Download',
                 'url' => '#',
-                'note' => null,
                 'description' => "Direct file host for {$resource['title']}. No third-party client required.",
                 'platform' => $resource['platform'],
                 'language' => $resource['language'],

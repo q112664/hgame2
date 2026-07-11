@@ -1,7 +1,7 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Download, Heart } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,21 +12,47 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { MockResourceDetail } from '@/data/mock-resources';
 import { SiteLayout } from '@/layouts/site-layout';
 import { cn } from '@/lib/utils';
+import {
+    details as resourceDetails,
+    downloads as resourceDownloads,
+    screenshots as resourceScreenshots,
+} from '@/routes/resources';
+import type { GameDetail } from '@/types/resources';
 
 type Props = {
-    resource: MockResourceDetail;
+    activeTab: ResourceTab;
+    resource: GameDetail;
 };
 
 type ResourceTab = 'details' | 'downloads' | 'screenshots';
 
-const resourceTabs: Array<{ value: ResourceTab; label: string }> = [
-    { value: 'details', label: 'Details' },
-    { value: 'downloads', label: 'Downloads' },
-    { value: 'screenshots', label: 'Screenshots' },
+const resourceTabs: Array<{
+    value: ResourceTab;
+    label: string;
+    href: (resource: string) => string;
+}> = [
+    {
+        value: 'details',
+        label: 'Details',
+        href: (resource) => resourceDetails(resource).url,
+    },
+    {
+        value: 'downloads',
+        label: 'Downloads',
+        href: (resource) => resourceDownloads(resource).url,
+    },
+    {
+        value: 'screenshots',
+        label: 'Screenshots',
+        href: (resource) => resourceScreenshots(resource).url,
+    },
 ];
+
+function isResourceTab(value: unknown): value is ResourceTab {
+    return resourceTabs.some((tab) => tab.value === value);
+}
 
 const tabTriggerClassName = cn(
     'relative z-10 h-9 rounded-lg border-transparent px-4 text-sm font-medium shadow-none',
@@ -52,23 +78,62 @@ function MetaRow({ label, value }: { label: string; value: string }) {
     );
 }
 
-export default function ResourceShow({ resource }: Props) {
+export default function ResourceShow({ activeTab, resource }: Props) {
     const shouldReduceMotion = useReducedMotion();
-    const [activeTab, setActiveTab] = useState<ResourceTab>('details');
+    const [visualActiveTab, setVisualActiveTab] =
+        useState<ResourceTab>(activeTab);
     const [isFavorite, setIsFavorite] = useState(false);
     const [loadedScreenshots, setLoadedScreenshots] = useState<Set<string>>(
         () => new Set(),
     );
     const tabsListRef = useRef<HTMLDivElement>(null);
-    const tabRefs = useRef<
-        Partial<Record<ResourceTab, HTMLButtonElement | null>>
-    >({});
+    const tabRefs = useRef<Partial<Record<ResourceTab, HTMLElement | null>>>(
+        {},
+    );
     const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
+    const platforms = resource.platforms.join(', ') || 'No platform';
+    const languages = resource.languages.join(', ') || 'No language';
+    const fileSizes = Array.from(
+        new Set(
+            resource.releases
+                .map((release) => release.fileSize)
+                .filter((size): size is string => size !== null),
+        ),
+    ).join(', ');
+
+    useEffect(() => {
+        const resetVisualActiveTab = () => setVisualActiveTab(activeTab);
+        const removeNavigateListener = router.on('navigate', (event) => {
+            const page = event.detail.page;
+            const nextActiveTab = page.props.activeTab;
+
+            if (
+                page.component === 'resources/show' &&
+                isResourceTab(nextActiveTab)
+            ) {
+                setVisualActiveTab(nextActiveTab);
+            }
+        });
+        const removeHttpExceptionListener = router.on(
+            'httpException',
+            resetVisualActiveTab,
+        );
+        const removeNetworkErrorListener = router.on(
+            'networkError',
+            resetVisualActiveTab,
+        );
+
+        return () => {
+            removeNavigateListener();
+            removeHttpExceptionListener();
+            removeNetworkErrorListener();
+        };
+    }, [activeTab]);
 
     useLayoutEffect(() => {
         const updatePill = () => {
             const list = tabsListRef.current;
-            const activeTrigger = tabRefs.current[activeTab];
+            const activeTrigger = tabRefs.current[visualActiveTab];
 
             if (!list || !activeTrigger) {
                 return;
@@ -88,10 +153,10 @@ export default function ResourceShow({ resource }: Props) {
         window.addEventListener('resize', updatePill);
 
         return () => window.removeEventListener('resize', updatePill);
-    }, [activeTab]);
+    }, [visualActiveTab]);
 
     const showDownloads = () => {
-        setActiveTab('downloads');
+        setVisualActiveTab('downloads');
 
         requestAnimationFrame(() => {
             tabsListRef.current?.scrollIntoView({
@@ -127,16 +192,20 @@ export default function ResourceShow({ resource }: Props) {
                                 <Badge variant="secondary">
                                     {resource.category}
                                 </Badge>
-                                <Badge variant="outline">
-                                    <PlatformIcon
-                                        platform={resource.platform}
-                                        data-icon="inline-start"
-                                    />
-                                    {resource.platform}
-                                </Badge>
-                                <Badge variant="outline">
-                                    {resource.language}
-                                </Badge>
+                                {resource.platforms.map((platform) => (
+                                    <Badge key={platform} variant="outline">
+                                        <PlatformIcon
+                                            platform={platform}
+                                            data-icon="inline-start"
+                                        />
+                                        {platform}
+                                    </Badge>
+                                ))}
+                                {resource.languages.map((language) => (
+                                    <Badge key={language} variant="outline">
+                                        {language}
+                                    </Badge>
+                                ))}
                                 {resource.tags.map((tag) => (
                                     <Badge key={tag} variant="outline">
                                         {tag}
@@ -153,9 +222,21 @@ export default function ResourceShow({ resource }: Props) {
                             </p>
 
                             <div className="mt-auto flex items-center gap-2 pt-1">
-                                <Button size="lg" onClick={showDownloads}>
-                                    <Download data-icon="inline-start" />
-                                    Download
+                                <Button size="lg" asChild>
+                                    <Link
+                                        href={
+                                            resourceDownloads(resource.id).url
+                                        }
+                                        preserveState
+                                        preserveScroll
+                                        onStart={showDownloads}
+                                        onError={() =>
+                                            setVisualActiveTab(activeTab)
+                                        }
+                                    >
+                                        <Download data-icon="inline-start" />
+                                        Download
+                                    </Link>
                                 </Button>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -197,13 +278,7 @@ export default function ResourceShow({ resource }: Props) {
                     </div>
                 </section>
 
-                <Tabs
-                    value={activeTab}
-                    onValueChange={(value) =>
-                        setActiveTab(value as ResourceTab)
-                    }
-                    className="gap-4"
-                >
+                <Tabs value={activeTab} className="gap-4">
                     <TabsList
                         ref={tabsListRef}
                         className="relative grid h-auto w-full scroll-mt-20 grid-cols-3 gap-0.5 rounded-xl bg-card p-1 ring-1 ring-foreground/10 group-data-horizontal/tabs:h-auto sm:inline-grid sm:w-auto"
@@ -232,12 +307,25 @@ export default function ResourceShow({ resource }: Props) {
                             <TabsTrigger
                                 key={tab.value}
                                 value={tab.value}
+                                asChild
                                 ref={(node) => {
                                     tabRefs.current[tab.value] = node;
                                 }}
                                 className={tabTriggerClassName}
                             >
-                                {tab.label}
+                                <Link
+                                    href={tab.href(resource.id)}
+                                    preserveState
+                                    preserveScroll
+                                    onStart={() =>
+                                        setVisualActiveTab(tab.value)
+                                    }
+                                    onError={() =>
+                                        setVisualActiveTab(activeTab)
+                                    }
+                                >
+                                    {tab.label}
+                                </Link>
                             </TabsTrigger>
                         ))}
                     </TabsList>
@@ -248,9 +336,12 @@ export default function ResourceShow({ resource }: Props) {
                                 <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
                                     About
                                 </h2>
-                                <p className="text-sm leading-relaxed text-muted-foreground">
-                                    {resource.description}
-                                </p>
+                                <div
+                                    className="space-y-3 text-sm leading-relaxed text-muted-foreground [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_h2]:font-heading [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-foreground [&_h3]:font-heading [&_h3]:font-semibold [&_h3]:text-foreground [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+                                    dangerouslySetInnerHTML={{
+                                        __html: resource.description,
+                                    }}
+                                />
                             </section>
 
                             <div className="flex flex-col gap-4">
@@ -265,23 +356,23 @@ export default function ResourceShow({ resource }: Props) {
                                         />
                                         <MetaRow
                                             label="Release date"
-                                            value={resource.releaseDate}
+                                            value={resource.releaseDate ?? '—'}
                                         />
                                         <MetaRow
                                             label="Published"
-                                            value={resource.publishedAt}
+                                            value={resource.publishedAt ?? '—'}
                                         />
                                         <MetaRow
                                             label="Platform"
-                                            value={resource.platform}
+                                            value={platforms}
                                         />
                                         <MetaRow
                                             label="Language"
-                                            value={resource.language}
+                                            value={languages}
                                         />
                                         <MetaRow
                                             label="File size"
-                                            value={resource.fileSize}
+                                            value={fileSizes || '—'}
                                         />
                                         <MetaRow
                                             label="Views"
@@ -314,59 +405,97 @@ export default function ResourceShow({ resource }: Props) {
 
                     <TabsContent value="downloads">
                         <div className="flex flex-col gap-3">
-                            {resource.downloadLinks.map((link) => {
+                            {resource.releases.map((release) => {
                                 return (
                                     <article
-                                        key={link.label}
+                                        key={release.id}
                                         className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5"
                                     >
-                                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                            <div className="min-w-0 flex-1 space-y-3">
+                                        <div className="space-y-4">
+                                            <div className="min-w-0 space-y-3">
                                                 <div className="space-y-1">
                                                     <h3 className="font-heading text-base font-semibold text-foreground">
-                                                        {link.label}
+                                                        {release.platforms.join(
+                                                            ', ',
+                                                        )}{' '}
+                                                        ·{' '}
+                                                        {release.languages.join(
+                                                            ', ',
+                                                        )}
+                                                        {release.version
+                                                            ? ` · ${release.version}`
+                                                            : ''}
                                                     </h3>
-                                                    <p className="text-sm leading-relaxed text-muted-foreground">
-                                                        {link.description}
-                                                    </p>
-                                                    {link.note ? (
-                                                        <p className="text-sm text-muted-foreground">
-                                                            {link.note}
-                                                        </p>
+                                                    {release.description ? (
+                                                        <div
+                                                            className="space-y-2 text-sm leading-relaxed text-muted-foreground [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+                                                            dangerouslySetInnerHTML={{
+                                                                __html: release.description,
+                                                            }}
+                                                        />
                                                     ) : null}
                                                 </div>
 
                                                 <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
-                                                    <span className="inline-flex items-center gap-1.5">
-                                                        <PlatformIcon
-                                                            platform={
-                                                                link.platform
-                                                            }
-                                                            className="size-3.5"
-                                                        />
-                                                        {link.platform}
+                                                    {release.platforms.map(
+                                                        (platform) => (
+                                                            <span
+                                                                key={platform}
+                                                                className="inline-flex items-center gap-1.5"
+                                                            >
+                                                                <PlatformIcon
+                                                                    platform={
+                                                                        platform
+                                                                    }
+                                                                    className="size-3.5"
+                                                                />
+                                                                {platform}
+                                                            </span>
+                                                        ),
+                                                    )}
+                                                    <span>
+                                                        {release.languages.join(
+                                                            ', ',
+                                                        )}
                                                     </span>
-                                                    <span>{link.language}</span>
-                                                    <span>{link.fileSize}</span>
+                                                    {release.fileSize ? (
+                                                        <span>
+                                                            {release.fileSize}
+                                                        </span>
+                                                    ) : null}
                                                     <time
                                                         dateTime={
-                                                            link.publishedAt
+                                                            release.publishedAt ??
+                                                            undefined
                                                         }
                                                     >
-                                                        {link.publishedAt}
+                                                        {release.publishedAt ??
+                                                            'Unscheduled'}
                                                     </time>
                                                 </div>
                                             </div>
 
-                                            <Button
-                                                asChild
-                                                className="shrink-0 self-start"
-                                            >
-                                                <a href={link.url}>
-                                                    <Download data-icon="inline-start" />
-                                                    Download
-                                                </a>
-                                            </Button>
+                                            <div className="flex flex-wrap gap-2">
+                                                {release.downloadLinks.map(
+                                                    (link) => (
+                                                        <div key={link.id}>
+                                                            <Button
+                                                                asChild
+                                                                variant="outline"
+                                                            >
+                                                                <a
+                                                                    href={
+                                                                        link.url
+                                                                    }
+                                                                >
+                                                                    <Download data-icon="inline-start" />
+                                                                    {link.label}
+                                                                </a>
+                                                            </Button>
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
                                         </div>
                                     </article>
                                 );

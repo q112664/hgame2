@@ -1,43 +1,100 @@
 <?php
 
-use App\Support\MockResources;
+use App\Models\Game;
+use App\Models\GameDownloadLink;
+use App\Models\GameRelease;
+use App\Models\GameScreenshot;
+use App\Models\Language;
+use App\Models\Platform;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
-test('resource show page renders a known resource', function () {
-    $resource = MockResources::find('64');
+uses(RefreshDatabase::class);
 
-    expect($resource)->not->toBeNull();
+beforeEach(function () {
+    $this->game = Game::factory()->create([
+        'slug' => 'senren-banka',
+        'title' => 'Senren Banka',
+        'description' => '<p><strong>Rich details</strong><script>alert(1)</script></p>',
+    ]);
+    $platform = Platform::factory()->create(['name' => 'Windows', 'slug' => 'windows']);
+    $language = Language::factory()->create(['name' => 'Chinese', 'code' => 'zh']);
+    $release = GameRelease::factory()->for($this->game)->create([
+        'platform_id' => $platform->id,
+        'language_id' => $language->id,
+        'file_size_bytes' => 5_800_000_000,
+    ]);
 
-    $this->get(route('resources.show', $resource['id']))
+    GameDownloadLink::factory()->for($release, 'release')->create([
+        'label' => 'Baidu Netdisk',
+    ]);
+    GameDownloadLink::factory()->for($release, 'release')->create([
+        'label' => 'Mega',
+    ]);
+    GameScreenshot::factory()->for($this->game)->create();
+});
+
+test('resource tab pages render a published game with its available releases', function (string $routeName, string $activeTab) {
+    $this->get(route($routeName, $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
-            ->where('resource.id', $resource['id'])
-            ->where('resource.title', $resource['title'])
-            ->where('resource.platform', $resource['platform'])
-            ->has('resource.screenshots')
-            ->has('resource.downloadLinks')
-            ->where('resource.screenshots.0', $resource['screenshots'][0])
-            ->where('resource.downloadLinks.0.label', 'Baidu Netdisk')
-            ->where('resource.downloadLinks.0.platform', $resource['platform'])
-            ->where('resource.downloadLinks.0.language', $resource['language'])
-            ->where('resource.downloadLinks.0.fileSize', $resource['fileSize'])
-            ->where('resource.downloadLinks.0.publishedAt', $resource['publishedAt'])
-            ->has('resource.downloadLinks.0.description')
+            ->where('activeTab', $activeTab)
+            ->where('resource.id', $this->game->slug)
+            ->where('resource.title', $this->game->title)
+            ->where('resource.description', fn (string $description): bool => str_contains($description, '<strong>Rich details</strong>') && ! str_contains($description, '<script>'))
+            ->where('resource.platforms', ['Windows'])
+            ->where('resource.languages', ['Chinese'])
+            ->has('resource.screenshots', 1)
+            ->has('resource.releases', 1)
+            ->where('resource.releases.0.platforms', ['Windows'])
+            ->where('resource.releases.0.languages', ['Chinese'])
+            ->has('resource.releases.0.downloadLinks', 2)
+            ->where('resource.releases.0.downloadLinks.0.label', 'Baidu Netdisk')
         );
+})->with([
+    'details' => ['resources.details', 'details'],
+    'downloads' => ['resources.downloads', 'downloads'],
+    'screenshots' => ['resources.screenshots', 'screenshots'],
+]);
+
+test('resource show redirects to the details route', function () {
+    $this->get(route('resources.show', $this->game->slug))
+        ->assertRedirect(route('resources.details', $this->game->slug));
 });
 
-test('resource show page returns not found for unknown resources', function () {
-    $this->get(route('resources.show', 'missing-resource'))
-        ->assertNotFound();
+test('resource routes return not found for unknown or unpublished games', function () {
+    $draft = Game::factory()->draft()->create();
+
+    $this->get(route('resources.details', 'missing-resource'))->assertNotFound();
+    $this->get(route('resources.details', $draft->slug))->assertNotFound();
 });
 
-test('home page receives resource cards', function () {
+test('home and search receive only published games', function () {
+    Game::factory()->draft()->create(['title' => 'Hidden Draft']);
+
     $this->get(route('home'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('welcome')
-            ->has('resources', MockResources::cards()->count())
-            ->has('searchResources', MockResources::cards()->count())
+            ->has('resources', 1)
+            ->where('resources.0.id', $this->game->slug)
+            ->where('resources.0.platforms', ['Windows'])
+            ->where('resources.0.languages', ['Chinese'])
+            ->has('searchResources', 1)
+            ->where('searchResources.0.id', $this->game->slug)
+        );
+});
+
+test('releases without active download links do not advertise a platform or language', function () {
+    $inactiveRelease = GameRelease::factory()->for($this->game)->create();
+    GameDownloadLink::factory()->for($inactiveRelease, 'release')->create(['is_active' => false]);
+
+    $this->get(route('resources.details', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('resource.releases', 1)
+            ->where('resource.platforms', ['Windows'])
+            ->where('resource.languages', ['Chinese'])
         );
 });

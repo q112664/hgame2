@@ -7,12 +7,12 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { MockResource } from '@/data/mock-resources';
 import { cn } from '@/lib/utils';
-import { show as resourceShow } from '@/routes/resources';
+import { details as resourceDetails } from '@/routes/resources';
+import type { GameCard } from '@/types/resources';
 
 type Props = {
-    resource: MockResource;
+    resource: GameCard;
 };
 
 const languageAbbrev: Record<string, string> = {
@@ -50,13 +50,17 @@ function formatDate(date: string): string {
 }
 
 export function ResourceCard({ resource }: Props) {
+    const primaryPlatform = resource.platforms[0];
+    const platformLabel = resource.platforms.join(', ') || 'No platform';
+    const languageLabel = resource.languages.map(abbreviateLanguage).join('/');
+
     return (
         <Card
             size="sm"
             className="h-full gap-0 rounded-md py-0 transition-[ring-color] duration-150 hover:ring-foreground/15"
         >
             <Link
-                href={resourceShow(resource.id)}
+                href={resourceDetails(resource.id)}
                 className="group flex h-full flex-col"
                 prefetch
             >
@@ -80,23 +84,27 @@ export function ResourceCard({ resource }: Props) {
                                         overlayChipClassName,
                                         'size-6 px-0',
                                     )}
-                                    aria-label={resource.platform}
+                                    aria-label={platformLabel}
                                 >
-                                    <PlatformIcon
-                                        platform={resource.platform}
-                                        className="size-3.5"
-                                    />
+                                    {primaryPlatform ? (
+                                        <PlatformIcon
+                                            platform={primaryPlatform}
+                                            className="size-3.5"
+                                        />
+                                    ) : (
+                                        <span>—</span>
+                                    )}
                                 </span>
                             </TooltipTrigger>
                             <TooltipContent side="bottom">
-                                {resource.platform}
+                                {platformLabel}
                             </TooltipContent>
                         </Tooltip>
                     </div>
 
                     <div className="absolute inset-x-0 bottom-0 flex justify-end p-2">
                         <span className={overlayChipClassName}>
-                            {abbreviateLanguage(resource.language)}
+                            {languageLabel || '—'}
                         </span>
                     </div>
                 </div>
@@ -108,8 +116,10 @@ export function ResourceCard({ resource }: Props) {
                 </CardHeader>
 
                 <CardContent className="mt-auto flex items-center justify-between gap-2 pt-1.5 pb-3 text-xs text-muted-foreground">
-                    <time dateTime={resource.publishedAt}>
-                        {formatDate(resource.publishedAt)}
+                    <time dateTime={resource.publishedAt ?? undefined}>
+                        {resource.publishedAt
+                            ? formatDate(resource.publishedAt)
+                            : 'Unscheduled'}
                     </time>
                     <span className="inline-flex items-center gap-1">
                         <Eye className="size-3.5" />

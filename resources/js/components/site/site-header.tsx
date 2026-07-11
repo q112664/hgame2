@@ -1,20 +1,21 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Menu, Moon, Bell, Search, Sun, X } from 'lucide-react';
+import { Bell, Menu, Moon, Search, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SiteSearchDialog } from '@/components/site/site-search-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
+import {
+    Sheet,
+    SheetContent,
+    SheetTitle,
+    SheetTrigger,
+} from '@/components/ui/sheet';
 import {
     Tooltip,
     TooltipContent,
@@ -207,132 +208,133 @@ export function SiteHeader() {
     return (
         <header className="sticky top-0 z-40 border-b border-black/5 bg-background/75 backdrop-blur-md dark:border-white/10 supports-backdrop-filter:bg-background/65">
             <SiteSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
-            <Collapsible open={open} onOpenChange={setOpen}>
-                <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-                    <CollapsibleTrigger asChild>
+            <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+                <Sheet open={open} onOpenChange={setOpen}>
+                    <SheetTrigger asChild>
                         <button
                             type="button"
                             className={cn(
                                 iconButtonClassName,
-                                '-ml-1 shrink-0 aria-expanded:bg-black/5 dark:aria-expanded:bg-white/10 md:hidden',
+                                '-ml-1 shrink-0 md:hidden',
                             )}
-                            aria-label={open ? 'Close menu' : 'Open menu'}
+                            aria-label="Open menu"
                         >
-                            {open ? (
-                                <X className="size-4" />
-                            ) : (
-                                <Menu className="size-4" />
-                            )}
+                            <Menu className="size-4" />
                         </button>
-                    </CollapsibleTrigger>
+                    </SheetTrigger>
+                    <SheetContent
+                        side="left"
+                        className="w-[85vw] max-w-xs gap-0 bg-background p-0"
+                    >
+                        <SheetTitle className="sr-only">
+                            Navigation menu
+                        </SheetTitle>
+                        <div className="flex h-14 shrink-0 items-center border-b border-black/5 px-4 dark:border-white/10">
+                            <Link
+                                href={home()}
+                                className="font-heading text-lg font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80"
+                                onClick={closeMenu}
+                            >
+                                hgame
+                            </Link>
+                        </div>
 
-                    <div className="flex min-w-0 flex-1 items-center gap-6">
-                        <Link
-                            href={home()}
-                            className="font-heading shrink-0 text-lg font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80"
-                        >
-                            hgame
-                        </Link>
+                        <div className="flex min-h-0 flex-1 flex-col px-3 py-4">
+                            <NavLinks
+                                className="flex-col items-stretch gap-1 [&>a]:h-10 [&>a]:justify-start [&>a]:px-3"
+                                onNavigate={closeMenu}
+                            />
 
-                        <NavLinks className="hidden md:flex" />
-                    </div>
+                            {!auth.user && (
+                                <div className="mt-auto flex flex-col gap-3 pt-6">
+                                    <Separator className="bg-black/8 dark:bg-white/10" />
+                                    <div className="grid gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className={cn(
+                                                softButtonClassName,
+                                                'w-full',
+                                            )}
+                                            asChild
+                                        >
+                                            <Link
+                                                href={login()}
+                                                onClick={closeMenu}
+                                            >
+                                                Log in
+                                            </Link>
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            className="w-full"
+                                            asChild
+                                        >
+                                            <Link
+                                                href={register()}
+                                                onClick={closeMenu}
+                                            >
+                                                Sign up
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </SheetContent>
+                </Sheet>
 
-                    <div className="flex items-center gap-1.5">
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    type="button"
-                                    className={iconButtonClassName}
-                                    onClick={() => setSearchOpen(true)}
-                                    aria-label="Search resources"
-                                >
-                                    <Search className="size-4" />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" sideOffset={4}>
-                                Search resources
-                            </TooltipContent>
-                        </Tooltip>
+                <div className="flex min-w-0 flex-1 items-center gap-6">
+                    <Link
+                        href={home()}
+                        className="font-heading shrink-0 text-lg font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80"
+                    >
+                        hgame
+                    </Link>
 
-                        <NotificationButton />
-
-                        <ThemeToggle />
-
-                        {auth.user ? (
-                            <UserAvatarMenu user={auth.user} />
-                        ) : (
-                            <div className="hidden items-center gap-1.5 md:flex">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={softButtonClassName}
-                                    asChild
-                                >
-                                    <Link href={login()}>Log in</Link>
-                                </Button>
-                                <Button size="sm" asChild>
-                                    <Link href={register()}>Sign up</Link>
-                                </Button>
-                            </div>
-                        )}
-                    </div>
+                    <NavLinks className="hidden md:flex" />
                 </div>
 
-                <CollapsibleContent className="border-t border-black/5 dark:border-white/10 md:hidden">
-                    <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2 sm:px-6">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                                softButtonClassName,
-                                'h-9 w-full justify-start gap-2',
-                            )}
-                            onClick={() => {
-                                closeMenu();
-                                setSearchOpen(true);
-                            }}
-                        >
-                            <Search className="size-4" />
-                            Search
-                        </Button>
+                <div className="flex items-center gap-1.5">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                className={iconButtonClassName}
+                                onClick={() => setSearchOpen(true)}
+                                aria-label="Search resources"
+                            >
+                                <Search className="size-4" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" sideOffset={4}>
+                            Search resources
+                        </TooltipContent>
+                    </Tooltip>
 
-                        <NavLinks
-                            className="grid grid-cols-2 gap-1 [&>a]:h-9 [&>a]:justify-center"
-                            onNavigate={closeMenu}
-                        />
+                    <NotificationButton />
 
-                        {!auth.user && (
-                            <>
-                                <Separator className="bg-black/8 dark:bg-white/10" />
+                    <ThemeToggle />
 
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={softButtonClassName}
-                                        asChild
-                                    >
-                                        <Link
-                                            href={login()}
-                                            onClick={closeMenu}
-                                        >
-                                            Log in
-                                        </Link>
-                                    </Button>
-                                    <Button size="sm" asChild>
-                                        <Link
-                                            href={register()}
-                                            onClick={closeMenu}
-                                        >
-                                            Sign up
-                                        </Link>
-                                    </Button>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </CollapsibleContent>
-            </Collapsible>
+                    {auth.user ? (
+                        <UserAvatarMenu user={auth.user} />
+                    ) : (
+                        <div className="hidden items-center gap-1.5 md:flex">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={softButtonClassName}
+                                asChild
+                            >
+                                <Link href={login()}>Log in</Link>
+                            </Button>
+                            <Button size="sm" asChild>
+                                <Link href={register()}>Sign up</Link>
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
         </header>
     );
 }

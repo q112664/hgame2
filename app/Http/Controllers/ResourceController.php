@@ -2,24 +2,70 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\MockResources;
-use Illuminate\Http\Request;
+use App\Models\Game;
+use App\Support\GamePresenter;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class ResourceController extends Controller
 {
-    public function show(Request $request, string $resource): Response
+    public function show(string $resource): RedirectResponse
     {
-        $item = MockResources::find($resource);
+        $this->findResource($resource);
 
-        if ($item === null) {
-            throw new NotFoundHttpException;
-        }
+        return to_route('resources.details', ['resource' => $resource]);
+    }
 
+    public function details(string $resource): Response
+    {
+        return $this->renderResource($resource, 'details');
+    }
+
+    public function downloads(string $resource): Response
+    {
+        return $this->renderResource($resource, 'downloads');
+    }
+
+    public function screenshots(string $resource): Response
+    {
+        return $this->renderResource($resource, 'screenshots');
+    }
+
+    private function renderResource(string $resource, string $activeTab): Response
+    {
         return Inertia::render('resources/show', [
-            'resource' => $item,
+            'activeTab' => $activeTab,
+            'resource' => $this->findResource($resource),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function findResource(string $resource): array
+    {
+        $game = Game::query()
+            ->published()
+            ->where('slug', $resource)
+            ->with([
+                'category:id,name',
+                'tags:id,name',
+                'screenshots' => fn ($query) => $query->orderBy('sort_order'),
+                'releases' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->whereHas('downloadLinks', fn ($links) => $links->where('is_active', true))
+                    ->with([
+                        'platforms:id,name',
+                        'languages:id,name',
+                        'downloadLinks' => fn ($links) => $links
+                            ->where('is_active', true)
+                            ->orderBy('sort_order'),
+                    ])
+                    ->orderBy('sort_order'),
+            ])
+            ->firstOrFail();
+
+        return GamePresenter::detail($game);
     }
 }

@@ -183,7 +183,7 @@ export default function Settings(props: Props) {
                                     href={tab.href}
                                     preserveState
                                     preserveScroll
-                                    onClick={() =>
+                                    onStart={() =>
                                         setVisualActiveTab(tab.value)
                                     }
                                     onError={() =>

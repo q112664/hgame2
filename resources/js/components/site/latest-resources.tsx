@@ -1,8 +1,8 @@
 import { ResourceCard } from '@/components/site/resource-card';
-import type { MockResource } from '@/data/mock-resources';
+import type { GameCard } from '@/types/resources';
 
 type Props = {
-    resources: MockResource[];
+    resources: GameCard[];
 };
 
 export function LatestResources({ resources }: Props) {

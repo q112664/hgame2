@@ -9,10 +9,10 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import type { MockResource } from '@/data/mock-resources';
-import { show as resourceShow } from '@/routes/resources';
+import { details as resourceDetails } from '@/routes/resources';
+import type { GameCard } from '@/types/resources';
 
-type SearchResource = Pick<MockResource, 'id' | 'title' | 'thumbnail'>;
+type SearchResource = Pick<GameCard, 'id' | 'title' | 'thumbnail'>;
 
 type PageProps = {
     searchResources: SearchResource[];
@@ -33,8 +33,9 @@ export function SiteSearchDialog({ open, onOpenChange }: Props) {
             return;
         }
 
-        setQuery('');
-        requestAnimationFrame(() => inputRef.current?.focus());
+        const frame = requestAnimationFrame(() => inputRef.current?.focus());
+
+        return () => cancelAnimationFrame(frame);
     }, [open]);
 
     const results = useMemo(() => {
@@ -51,10 +52,18 @@ export function SiteSearchDialog({ open, onOpenChange }: Props) {
             .slice(0, 8);
     }, [query, searchResources]);
 
-    const closeDialog = () => onOpenChange(false);
+    const handleOpenChange = (nextOpen: boolean) => {
+        if (!nextOpen) {
+            setQuery('');
+        }
+
+        onOpenChange(nextOpen);
+    };
+
+    const closeDialog = () => handleOpenChange(false);
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
                 <DialogHeader className="gap-1 border-b border-foreground/10 px-4 py-4 text-left">
                     <DialogTitle>Search resources</DialogTitle>
@@ -91,7 +100,7 @@ export function SiteSearchDialog({ open, onOpenChange }: Props) {
                             {results.map((resource) => (
                                 <li key={resource.id}>
                                     <Link
-                                        href={resourceShow(resource.id)}
+                                        href={resourceDetails(resource.id)}
                                         onClick={closeDialog}
                                         className="flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted"
                                         prefetch

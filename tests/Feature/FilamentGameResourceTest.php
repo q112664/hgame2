@@ -1,8 +1,12 @@
 <?php
 
 use App\Filament\Resources\Games\Pages\CreateGame;
+use App\Filament\Resources\Games\Pages\EditGame;
+use App\Filament\Resources\Games\RelationManagers\ReleasesRelationManager;
+use App\Filament\Resources\Games\RelationManagers\ScreenshotsRelationManager;
 use App\GameStatus;
 use App\Models\Game;
+use App\Models\GameScreenshot;
 use App\Models\Language;
 use App\Models\Platform;
 use App\Models\User;
@@ -93,4 +97,23 @@ test('an administrator can create a game with multiple screenshots at once', fun
     foreach ($game->screenshots as $screenshot) {
         Storage::disk('public')->assertExists($screenshot->path);
     }
+});
+
+test('edit game page stacks releases and screenshots without relation tabs', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    $game = Game::factory()->create();
+    GameScreenshot::factory()->count(2)->for($game)->create();
+
+    $component = Livewire::test(EditGame::class, [
+        'record' => $game->getRouteKey(),
+    ]);
+
+    $component
+        ->assertSuccessful()
+        ->assertSeeLivewire(ReleasesRelationManager::class)
+        ->assertSeeLivewire(ScreenshotsRelationManager::class);
+
+    expect($component->instance()->getRelationManagers())->toHaveCount(1)
+        ->and($component->html())->not->toContain('wire:key="relationManagerTabs"');
 });

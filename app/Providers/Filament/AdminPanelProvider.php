@@ -54,6 +54,28 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            ->renderHook(
+                'panels::head.end',
+                fn (): string => <<<'HTML'
+                    <style>
+                        .screenshots-upload-grid .filepond--item {
+                            width: calc(20% - 0.5em);
+                        }
+
+                        @media (max-width: 1024px) {
+                            .screenshots-upload-grid .filepond--item {
+                                width: calc(25% - 0.5em);
+                            }
+                        }
+
+                        @media (max-width: 640px) {
+                            .screenshots-upload-grid .filepond--item {
+                                width: calc(50% - 0.5em);
+                            }
+                        }
+                    </style>
+                    HTML,
+            );
     }
 }

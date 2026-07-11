@@ -15,7 +15,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\TextSize;
 use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -53,28 +55,31 @@ class ScreenshotsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('url')
             ->columns([
-                ImageColumn::make('preview')
-                    ->state(fn (GameScreenshot $record): string => $record->path
-                        ? Storage::disk('public')->url($record->path)
-                        : $record->url)
-                    ->label('Preview')
-                    ->width(160)
-                    ->height(90),
-                TextColumn::make('alt')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('sort_order')
-                    ->numeric()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Stack::make([
+                    ImageColumn::make('preview')
+                        ->state(fn (GameScreenshot $record): ?string => $record->path
+                            ? Storage::disk('public')->url($record->path)
+                            : $record->url)
+                        ->imageWidth('100%')
+                        ->imageHeight(72)
+                        ->extraAttributes([
+                            'class' => 'min-w-0 overflow-hidden p-0',
+                        ])
+                        ->extraImgAttributes([
+                            'class' => 'max-w-full! rounded-md object-cover',
+                        ]),
+                    TextColumn::make('alt')
+                        ->placeholder('—')
+                        ->limit(24)
+                        ->searchable()
+                        ->color('gray')
+                        ->size(TextSize::ExtraSmall),
+                ]),
+            ])
+            ->contentGrid([
+                'md' => 2,
+                'lg' => 3,
+                'xl' => 4,
             ])
             ->filters([
                 //

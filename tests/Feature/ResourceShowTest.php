@@ -43,6 +43,8 @@ test('resource tab pages render a published game with its available releases', f
             ->where('activeTab', $activeTab)
             ->where('resource.id', $this->game->slug)
             ->where('resource.title', $this->game->title)
+            ->where('resource.developer', $this->game->developer ?? 'Unknown')
+            ->where('resource.releaseDate', $this->game->release_date?->toDateString())
             ->where('resource.description', fn (string $description): bool => str_contains($description, '<strong>Rich details</strong>') && ! str_contains($description, '<script>'))
             ->where('resource.platforms', ['Windows'])
             ->where('resource.languages', ['Chinese'])

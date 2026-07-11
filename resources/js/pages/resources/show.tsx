@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Download, Heart } from 'lucide-react';
+import { Building2, CalendarDays, Download, Heart } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PlatformIcon } from '@/components/site/platform-icon';
@@ -90,6 +90,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
     const tabRefs = useRef<Partial<Record<ResourceTab, HTMLElement | null>>>(
         {},
     );
+    const shouldScrollToDownloads = useRef(false);
     const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
     const platforms = resource.platforms.join(', ') || 'No platform';
     const languages = resource.languages.join(', ') || 'No language';
@@ -150,21 +151,37 @@ export default function ResourceShow({ activeTab, resource }: Props) {
         };
 
         updatePill();
+
+        if (
+            shouldScrollToDownloads.current &&
+            visualActiveTab === 'downloads'
+        ) {
+            shouldScrollToDownloads.current = false;
+            tabsListRef.current?.scrollIntoView({
+                behavior: 'auto',
+                block: 'start',
+            });
+            tabRefs.current.downloads?.focus({ preventScroll: true });
+        }
+
         window.addEventListener('resize', updatePill);
 
         return () => window.removeEventListener('resize', updatePill);
     }, [visualActiveTab]);
 
     const showDownloads = () => {
-        setVisualActiveTab('downloads');
-
-        requestAnimationFrame(() => {
+        if (visualActiveTab === 'downloads') {
             tabsListRef.current?.scrollIntoView({
-                behavior: shouldReduceMotion ? 'auto' : 'smooth',
+                behavior: 'auto',
                 block: 'start',
             });
             tabRefs.current.downloads?.focus({ preventScroll: true });
-        });
+
+            return;
+        }
+
+        shouldScrollToDownloads.current = true;
+        setVisualActiveTab('downloads');
     };
 
     const markScreenshotLoaded = (screenshot: string) => {
@@ -206,20 +223,36 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                         {language}
                                     </Badge>
                                 ))}
-                                {resource.tags.map((tag) => (
-                                    <Badge key={tag} variant="outline">
-                                        {tag}
-                                    </Badge>
-                                ))}
                             </div>
 
                             <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                                 {resource.title}
                             </h1>
 
-                            <p className="text-sm text-muted-foreground">
-                                {resource.developer}
-                            </p>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+                                <span className="inline-flex min-w-0 items-center gap-1.5">
+                                    <Building2
+                                        className="size-3.5 shrink-0"
+                                        aria-hidden
+                                    />
+                                    <span className="truncate">
+                                        {resource.developer}
+                                    </span>
+                                </span>
+                                <span className="inline-flex items-center gap-1.5">
+                                    <CalendarDays
+                                        className="size-3.5 shrink-0"
+                                        aria-hidden
+                                    />
+                                    <time
+                                        dateTime={
+                                            resource.releaseDate ?? undefined
+                                        }
+                                    >
+                                        {resource.releaseDate ?? '—'}
+                                    </time>
+                                </span>
+                            </div>
 
                             <div className="mt-auto flex items-center gap-2 pt-1">
                                 <Button size="lg" asChild>
@@ -230,9 +263,10 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                         preserveState
                                         preserveScroll
                                         onStart={showDownloads}
-                                        onError={() =>
-                                            setVisualActiveTab(activeTab)
-                                        }
+                                        onError={() => {
+                                            shouldScrollToDownloads.current = false;
+                                            setVisualActiveTab(activeTab);
+                                        }}
                                     >
                                         <Download data-icon="inline-start" />
                                         Download
@@ -278,7 +312,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                     </div>
                 </section>
 
-                <Tabs value={activeTab} className="gap-4">
+                <Tabs value={visualActiveTab} className="gap-4">
                     <TabsList
                         ref={tabsListRef}
                         className="relative grid h-auto w-full scroll-mt-20 grid-cols-3 gap-0.5 rounded-xl bg-card p-1 ring-1 ring-foreground/10 group-data-horizontal/tabs:h-auto sm:inline-grid sm:w-auto"
@@ -296,9 +330,9 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                     shouldReduceMotion
                                         ? { duration: 0 }
                                         : {
-                                              type: 'spring',
-                                              stiffness: 420,
-                                              damping: 34,
+                                              type: 'tween',
+                                              duration: 0.2,
+                                              ease: 'easeInOut',
                                           }
                                 }
                             />

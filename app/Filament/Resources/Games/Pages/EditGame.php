@@ -11,7 +11,7 @@ class EditGame extends EditRecord
 {
     protected static string $resource = GameResource::class;
 
-    protected Width|string|null $maxContentWidth = Width::Full;
+    protected Width|string|null $maxContentWidth = Width::FiveExtraLarge;
 
     protected function getHeaderActions(): array
     {

@@ -15,15 +15,18 @@ final class ScreenshotsFileUpload
             ->multiple()
             ->appendFiles()
             ->reorderable()
-            ->imagePreviewHeight('160')
-            ->panelLayout('compact')
-            ->removeUploadedFileButtonPosition('right')
-            ->uploadButtonPosition('left')
-            ->uploadProgressIndicatorPosition('left')
+            ->imagePreviewHeight('72')
+            ->panelLayout('grid')
+            ->removeUploadedFileButtonPosition('left')
+            ->uploadButtonPosition('center')
+            ->uploadProgressIndicatorPosition('center')
             ->openable()
             ->disk('public')
             ->directory('games/screenshots')
             ->visibility('public')
-            ->helperText('Select multiple images at once. Drag rows to reorder.');
+            ->helperText('Select multiple images at once. Drag thumbnails to reorder.')
+            ->extraAttributes([
+                'class' => 'screenshots-upload-grid',
+            ]);
     }
 }

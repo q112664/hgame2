@@ -12,7 +12,7 @@ class CreateGame extends CreateRecord
 {
     protected static string $resource = GameResource::class;
 
-    protected Width|string|null $maxContentWidth = Width::Full;
+    protected Width|string|null $maxContentWidth = Width::FiveExtraLarge;
 
     /** @var array<int, string> */
     private array $screenshotPaths = [];

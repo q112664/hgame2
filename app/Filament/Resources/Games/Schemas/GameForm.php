@@ -71,6 +71,9 @@ class GameForm
                                     ]);
                                 }
 
+                                // Filament always appends the returned key to the multi-select
+                                // state. Leave the last ID out of $set so it is not duplicated,
+                                // otherwise validation sees more values than option labels.
                                 $selected = collect($get('tags') ?? [])
                                     ->map(fn (mixed $id): int => (int) $id)
                                     ->merge($ids)
@@ -78,9 +81,11 @@ class GameForm
                                     ->values()
                                     ->all();
 
+                                $createdOptionKey = (int) array_pop($selected);
+
                                 $set('tags', $selected);
 
-                                return $ids[array_key_last($ids)];
+                                return $createdOptionKey;
                             })
                             ->columnSpan(6),
                         TextInput::make('developer')->maxLength(255)->columnSpan(6),

@@ -162,9 +162,9 @@ export default function Settings(props: Props) {
                                     shouldReduceMotion
                                         ? { duration: 0 }
                                         : {
-                                              type: 'spring',
-                                              stiffness: 420,
-                                              damping: 34,
+                                              type: 'tween',
+                                              duration: 0.2,
+                                              ease: 'easeInOut',
                                           }
                                 }
                             />

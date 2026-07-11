@@ -22,7 +22,8 @@ beforeEach(function () {
     $release = GameRelease::factory()->for($this->game)->create([
         'platform_id' => $platform->id,
         'language_id' => $language->id,
-        'file_size_bytes' => 5_800_000_000,
+        'title' => 'Official release',
+        'file_size' => '5.4 GB',
     ]);
 
     GameDownloadLink::factory()->for($release, 'release')->create([
@@ -47,6 +48,7 @@ test('resource tab pages render a published game with its available releases', f
             ->where('resource.languages', ['Chinese'])
             ->has('resource.screenshots', 1)
             ->has('resource.releases', 1)
+            ->where('resource.releases.0.title', 'Official release')
             ->where('resource.releases.0.platforms', ['Windows'])
             ->where('resource.releases.0.languages', ['Chinese'])
             ->has('resource.releases.0.downloadLinks', 2)
@@ -86,9 +88,11 @@ test('home and search receive only published games', function () {
         );
 });
 
-test('releases without active download links do not advertise a platform or language', function () {
-    $inactiveRelease = GameRelease::factory()->for($this->game)->create();
-    GameDownloadLink::factory()->for($inactiveRelease, 'release')->create(['is_active' => false]);
+test('inactive releases or releases without download links do not advertise a platform or language', function () {
+    $inactiveRelease = GameRelease::factory()->for($this->game)->create(['is_active' => false]);
+    GameDownloadLink::factory()->for($inactiveRelease, 'release')->create();
+
+    $emptyRelease = GameRelease::factory()->for($this->game)->create(['is_active' => true]);
 
     $this->get(route('resources.details', $this->game->slug))
         ->assertOk()
@@ -97,4 +101,6 @@ test('releases without active download links do not advertise a platform or lang
             ->where('resource.platforms', ['Windows'])
             ->where('resource.languages', ['Chinese'])
         );
+
+    expect($emptyRelease->downloadLinks)->toHaveCount(0);
 });

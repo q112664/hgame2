@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Setting;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureSiteUrl();
+    }
+
+    /**
+     * Apply the admin-configured site URL to runtime config.
+     */
+    protected function configureSiteUrl(): void
+    {
+        Setting::applySiteUrlToConfig();
     }
 
     /**

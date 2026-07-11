@@ -414,18 +414,11 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                         <div className="space-y-4">
                                             <div className="min-w-0 space-y-3">
                                                 <div className="space-y-1">
-                                                    <h3 className="font-heading text-base font-semibold text-foreground">
-                                                        {release.platforms.join(
-                                                            ', ',
-                                                        )}{' '}
-                                                        ·{' '}
-                                                        {release.languages.join(
-                                                            ', ',
-                                                        )}
-                                                        {release.version
-                                                            ? ` · ${release.version}`
-                                                            : ''}
-                                                    </h3>
+                                                    {release.title ? (
+                                                        <h3 className="font-heading text-base font-semibold text-foreground">
+                                                            {release.title}
+                                                        </h3>
+                                                    ) : null}
                                                     {release.description ? (
                                                         <div
                                                             className="space-y-2 text-sm leading-relaxed text-muted-foreground [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
@@ -477,7 +470,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
 
                                             <div className="flex flex-wrap gap-2">
                                                 {release.downloadLinks.map(
-                                                    (link) => (
+                                                    (link, index) => (
                                                         <div key={link.id}>
                                                             <Button
                                                                 asChild
@@ -489,7 +482,12 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                                                     }
                                                                 >
                                                                     <Download data-icon="inline-start" />
-                                                                    {link.label}
+                                                                    {release
+                                                                        .downloadLinks
+                                                                        .length >
+                                                                    1
+                                                                        ? `Download ${index + 1}`
+                                                                        : 'Download'}
                                                                 </a>
                                                             </Button>
                                                         </div>

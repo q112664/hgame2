@@ -3,11 +3,13 @@
 namespace App\Filament\Resources\Tags\Pages;
 
 use App\Filament\Resources\Tags\TagResource;
+use App\Models\Tag;
 use App\Support\TagImporter;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Pages\ManageRecords;
+use Illuminate\Validation\ValidationException;
 
 class ManageTags extends ManageRecords
 {
@@ -21,7 +23,7 @@ class ManageTags extends ManageRecords
                 ->schema([
                     Textarea::make('names')
                         ->label('Tag names')
-                        ->helperText('Separate tags with commas or new lines.')
+                        ->helperText('Separate tags with spaces, commas, or new lines.')
                         ->rows(10)
                         ->required(),
                 ])
@@ -29,7 +31,25 @@ class ManageTags extends ManageRecords
                     app(TagImporter::class)->import($data['names']);
                 })
                 ->successNotificationTitle('Tags imported'),
-            CreateAction::make(),
+            CreateAction::make()
+                ->schema([
+                    Textarea::make('names')
+                        ->label('Tag names')
+                        ->helperText('Separate tags with spaces, commas, or new lines.')
+                        ->rows(6)
+                        ->required(),
+                ])
+                ->using(function (array $data): Tag {
+                    $ids = app(TagImporter::class)->import($data['names']);
+
+                    if ($ids === []) {
+                        throw ValidationException::withMessages([
+                            'names' => 'Enter at least one tag name.',
+                        ]);
+                    }
+
+                    return Tag::query()->findOrFail($ids[0]);
+                }),
         ];
     }
 }

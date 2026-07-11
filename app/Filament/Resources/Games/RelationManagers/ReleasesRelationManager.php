@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Games\RelationManagers;
 
+use App\Filament\Resources\Games\Schemas\GameForm;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -18,7 +19,6 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
-use Illuminate\Support\Number;
 
 class ReleasesRelationManager extends RelationManager
 {
@@ -41,10 +41,15 @@ class ReleasesRelationManager extends RelationManager
                     ->preload()
                     ->required(),
                 TextInput::make('version')->maxLength(255),
-                TextInput::make('file_size_bytes')
+                TextInput::make('file_size')
                     ->label('File size')
-                    ->numeric()
-                    ->minValue(0),
+                    ->maxLength(255)
+                    ->placeholder('12GB'),
+                TextInput::make('title')
+                    ->label('Title')
+                    ->required()
+                    ->maxLength(255)
+                    ->columnSpanFull(),
                 RichEditor::make('description')
                     ->fileAttachmentsDisk('public')
                     ->fileAttachmentsDirectory('games/content')
@@ -55,15 +60,20 @@ class ReleasesRelationManager extends RelationManager
                     ->required(),
                 Repeater::make('downloadLinks')
                     ->relationship()
-                    ->schema([
-                        TextInput::make('label')->required()->maxLength(255),
-                        TextInput::make('url')->required()->maxLength(2048),
-                        Toggle::make('is_active')->default(true)->required(),
-                    ])
-                    ->columns(2)
+                    ->simple(
+                        TextInput::make('url')
+                            ->label('Download URL')
+                            ->required()
+                            ->maxLength(2048)
+                            ->url(),
+                    )
                     ->orderColumn('sort_order')
-                    ->collapsible()
-                    ->itemLabel(fn (array $state): string => $state['label'] ?? 'New download link')
+                    ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
+                        return GameForm::normalizeDownloadLink($data);
+                    })
+                    ->mutateRelationshipDataBeforeSaveUsing(function (array $data): array {
+                        return GameForm::normalizeDownloadLink($data);
+                    })
                     ->columnSpanFull(),
                 Hidden::make('published_at')->default(now()),
             ]);
@@ -72,8 +82,11 @@ class ReleasesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('version')
+            ->recordTitleAttribute('title')
             ->columns([
+                TextColumn::make('title')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('platforms.name')
                     ->label('Platforms')
                     ->badge()
@@ -84,9 +97,10 @@ class ReleasesRelationManager extends RelationManager
                     ->separator(','),
                 TextColumn::make('version')
                     ->searchable(),
-                TextColumn::make('file_size_bytes')
+                TextColumn::make('file_size')
                     ->label('File size')
-                    ->formatStateUsing(fn (?int $state): string => $state ? Number::fileSize($state) : '—')
+                    ->placeholder('—')
+                    ->searchable()
                     ->sortable(),
                 TextColumn::make('download_links_count')
                     ->counts('downloadLinks')

@@ -18,6 +18,7 @@ export type GameDownloadLink = {
 
 export type GameRelease = {
     id: number;
+    title: string | null;
     platforms: string[];
     languages: string[];
     version: string | null;

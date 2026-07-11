@@ -4,7 +4,6 @@ namespace App\Support;
 
 use App\Models\Game;
 use App\Models\GameRelease;
-use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 
 class GamePresenter
@@ -51,18 +50,17 @@ class GamePresenter
             'releases' => $game->releases
                 ->map(fn (GameRelease $release): array => [
                     'id' => $release->id,
+                    'title' => $release->title ?: null,
                     'platforms' => $release->platforms->pluck('name')->values()->all(),
                     'languages' => $release->languages->pluck('name')->values()->all(),
                     'version' => $release->version,
-                    'fileSize' => $release->file_size_bytes
-                        ? Number::fileSize($release->file_size_bytes)
-                        : null,
+                    'fileSize' => $release->file_size,
                     'description' => str($release->description ?? '')->sanitizeHtml()->toString(),
                     'publishedAt' => $release->published_at?->toDateString(),
                     'downloadLinks' => $release->downloadLinks
                         ->map(fn ($link): array => [
                             'id' => $link->id,
-                            'label' => $link->label,
+                            'label' => $link->label ?: 'Download',
                             'url' => $link->url,
                         ])
                         ->values()

@@ -17,9 +17,12 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(GameSeeder::class);
 
-        User::query()->firstOrCreate(
+        User::query()->updateOrCreate(
             ['email' => 'test@example.com'],
-            User::factory()->make(['name' => 'Test User'])->getAttributes(),
+            [
+                ...User::factory()->make(['name' => 'Test User'])->getAttributes(),
+                'is_admin' => true,
+            ],
         );
     }
 }

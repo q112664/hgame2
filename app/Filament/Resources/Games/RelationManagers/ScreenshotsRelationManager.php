@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Games\RelationManagers;
 
+use App\Filament\Forms\Components\ScreenshotsFileUpload;
+use App\Models\Game;
 use App\Models\GameScreenshot;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -16,6 +18,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class ScreenshotsRelationManager extends RelationManager
@@ -77,7 +80,36 @@ class ScreenshotsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()
+                    ->label('Upload screenshots')
+                    ->modalHeading('Upload screenshots')
+                    ->createAnother(false)
+                    ->schema([
+                        ScreenshotsFileUpload::make('paths')
+                            ->required(),
+                        TextInput::make('alt')
+                            ->helperText('Optional. Applied to all uploaded screenshots in this batch.'),
+                    ])
+                    ->using(function (array $data, RelationManager $livewire): Model {
+                        /** @var Game $game */
+                        $game = $livewire->getOwnerRecord();
+                        $paths = array_values($data['paths'] ?? []);
+                        $sortOrder = ((int) $game->screenshots()->max('sort_order')) + 1;
+                        $alt = $data['alt'] ?? null;
+                        $first = null;
+
+                        foreach ($paths as $path) {
+                            $screenshot = $game->screenshots()->create([
+                                'path' => $path,
+                                'alt' => $alt,
+                                'sort_order' => $sortOrder++,
+                            ]);
+
+                            $first ??= $screenshot;
+                        }
+
+                        return $first ?? $game->screenshots()->make();
+                    }),
             ])
             ->recordActions([
                 EditAction::make(),

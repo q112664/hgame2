@@ -23,9 +23,7 @@ test('an administrator can create a game with a release and download link', func
     Livewire::test(CreateGame::class)
         ->fillForm([
             'title' => 'Example Game',
-            'slug' => 'example-game',
             'cover_path' => UploadedFile::fake()->image('cover.jpg', 1280, 720),
-            'cover_url' => '',
             'description' => '<p><strong>Rich details</strong></p>',
             'screenshot_uploads' => [
                 UploadedFile::fake()->image('screenshot-one.jpg', 1280, 720),
@@ -36,14 +34,13 @@ test('an administrator can create a game with a release and download link', func
             'releases' => [[
                 'platforms' => [$platform->id],
                 'languages' => [$language->id],
-                'file_size_bytes' => 5_800_000_000,
+                'title' => 'Windows Chinese package',
+                'file_size' => '5.4 GB',
                 'description' => '<p>Release notes</p>',
                 'is_active' => true,
                 'published_at' => now(),
                 'downloadLinks' => [[
-                    'label' => 'Direct Download',
                     'url' => 'https://example.com/game.zip',
-                    'is_active' => true,
                 ]],
             ]],
         ])
@@ -56,10 +53,44 @@ test('an administrator can create a game with a release and download link', func
         ->and($game->screenshots)->toHaveCount(2)
         ->and($game->screenshots->first()->path)->not->toBeNull()
         ->and($game->releases)->toHaveCount(1)
+        ->and($game->releases->first()->title)->toBe('Windows Chinese package')
         ->and($game->releases->first()->platforms)->toHaveCount(1)
         ->and($game->releases->first()->languages)->toHaveCount(1)
-        ->and($game->releases->first()->downloadLinks)->toHaveCount(1);
+        ->and($game->releases->first()->downloadLinks)->toHaveCount(1)
+        ->and($game->releases->first()->downloadLinks->first()->url)->toBe('https://example.com/game.zip')
+        ->and($game->releases->first()->downloadLinks->first()->is_active)->toBeTrue();
 
     Storage::disk('public')->assertExists($game->cover_path);
     Storage::disk('public')->assertExists($game->screenshots->first()->path);
+});
+
+test('an administrator can create a game with multiple screenshots at once', function () {
+    Storage::fake('public');
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(CreateGame::class)
+        ->fillForm([
+            'title' => 'Multi Screenshot Game',
+            'cover_path' => UploadedFile::fake()->image('cover.jpg', 1280, 720),
+            'screenshot_uploads' => [
+                UploadedFile::fake()->image('shot-1.jpg', 1280, 720),
+                UploadedFile::fake()->image('shot-2.jpg', 1280, 720),
+                UploadedFile::fake()->image('shot-3.jpg', 1280, 720),
+            ],
+            'status' => GameStatus::Draft->value,
+            'published_at' => now(),
+            'releases' => [],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $game = Game::query()->where('slug', 'multi-screenshot-game')->firstOrFail();
+
+    expect($game->screenshots)->toHaveCount(3)
+        ->and($game->screenshots->pluck('sort_order')->all())->toBe([0, 1, 2]);
+
+    foreach ($game->screenshots as $screenshot) {
+        Storage::disk('public')->assertExists($screenshot->path);
+    }
 });

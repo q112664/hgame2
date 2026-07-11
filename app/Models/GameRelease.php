@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'game_id', 'platform_id', 'language_id', 'version', 'file_size_bytes',
+    'game_id', 'platform_id', 'language_id', 'title', 'version', 'file_size',
     'description', 'published_at', 'is_active', 'sort_order',
 ])]
 class GameRelease extends Model

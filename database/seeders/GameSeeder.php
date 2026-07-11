@@ -70,7 +70,8 @@ class GameSeeder extends Seeder
 
             $game->releases()->delete();
             $release = $game->releases()->create([
-                'file_size_bytes' => $this->fileSizeToBytes($resource['fileSize']),
+                'title' => $resource['title'],
+                'file_size' => $resource['fileSize'],
                 'description' => $resource['description'],
                 'published_at' => $resource['publishedAt'],
                 'is_active' => true,
@@ -97,17 +98,5 @@ class GameSeeder extends Seeder
             'English' => 'en',
             default => str($language)->lower()->substr(0, 2)->toString(),
         };
-    }
-
-    private function fileSizeToBytes(string $fileSize): int
-    {
-        [$size, $unit] = explode(' ', $fileSize);
-
-        return (int) round((float) $size * match (strtoupper($unit)) {
-            'KB' => 1024,
-            'MB' => 1024 ** 2,
-            'GB' => 1024 ** 3,
-            default => 1,
-        });
     }
 }

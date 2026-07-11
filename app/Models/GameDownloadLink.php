@@ -19,6 +19,18 @@ class GameDownloadLink extends Model
         return ['is_active' => 'boolean'];
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (GameDownloadLink $link): void {
+            $link->is_active = true;
+
+            if (blank($link->label)) {
+                $host = parse_url((string) $link->url, PHP_URL_HOST);
+                $link->label = is_string($host) && $host !== '' ? $host : 'Download';
+            }
+        });
+    }
+
     public function release(): BelongsTo
     {
         return $this->belongsTo(GameRelease::class, 'game_release_id');

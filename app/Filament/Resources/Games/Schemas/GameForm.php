@@ -2,14 +2,16 @@
 
 namespace App\Filament\Resources\Games\Schemas;
 
+use App\Filament\Forms\Components\ScreenshotsFileUpload;
 use App\GameStatus;
-use App\Models\Tag;
+use App\Support\TagImporter;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -17,6 +19,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class GameForm
 {
@@ -30,14 +33,18 @@ class GameForm
                             ->required()
                             ->maxLength(255)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(function (Get $get, Set $set, ?string $old, ?string $state): void {
-                                if (($get('slug') ?? '') !== Str::slug($old ?? '')) {
+                            ->afterStateUpdated(function (Get $get, Set $set, ?string $state, string $operation): void {
+                                if ($operation === 'edit' && filled($get('slug'))) {
                                     return;
                                 }
 
-                                $set('slug', Str::slug($state ?? ''));
+                                $set('slug', self::slugFromTitle($state));
                             })
                             ->columnSpanFull(),
+                        Hidden::make('slug')
+                            ->required()
+                            ->dehydrated()
+                            ->unique(ignoreRecord: true),
                         Select::make('category_id')
                             ->relationship('category', 'name')
                             ->searchable()
@@ -49,13 +56,31 @@ class GameForm
                             ->searchable()
                             ->preload()
                             ->createOptionForm([
-                                TextInput::make('name')->required()->unique(Tag::class, 'name')->maxLength(255),
+                                Textarea::make('names')
+                                    ->label('Tag names')
+                                    ->helperText('Separate tags with spaces, commas, or new lines. Existing tags are reused.')
+                                    ->rows(4)
+                                    ->required(),
                             ])
-                            ->createOptionUsing(function (array $data): int {
-                                return Tag::query()->create([
-                                    'name' => $data['name'],
-                                    'slug' => Str::slug($data['name']),
-                                ])->getKey();
+                            ->createOptionUsing(function (array $data, Get $get, Set $set): int {
+                                $ids = app(TagImporter::class)->import($data['names']);
+
+                                if ($ids === []) {
+                                    throw ValidationException::withMessages([
+                                        'names' => 'Enter at least one tag name.',
+                                    ]);
+                                }
+
+                                $selected = collect($get('tags') ?? [])
+                                    ->map(fn (mixed $id): int => (int) $id)
+                                    ->merge($ids)
+                                    ->unique()
+                                    ->values()
+                                    ->all();
+
+                                $set('tags', $selected);
+
+                                return $ids[array_key_last($ids)];
                             })
                             ->columnSpan(6),
                         TextInput::make('developer')->maxLength(255)->columnSpan(6),
@@ -79,19 +104,13 @@ class GameForm
                     ])
                     ->columns(12)
                     ->columnSpanFull(),
-                Section::make('Images')
+                Section::make('Screenshots')
                     ->schema([
-                        FileUpload::make('screenshot_uploads')
-                            ->label('Screenshots')
-                            ->image()
-                            ->multiple()
-                            ->reorderable()
-                            ->disk('public')
-                            ->directory('games/screenshots')
-                            ->visibility('public')
+                        ScreenshotsFileUpload::make('screenshot_uploads')
                             ->dehydrated()
                             ->columnSpanFull(),
                     ])
+                    ->compact()
                     ->visible(fn (string $operation): bool => $operation === 'create')
                     ->columnSpanFull(),
                 Section::make('Download resources')
@@ -112,10 +131,15 @@ class GameForm
                                     ->preload()
                                     ->required(),
                                 TextInput::make('version')->maxLength(255),
-                                TextInput::make('file_size_bytes')
+                                TextInput::make('file_size')
                                     ->label('File size')
-                                    ->numeric()
-                                    ->minValue(0),
+                                    ->maxLength(255)
+                                    ->placeholder('12GB'),
+                                TextInput::make('title')
+                                    ->label('Title')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->columnSpanFull(),
                                 RichEditor::make('description')
                                     ->fileAttachmentsDisk('public')
                                     ->fileAttachmentsDirectory('games/content')
@@ -125,13 +149,20 @@ class GameForm
                                 Hidden::make('published_at')->default(now()),
                                 Repeater::make('downloadLinks')
                                     ->relationship()
-                                    ->schema([
-                                        TextInput::make('label')->required()->maxLength(255),
-                                        TextInput::make('url')->required()->maxLength(2048),
-                                        Toggle::make('is_active')->default(true)->required(),
-                                    ])
-                                    ->columns(2)
+                                    ->simple(
+                                        TextInput::make('url')
+                                            ->label('Download URL')
+                                            ->required()
+                                            ->maxLength(2048)
+                                            ->url(),
+                                    )
                                     ->orderColumn('sort_order')
+                                    ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
+                                        return self::normalizeDownloadLink($data);
+                                    })
+                                    ->mutateRelationshipDataBeforeSaveUsing(function (array $data): array {
+                                        return self::normalizeDownloadLink($data);
+                                    })
                                     ->columnSpanFull(),
                             ])
                             ->columns(2)
@@ -150,15 +181,8 @@ class GameForm
                     ])
                     ->columns(3)
                     ->columnSpanFull(),
-                Section::make('Advanced')
+                Section::make('Stats')
                     ->schema([
-                        TextInput::make('slug')
-                            ->required()
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(255),
-                        TextInput::make('cover_url')
-                            ->label('External thumbnail URL')
-                            ->maxLength(2048),
                         TextInput::make('views_count')
                             ->label('Views')
                             ->readOnly()
@@ -170,10 +194,33 @@ class GameForm
                             ->numeric()
                             ->default(0),
                     ])
-                    ->columns(3)
+                    ->columns(2)
                     ->collapsible()
                     ->collapsed()
                     ->columnSpanFull(),
             ]);
+    }
+
+    public static function slugFromTitle(?string $title): string
+    {
+        $slug = Str::slug((string) $title, language: null);
+
+        return $slug !== '' ? $slug : 'game-'.Str::lower(Str::random(8));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function normalizeDownloadLink(array $data): array
+    {
+        $url = trim((string) ($data['url'] ?? ''));
+        $host = parse_url($url, PHP_URL_HOST);
+
+        $data['url'] = $url;
+        $data['label'] = is_string($host) && $host !== '' ? $host : 'Download';
+        $data['is_active'] = true;
+
+        return $data;
     }
 }

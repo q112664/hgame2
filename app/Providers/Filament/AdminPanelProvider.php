@@ -38,6 +38,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Content'),
                 NavigationGroup::make('Taxonomy')->collapsed(),
                 NavigationGroup::make('Download settings')->collapsed(),
+                NavigationGroup::make('Settings')->collapsed(),
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->middleware([

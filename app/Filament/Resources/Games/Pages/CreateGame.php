@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Games\Pages;
 
 use App\Filament\Resources\Games\GameResource;
+use App\Filament\Resources\Games\Schemas\GameForm;
 use App\Models\Game;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
@@ -20,6 +21,10 @@ class CreateGame extends CreateRecord
     {
         $this->screenshotPaths = array_values($data['screenshot_uploads'] ?? []);
         unset($data['screenshot_uploads']);
+
+        if (blank($data['slug'] ?? null)) {
+            $data['slug'] = GameForm::slugFromTitle($data['title'] ?? null);
+        }
 
         return $data;
     }

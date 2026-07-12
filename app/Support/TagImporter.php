@@ -25,6 +25,25 @@ class TagImporter
             ->all();
     }
 
+    /**
+     * @param  list<string>  $names
+     * @return list<int>
+     */
+    public function importNames(array $names): array
+    {
+        return collect($names)
+            ->map(fn (string $name): string => trim($name))
+            ->filter()
+            ->map(fn (string $name): string => (string) preg_replace('/\s+/u', ' ', $name))
+            ->unique(fn (string $name): string => Str::lower($name))
+            ->map(fn (string $name): Tag => $this->resolve($name))
+            ->unique(fn (Tag $tag): int => $tag->id)
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
+    }
+
     protected function resolve(string $name): Tag
     {
         $slug = $this->slugFor($name);

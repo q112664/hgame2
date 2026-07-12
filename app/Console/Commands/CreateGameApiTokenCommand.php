@@ -37,7 +37,7 @@ class CreateGameApiTokenCommand extends Command
 
         $token = $user->createToken((string) $this->option('name'))->plainTextToken;
 
-        $this->info('API token created. Store it securely; it will not be shown again.');
+        $this->info('API token created. It is also available in Admin → API tokens.');
         $this->line($token);
 
         return self::SUCCESS;

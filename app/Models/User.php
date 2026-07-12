@@ -17,6 +17,7 @@ use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\NewAccessToken;
 
 /**
  * @property int $id
@@ -38,7 +39,11 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements FilamentUser, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasApiTokens {
+        createToken as createSanctumToken;
+    }
+
+    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
      * Get the attributes that should be cast.
@@ -78,5 +83,21 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
     public function canAccessPanel(Panel $panel): bool
     {
         return (bool) $this->is_admin;
+    }
+
+    /**
+     * Create a new personal access token and persist the plaintext for admin reuse.
+     *
+     * @param  list<string>  $abilities
+     */
+    public function createToken(string $name, array $abilities = ['*'], ?\DateTimeInterface $expiresAt = null): NewAccessToken
+    {
+        $accessToken = $this->createSanctumToken($name, $abilities, $expiresAt);
+
+        $accessToken->accessToken->forceFill([
+            'plain_text_token' => $accessToken->plainTextToken,
+        ])->save();
+
+        return $accessToken;
     }
 }

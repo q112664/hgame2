@@ -4,9 +4,8 @@ import { useRef, useState } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useInitials } from '@/hooks/use-initials';
+import { UserAvatar } from '@/components/user-avatar';
 import type { Auth } from '@/types';
 
 type PageProps = {
@@ -15,11 +14,13 @@ type PageProps = {
 
 export function ProfileAvatarForm() {
     const { auth } = usePage<PageProps>().props;
-    const getInitials = useInitials();
     const inputRef = useRef<HTMLInputElement>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-    const avatarSrc = previewUrl ?? auth.user.avatar;
+    const avatarUser = {
+        name: auth.user.name,
+        avatar: previewUrl ?? auth.user.avatar,
+    };
 
     return (
         <div className="space-y-6">
@@ -30,12 +31,12 @@ export function ProfileAvatarForm() {
             />
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <Avatar className="size-20 overflow-hidden rounded-full">
-                    <AvatarImage src={avatarSrc} alt={auth.user.name} />
-                    <AvatarFallback className="rounded-full bg-neutral-200 text-lg text-black dark:bg-neutral-700 dark:text-white">
-                        {getInitials(auth.user.name)}
-                    </AvatarFallback>
-                </Avatar>
+                <UserAvatar
+                    key={avatarUser.avatar ?? 'empty'}
+                    user={avatarUser}
+                    className="size-20"
+                    fallbackClassName="rounded-full bg-neutral-200 text-lg text-black dark:bg-neutral-700 dark:text-white"
+                />
 
                 <div className="flex flex-wrap items-center gap-2">
                     <Form

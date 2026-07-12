@@ -2,7 +2,6 @@ import { Link, usePage } from '@inertiajs/react';
 import { Bell, Menu, Moon, Search, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SiteSearchDialog } from '@/components/site/site-search-dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -21,9 +20,9 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { UserAvatar } from '@/components/user-avatar';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useAppearance } from '@/hooks/use-appearance';
-import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
 import { home, login, register } from '@/routes';
 import type { User } from '@/types';
@@ -156,8 +155,6 @@ function ThemeToggle() {
 }
 
 function UserAvatarMenu({ user }: { user: User }) {
-    const getInitials = useInitials();
-
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -171,12 +168,11 @@ function UserAvatarMenu({ user }: { user: User }) {
                     )}
                     aria-label="Open user menu"
                 >
-                    <Avatar className="size-8 overflow-hidden rounded-full">
-                        <AvatarImage src={user.avatar} alt={user.name} />
-                        <AvatarFallback className="rounded-full bg-neutral-200 text-xs text-black dark:bg-neutral-700 dark:text-white">
-                            {getInitials(user.name)}
-                        </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar
+                        user={user}
+                        className="size-8"
+                        fallbackClassName="rounded-full bg-neutral-200 text-xs text-black dark:bg-neutral-700 dark:text-white"
+                    />
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">
@@ -187,7 +183,10 @@ function UserAvatarMenu({ user }: { user: User }) {
 }
 
 export function SiteHeader() {
-    const { auth } = usePage().props;
+    const page = usePage();
+    const { auth } = page.props;
+    const loginHref = login({ query: { redirect: page.url } });
+    const registerHref = register({ query: { redirect: page.url } });
     const [open, setOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const closeMenu = () => setOpen(false);
@@ -259,7 +258,7 @@ export function SiteHeader() {
                                             asChild
                                         >
                                             <Link
-                                                href={login()}
+                                                href={loginHref}
                                                 onClick={closeMenu}
                                             >
                                                 Log in
@@ -271,7 +270,7 @@ export function SiteHeader() {
                                             asChild
                                         >
                                             <Link
-                                                href={register()}
+                                                href={registerHref}
                                                 onClick={closeMenu}
                                             >
                                                 Sign up
@@ -326,10 +325,10 @@ export function SiteHeader() {
                                 className={softButtonClassName}
                                 asChild
                             >
-                                <Link href={login()}>Log in</Link>
+                                <Link href={loginHref}>Log in</Link>
                             </Button>
                             <Button size="sm" asChild>
-                                <Link href={register()}>Sign up</Link>
+                                <Link href={registerHref}>Sign up</Link>
                             </Button>
                         </div>
                     )}

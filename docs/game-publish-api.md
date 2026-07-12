@@ -23,7 +23,7 @@ Content-Type: application/json
 ```
 
 - Token must belong to a user with `is_admin = true`.
-- Mint a token in **Admin → Settings → API tokens** (plaintext shown once), or via CLI:
+- Mint a token in **Admin → Settings → API tokens** (listed and copyable anytime), or via CLI:
 
 ```bash
 php artisan game:token {admin-email-or-id} --name=game-publish

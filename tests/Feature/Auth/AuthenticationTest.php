@@ -19,7 +19,22 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('home', absolute: false));
+});
+
+test('users return to the previous page after logging in', function () {
+    $user = User::factory()->create();
+
+    $this->get('/login?redirect=/resources/senren-banka/details')
+        ->assertOk();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(url('/resources/senren-banka/details'));
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {

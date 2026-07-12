@@ -3,13 +3,13 @@
 namespace App\Filament\Resources\ApiTokens\Pages;
 
 use App\Filament\Resources\ApiTokens\ApiTokenResource;
+use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Filament\Actions\CreateAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ManageRecords;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
-use Laravel\Sanctum\PersonalAccessToken;
 
 class ManageApiTokens extends ManageRecords
 {
@@ -59,9 +59,9 @@ class ManageApiTokens extends ManageRecords
                     return Notification::make()
                         ->success()
                         ->persistent()
-                        ->title('API token created — copy it now')
+                        ->title('API token created')
                         ->body($token !== null
-                            ? "Store this token securely; it will not be shown again.\n\n{$token}"
+                            ? "Token is also listed in the table and can be copied anytime.\n\n{$token}"
                             : 'Token created.');
                 }),
         ];

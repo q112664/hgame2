@@ -2,10 +2,10 @@
 
 use App\Filament\Resources\ApiTokens\ApiTokenResource;
 use App\Filament\Resources\ApiTokens\Pages\ManageApiTokens;
+use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -36,9 +36,24 @@ test('administrators can create an api token for an admin user', function () {
         ->assertHasNoActionErrors()
         ->assertNotified();
 
+    $token = PersonalAccessToken::query()->first();
+
     expect(PersonalAccessToken::query()->count())->toBe(1)
         ->and($admin->fresh()->tokens)->toHaveCount(1)
-        ->and($admin->fresh()->tokens->first()->name)->toBe('game-publish');
+        ->and($token->name)->toBe('game-publish')
+        ->and($token->plain_text_token)->not->toBeNull()
+        ->and($token->plain_text_token)->toContain('|');
+});
+
+test('created api tokens remain visible in the admin table', function () {
+    $admin = User::factory()->admin()->create();
+    $created = $admin->createToken('visible-token');
+
+    $this->actingAs($admin);
+
+    Livewire::test(ManageApiTokens::class)
+        ->assertCanSeeTableRecords([$created->accessToken])
+        ->assertTableColumnStateSet('plain_text_token', $created->plainTextToken, $created->accessToken);
 });
 
 test('administrators can revoke an api token', function () {

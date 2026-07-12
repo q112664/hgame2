@@ -1,8 +1,9 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Building2, CalendarDays, Download, Heart } from 'lucide-react';
+import { Building2, CalendarDays, Download, HardDrive, Heart } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PlatformIcon } from '@/components/site/platform-icon';
+import { RichHtml } from '@/components/site/rich-html';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -104,6 +105,28 @@ function platformBadgeClassName(slug: string): string {
         )
     );
 }
+
+const metaChipClassName = cn(
+    'inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
+);
+
+const fileSizeChipClassName = cn(
+    metaChipClassName,
+    'border-teal-500/25 bg-teal-500/12 text-teal-800 dark:text-teal-300',
+);
+
+const dateChipClassName = cn(
+    metaChipClassName,
+    'border-slate-500/20 bg-slate-500/10 text-slate-700 dark:text-slate-300',
+);
+
+const downloadButtonPalettes = [
+    'border-sky-500/25 bg-sky-500/10 text-sky-800 hover:bg-sky-500/15 dark:text-sky-200',
+    'border-violet-500/25 bg-violet-500/10 text-violet-800 hover:bg-violet-500/15 dark:text-violet-200',
+    'border-emerald-500/25 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/15 dark:text-emerald-200',
+    'border-amber-500/25 bg-amber-500/10 text-amber-900 hover:bg-amber-500/15 dark:text-amber-200',
+    'border-rose-500/25 bg-rose-500/10 text-rose-800 hover:bg-rose-500/15 dark:text-rose-200',
+] as const;
 
 export default function ResourceShow({ activeTab, resource }: Props) {
     const shouldReduceMotion = useReducedMotion();
@@ -256,15 +279,17 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                 ))}
                             </div>
 
-                            <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                                {resource.title}
-                            </h1>
+                            <div className="space-y-1">
+                                <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                                    {resource.title}
+                                </h1>
 
-                            {resource.subtitle ? (
-                                <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-                                    {resource.subtitle}
-                                </p>
-                            ) : null}
+                                {resource.subtitle ? (
+                                    <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+                                        {resource.subtitle}
+                                    </p>
+                                ) : null}
+                            </div>
 
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
                                 <span className="inline-flex min-w-0 items-center gap-1.5">
@@ -290,6 +315,19 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                     </time>
                                 </span>
                             </div>
+
+                            {resource.tags.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {resource.tags.map((tag) => (
+                                        <span
+                                            key={tag}
+                                            className="inline-flex h-6 items-center rounded-full bg-muted px-2.5 text-xs font-medium text-muted-foreground"
+                                        >
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : null}
 
                             <div className="mt-auto flex items-center gap-2 pt-1">
                                 <Button size="lg" asChild>
@@ -402,95 +440,88 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                     </TabsList>
 
                     <TabsContent value="details">
-                        <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(18rem,3fr)] lg:gap-6">
-                            <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
-                                <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
-                                    About
-                                </h2>
-                                <div
-                                    className="space-y-3 text-sm leading-relaxed text-muted-foreground [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_h2]:font-heading [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-foreground [&_h3]:font-heading [&_h3]:font-semibold [&_h3]:text-foreground [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
-                                    dangerouslySetInnerHTML={{
-                                        __html: resource.description,
-                                    }}
-                                />
-                            </section>
-
-                            <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
-                                <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
-                                    Tags
-                                </h2>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {resource.tags.map((tag) => (
-                                        <Badge key={tag} variant="outline">
-                                            {tag}
-                                        </Badge>
-                                    ))}
-                                </div>
-                            </section>
-                        </div>
+                        <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+                            <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
+                                About
+                            </h2>
+                            <RichHtml html={resource.description} />
+                        </section>
                     </TabsContent>
 
                     <TabsContent value="downloads">
-                        <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-4">
                             {resource.releases.map((release) => {
                                 return (
                                     <article
                                         key={release.id}
-                                        className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5"
+                                        className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10"
                                     >
-                                        <div className="space-y-4">
-                                            <div className="min-w-0 space-y-3">
-                                                <div className="space-y-1">
-                                                    {release.title ? (
-                                                        <h3 className="font-heading text-base font-semibold text-foreground">
-                                                            {release.title}
-                                                        </h3>
-                                                    ) : null}
-                                                    {release.description ? (
-                                                        <div
-                                                            className="space-y-2 text-sm leading-relaxed text-muted-foreground [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
-                                                            dangerouslySetInnerHTML={{
-                                                                __html: release.description,
-                                                            }}
-                                                        />
-                                                    ) : null}
-                                                </div>
+                                        <div className="flex flex-col gap-1 border-b border-foreground/5 bg-gradient-to-r from-sky-500/8 via-violet-500/6 to-transparent px-4 py-3.5 sm:px-5">
+                                            <h3 className="font-heading text-base font-semibold tracking-tight text-foreground">
+                                                {release.title ??
+                                                    'Download package'}
+                                            </h3>
+                                            {release.version ? (
+                                                <p className="text-xs text-muted-foreground">
+                                                    Version {release.version}
+                                                </p>
+                                            ) : null}
+                                        </div>
 
-                                                <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
-                                                    {release.platforms.map(
-                                                        (platform) => (
-                                                            <span
-                                                                key={
+                                        <div className="space-y-4 p-4 sm:p-5">
+                                            {release.description ? (
+                                                <RichHtml
+                                                    html={release.description}
+                                                />
+                                            ) : null}
+
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {release.platforms.map(
+                                                    (platform) => (
+                                                        <Badge
+                                                            key={platform.slug}
+                                                            variant="outline"
+                                                            className={platformBadgeClassName(
+                                                                platform.slug,
+                                                            )}
+                                                        >
+                                                            <PlatformIcon
+                                                                slug={
                                                                     platform.slug
                                                                 }
-                                                                className="inline-flex items-center gap-1.5"
-                                                            >
-                                                                <PlatformIcon
-                                                                    slug={
-                                                                        platform.slug
-                                                                    }
-                                                                    className="size-3.5"
-                                                                />
-                                                                {
-                                                                    platform.name
-                                                                }
-                                                            </span>
-                                                        ),
-                                                    )}
-                                                    {release.languages.map(
-                                                        (language) => (
-                                                            <span
-                                                                key={language}
-                                                            >
-                                                                {language}
-                                                            </span>
-                                                        ),
-                                                    )}
-                                                    {release.fileSize ? (
-                                                        <span>
-                                                            {release.fileSize}
-                                                        </span>
-                                                    ) : null}
+                                                                data-icon="inline-start"
+                                                            />
+                                                            {platform.name}
+                                                        </Badge>
+                                                    ),
+                                                )}
+                                                {release.languages.map(
+                                                    (language) => (
+                                                        <Badge
+                                                            key={language}
+                                                            variant="outline"
+                                                            className={
+                                                                languageBadgeClassName
+                                                            }
+                                                        >
+                                                            {language}
+                                                        </Badge>
+                                                    ),
+                                                )}
+                                                {release.fileSize ? (
+                                                    <span
+                                                        className={
+                                                            fileSizeChipClassName
+                                                        }
+                                                    >
+                                                        <HardDrive className="size-3.5" />
+                                                        {release.fileSize}
+                                                    </span>
+                                                ) : null}
+                                                <span
+                                                    className={dateChipClassName}
+                                                >
+                                                    <CalendarDays className="size-3.5" />
                                                     <time
                                                         dateTime={
                                                             release.publishedAt ??
@@ -500,32 +531,37 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                                         {release.publishedAt ??
                                                             'Unscheduled'}
                                                     </time>
-                                                </div>
+                                                </span>
                                             </div>
+
+                                            <div className="h-px bg-foreground/5" />
 
                                             <div className="flex flex-wrap gap-2">
                                                 {release.downloadLinks.map(
                                                     (link, index) => (
-                                                        <div key={link.id}>
-                                                            <Button
-                                                                asChild
-                                                                variant="outline"
-                                                            >
-                                                                <a
-                                                                    href={
-                                                                        link.url
-                                                                    }
-                                                                >
-                                                                    <Download data-icon="inline-start" />
-                                                                    {release
+                                                        <Button
+                                                            key={link.id}
+                                                            asChild
+                                                            variant="outline"
+                                                            className={cn(
+                                                                'h-10 border shadow-none',
+                                                                downloadButtonPalettes[
+                                                                    index %
+                                                                        downloadButtonPalettes.length
+                                                                ],
+                                                            )}
+                                                        >
+                                                            <a href={link.url}>
+                                                                <Download data-icon="inline-start" />
+                                                                {link.label ||
+                                                                    (release
                                                                         .downloadLinks
                                                                         .length >
                                                                     1
                                                                         ? `Download ${index + 1}`
-                                                                        : 'Download'}
-                                                                </a>
-                                                            </Button>
-                                                        </div>
+                                                                        : 'Download')}
+                                                            </a>
+                                                        </Button>
                                                     ),
                                                 )}
                                             </div>

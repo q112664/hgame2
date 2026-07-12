@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ApiTokens;
 
 use App\Filament\Resources\ApiTokens\Pages\ManageApiTokens;
+use App\Models\PersonalAccessToken;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
@@ -14,11 +15,11 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontFamily;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Laravel\Sanctum\PersonalAccessToken;
 use UnitEnum;
 
 class ApiTokenResource extends Resource
@@ -44,7 +45,7 @@ class ApiTokenResource extends Resource
         return $schema
             ->components([
                 Section::make('Token')
-                    ->description('Tokens authenticate the Game Publish API. The plaintext value is shown only once after creation.')
+                    ->description('Tokens authenticate the Game Publish API. The value stays available in this list so you can copy it later.')
                     ->schema([
                         Select::make('user_id')
                             ->label('Administrator')
@@ -78,6 +79,13 @@ class ApiTokenResource extends Resource
                 TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('plain_text_token')
+                    ->label('Token')
+                    ->placeholder('Unavailable — recreate this token')
+                    ->copyable()
+                    ->copyMessage('Token copied')
+                    ->fontFamily(FontFamily::Mono)
+                    ->wrap(),
                 TextColumn::make('tokenable.email')
                     ->label('Owner')
                     ->searchable()

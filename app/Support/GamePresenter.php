@@ -16,7 +16,15 @@ class GamePresenter
             'title' => $game->title,
             'thumbnail' => self::mediaUrl($game->cover_path ?: $game->cover_url),
             'category' => $game->category?->name ?? 'Uncategorized',
-            'platforms' => $game->releases->flatMap->platforms->pluck('name')->unique()->values()->all(),
+            'platforms' => $game->releases
+                ->flatMap->platforms
+                ->unique('slug')
+                ->map(fn ($platform): array => [
+                    'name' => $platform->name,
+                    'slug' => $platform->slug,
+                ])
+                ->values()
+                ->all(),
             'languages' => $game->releases->flatMap->languages->pluck('name')->unique()->values()->all(),
             'tags' => $game->tags->pluck('name')->values()->all(),
             'publishedAt' => $game->published_at?->toDateString(),
@@ -39,6 +47,7 @@ class GamePresenter
     {
         return [
             ...self::card($game),
+            'subtitle' => $game->subtitle,
             'description' => str($game->description ?? '')->sanitizeHtml()->toString(),
             'developer' => $game->developer ?? 'Unknown',
             'releaseDate' => $game->release_date?->toDateString(),
@@ -51,7 +60,13 @@ class GamePresenter
                 ->map(fn (GameRelease $release): array => [
                     'id' => $release->id,
                     'title' => $release->title ?: null,
-                    'platforms' => $release->platforms->pluck('name')->values()->all(),
+                    'platforms' => $release->platforms
+                        ->map(fn ($platform): array => [
+                            'name' => $platform->name,
+                            'slug' => $platform->slug,
+                        ])
+                        ->values()
+                        ->all(),
                     'languages' => $release->languages->pluck('name')->values()->all(),
                     'version' => $release->version,
                     'fileSize' => $release->file_size,

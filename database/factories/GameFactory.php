@@ -24,6 +24,7 @@ class GameFactory extends Factory
         return [
             'category_id' => Category::factory(),
             'title' => $title,
+            'subtitle' => fake()->optional()->sentence(6),
             'slug' => str($title)->slug()->append('-', fake()->unique()->numerify('####'))->toString(),
             'description' => fake()->paragraphs(2, true),
             'developer' => fake()->company(),

@@ -56,7 +56,7 @@ class ResourceController extends Controller
                     ->where('is_active', true)
                     ->whereHas('downloadLinks', fn ($links) => $links->where('is_active', true))
                     ->with([
-                        'platforms:id,name',
+                        'platforms:id,name,slug',
                         'languages:id,name',
                         'downloadLinks' => fn ($links) => $links
                             ->where('is_active', true)

@@ -11,7 +11,6 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -43,12 +42,11 @@ class PlatformResource extends Resource
                             $set('slug', Str::slug($state ?? ''));
                         }
                     }),
-                Section::make('Advanced')
-                    ->schema([
-                        TextInput::make('slug')->required()->unique(ignoreRecord: true)->maxLength(255),
-                    ])
-                    ->collapsible()
-                    ->collapsed(),
+                TextInput::make('slug')
+                    ->required()
+                    ->unique(ignoreRecord: true)
+                    ->maxLength(255)
+                    ->helperText('Use windows, ios, or android to show the matching frontend icon.'),
             ]);
     }
 
@@ -59,8 +57,7 @@ class PlatformResource extends Resource
                 TextColumn::make('name')
                     ->searchable(),
                 TextColumn::make('slug')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->searchable(),
                 TextColumn::make('releases_count')
                     ->counts('releases')
                     ->label('Releases'),

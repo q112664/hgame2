@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'category_id', 'title', 'slug', 'description', 'developer', 'cover_url', 'cover_path',
+    'category_id', 'title', 'subtitle', 'slug', 'description', 'developer', 'cover_url', 'cover_path',
     'release_date', 'status', 'published_at', 'views_count', 'downloads_count',
 ])]
 class Game extends Model

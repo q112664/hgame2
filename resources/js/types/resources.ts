@@ -1,9 +1,14 @@
+export type GamePlatform = {
+    name: string;
+    slug: string;
+};
+
 export type GameCard = {
     id: string;
     title: string;
     thumbnail: string;
     category: string;
-    platforms: string[];
+    platforms: GamePlatform[];
     languages: string[];
     tags: string[];
     publishedAt: string | null;
@@ -19,7 +24,7 @@ export type GameDownloadLink = {
 export type GameRelease = {
     id: number;
     title: string | null;
-    platforms: string[];
+    platforms: GamePlatform[];
     languages: string[];
     version: string | null;
     fileSize: string | null;
@@ -29,6 +34,7 @@ export type GameRelease = {
 };
 
 export type GameDetail = GameCard & {
+    subtitle: string | null;
     description: string;
     developer: string;
     releaseDate: string | null;

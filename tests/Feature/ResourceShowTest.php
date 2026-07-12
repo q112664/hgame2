@@ -15,6 +15,7 @@ beforeEach(function () {
     $this->game = Game::factory()->create([
         'slug' => 'senren-banka',
         'title' => 'Senren Banka',
+        'subtitle' => 'A warm countryside love story',
         'description' => '<p><strong>Rich details</strong><script>alert(1)</script></p>',
     ]);
     $platform = Platform::factory()->create(['name' => 'Windows', 'slug' => 'windows']);
@@ -43,15 +44,20 @@ test('resource tab pages render a published game with its available releases', f
             ->where('activeTab', $activeTab)
             ->where('resource.id', $this->game->slug)
             ->where('resource.title', $this->game->title)
+            ->where('resource.subtitle', 'A warm countryside love story')
             ->where('resource.developer', $this->game->developer ?? 'Unknown')
             ->where('resource.releaseDate', $this->game->release_date?->toDateString())
             ->where('resource.description', fn (string $description): bool => str_contains($description, '<strong>Rich details</strong>') && ! str_contains($description, '<script>'))
-            ->where('resource.platforms', ['Windows'])
+            ->where('resource.platforms', [
+                ['name' => 'Windows', 'slug' => 'windows'],
+            ])
             ->where('resource.languages', ['Chinese'])
             ->has('resource.screenshots', 1)
             ->has('resource.releases', 1)
             ->where('resource.releases.0.title', 'Official release')
-            ->where('resource.releases.0.platforms', ['Windows'])
+            ->where('resource.releases.0.platforms', [
+                ['name' => 'Windows', 'slug' => 'windows'],
+            ])
             ->where('resource.releases.0.languages', ['Chinese'])
             ->has('resource.releases.0.downloadLinks', 2)
             ->where('resource.releases.0.downloadLinks.0.label', 'Baidu Netdisk')
@@ -83,7 +89,9 @@ test('home and search receive only published games', function () {
             ->component('welcome')
             ->has('resources', 1)
             ->where('resources.0.id', $this->game->slug)
-            ->where('resources.0.platforms', ['Windows'])
+            ->where('resources.0.platforms', [
+                ['name' => 'Windows', 'slug' => 'windows'],
+            ])
             ->where('resources.0.languages', ['Chinese'])
             ->has('searchResources', 1)
             ->where('searchResources.0.id', $this->game->slug)
@@ -100,7 +108,9 @@ test('inactive releases or releases without download links do not advertise a pl
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('resource.releases', 1)
-            ->where('resource.platforms', ['Windows'])
+            ->where('resource.platforms', [
+                ['name' => 'Windows', 'slug' => 'windows'],
+            ])
             ->where('resource.languages', ['Chinese'])
         );
 

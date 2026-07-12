@@ -41,6 +41,10 @@ class GameForm
                                 $set('slug', self::slugFromTitle($state));
                             })
                             ->columnSpanFull(),
+                        TextInput::make('subtitle')
+                            ->label('Subtitle')
+                            ->maxLength(255)
+                            ->columnSpanFull(),
                         Hidden::make('slug')
                             ->required()
                             ->dehydrated()

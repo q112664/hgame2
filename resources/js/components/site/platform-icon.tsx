@@ -1,27 +1,25 @@
 import {
-    RiAndroidLine,
-    RiAppleLine,
+    RiAndroidFill,
+    RiAppleFill,
     RiComputerLine,
-    RiUbuntuLine,
     RiWindowsFill,
 } from '@remixicon/react';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ComponentType } from 'react';
 
-type PlatformIconProps = ComponentProps<typeof RiComputerLine> & {
-    platform: string;
+type IconProps = ComponentProps<typeof RiComputerLine>;
+
+type PlatformIconProps = IconProps & {
+    slug: string;
 };
 
-export function PlatformIcon({ platform, ...props }: PlatformIconProps) {
-    switch (platform) {
-        case 'Windows':
-            return <RiWindowsFill {...props} />;
-        case 'Android':
-            return <RiAndroidLine {...props} />;
-        case 'macOS':
-            return <RiAppleLine {...props} />;
-        case 'Linux':
-            return <RiUbuntuLine {...props} />;
-        default:
-            return <RiComputerLine {...props} />;
-    }
+const platformIcons: Record<string, ComponentType<IconProps>> = {
+    windows: RiWindowsFill,
+    ios: RiAppleFill,
+    android: RiAndroidFill,
+};
+
+export function PlatformIcon({ slug, ...props }: PlatformIconProps) {
+    const Icon = platformIcons[slug.toLowerCase()] ?? RiComputerLine;
+
+    return <Icon {...props} />;
 }

@@ -31,6 +31,12 @@ const overlayChipClassName = cn(
     'ring-1 ring-foreground/10',
 );
 
+const languageChipClassName = cn(
+    'inline-flex h-5 items-center justify-center rounded px-1.5',
+    'bg-background/90 text-[11px] font-medium leading-none text-foreground shadow-xs',
+    'ring-1 ring-foreground/10',
+);
+
 function abbreviateLanguage(language: string): string {
     return languageAbbrev[language] ?? language.slice(0, 2).toUpperCase();
 }
@@ -50,10 +56,6 @@ function formatDate(date: string): string {
 }
 
 export function ResourceCard({ resource }: Props) {
-    const primaryPlatform = resource.platforms[0];
-    const platformLabel = resource.platforms.join(', ') || 'No platform';
-    const languageLabel = resource.languages.map(abbreviateLanguage).join('/');
-
     return (
         <Card
             size="sm"
@@ -77,35 +79,55 @@ export function ResourceCard({ resource }: Props) {
                         <span className={overlayChipClassName}>
                             {abbreviateCategory(resource.category)}
                         </span>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                            {resource.platforms.length > 0 ? (
+                                resource.platforms.map((platform) => (
+                                    <Tooltip key={platform.slug}>
+                                        <TooltipTrigger asChild>
+                                            <span
+                                                className={cn(
+                                                    overlayChipClassName,
+                                                    'size-6 px-0',
+                                                )}
+                                                aria-label={platform.name}
+                                            >
+                                                <PlatformIcon
+                                                    slug={platform.slug}
+                                                    className="size-3.5"
+                                                />
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom">
+                                            {platform.name}
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ))
+                            ) : (
                                 <span
                                     className={cn(
                                         overlayChipClassName,
                                         'size-6 px-0',
                                     )}
-                                    aria-label={platformLabel}
                                 >
-                                    {primaryPlatform ? (
-                                        <PlatformIcon
-                                            platform={primaryPlatform}
-                                            className="size-3.5"
-                                        />
-                                    ) : (
-                                        <span>—</span>
-                                    )}
+                                    —
                                 </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                {platformLabel}
-                            </TooltipContent>
-                        </Tooltip>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="absolute inset-x-0 bottom-0 flex justify-end p-2">
-                        <span className={overlayChipClassName}>
-                            {languageLabel || '—'}
-                        </span>
+                    <div className="absolute inset-x-0 bottom-0 flex flex-wrap justify-end gap-1 p-2">
+                        {resource.languages.length > 0 ? (
+                            resource.languages.map((language) => (
+                                <span
+                                    key={language}
+                                    className={languageChipClassName}
+                                >
+                                    {abbreviateLanguage(language)}
+                                </span>
+                            ))
+                        ) : (
+                            <span className={languageChipClassName}>—</span>
+                        )}
                     </div>
                 </div>
 

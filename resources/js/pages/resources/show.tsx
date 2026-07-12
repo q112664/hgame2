@@ -65,16 +65,43 @@ const tabTriggerClassName = cn(
     'dark:data-active:hover:bg-transparent dark:data-active:hover:text-foreground',
 );
 
-function formatCount(value: number): string {
-    return new Intl.NumberFormat('en-US').format(value);
-}
+const heroBadgeClassName = cn(
+    'h-6 gap-1 rounded-full border px-2.5 text-xs font-medium shadow-none',
+    '[&>svg]:size-3.5!',
+);
 
-function MetaRow({ label, value }: { label: string; value: string }) {
+const categoryBadgeClassName = cn(
+    heroBadgeClassName,
+    'border-violet-500/25 bg-violet-500/12 text-violet-700 dark:text-violet-300',
+);
+
+const languageBadgeClassName = cn(
+    heroBadgeClassName,
+    'border-amber-500/25 bg-amber-500/12 text-amber-800 dark:text-amber-300',
+);
+
+const platformBadgeClassNames: Record<string, string> = {
+    windows: cn(
+        heroBadgeClassName,
+        'border-sky-500/25 bg-sky-500/12 text-sky-700 dark:text-sky-300',
+    ),
+    ios: cn(
+        heroBadgeClassName,
+        'border-rose-500/25 bg-rose-500/12 text-rose-700 dark:text-rose-300',
+    ),
+    android: cn(
+        heroBadgeClassName,
+        'border-emerald-500/25 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
+    ),
+};
+
+function platformBadgeClassName(slug: string): string {
     return (
-        <div className="grid grid-cols-[7rem_1fr] gap-3 border-b border-foreground/5 py-2.5 last:border-b-0 sm:grid-cols-[9rem_1fr]">
-            <dt className="text-muted-foreground">{label}</dt>
-            <dd className="font-medium text-foreground">{value}</dd>
-        </div>
+        platformBadgeClassNames[slug.toLowerCase()] ??
+        cn(
+            heroBadgeClassName,
+            'border-indigo-500/25 bg-indigo-500/12 text-indigo-700 dark:text-indigo-300',
+        )
     );
 }
 
@@ -92,15 +119,6 @@ export default function ResourceShow({ activeTab, resource }: Props) {
     );
     const shouldScrollToDownloads = useRef(false);
     const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
-    const platforms = resource.platforms.join(', ') || 'No platform';
-    const languages = resource.languages.join(', ') || 'No language';
-    const fileSizes = Array.from(
-        new Set(
-            resource.releases
-                .map((release) => release.fileSize)
-                .filter((size): size is string => size !== null),
-        ),
-    ).join(', ');
 
     useEffect(() => {
         const resetVisualActiveTab = () => setVisualActiveTab(activeTab);
@@ -206,20 +224,33 @@ export default function ResourceShow({ activeTab, resource }: Props) {
 
                         <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:p-5">
                             <div className="flex flex-wrap gap-1.5">
-                                <Badge variant="secondary">
+                                <Badge
+                                    variant="outline"
+                                    className={categoryBadgeClassName}
+                                >
                                     {resource.category}
                                 </Badge>
                                 {resource.platforms.map((platform) => (
-                                    <Badge key={platform} variant="outline">
+                                    <Badge
+                                        key={platform.slug}
+                                        variant="outline"
+                                        className={platformBadgeClassName(
+                                            platform.slug,
+                                        )}
+                                    >
                                         <PlatformIcon
-                                            platform={platform}
+                                            slug={platform.slug}
                                             data-icon="inline-start"
                                         />
-                                        {platform}
+                                        {platform.name}
                                     </Badge>
                                 ))}
                                 {resource.languages.map((language) => (
-                                    <Badge key={language} variant="outline">
+                                    <Badge
+                                        key={language}
+                                        variant="outline"
+                                        className={languageBadgeClassName}
+                                    >
                                         {language}
                                     </Badge>
                                 ))}
@@ -228,6 +259,12 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                             <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                                 {resource.title}
                             </h1>
+
+                            {resource.subtitle ? (
+                                <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+                                    {resource.subtitle}
+                                </p>
+                            ) : null}
 
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
                                 <span className="inline-flex min-w-0 items-center gap-1.5">
@@ -378,62 +415,18 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                 />
                             </section>
 
-                            <div className="flex flex-col gap-4">
-                                <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
-                                    <h2 className="mb-1 font-heading text-base font-semibold text-foreground">
-                                        Information
-                                    </h2>
-                                    <dl className="text-sm">
-                                        <MetaRow
-                                            label="Developer"
-                                            value={resource.developer}
-                                        />
-                                        <MetaRow
-                                            label="Release date"
-                                            value={resource.releaseDate ?? '—'}
-                                        />
-                                        <MetaRow
-                                            label="Published"
-                                            value={resource.publishedAt ?? '—'}
-                                        />
-                                        <MetaRow
-                                            label="Platform"
-                                            value={platforms}
-                                        />
-                                        <MetaRow
-                                            label="Language"
-                                            value={languages}
-                                        />
-                                        <MetaRow
-                                            label="File size"
-                                            value={fileSizes || '—'}
-                                        />
-                                        <MetaRow
-                                            label="Views"
-                                            value={formatCount(resource.views)}
-                                        />
-                                        <MetaRow
-                                            label="Downloads"
-                                            value={formatCount(
-                                                resource.downloads,
-                                            )}
-                                        />
-                                    </dl>
-                                </section>
-
-                                <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
-                                    <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
-                                        Tags
-                                    </h2>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {resource.tags.map((tag) => (
-                                            <Badge key={tag} variant="outline">
-                                                {tag}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </section>
-                            </div>
+                            <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+                                <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
+                                    Tags
+                                </h2>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {resource.tags.map((tag) => (
+                                        <Badge key={tag} variant="outline">
+                                            {tag}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </section>
                         </div>
                     </TabsContent>
 
@@ -467,24 +460,32 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                                     {release.platforms.map(
                                                         (platform) => (
                                                             <span
-                                                                key={platform}
+                                                                key={
+                                                                    platform.slug
+                                                                }
                                                                 className="inline-flex items-center gap-1.5"
                                                             >
                                                                 <PlatformIcon
-                                                                    platform={
-                                                                        platform
+                                                                    slug={
+                                                                        platform.slug
                                                                     }
                                                                     className="size-3.5"
                                                                 />
-                                                                {platform}
+                                                                {
+                                                                    platform.name
+                                                                }
                                                             </span>
                                                         ),
                                                     )}
-                                                    <span>
-                                                        {release.languages.join(
-                                                            ', ',
-                                                        )}
-                                                    </span>
+                                                    {release.languages.map(
+                                                        (language) => (
+                                                            <span
+                                                                key={language}
+                                                            >
+                                                                {language}
+                                                            </span>
+                                                        ),
+                                                    )}
                                                     {release.fileSize ? (
                                                         <span>
                                                             {release.fileSize}

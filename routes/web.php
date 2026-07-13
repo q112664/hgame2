@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\SearchController;
@@ -16,5 +17,11 @@ Route::get('/resources/{resource}/screenshots', [ResourceController::class, 'scr
     ->name('resources.screenshots');
 Route::get('/resources/{resource}', [ResourceController::class, 'show'])
     ->name('resources.show');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
+    Route::post('/resources/{resource}/favorite', [FavoriteController::class, 'toggle'])
+        ->name('resources.favorite');
+});
 
 require __DIR__.'/settings.php';

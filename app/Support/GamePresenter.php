@@ -14,8 +14,10 @@ class GamePresenter
         return [
             'id' => $game->slug,
             'title' => $game->title,
+            'subtitle' => $game->subtitle,
             'thumbnail' => self::mediaUrl($game->cover_path ?: $game->cover_url),
             'category' => $game->category?->name ?? 'Uncategorized',
+            'developer' => $game->developer ?? 'Unknown',
             'platforms' => $game->releases
                 ->flatMap->platforms
                 ->unique('slug')
@@ -76,7 +78,7 @@ class GamePresenter
                     'languages' => $release->languages->pluck('name')->values()->all(),
                     'version' => $release->version,
                     'fileSize' => $release->file_size,
-                    'description' => str($release->description ?? '')->sanitizeHtml()->toString(),
+                    'description' => $release->description,
                     'publishedAt' => $release->published_at?->toDateString(),
                     'downloadLinks' => $release->downloadLinks
                         ->map(fn ($link): array => [

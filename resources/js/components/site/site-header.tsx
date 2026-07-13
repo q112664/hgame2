@@ -293,26 +293,28 @@ export function SiteHeader() {
                     <NavLinks className="hidden md:flex" />
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Link
-                                href={search()}
-                                className={iconButtonClassName}
-                                aria-label="Search resources"
-                                prefetch
-                            >
-                                <Search className="size-4" />
-                            </Link>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" sideOffset={4}>
-                            Search resources
-                        </TooltipContent>
-                    </Tooltip>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Link
+                                    href={search()}
+                                    className={iconButtonClassName}
+                                    aria-label="Search resources"
+                                    prefetch
+                                >
+                                    <Search className="size-4" />
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" sideOffset={4}>
+                                Search resources
+                            </TooltipContent>
+                        </Tooltip>
 
-                    <NotificationButton />
+                        <NotificationButton />
 
-                    <ThemeToggle />
+                        <ThemeToggle />
+                    </div>
 
                     {auth.user ? (
                         <UserAvatarMenu user={auth.user} />

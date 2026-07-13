@@ -4,7 +4,6 @@ use App\Filament\Resources\Games\Pages\CreateGame;
 use App\Filament\Resources\Games\Pages\EditGame;
 use App\Filament\Resources\Games\Pages\ListGames;
 use App\Filament\Resources\Games\RelationManagers\ReleasesRelationManager;
-use App\Filament\Resources\Games\RelationManagers\ScreenshotsRelationManager;
 use App\GameStatus;
 use App\Models\Game;
 use App\Models\GameScreenshot;
@@ -100,11 +99,22 @@ test('an administrator can create a game with multiple screenshots at once', fun
     }
 });
 
-test('edit game page stacks releases and screenshots without relation tabs', function () {
+test('edit game page uses the create-style screenshots upload and only stacks releases', function () {
+    Storage::fake('public');
+
     $this->actingAs(User::factory()->admin()->create());
 
-    $game = Game::factory()->create();
-    GameScreenshot::factory()->count(2)->for($game)->create();
+    $game = Game::factory()->create([
+        'cover_path' => UploadedFile::fake()->image('cover.jpg', 1280, 720)->store('games/covers', 'public'),
+    ]);
+    $kept = GameScreenshot::factory()->for($game)->create([
+        'path' => UploadedFile::fake()->image('kept.jpg', 1280, 720)->store('games/screenshots', 'public'),
+        'sort_order' => 0,
+    ]);
+    $removed = GameScreenshot::factory()->for($game)->create([
+        'path' => UploadedFile::fake()->image('removed.jpg', 1280, 720)->store('games/screenshots', 'public'),
+        'sort_order' => 1,
+    ]);
 
     $component = Livewire::test(EditGame::class, [
         'record' => $game->getRouteKey(),
@@ -112,11 +122,34 @@ test('edit game page stacks releases and screenshots without relation tabs', fun
 
     $component
         ->assertSuccessful()
+        ->assertFormFieldExists('screenshot_uploads')
         ->assertSeeLivewire(ReleasesRelationManager::class)
-        ->assertSeeLivewire(ScreenshotsRelationManager::class);
+        ->assertFormSet([
+            'screenshot_uploads' => [$kept->path, $removed->path],
+        ]);
 
     expect($component->instance()->getRelationManagers())->toHaveCount(1)
         ->and($component->html())->not->toContain('wire:key="relationManagerTabs"');
+
+    $component
+        ->fillForm([
+            'screenshot_uploads' => [
+                $kept->path,
+                UploadedFile::fake()->image('added.jpg', 1280, 720),
+            ],
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $game->refresh();
+
+    expect($game->screenshots)->toHaveCount(2)
+        ->and($game->screenshots->pluck('path')->contains($kept->path))->toBeTrue()
+        ->and($game->screenshots()->where('path', $removed->path)->exists())->toBeFalse()
+        ->and($game->screenshots->pluck('sort_order')->all())->toBe([0, 1]);
+
+    Storage::disk('public')->assertExists($kept->path);
+    Storage::disk('public')->assertMissing($removed->path);
 });
 
 test('games list defaults to newest created first', function () {

@@ -64,6 +64,7 @@ test('resource tab pages render a published game with its available releases', f
             ->where('resource.releases.0.languages', ['Chinese'])
             ->has('resource.releases.0.downloadLinks', 2)
             ->where('resource.releases.0.downloadLinks.0.label', 'Baidu Netdisk')
+            ->where('resource.isFavorited', false)
             ->where('resource.adminEditUrl', null)
         );
 })->with([

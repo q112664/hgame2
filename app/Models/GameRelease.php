@@ -56,4 +56,14 @@ class GameRelease extends Model
     {
         return $this->hasMany(GameDownloadLink::class)->orderBy('sort_order');
     }
+
+    protected static function booted(): void
+    {
+        $touchGame = function (GameRelease $release): void {
+            $release->game?->touchDownloadsUpdatedAt();
+        };
+
+        static::saved($touchGame);
+        static::deleted($touchGame);
+    }
 }

@@ -10,8 +10,8 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -50,10 +50,8 @@ class ReleasesRelationManager extends RelationManager
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
-                RichEditor::make('description')
-                    ->fileAttachmentsDisk('public')
-                    ->fileAttachmentsDirectory('games/content')
-                    ->fileAttachmentsVisibility('public')
+                Textarea::make('description')
+                    ->rows(4)
                     ->columnSpanFull(),
                 Toggle::make('is_active')
                     ->default(true)

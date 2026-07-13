@@ -6,14 +6,17 @@ export type GamePlatform = {
 export type GameCard = {
     id: string;
     title: string;
+    subtitle: string | null;
     thumbnail: string;
     category: string;
+    developer: string;
     platforms: GamePlatform[];
     languages: string[];
     version: string | null;
     tags: string[];
     publishedAt: string | null;
     views: number;
+    hasDownloadUpdate?: boolean;
 };
 
 export type GameDownloadLink = {
@@ -42,5 +45,6 @@ export type GameDetail = GameCard & {
     downloads: number;
     screenshots: string[];
     releases: GameRelease[];
+    isFavorited: boolean;
     adminEditUrl: string | null;
 };

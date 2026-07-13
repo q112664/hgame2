@@ -40,6 +40,7 @@ createInertiaApp({
         switch (true) {
             case name === 'welcome':
             case name === 'search':
+            case name === 'favorites':
             case name.startsWith('resources/'):
             case name === 'settings/index':
                 return null;

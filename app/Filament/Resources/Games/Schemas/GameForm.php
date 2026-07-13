@@ -120,7 +120,6 @@ class GameForm
                             ->columnSpanFull(),
                     ])
                     ->compact()
-                    ->visible(fn (string $operation): bool => $operation === 'create')
                     ->columnSpanFull(),
                 Section::make('Download resources')
                     ->schema([
@@ -149,10 +148,8 @@ class GameForm
                                     ->required()
                                     ->maxLength(255)
                                     ->columnSpanFull(),
-                                RichEditor::make('description')
-                                    ->fileAttachmentsDisk('public')
-                                    ->fileAttachmentsDirectory('games/content')
-                                    ->fileAttachmentsVisibility('public')
+                                Textarea::make('description')
+                                    ->rows(4)
                                     ->columnSpanFull(),
                                 Toggle::make('is_active')->default(true)->required(),
                                 Hidden::make('published_at')->default(now()),

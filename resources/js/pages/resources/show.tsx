@@ -1,12 +1,13 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { Building2, CalendarDays, Download, HardDrive, Heart, Pencil } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Building2, CalendarDays, Download, Eye, HardDrive, Heart, Pencil } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ImageLightbox, type LightboxSlide } from '@/components/site/image-lightbox';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import { RichHtml } from '@/components/site/rich-html';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Tooltip,
@@ -15,9 +16,11 @@ import {
 } from '@/components/ui/tooltip';
 import { SiteLayout } from '@/layouts/site-layout';
 import { cn } from '@/lib/utils';
+import { login } from '@/routes';
 import {
     details as resourceDetails,
     downloads as resourceDownloads,
+    favorite as toggleFavorite,
     screenshots as resourceScreenshots,
 } from '@/routes/resources';
 import type { GameDetail } from '@/types/resources';
@@ -67,32 +70,32 @@ const tabTriggerClassName = cn(
 );
 
 const heroBadgeClassName = cn(
-    'h-6 gap-1 rounded-md border px-2.5 text-xs font-medium shadow-none',
+    'h-6 gap-1 rounded-md border-transparent px-2.5 text-xs font-medium shadow-none',
     '[&>svg]:size-3.5!',
 );
 
 const categoryBadgeClassName = cn(
-    'h-6 gap-1 rounded-md border-transparent px-2.5 text-xs font-medium shadow-none',
-    'bg-muted text-foreground ring-1 ring-foreground/10',
+    heroBadgeClassName,
+    'bg-muted text-foreground',
 );
 
 const languageBadgeClassName = cn(
     heroBadgeClassName,
-    'border-amber-500/25 bg-amber-500/12 text-amber-800 dark:text-amber-300',
+    'bg-amber-500/12 text-amber-800 dark:text-amber-300',
 );
 
 const platformBadgeClassNames: Record<string, string> = {
     windows: cn(
         heroBadgeClassName,
-        'border-sky-500/25 bg-sky-500/12 text-sky-700 dark:text-sky-300',
+        'bg-sky-500/12 text-sky-700 dark:text-sky-300',
     ),
     ios: cn(
         heroBadgeClassName,
-        'border-rose-500/25 bg-rose-500/12 text-rose-700 dark:text-rose-300',
+        'bg-rose-500/12 text-rose-700 dark:text-rose-300',
     ),
     android: cn(
         heroBadgeClassName,
-        'border-emerald-500/25 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
+        'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
     ),
 };
 
@@ -101,7 +104,7 @@ function platformBadgeClassName(slug: string): string {
         platformBadgeClassNames[slug.toLowerCase()] ??
         cn(
             heroBadgeClassName,
-            'border-indigo-500/25 bg-indigo-500/12 text-indigo-700 dark:text-indigo-300',
+            'bg-indigo-500/12 text-indigo-700 dark:text-indigo-300',
         )
     );
 }
@@ -131,9 +134,11 @@ const downloadButtonPalettes = [
 function ResourceScreenshot({
     src,
     alt,
+    onOpen,
 }: {
     src: string;
     alt: string;
+    onOpen: () => void;
 }) {
     const [loaded, setLoaded] = useState(false);
     const imageRef = useRef<HTMLImageElement>(null);
@@ -149,9 +154,16 @@ function ResourceScreenshot({
     }, [src]);
 
     return (
-        <div className="relative aspect-video overflow-hidden rounded-md bg-card ring-1 ring-foreground/10">
+        <button
+            type="button"
+            onClick={onOpen}
+            className="relative aspect-video overflow-hidden rounded-md bg-card ring-1 ring-foreground/10 transition-[ring-color] hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+            aria-label={`View ${alt}`}
+        >
             {!loaded ? (
-                <Skeleton className="absolute inset-0 rounded-none" />
+                <div className="absolute inset-0 flex items-center justify-center bg-muted/40">
+                    <Spinner className="size-5 text-muted-foreground" />
+                </div>
             ) : null}
             <img
                 ref={imageRef}
@@ -167,7 +179,7 @@ function ResourceScreenshot({
                 onLoad={() => setLoaded(true)}
                 onError={() => setLoaded(true)}
             />
-        </div>
+        </button>
     );
 }
 
@@ -175,13 +187,22 @@ export default function ResourceShow({ activeTab, resource }: Props) {
     const shouldReduceMotion = useReducedMotion();
     const [visualActiveTab, setVisualActiveTab] =
         useState<ResourceTab>(activeTab);
-    const [isFavorite, setIsFavorite] = useState(false);
+    const [isFavorite, setIsFavorite] = useState(resource.isFavorited);
+    const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+    const [lightboxSlides, setLightboxSlides] = useState<LightboxSlide[]>([]);
+    const [lightboxIndex, setLightboxIndex] = useState(-1);
+    const { auth } = usePage().props;
+    const pageUrl = usePage().url;
     const tabsListRef = useRef<HTMLDivElement>(null);
     const tabRefs = useRef<Partial<Record<ResourceTab, HTMLElement | null>>>(
         {},
     );
     const shouldScrollToDownloads = useRef(false);
     const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
+
+    useEffect(() => {
+        setIsFavorite(resource.isFavorited);
+    }, [resource.isFavorited]);
 
     useEffect(() => {
         const resetVisualActiveTab = () => setVisualActiveTab(activeTab);
@@ -265,9 +286,58 @@ export default function ResourceShow({ activeTab, resource }: Props) {
         setVisualActiveTab('downloads');
     };
 
+    const screenshotSlides = resource.screenshots.map((src, index) => ({
+        src,
+        alt: `${resource.title} screenshot ${index + 1}`,
+    }));
+
+    const openLightbox = (slides: LightboxSlide[], index: number) => {
+        if (slides.length === 0) {
+            return;
+        }
+
+        setLightboxSlides(slides);
+        setLightboxIndex(index);
+    };
+
+    const closeLightbox = () => {
+        setLightboxIndex(-1);
+    };
+
+    const handleFavoriteClick = () => {
+        if (!auth.user) {
+            router.visit(login({ query: { redirect: pageUrl } }));
+
+            return;
+        }
+
+        const nextFavorited = !isFavorite;
+        setIsFavorite(nextFavorited);
+        setIsTogglingFavorite(true);
+
+        router.post(
+            toggleFavorite.url(resource.id),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['resource'],
+                onError: () => setIsFavorite(!nextFavorited),
+                onFinish: () => setIsTogglingFavorite(false),
+            },
+        );
+    };
+
     return (
         <SiteLayout>
             <Head title={`${resource.title} - hgame`} />
+
+            <ImageLightbox
+                slides={lightboxSlides}
+                index={lightboxIndex}
+                onClose={closeLightbox}
+                onIndexChange={setLightboxIndex}
+            />
 
             <div className="mx-auto flex max-w-[90rem] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
                 <section className="overflow-hidden rounded-md bg-card ring-1 ring-foreground/10">
@@ -350,82 +420,102 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                         {resource.releaseDate ?? '—'}
                                     </time>
                                 </span>
+                                <span className="inline-flex items-center gap-1.5">
+                                    <Eye
+                                        className="size-3.5 shrink-0"
+                                        aria-hidden
+                                    />
+                                    {new Intl.NumberFormat('en-US').format(
+                                        resource.views,
+                                    )}
+                                </span>
                             </div>
 
-                            <div className="mt-auto flex items-center gap-2 pt-1">
-                                <Button size="lg" asChild>
-                                    <Link
-                                        href={
-                                            resourceDownloads(resource.id).url
-                                        }
-                                        preserveState
-                                        preserveScroll
-                                        onStart={showDownloads}
-                                        onError={() => {
-                                            shouldScrollToDownloads.current = false;
-                                            setVisualActiveTab(activeTab);
-                                        }}
-                                    >
-                                        <Download data-icon="inline-start" />
-                                        Download
-                                    </Link>
-                                </Button>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            type="button"
-                                            variant={
-                                                isFavorite
-                                                    ? 'secondary'
-                                                    : 'outline'
+                            <div className="mt-auto flex flex-col gap-2 pt-1">
+                                <div className="flex items-center gap-2">
+                                    <Button size="lg" asChild>
+                                        <Link
+                                            href={
+                                                resourceDownloads(resource.id)
+                                                    .url
                                             }
-                                            size="icon-lg"
-                                            aria-label={
-                                                isFavorite
-                                                    ? 'Remove from favorites'
-                                                    : 'Add to favorites'
-                                            }
-                                            aria-pressed={isFavorite}
-                                            onClick={() =>
-                                                setIsFavorite(!isFavorite)
-                                            }
+                                            preserveState
+                                            preserveScroll
+                                            onStart={showDownloads}
+                                            onError={() => {
+                                                shouldScrollToDownloads.current = false;
+                                                setVisualActiveTab(activeTab);
+                                            }}
                                         >
-                                            <Heart
-                                                className={
-                                                    isFavorite
-                                                        ? 'fill-current'
-                                                        : undefined
-                                                }
-                                            />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        {isFavorite
-                                            ? 'Remove from favorites'
-                                            : 'Add to favorites'}
-                                    </TooltipContent>
-                                </Tooltip>
-                                {resource.adminEditUrl ? (
+                                            <Download data-icon="inline-start" />
+                                            Download
+                                        </Link>
+                                    </Button>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Button
-                                                variant="outline"
+                                                type="button"
+                                                variant="secondary"
                                                 size="icon-lg"
-                                                asChild
+                                                className={cn(
+                                                    'border-0 shadow-none ring-0',
+                                                    isFavorite
+                                                        ? 'bg-rose-500/12 text-rose-600 hover:bg-rose-500/18 dark:text-rose-400'
+                                                        : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+                                                )}
+                                                aria-label={
+                                                    isFavorite
+                                                        ? 'Remove from favorites'
+                                                        : 'Add to favorites'
+                                                }
+                                                aria-pressed={isFavorite}
+                                                disabled={isTogglingFavorite}
+                                                onClick={handleFavoriteClick}
                                             >
-                                                <a
-                                                    href={resource.adminEditUrl}
-                                                    aria-label="Edit in admin"
-                                                >
-                                                    <Pencil />
-                                                </a>
+                                                <Heart
+                                                    className={cn(
+                                                        'size-5',
+                                                        isFavorite &&
+                                                            'fill-current',
+                                                    )}
+                                                />
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            Edit in admin
+                                            {isFavorite
+                                                ? 'Remove from favorites'
+                                                : 'Add to favorites'}
                                         </TooltipContent>
                                     </Tooltip>
-                                ) : null}
+                                    {resource.adminEditUrl ? (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon-lg"
+                                                    asChild
+                                                >
+                                                    <a
+                                                        href={
+                                                            resource.adminEditUrl
+                                                        }
+                                                        aria-label="Edit in admin"
+                                                    >
+                                                        <Pencil />
+                                                    </a>
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                Edit in admin
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    ) : null}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {isFavorite
+                                        ? 'Favorited — download updates will show on your Favorites page.'
+                                        : 'Favorite this resource to get download update alerts.'}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -488,7 +578,15 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                             <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
                                 About
                             </h2>
-                            <RichHtml html={resource.description} />
+                            <RichHtml
+                                html={resource.description}
+                                onImageClick={(_src, index, sources) => {
+                                    openLightbox(
+                                        sources.map((src) => ({ src })),
+                                        index,
+                                    );
+                                }}
+                            />
 
                             {resource.tags.length > 0 ? (
                                 <div className="mt-6">
@@ -532,9 +630,9 @@ export default function ResourceShow({ activeTab, resource }: Props) {
 
                                         <div className="space-y-4 p-4 sm:p-5">
                                             {release.description ? (
-                                                <RichHtml
-                                                    html={release.description}
-                                                />
+                                                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                                                    {release.description}
+                                                </p>
                                             ) : null}
 
                                             <div className="flex flex-wrap gap-1.5">
@@ -641,6 +739,9 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                     key={screenshot}
                                     src={screenshot}
                                     alt={`${resource.title} screenshot ${index + 1}`}
+                                    onOpen={() =>
+                                        openLightbox(screenshotSlides, index)
+                                    }
                                 />
                             ))}
                         </div>

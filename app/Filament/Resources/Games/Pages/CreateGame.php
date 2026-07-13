@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Games\Pages;
 
+use App\Actions\Games\SyncGameScreenshots;
 use App\Filament\Resources\Games\GameResource;
 use App\Filament\Resources\Games\Schemas\GameForm;
 use App\Models\Game;
@@ -34,11 +35,6 @@ class CreateGame extends CreateRecord
         /** @var Game $game */
         $game = $this->record;
 
-        foreach ($this->screenshotPaths as $sortOrder => $path) {
-            $game->screenshots()->create([
-                'path' => $path,
-                'sort_order' => $sortOrder,
-            ]);
-        }
+        app(SyncGameScreenshots::class)($game, $this->screenshotPaths);
     }
 }

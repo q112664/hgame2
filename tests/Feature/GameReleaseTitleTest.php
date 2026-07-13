@@ -18,7 +18,7 @@ test('resource downloads expose the release title above description content', fu
         'platform_id' => $platform->id,
         'language_id' => $language->id,
         'title' => 'Steam version',
-        'description' => '<p>Patch notes</p>',
+        'description' => 'Patch notes',
     ]);
     GameDownloadLink::factory()->for($release, 'release')->create();
 
@@ -27,6 +27,6 @@ test('resource downloads expose the release title above description content', fu
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
             ->where('resource.releases.0.title', 'Steam version')
-            ->where('resource.releases.0.description', fn (string $description): bool => str_contains($description, 'Patch notes'))
+            ->where('resource.releases.0.description', 'Patch notes')
         );
 });

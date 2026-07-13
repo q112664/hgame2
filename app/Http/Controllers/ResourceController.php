@@ -2,51 +2,71 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Games\MarkFavoriteDownloadsSeen;
+use App\Actions\Games\RecordGameView;
 use App\Filament\Resources\Games\GameResource;
 use App\Models\Game;
 use App\Support\GamePresenter;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ResourceController extends Controller
 {
+    public function __construct(
+        private RecordGameView $recordGameView,
+    ) {}
+
     public function show(string $resource): RedirectResponse
     {
-        $this->findResource($resource);
+        $this->findGame($resource);
 
         return to_route('resources.details', ['resource' => $resource]);
     }
 
-    public function details(string $resource): Response
+    public function details(Request $request, string $resource): Response
     {
-        return $this->renderResource($resource, 'details');
+        return $this->renderResource($request, $resource, 'details');
     }
 
-    public function downloads(string $resource): Response
-    {
-        return $this->renderResource($resource, 'downloads');
-    }
+    public function downloads(
+        Request $request,
+        string $resource,
+        MarkFavoriteDownloadsSeen $markFavoriteDownloadsSeen,
+    ): Response {
+        $game = $this->findGame($resource);
+        ($this->recordGameView)($request, $game);
 
-    public function screenshots(string $resource): Response
-    {
-        return $this->renderResource($resource, 'screenshots');
-    }
+        if (auth()->check()) {
+            $markFavoriteDownloadsSeen(auth()->user(), $game->id);
+        }
 
-    private function renderResource(string $resource, string $activeTab): Response
-    {
         return Inertia::render('resources/show', [
-            'activeTab' => $activeTab,
-            'resource' => $this->findResource($resource),
+            'activeTab' => 'downloads',
+            'resource' => $this->presentResource($game),
         ]);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function findResource(string $resource): array
+    public function screenshots(Request $request, string $resource): Response
     {
-        $game = Game::query()
+        return $this->renderResource($request, $resource, 'screenshots');
+    }
+
+    private function renderResource(Request $request, string $resource, string $activeTab): Response
+    {
+        $game = $this->findGame($resource);
+        ($this->recordGameView)($request, $game);
+
+        return Inertia::render('resources/show', [
+            'activeTab' => $activeTab,
+            'resource' => $this->presentResource($game),
+        ]);
+    }
+
+    private function findGame(string $resource): Game
+    {
+        return Game::query()
             ->published()
             ->where('slug', $resource)
             ->with([
@@ -66,9 +86,19 @@ class ResourceController extends Controller
                     ->orderBy('sort_order'),
             ])
             ->firstOrFail();
+    }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentResource(Game $game): array
+    {
         return [
             ...GamePresenter::detail($game),
+            'isFavorited' => auth()->user()
+                ?->favoritedGames()
+                ->where('games.id', $game->id)
+                ->exists() ?? false,
             'adminEditUrl' => auth()->user()?->is_admin
                 ? GameResource::getUrl('edit', ['record' => $game], panel: 'admin')
                 : null,

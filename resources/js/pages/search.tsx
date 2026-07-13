@@ -1,8 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowRight, Search, SearchX } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { SiteLayout } from '@/layouts/site-layout';
 import { cn } from '@/lib/utils';
 import { search } from '@/routes';
@@ -17,15 +17,6 @@ type Props = {
     query: string;
     resources: SearchResource[];
 };
-
-const searchHints = [
-    'Title',
-    'Subtitle',
-    'Tags',
-    'Category',
-    'Platform',
-    'Language',
-] as const;
 
 export default function SearchPage({ query: initialQuery, resources }: Props) {
     const [query, setQuery] = useState(initialQuery);
@@ -96,7 +87,7 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
         }
     }, [hasQuery, isPending, resources]);
 
-    const showSkeleton = isPending && stableResources.length === 0;
+    const showPendingPlaceholder = isPending && stableResources.length === 0;
     const showResults = hasQuery && stableResources.length > 0;
     const showEmptyResults =
         hasQuery && !isPending && stableResources.length === 0;
@@ -105,141 +96,60 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
         <SiteLayout>
             <Head title="Search" />
 
-            <section className="border-b border-border/60">
-                <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-                    <div className="flex max-w-2xl flex-col gap-3">
-                        <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                            Search
-                        </h1>
-                        <p className="text-sm text-muted-foreground sm:text-base">
-                            Find visual novels and galgame resources across
-                            titles, tags, categories, platforms, and languages.
+            <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+                <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+                    <label className="sr-only" htmlFor="site-search-input">
+                        Search
+                    </label>
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute top-1/2 left-3.5 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            id="site-search-input"
+                            ref={inputRef}
+                            value={query}
+                            onChange={(event) => setQuery(event.target.value)}
+                            placeholder="Search…"
+                            className={cn(
+                                'h-11 rounded-md border-foreground/10 bg-card pr-10 pl-10 text-sm shadow-none',
+                                'ring-1 ring-foreground/10 transition-[box-shadow,ring-color]',
+                                'placeholder:text-muted-foreground/70',
+                                'focus-visible:ring-2 focus-visible:ring-foreground/20',
+                            )}
+                            autoComplete="off"
+                            autoFocus
+                        />
+                        {isPending ? (
+                            <Spinner className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                        ) : null}
+                    </div>
+
+                    {!hasQuery ? (
+                        <p className="text-center text-sm text-muted-foreground">
+                            Type to search
                         </p>
-                    </div>
+                    ) : null}
 
-                    <div className="flex max-w-2xl flex-col gap-4">
-                        <label className="sr-only" htmlFor="site-search-input">
-                            Search resources
-                        </label>
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute top-1/2 left-4 z-10 size-5 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                id="site-search-input"
-                                ref={inputRef}
-                                value={query}
-                                onChange={(event) =>
-                                    setQuery(event.target.value)
-                                }
-                                placeholder="Type a keyword…"
-                                className={cn(
-                                    'h-14 rounded-md border-foreground/10 bg-card pr-4 pl-12 text-base shadow-none',
-                                    'ring-1 ring-foreground/10 transition-[box-shadow,ring-color]',
-                                    'placeholder:text-muted-foreground/70',
-                                    'focus-visible:ring-2 focus-visible:ring-foreground/20',
-                                )}
-                                autoComplete="off"
-                                autoFocus
-                            />
-                            <div
-                                aria-hidden
-                                className={cn(
-                                    'pointer-events-none absolute inset-x-3 bottom-0 h-0.5 overflow-hidden rounded-full',
-                                    isPending ? 'opacity-100' : 'opacity-0',
-                                )}
-                            >
-                                <div className="site-search-progress h-full w-1/3 rounded-full bg-foreground/55" />
-                            </div>
+                    {showPendingPlaceholder ? (
+                        <div
+                            className="flex justify-center py-8"
+                            aria-busy="true"
+                            aria-label="Searching"
+                        >
+                            <Spinner className="size-5 text-muted-foreground" />
                         </div>
-
-                        <div className="flex flex-wrap gap-2">
-                            {searchHints.map((hint) => (
-                                <span
-                                    key={hint}
-                                    className="inline-flex h-7 items-center rounded-md bg-background px-2.5 text-xs font-medium text-muted-foreground ring-1 ring-foreground/10"
-                                >
-                                    {hint}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section className="mx-auto w-full max-w-[90rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-                <div className="flex flex-col gap-5">
-                    {hasQuery ? (
-                        <div className="flex items-baseline justify-between gap-3">
-                            <p className="text-sm text-muted-foreground">
-                                {isPending
-                                    ? 'Searching…'
-                                    : showEmptyResults
-                                      ? `No results for “${trimmedQuery}”`
-                                      : `${stableResources.length} result${stableResources.length === 1 ? '' : 's'}`}
-                            </p>
-                            {!isPending && stableResources.length > 0 ? (
-                                <p className="text-xs text-muted-foreground">
-                                    Matching “{trimmedQuery}”
-                                </p>
-                            ) : null}
-                        </div>
-                    ) : (
-                        <div className="flex flex-col items-start gap-3 rounded-md bg-card px-5 py-10 ring-1 ring-foreground/10 sm:px-8">
-                            <div className="flex size-11 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-foreground/10">
-                                <Search className="size-5" />
-                            </div>
-                            <div className="flex max-w-md flex-col gap-1.5">
-                                <p className="font-heading text-lg font-semibold tracking-tight text-foreground">
-                                    Start typing to search
-                                </p>
-                                <p className="text-sm leading-relaxed text-muted-foreground">
-                                    Results appear here after you enter a
-                                    keyword. Try a game title, tag, category,
-                                    platform, or language.
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {showSkeleton ? (
-                        <ul className="flex flex-col gap-3" aria-hidden>
-                            {Array.from({ length: 4 }).map((_, index) => (
-                                <li
-                                    key={index}
-                                    className="flex items-center gap-4 rounded-md bg-card p-3 ring-1 ring-foreground/10 sm:p-4"
-                                >
-                                    <Skeleton className="aspect-[16/12] w-28 shrink-0 rounded-md sm:w-32" />
-                                    <div className="flex min-w-0 flex-1 flex-col gap-2">
-                                        <Skeleton className="h-4 w-2/3 max-w-64" />
-                                        <Skeleton className="h-3 w-1/2 max-w-48" />
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
                     ) : null}
 
                     {showEmptyResults ? (
-                        <div className="flex flex-col items-start gap-3 rounded-md bg-card px-5 py-10 ring-1 ring-foreground/10 sm:px-8">
-                            <div className="flex size-11 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-foreground/10">
-                                <SearchX className="size-5" />
-                            </div>
-                            <div className="flex max-w-md flex-col gap-1.5">
-                                <p className="font-heading text-lg font-semibold tracking-tight text-foreground">
-                                    Nothing matched
-                                </p>
-                                <p className="text-sm leading-relaxed text-muted-foreground">
-                                    No published resources matched “
-                                    {trimmedQuery}”. Try another keyword or a
-                                    shorter phrase.
-                                </p>
-                            </div>
-                        </div>
+                        <p className="text-center text-sm text-muted-foreground">
+                            No results
+                        </p>
                     ) : null}
 
                     {showResults ? (
                         <ul
                             className={cn(
-                                'flex flex-col gap-3 transition-opacity duration-150',
-                                isPending ? 'opacity-55' : 'opacity-100',
+                                'divide-y divide-foreground/8 transition-opacity duration-150',
+                                isPending ? 'opacity-50' : 'opacity-100',
                             )}
                             aria-busy={isPending}
                         >
@@ -248,41 +158,39 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
                                     <Link
                                         href={resourceDetails(resource.id)}
                                         className={cn(
-                                            'group flex items-center gap-4 rounded-md bg-card p-3 ring-1 ring-foreground/10',
-                                            'transition-[ring-color,transform] duration-150',
-                                            'hover:ring-foreground/20 sm:p-4',
+                                            'group flex items-center gap-3 py-3',
+                                            'transition-opacity duration-150 hover:opacity-80',
                                             isPending && 'pointer-events-none',
                                         )}
                                         prefetch={!isPending}
                                         tabIndex={isPending ? -1 : undefined}
                                     >
-                                        <div className="aspect-[16/12] w-28 shrink-0 overflow-hidden rounded-md bg-muted sm:w-32">
+                                        <div className="aspect-video w-20 shrink-0 overflow-hidden rounded bg-muted sm:w-24">
                                             <img
                                                 src={resource.thumbnail}
                                                 alt=""
-                                                className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                                                className="size-full object-cover"
                                                 loading="lazy"
                                                 referrerPolicy="no-referrer"
                                             />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <span className="line-clamp-2 font-heading text-sm font-semibold tracking-tight text-foreground sm:text-base">
+                                            <span className="line-clamp-1 text-sm font-medium text-foreground">
                                                 {resource.title}
                                             </span>
                                             {resource.subtitle ? (
-                                                <span className="mt-1 line-clamp-1 text-xs text-muted-foreground sm:text-sm">
+                                                <span className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                                                     {resource.subtitle}
                                                 </span>
                                             ) : null}
                                         </div>
-                                        <ArrowRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100" />
                                     </Link>
                                 </li>
                             ))}
                         </ul>
                     ) : null}
                 </div>
-            </section>
+            </div>
         </SiteLayout>
     );
 }

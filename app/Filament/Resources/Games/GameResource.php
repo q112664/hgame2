@@ -6,12 +6,10 @@ use App\Filament\Resources\Games\Pages\CreateGame;
 use App\Filament\Resources\Games\Pages\EditGame;
 use App\Filament\Resources\Games\Pages\ListGames;
 use App\Filament\Resources\Games\RelationManagers\ReleasesRelationManager;
-use App\Filament\Resources\Games\RelationManagers\ScreenshotsRelationManager;
 use App\Filament\Resources\Games\Schemas\GameForm;
 use App\Filament\Resources\Games\Tables\GamesTable;
 use App\Models\Game;
 use BackedEnum;
-use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -40,11 +38,7 @@ class GameResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // A single RelationGroup stacks managers instead of putting them in tabs.
-            RelationGroup::make('Related', [
-                ReleasesRelationManager::class,
-                ScreenshotsRelationManager::class,
-            ]),
+            ReleasesRelationManager::class,
         ];
     }
 

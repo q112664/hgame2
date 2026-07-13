@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -83,6 +84,13 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
     public function canAccessPanel(Panel $panel): bool
     {
         return (bool) $this->is_admin;
+    }
+
+    public function favoritedGames(): BelongsToMany
+    {
+        return $this->belongsToMany(Game::class, 'favorites')
+            ->withPivot('downloads_seen_at')
+            ->withTimestamps();
     }
 
     /**

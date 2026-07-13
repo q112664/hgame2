@@ -1,11 +1,13 @@
 <?php
 
+use App\Filament\Resources\Games\GameResource;
 use App\Models\Game;
 use App\Models\GameDownloadLink;
 use App\Models\GameRelease;
 use App\Models\GameScreenshot;
 use App\Models\Language;
 use App\Models\Platform;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -62,12 +64,34 @@ test('resource tab pages render a published game with its available releases', f
             ->where('resource.releases.0.languages', ['Chinese'])
             ->has('resource.releases.0.downloadLinks', 2)
             ->where('resource.releases.0.downloadLinks.0.label', 'Baidu Netdisk')
+            ->where('resource.adminEditUrl', null)
         );
 })->with([
     'details' => ['resources.details', 'details'],
     'downloads' => ['resources.downloads', 'downloads'],
     'screenshots' => ['resources.screenshots', 'screenshots'],
 ]);
+
+test('administrators receive an edit url on the resource page', function () {
+    $this->actingAs(User::factory()->admin()->create())
+        ->get(route('resources.details', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where(
+                'resource.adminEditUrl',
+                GameResource::getUrl('edit', ['record' => $this->game], panel: 'admin'),
+            )
+        );
+});
+
+test('regular users do not receive an admin edit url on the resource page', function () {
+    $this->actingAs(User::factory()->create())
+        ->get(route('resources.details', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('resource.adminEditUrl', null)
+        );
+});
 
 test('resource show redirects to the details route', function () {
     $this->get(route('resources.show', $this->game->slug))
@@ -81,7 +105,7 @@ test('resource routes return not found for unknown or unpublished games', functi
     $this->get(route('resources.details', $draft->slug))->assertNotFound();
 });
 
-test('home and search receive only published games', function () {
+test('home receives only published games', function () {
     Game::factory()->draft()->create(['title' => 'Hidden Draft']);
 
     $this->get(route('home'))
@@ -95,8 +119,6 @@ test('home and search receive only published games', function () {
             ])
             ->where('resources.0.languages', ['Chinese'])
             ->where('resources.0.version', '1.2 demo')
-            ->has('searchResources', 1)
-            ->where('searchResources.0.id', $this->game->slug)
         );
 });
 

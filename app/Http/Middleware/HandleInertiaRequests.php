@@ -2,8 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Game;
-use App\Support\GamePresenter;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -44,13 +42,6 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            'searchResources' => fn (): array => Game::query()
-                ->published()
-                ->latest('published_at')
-                ->limit(100)
-                ->get(['slug', 'title', 'cover_url'])
-                ->map(GamePresenter::search(...))
-                ->all(),
         ];
     }
 }

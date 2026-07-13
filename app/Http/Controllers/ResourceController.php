@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Filament\Resources\Games\GameResource;
 use App\Models\Game;
 use App\Support\GamePresenter;
 use Illuminate\Http\RedirectResponse;
@@ -66,6 +67,11 @@ class ResourceController extends Controller
             ])
             ->firstOrFail();
 
-        return GamePresenter::detail($game);
+        return [
+            ...GamePresenter::detail($game),
+            'adminEditUrl' => auth()->user()?->is_admin
+                ? GameResource::getUrl('edit', ['record' => $game], panel: 'admin')
+                : null,
+        ];
     }
 }

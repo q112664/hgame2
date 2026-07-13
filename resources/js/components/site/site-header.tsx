@@ -1,7 +1,6 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Bell, Menu, Moon, Search, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { SiteSearchDialog } from '@/components/site/site-search-dialog';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -24,7 +23,7 @@ import { UserAvatar } from '@/components/user-avatar';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useAppearance } from '@/hooks/use-appearance';
 import { cn } from '@/lib/utils';
-import { home, login, register } from '@/routes';
+import { home, login, register, search } from '@/routes';
 import type { User } from '@/types';
 
 type NavItem = {
@@ -161,10 +160,9 @@ function UserAvatarMenu({ user }: { user: User }) {
                 <button
                     type="button"
                     className={cn(
-                        'inline-flex size-9 items-center justify-center rounded-full',
-                        'transition-colors outline-none select-none',
-                        'hover:bg-black/5 dark:hover:bg-white/10',
-                        'focus-visible:ring-2 focus-visible:ring-ring/50',
+                        'inline-flex items-center gap-2 outline-none select-none',
+                        'opacity-100 transition-opacity hover:opacity-70',
+                        'focus:outline-none focus-visible:outline-none focus-visible:ring-0',
                     )}
                     aria-label="Open user menu"
                 >
@@ -173,9 +171,12 @@ function UserAvatarMenu({ user }: { user: User }) {
                         className="size-8"
                         fallbackClassName="rounded-full bg-neutral-200 text-xs text-black dark:bg-neutral-700 dark:text-white"
                     />
+                    <span className="hidden max-w-32 truncate text-sm font-medium text-foreground md:inline">
+                        {user.name}
+                    </span>
                 </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end">
+            <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
                 <UserMenuContent user={user} />
             </DropdownMenuContent>
         </DropdownMenu>
@@ -188,14 +189,13 @@ export function SiteHeader() {
     const loginHref = login({ query: { redirect: page.url } });
     const registerHref = register({ query: { redirect: page.url } });
     const [open, setOpen] = useState(false);
-    const [searchOpen, setSearchOpen] = useState(false);
     const closeMenu = () => setOpen(false);
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
                 event.preventDefault();
-                setSearchOpen(true);
+                router.visit(search());
             }
         };
 
@@ -206,8 +206,7 @@ export function SiteHeader() {
 
     return (
         <header className="sticky top-0 z-40 border-b border-black/5 bg-background/75 backdrop-blur-md dark:border-white/10 supports-backdrop-filter:bg-background/65">
-            <SiteSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
-            <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto flex h-14 max-w-[90rem] items-center gap-4 px-4 sm:px-6 lg:px-8">
                 <Sheet open={open} onOpenChange={setOpen}>
                     <SheetTrigger asChild>
                         <button
@@ -297,14 +296,14 @@ export function SiteHeader() {
                 <div className="flex items-center gap-1.5">
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <button
-                                type="button"
+                            <Link
+                                href={search()}
                                 className={iconButtonClassName}
-                                onClick={() => setSearchOpen(true)}
                                 aria-label="Search resources"
+                                prefetch
                             >
                                 <Search className="size-4" />
-                            </button>
+                            </Link>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" sideOffset={4}>
                             Search resources

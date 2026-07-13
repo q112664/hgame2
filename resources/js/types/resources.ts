@@ -42,4 +42,5 @@ export type GameDetail = GameCard & {
     downloads: number;
     screenshots: string[];
     releases: GameRelease[];
+    adminEditUrl: string | null;
 };

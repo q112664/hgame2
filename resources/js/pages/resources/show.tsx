@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Building2, CalendarDays, Download, HardDrive, Heart } from 'lucide-react';
+import { Building2, CalendarDays, Download, HardDrive, Heart, Pencil } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PlatformIcon } from '@/components/site/platform-icon';
@@ -67,13 +67,13 @@ const tabTriggerClassName = cn(
 );
 
 const heroBadgeClassName = cn(
-    'h-6 gap-1 rounded-full border px-2.5 text-xs font-medium shadow-none',
+    'h-6 gap-1 rounded-md border px-2.5 text-xs font-medium shadow-none',
     '[&>svg]:size-3.5!',
 );
 
 const categoryBadgeClassName = cn(
-    heroBadgeClassName,
-    'border-violet-500/25 bg-violet-500/12 text-violet-700 dark:text-violet-300',
+    'h-6 gap-1 rounded-md border-transparent px-2.5 text-xs font-medium shadow-none',
+    'bg-muted text-foreground ring-1 ring-foreground/10',
 );
 
 const languageBadgeClassName = cn(
@@ -128,14 +128,54 @@ const downloadButtonPalettes = [
     'border-rose-500/25 bg-rose-500/10 text-rose-800 hover:bg-rose-500/15 dark:text-rose-200',
 ] as const;
 
+function ResourceScreenshot({
+    src,
+    alt,
+}: {
+    src: string;
+    alt: string;
+}) {
+    const [loaded, setLoaded] = useState(false);
+    const imageRef = useRef<HTMLImageElement>(null);
+
+    useEffect(() => {
+        setLoaded(false);
+
+        const image = imageRef.current;
+
+        if (image?.complete && image.naturalWidth > 0) {
+            setLoaded(true);
+        }
+    }, [src]);
+
+    return (
+        <div className="relative aspect-video overflow-hidden rounded-md bg-card ring-1 ring-foreground/10">
+            {!loaded ? (
+                <Skeleton className="absolute inset-0 rounded-none" />
+            ) : null}
+            <img
+                ref={imageRef}
+                src={src}
+                alt={alt}
+                className={cn(
+                    'size-full object-cover transition-opacity duration-200',
+                    loaded ? 'opacity-100' : 'opacity-0',
+                )}
+                loading="lazy"
+                decoding="async"
+                referrerPolicy="no-referrer"
+                onLoad={() => setLoaded(true)}
+                onError={() => setLoaded(true)}
+            />
+        </div>
+    );
+}
+
 export default function ResourceShow({ activeTab, resource }: Props) {
     const shouldReduceMotion = useReducedMotion();
     const [visualActiveTab, setVisualActiveTab] =
         useState<ResourceTab>(activeTab);
     const [isFavorite, setIsFavorite] = useState(false);
-    const [loadedScreenshots, setLoadedScreenshots] = useState<Set<string>>(
-        () => new Set(),
-    );
     const tabsListRef = useRef<HTMLDivElement>(null);
     const tabRefs = useRef<Partial<Record<ResourceTab, HTMLElement | null>>>(
         {},
@@ -225,15 +265,11 @@ export default function ResourceShow({ activeTab, resource }: Props) {
         setVisualActiveTab('downloads');
     };
 
-    const markScreenshotLoaded = (screenshot: string) => {
-        setLoadedScreenshots((loaded) => new Set(loaded).add(screenshot));
-    };
-
     return (
         <SiteLayout>
             <Head title={`${resource.title} - hgame`} />
 
-            <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto flex max-w-[90rem] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
                 <section className="overflow-hidden rounded-md bg-card ring-1 ring-foreground/10">
                     <div className="flex flex-col sm:flex-row">
                         <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted sm:aspect-auto sm:h-[280px] sm:w-auto sm:max-w-[498px]">
@@ -369,6 +405,27 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                             : 'Add to favorites'}
                                     </TooltipContent>
                                 </Tooltip>
+                                {resource.adminEditUrl ? (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="icon-lg"
+                                                asChild
+                                            >
+                                                <a
+                                                    href={resource.adminEditUrl}
+                                                    aria-label="Edit in admin"
+                                                >
+                                                    <Pencil />
+                                                </a>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            Edit in admin
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ) : null}
                             </div>
                         </div>
                     </div>
@@ -580,33 +637,11 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                     <TabsContent value="screenshots">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                             {resource.screenshots.map((screenshot, index) => (
-                                <div
+                                <ResourceScreenshot
                                     key={screenshot}
-                                    className="relative aspect-video overflow-hidden rounded-md bg-muted ring-1 ring-foreground/10"
-                                >
-                                    {!loadedScreenshots.has(screenshot) ? (
-                                        <Skeleton className="absolute inset-0 rounded-none" />
-                                    ) : null}
-                                    <img
-                                        src={screenshot}
-                                        alt={`${resource.title} screenshot ${index + 1}`}
-                                        className={cn(
-                                            'size-full object-cover transition-opacity duration-200',
-                                            loadedScreenshots.has(screenshot)
-                                                ? 'opacity-100'
-                                                : 'opacity-0',
-                                        )}
-                                        loading="lazy"
-                                        decoding="async"
-                                        referrerPolicy="no-referrer"
-                                        onLoad={() =>
-                                            markScreenshotLoaded(screenshot)
-                                        }
-                                        onError={() =>
-                                            markScreenshotLoaded(screenshot)
-                                        }
-                                    />
-                                </div>
+                                    src={screenshot}
+                                    alt={`${resource.title} screenshot ${index + 1}`}
+                                />
                             ))}
                         </div>
                     </TabsContent>

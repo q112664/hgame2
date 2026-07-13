@@ -8,7 +8,7 @@ type Props = {
 export function LatestResources({ resources }: Props) {
     return (
         <section id="latest" className="scroll-mt-16">
-            <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-8">
+            <div className="mx-auto flex max-w-[90rem] flex-col gap-8 px-4 py-12 sm:px-6 lg:px-8">
                 <div className="flex flex-col gap-2">
                     <h2 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
                         Latest resources

@@ -73,7 +73,7 @@ export function ResourceCard({ resource }: Props) {
                 className="group flex h-full flex-col"
                 prefetch
             >
-                <div className="relative aspect-video overflow-hidden rounded-t-md bg-muted">
+                <div className="relative aspect-[16/12] overflow-hidden rounded-t-md bg-muted">
                     <img
                         src={resource.thumbnail}
                         alt={resource.title}

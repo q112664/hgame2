@@ -37,12 +37,13 @@ class GamePresenter
         ];
     }
 
-    /** @return array{id: string, title: string, thumbnail: string} */
+    /** @return array{id: string, title: string, subtitle: string|null, thumbnail: string} */
     public static function search(Game $game): array
     {
         return [
             'id' => $game->slug,
             'title' => $game->title,
+            'subtitle' => $game->subtitle,
             'thumbnail' => self::mediaUrl($game->cover_path ?: $game->cover_url),
         ];
     }

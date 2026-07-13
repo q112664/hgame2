@@ -2,6 +2,7 @@
 
 use App\Filament\Resources\Games\Pages\CreateGame;
 use App\Filament\Resources\Games\Pages\EditGame;
+use App\Filament\Resources\Games\Pages\ListGames;
 use App\Filament\Resources\Games\RelationManagers\ReleasesRelationManager;
 use App\Filament\Resources\Games\RelationManagers\ScreenshotsRelationManager;
 use App\GameStatus;
@@ -116,4 +117,16 @@ test('edit game page stacks releases and screenshots without relation tabs', fun
 
     expect($component->instance()->getRelationManagers())->toHaveCount(1)
         ->and($component->html())->not->toContain('wire:key="relationManagerTabs"');
+});
+
+test('games list defaults to newest created first', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    $older = Game::factory()->create(['created_at' => now()->subDays(2)]);
+    $newer = Game::factory()->create(['created_at' => now()->subDay()]);
+    $newest = Game::factory()->create(['created_at' => now()]);
+
+    Livewire::test(ListGames::class)
+        ->assertSuccessful()
+        ->assertCanSeeTableRecords([$newest, $newer, $older], inOrder: true);
 });

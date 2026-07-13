@@ -316,19 +316,6 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                 </span>
                             </div>
 
-                            {resource.tags.length > 0 ? (
-                                <div className="flex flex-wrap gap-1.5">
-                                    {resource.tags.map((tag) => (
-                                        <span
-                                            key={tag}
-                                            className="inline-flex h-6 items-center rounded-full bg-muted px-2.5 text-xs font-medium text-muted-foreground"
-                                        >
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
-                            ) : null}
-
                             <div className="mt-auto flex items-center gap-2 pt-1">
                                 <Button size="lg" asChild>
                                     <Link
@@ -445,6 +432,24 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                 About
                             </h2>
                             <RichHtml html={resource.description} />
+
+                            {resource.tags.length > 0 ? (
+                                <div className="mt-6">
+                                    <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
+                                        Tags
+                                    </h2>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {resource.tags.map((tag) => (
+                                            <span
+                                                key={tag}
+                                                className="inline-flex h-6 items-center rounded-full bg-muted px-2.5 text-xs font-medium text-muted-foreground"
+                                            >
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : null}
                         </section>
                     </TabsContent>
 

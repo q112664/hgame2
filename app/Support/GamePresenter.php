@@ -26,6 +26,11 @@ class GamePresenter
                 ->values()
                 ->all(),
             'languages' => $game->releases->flatMap->languages->pluck('name')->unique()->values()->all(),
+            'version' => $game->releases
+                ->pluck('version')
+                ->map(fn (?string $version): ?string => filled($version) ? trim($version) : null)
+                ->filter()
+                ->first(),
             'tags' => $game->tags->pluck('name')->values()->all(),
             'publishedAt' => $game->published_at?->toDateString(),
             'views' => $game->views_count,

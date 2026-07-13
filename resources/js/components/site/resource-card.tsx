@@ -45,6 +45,13 @@ function abbreviateCategory(category: string): string {
     return categoryAbbrev[category] ?? category;
 }
 
+function abbreviateVersion(version: string): string {
+    const withoutPrefix = version.trim().replace(/^(version|ver|v)\s*/i, '');
+    const short = withoutPrefix.split(/\s+/)[0] ?? withoutPrefix;
+
+    return short ? `v${short}` : version.trim();
+}
+
 function formatViews(views: number): string {
     return new Intl.NumberFormat('en-US').format(views);
 }
@@ -75,7 +82,7 @@ export function ResourceCard({ resource }: Props) {
                         referrerPolicy="no-referrer"
                     />
 
-                    <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
+                    <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-1.5 p-1">
                         <span className={overlayChipClassName}>
                             {abbreviateCategory(resource.category)}
                         </span>
@@ -115,19 +122,28 @@ export function ResourceCard({ resource }: Props) {
                         </div>
                     </div>
 
-                    <div className="absolute inset-x-0 bottom-0 flex flex-wrap justify-end gap-1 p-2">
-                        {resource.languages.length > 0 ? (
-                            resource.languages.map((language) => (
-                                <span
-                                    key={language}
-                                    className={languageChipClassName}
-                                >
-                                    {abbreviateLanguage(language)}
-                                </span>
-                            ))
+                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-1.5 p-1">
+                        {resource.version ? (
+                            <span className={languageChipClassName}>
+                                {abbreviateVersion(resource.version)}
+                            </span>
                         ) : (
-                            <span className={languageChipClassName}>—</span>
+                            <span />
                         )}
+                        <div className="flex flex-wrap justify-end gap-1">
+                            {resource.languages.length > 0 ? (
+                                resource.languages.map((language) => (
+                                    <span
+                                        key={language}
+                                        className={languageChipClassName}
+                                    >
+                                        {abbreviateLanguage(language)}
+                                    </span>
+                                ))
+                            ) : (
+                                <span className={languageChipClassName}>—</span>
+                            )}
+                        </div>
                     </div>
                 </div>
 

@@ -24,6 +24,7 @@ beforeEach(function () {
         'platform_id' => $platform->id,
         'language_id' => $language->id,
         'title' => 'Official release',
+        'version' => '1.2 demo',
         'file_size' => '5.4 GB',
     ]);
 
@@ -93,8 +94,20 @@ test('home and search receive only published games', function () {
                 ['name' => 'Windows', 'slug' => 'windows'],
             ])
             ->where('resources.0.languages', ['Chinese'])
+            ->where('resources.0.version', '1.2 demo')
             ->has('searchResources', 1)
             ->where('searchResources.0.id', $this->game->slug)
+        );
+});
+
+test('home omits card version when no release version is filled', function () {
+    $this->game->releases()->update(['version' => null]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('resources.0.id', $this->game->slug)
+            ->where('resources.0.version', null)
         );
 });
 

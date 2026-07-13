@@ -10,6 +10,7 @@ export type GameCard = {
     category: string;
     platforms: GamePlatform[];
     languages: string[];
+    version: string | null;
     tags: string[];
     publishedAt: string | null;
     views: number;

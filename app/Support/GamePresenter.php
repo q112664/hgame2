@@ -4,7 +4,6 @@ namespace App\Support;
 
 use App\Models\Game;
 use App\Models\GameRelease;
-use Illuminate\Support\Str;
 
 class GamePresenter
 {
@@ -96,14 +95,6 @@ class GamePresenter
 
     private static function mediaUrl(?string $path): string
     {
-        if (blank($path)) {
-            return '';
-        }
-
-        if (Str::startsWith($path, ['http://', 'https://', '/'])) {
-            return $path;
-        }
-
-        return asset('storage/'.$path);
+        return Media::url($path);
     }
 }

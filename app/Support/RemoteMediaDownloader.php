@@ -69,7 +69,7 @@ class RemoteMediaDownloader
 
         $path = trim($directory, '/').'/'.Str::uuid()->toString().'.'.$extension;
 
-        Storage::disk('public')->put($path, $contents);
+        Storage::disk(Media::diskName())->put($path, $contents, 'public');
 
         return $path;
     }

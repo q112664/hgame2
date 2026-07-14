@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileAvatarUpdateRequest;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Support\Media;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ProfileController extends Controller
@@ -40,13 +40,13 @@ class ProfileController extends Controller
         $user = $request->user();
         $previousPath = $user->avatarPath();
 
-        $path = $request->file('avatar')->store('avatars', 'public');
+        $path = $request->file('avatar')->store('avatars', Media::diskName());
 
         $user->avatar = $path;
         $user->save();
 
         if ($previousPath !== null && $previousPath !== $path) {
-            Storage::disk('public')->delete($previousPath);
+            Media::disk()->delete($previousPath);
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Avatar updated.')]);
@@ -63,7 +63,7 @@ class ProfileController extends Controller
         $path = $user->avatarPath();
 
         if ($path !== null) {
-            Storage::disk('public')->delete($path);
+            Media::disk()->delete($path);
             $user->avatar = null;
             $user->save();
         }
@@ -86,7 +86,7 @@ class ProfileController extends Controller
         $user->delete();
 
         if ($avatarPath !== null) {
-            Storage::disk('public')->delete($avatarPath);
+            Media::disk()->delete($avatarPath);
         }
 
         $request->session()->invalidate();

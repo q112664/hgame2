@@ -3,6 +3,7 @@
 use App\Filament\Pages\ManageSiteSettings;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -33,7 +34,7 @@ test('administrators can update the site url', function () {
 });
 
 test('avatar urls use the configured site url', function () {
-    Storage::fake('public');
+    Storage::fake(Media::diskName());
 
     Setting::set('site_url', 'http://hgame.test');
 

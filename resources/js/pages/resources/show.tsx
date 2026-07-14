@@ -433,7 +433,15 @@ export default function ResourceShow({ activeTab, resource }: Props) {
 
                             <div className="mt-auto flex flex-col gap-2 pt-1">
                                 <div className="flex items-center gap-2">
-                                    <Button size="lg" asChild>
+                                    <Button
+                                        size="lg"
+                                        className={cn(
+                                            'border-0 px-4 shadow-none',
+                                            'bg-sky-600 text-white hover:bg-sky-500',
+                                            'dark:bg-sky-500 dark:text-white dark:hover:bg-sky-400',
+                                        )}
+                                        asChild
+                                    >
                                         <Link
                                             href={
                                                 resourceDownloads(resource.id)
@@ -578,15 +586,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                             <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
                                 About
                             </h2>
-                            <RichHtml
-                                html={resource.description}
-                                onImageClick={(_src, index, sources) => {
-                                    openLightbox(
-                                        sources.map((src) => ({ src })),
-                                        index,
-                                    );
-                                }}
-                            />
+                            <RichHtml html={resource.description} />
 
                             {resource.tags.length > 0 ? (
                                 <div className="mt-6">

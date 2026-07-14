@@ -96,13 +96,13 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
         <SiteLayout>
             <Head title="Search" />
 
-            <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
-                <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+                <div className="flex flex-col gap-6">
                     <label className="sr-only" htmlFor="site-search-input">
                         Search
                     </label>
-                    <div className="relative">
-                        <Search className="pointer-events-none absolute top-1/2 left-3.5 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <div className="relative mx-auto w-full max-w-2xl">
+                        <Search className="pointer-events-none absolute top-1/2 left-4 z-10 size-4.5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             id="site-search-input"
                             ref={inputRef}
@@ -110,7 +110,7 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
                             onChange={(event) => setQuery(event.target.value)}
                             placeholder="Search…"
                             className={cn(
-                                'h-11 rounded-md border-foreground/10 bg-card pr-10 pl-10 text-sm shadow-none',
+                                'h-12 rounded-md border-foreground/10 bg-card pr-11 pl-11 text-base shadow-none',
                                 'ring-1 ring-foreground/10 transition-[box-shadow,ring-color]',
                                 'placeholder:text-muted-foreground/70',
                                 'focus-visible:ring-2 focus-visible:ring-foreground/20',
@@ -119,28 +119,28 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
                             autoFocus
                         />
                         {isPending ? (
-                            <Spinner className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                            <Spinner className="pointer-events-none absolute top-1/2 right-4 size-4.5 -translate-y-1/2 text-muted-foreground" />
                         ) : null}
                     </div>
 
                     {!hasQuery ? (
-                        <p className="text-center text-sm text-muted-foreground">
+                        <p className="text-center text-base text-muted-foreground">
                             Type to search
                         </p>
                     ) : null}
 
                     {showPendingPlaceholder ? (
                         <div
-                            className="flex justify-center py-8"
+                            className="flex justify-center py-10"
                             aria-busy="true"
                             aria-label="Searching"
                         >
-                            <Spinner className="size-5 text-muted-foreground" />
+                            <Spinner className="size-6 text-muted-foreground" />
                         </div>
                     ) : null}
 
                     {showEmptyResults ? (
-                        <p className="text-center text-sm text-muted-foreground">
+                        <p className="text-center text-base text-muted-foreground">
                             No results
                         </p>
                     ) : null}
@@ -158,14 +158,14 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
                                     <Link
                                         href={resourceDetails(resource.id)}
                                         className={cn(
-                                            'group flex items-center gap-3 py-3',
+                                            'group flex items-center gap-4 py-4 sm:gap-5 sm:py-5',
                                             'transition-opacity duration-150 hover:opacity-80',
                                             isPending && 'pointer-events-none',
                                         )}
                                         prefetch={!isPending}
                                         tabIndex={isPending ? -1 : undefined}
                                     >
-                                        <div className="aspect-video w-20 shrink-0 overflow-hidden rounded bg-muted sm:w-24">
+                                        <div className="aspect-video w-32 shrink-0 overflow-hidden rounded-md bg-muted sm:w-40">
                                             <img
                                                 src={resource.thumbnail}
                                                 alt=""
@@ -174,12 +174,12 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
                                                 referrerPolicy="no-referrer"
                                             />
                                         </div>
-                                        <div className="min-w-0 flex-1">
-                                            <span className="line-clamp-1 text-sm font-medium text-foreground">
+                                        <div className="min-w-0 flex-1 space-y-1">
+                                            <span className="line-clamp-2 text-base font-medium leading-snug text-foreground sm:text-lg">
                                                 {resource.title}
                                             </span>
                                             {resource.subtitle ? (
-                                                <span className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                                                <span className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                                                     {resource.subtitle}
                                                 </span>
                                             ) : null}

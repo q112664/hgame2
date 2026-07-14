@@ -2,6 +2,7 @@
 
 namespace App\Filament\Forms\Components;
 
+use App\Support\Media;
 use Filament\Forms\Components\FileUpload;
 
 final class ScreenshotsFileUpload
@@ -21,7 +22,7 @@ final class ScreenshotsFileUpload
             ->uploadButtonPosition('center')
             ->uploadProgressIndicatorPosition('center')
             ->openable()
-            ->disk('public')
+            ->disk(Media::diskName())
             ->directory('games/screenshots')
             ->visibility('public')
             ->helperText('Select multiple images at once. Drag thumbnails to reorder.')

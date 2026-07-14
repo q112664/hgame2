@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Games\Schemas;
 
 use App\Filament\Forms\Components\ScreenshotsFileUpload;
 use App\GameStatus;
+use App\Support\Media;
 use App\Support\TagImporter;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -98,7 +99,7 @@ class GameForm
                             ->label('Thumbnail')
                             ->image()
                             ->imageEditor()
-                            ->disk('public')
+                            ->disk(Media::diskName())
                             ->directory('games/covers')
                             ->visibility('public')
                             ->required(fn (string $operation): bool => $operation === 'create')
@@ -106,7 +107,7 @@ class GameForm
                         Hidden::make('cover_url')->default(''),
                         RichEditor::make('description')
                             ->label('Details')
-                            ->fileAttachmentsDisk('public')
+                            ->fileAttachmentsDisk(Media::diskName())
                             ->fileAttachmentsDirectory('games/content')
                             ->fileAttachmentsVisibility('public')
                             ->columnSpanFull(),

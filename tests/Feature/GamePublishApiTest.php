@@ -6,6 +6,7 @@ use App\Models\Game;
 use App\Models\Language;
 use App\Models\Platform;
 use App\Models\User;
+use App\Support\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +15,7 @@ use Laravel\Sanctum\Sanctum;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Storage::fake('public');
+    Storage::fake(Media::diskName());
 
     $this->admin = User::factory()->admin()->create();
     $this->category = Category::factory()->create([
@@ -102,8 +103,8 @@ test('an administrator can publish a complete game via the api', function () {
         ->and($game->releases->first()->languages->pluck('name')->all())->toBe(['Chinese'])
         ->and($game->releases->first()->downloadLinks)->toHaveCount(1);
 
-    Storage::disk('public')->assertExists($game->cover_path);
-    Storage::disk('public')->assertExists($game->screenshots->first()->path);
+    Storage::disk(Media::diskName())->assertExists($game->cover_path);
+    Storage::disk(Media::diskName())->assertExists($game->screenshots->first()->path);
 
     $this->get(route('resources.details', $game->slug))
         ->assertOk();

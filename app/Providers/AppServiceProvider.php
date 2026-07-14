@@ -30,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureDefaults();
         $this->configureSiteUrl();
+        $this->configureMediaDisk();
     }
 
     /**
@@ -38,6 +39,14 @@ class AppServiceProvider extends ServiceProvider
     protected function configureSiteUrl(): void
     {
         Setting::applySiteUrlToConfig();
+    }
+
+    /**
+     * Apply the admin-configured media / S3 settings to runtime config.
+     */
+    protected function configureMediaDisk(): void
+    {
+        Setting::applyMediaConfigToConfig();
     }
 
     /**

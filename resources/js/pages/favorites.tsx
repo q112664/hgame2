@@ -51,8 +51,8 @@ function formatDate(date: string): string {
 }
 
 const metaChipClassName = cn(
-    'inline-flex h-5 items-center gap-1 rounded px-1.5',
-    'bg-muted text-[11px] font-medium leading-none text-muted-foreground',
+    'inline-flex h-6 items-center gap-1.5 rounded-md px-2',
+    'bg-muted text-xs font-medium leading-none text-muted-foreground',
 );
 
 export default function Favorites({
@@ -63,20 +63,20 @@ export default function Favorites({
         <SiteLayout>
             <Head title="Favorites" />
 
-            <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
                 <div className="flex items-baseline justify-between gap-3">
-                    <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground">
+                    <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
                         Favorites
                     </h1>
                     {resources.length > 0 ? (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-base text-muted-foreground">
                             {resources.length}
                         </p>
                     ) : null}
                 </div>
 
                 {downloadUpdateCount > 0 ? (
-                    <p className="rounded-md bg-sky-500/10 px-3 py-2 text-sm text-sky-800 ring-1 ring-sky-500/15 dark:text-sky-200">
+                    <p className="rounded-md bg-sky-500/10 px-4 py-2.5 text-sm text-sky-800 ring-1 ring-sky-500/15 dark:text-sky-200">
                         {downloadUpdateCount === 1
                             ? '1 favorite has updated downloads'
                             : `${downloadUpdateCount} favorites have updated downloads`}
@@ -94,10 +94,10 @@ export default function Favorites({
                                                   .url
                                             : resourceDetails(resource.id).url
                                     }
-                                    className="group flex items-center gap-3.5 py-3.5 transition-opacity hover:opacity-80"
+                                    className="group flex items-center gap-4 py-4 transition-opacity hover:opacity-80 sm:gap-5 sm:py-5"
                                     prefetch
                                 >
-                                    <div className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-md bg-muted sm:w-28">
+                                    <div className="relative aspect-video w-32 shrink-0 overflow-hidden rounded-md bg-muted sm:w-40">
                                         <img
                                             src={resource.thumbnail}
                                             alt=""
@@ -107,32 +107,32 @@ export default function Favorites({
                                         />
                                         {resource.hasDownloadUpdate ? (
                                             <span
-                                                className="absolute top-1.5 right-1.5 size-2 rounded-full bg-sky-500 ring-2 ring-background"
+                                                className="absolute top-2 right-2 size-2.5 rounded-full bg-sky-500 ring-2 ring-background"
                                                 aria-hidden
                                             />
                                         ) : null}
                                     </div>
 
-                                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                                    <div className="flex min-w-0 flex-1 flex-col gap-2">
                                         <div className="flex min-w-0 items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <p className="line-clamp-1 text-sm font-medium leading-snug text-foreground">
+                                            <div className="min-w-0 space-y-1">
+                                                <p className="line-clamp-2 text-base font-medium leading-snug text-foreground sm:text-lg">
                                                     {resource.title}
                                                 </p>
                                                 {resource.subtitle ? (
-                                                    <p className="mt-0.5 line-clamp-1 text-xs leading-snug text-muted-foreground">
+                                                    <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                                                         {resource.subtitle}
                                                     </p>
                                                 ) : null}
                                             </div>
                                             {resource.hasDownloadUpdate ? (
-                                                <span className="shrink-0 rounded-full bg-sky-500/12 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-300">
+                                                <span className="shrink-0 rounded-full bg-sky-500/12 px-2.5 py-1 text-xs font-medium text-sky-700 dark:text-sky-300">
                                                     Updated
                                                 </span>
                                             ) : null}
                                         </div>
 
-                                        <div className="flex flex-wrap items-center gap-1">
+                                        <div className="flex flex-wrap items-center gap-1.5">
                                             <span className={metaChipClassName}>
                                                 {resource.category}
                                             </span>
@@ -152,7 +152,7 @@ export default function Favorites({
                                                             <span
                                                                 className={cn(
                                                                     metaChipClassName,
-                                                                    'size-5 justify-center px-0',
+                                                                    'size-6 justify-center px-0',
                                                                 )}
                                                                 aria-label={
                                                                     platform.name
@@ -162,7 +162,7 @@ export default function Favorites({
                                                                     slug={
                                                                         platform.slug
                                                                     }
-                                                                    className="size-3"
+                                                                    className="size-3.5"
                                                                 />
                                                             </span>
                                                         </TooltipTrigger>
@@ -186,7 +186,7 @@ export default function Favorites({
                                             )}
                                         </div>
 
-                                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground">
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                                             <span className="truncate">
                                                 {resource.developer}
                                             </span>
@@ -214,8 +214,8 @@ export default function Favorites({
                                             >
                                                 ·
                                             </span>
-                                            <span className="inline-flex items-center gap-1">
-                                                <Eye className="size-3" />
+                                            <span className="inline-flex items-center gap-1.5">
+                                                <Eye className="size-3.5" />
                                                 {formatViews(resource.views)}
                                             </span>
                                             {resource.tags.length > 0 ? (
@@ -244,7 +244,7 @@ export default function Favorites({
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-base text-muted-foreground">
                         No favorites yet
                     </p>
                 )}

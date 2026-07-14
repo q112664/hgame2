@@ -4,7 +4,7 @@ namespace App\Actions\Games;
 
 use App\Models\Game;
 use App\Models\GameScreenshot;
-use Illuminate\Support\Facades\Storage;
+use App\Support\Media;
 
 class SyncGameScreenshots
 {
@@ -46,7 +46,7 @@ class SyncGameScreenshots
             ->get()
             ->each(function (GameScreenshot $screenshot): void {
                 if (filled($screenshot->path)) {
-                    Storage::disk('public')->delete($screenshot->path);
+                    Media::disk()->delete($screenshot->path);
                 }
 
                 $screenshot->delete();

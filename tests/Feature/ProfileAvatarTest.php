@@ -1,11 +1,12 @@
 <?php
 
 use App\Models\User;
+use App\Support\Media;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
-    Storage::fake('public');
+    Storage::fake(Media::diskName());
 });
 
 test('users can upload an avatar', function () {
@@ -22,7 +23,7 @@ test('users can upload an avatar', function () {
     $user->refresh();
 
     expect($user->avatarPath())->not->toBeNull()
-        ->and(Storage::disk('public')->exists($user->avatarPath()))->toBeTrue()
+        ->and(Storage::disk(Media::diskName())->exists($user->avatarPath()))->toBeTrue()
         ->and($user->avatar)->toContain('/storage/avatars/');
 });
 
@@ -43,9 +44,9 @@ test('uploading a new avatar replaces the previous file', function () {
 
     $user->refresh();
 
-    expect(Storage::disk('public')->exists($previousPath))->toBeFalse()
+    expect(Storage::disk(Media::diskName())->exists($previousPath))->toBeFalse()
         ->and($user->avatarPath())->not->toBe($previousPath)
-        ->and(Storage::disk('public')->exists($user->avatarPath()))->toBeTrue();
+        ->and(Storage::disk(Media::diskName())->exists($user->avatarPath()))->toBeTrue();
 });
 
 test('users can remove their avatar', function () {
@@ -66,7 +67,7 @@ test('users can remove their avatar', function () {
     $user->refresh();
 
     expect($user->avatarPath())->toBeNull()
-        ->and(Storage::disk('public')->exists($path))->toBeFalse();
+        ->and(Storage::disk(Media::diskName())->exists($path))->toBeFalse();
 });
 
 test('avatar uploads must be valid images', function () {

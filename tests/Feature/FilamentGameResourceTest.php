@@ -10,6 +10,7 @@ use App\Models\GameScreenshot;
 use App\Models\Language;
 use App\Models\Platform;
 use App\Models\User;
+use App\Support\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +19,7 @@ use Livewire\Livewire;
 uses(RefreshDatabase::class);
 
 test('an administrator can create a game with a release and download link', function () {
-    Storage::fake('public');
+    Storage::fake(Media::diskName());
 
     $this->actingAs(User::factory()->admin()->create());
     $platform = Platform::factory()->create();
@@ -64,12 +65,12 @@ test('an administrator can create a game with a release and download link', func
         ->and($game->releases->first()->downloadLinks->first()->url)->toBe('https://example.com/game.zip')
         ->and($game->releases->first()->downloadLinks->first()->is_active)->toBeTrue();
 
-    Storage::disk('public')->assertExists($game->cover_path);
-    Storage::disk('public')->assertExists($game->screenshots->first()->path);
+    Storage::disk(Media::diskName())->assertExists($game->cover_path);
+    Storage::disk(Media::diskName())->assertExists($game->screenshots->first()->path);
 });
 
 test('an administrator can create a game with multiple screenshots at once', function () {
-    Storage::fake('public');
+    Storage::fake(Media::diskName());
 
     $this->actingAs(User::factory()->admin()->create());
 
@@ -95,12 +96,12 @@ test('an administrator can create a game with multiple screenshots at once', fun
         ->and($game->screenshots->pluck('sort_order')->all())->toBe([0, 1, 2]);
 
     foreach ($game->screenshots as $screenshot) {
-        Storage::disk('public')->assertExists($screenshot->path);
+        Storage::disk(Media::diskName())->assertExists($screenshot->path);
     }
 });
 
 test('edit game page uses the create-style screenshots upload and only stacks releases', function () {
-    Storage::fake('public');
+    Storage::fake(Media::diskName());
 
     $this->actingAs(User::factory()->admin()->create());
 
@@ -148,8 +149,8 @@ test('edit game page uses the create-style screenshots upload and only stacks re
         ->and($game->screenshots()->where('path', $removed->path)->exists())->toBeFalse()
         ->and($game->screenshots->pluck('sort_order')->all())->toBe([0, 1]);
 
-    Storage::disk('public')->assertExists($kept->path);
-    Storage::disk('public')->assertMissing($removed->path);
+    Storage::disk(Media::diskName())->assertExists($kept->path);
+    Storage::disk(Media::diskName())->assertMissing($removed->path);
 });
 
 test('games list defaults to newest created first', function () {

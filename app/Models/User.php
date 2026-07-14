@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\Media;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -70,7 +71,7 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
     {
         return Attribute::make(
             get: fn (?string $value): ?string => $value
-                ? Setting::siteUrl().'/storage/'.$value
+                ? Media::url($value)
                 : null,
             set: fn (?string $value): ?string => $value,
         );

@@ -58,7 +58,7 @@ class ManageSiteSettings extends Page
         return $schema
             ->components([
                 Section::make('General')
-                    ->description('Public site configuration used for asset URLs such as avatars.')
+                    ->description('Public site configuration. When media storage is Local, this URL is used for media links such as avatars.')
                     ->schema([
                         TextInput::make('site_url')
                             ->label('Site URL')

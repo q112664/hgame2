@@ -5,6 +5,7 @@ use App\GameStatus;
 use App\Models\Game;
 use App\Models\Tag;
 use App\Models\User;
+use App\Support\Media;
 use App\Support\TagImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -14,7 +15,7 @@ use Livewire\Livewire;
 uses(RefreshDatabase::class);
 
 test('an administrator can create a game with existing tags selected', function () {
-    Storage::fake('public');
+    Storage::fake(Media::diskName());
 
     $this->actingAs(User::factory()->admin()->create());
 
@@ -40,7 +41,7 @@ test('an administrator can create a game with existing tags selected', function 
 });
 
 test('creating tags via importer and selecting them on create does not fail validation', function () {
-    Storage::fake('public');
+    Storage::fake(Media::diskName());
 
     $this->actingAs(User::factory()->admin()->create());
 
@@ -65,7 +66,7 @@ test('creating tags via importer and selecting them on create does not fail vali
 });
 
 test('bulk creating tags via create option does not fail tags validation', function () {
-    Storage::fake('public');
+    Storage::fake(Media::diskName());
 
     $this->actingAs(User::factory()->admin()->create());
 

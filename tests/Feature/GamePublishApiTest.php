@@ -34,7 +34,7 @@ beforeEach(function () {
     $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
 
     Http::fake([
-        'https://cdn.example.com/*' => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        'https://example.com/*' => Http::response($png, 200, ['Content-Type' => 'image/png']),
     ]);
 });
 
@@ -48,11 +48,11 @@ function validGamePayload(array $overrides = []): array
         'developer' => 'Yuzu Soft',
         'release_date' => '2016-07-29',
         'description' => '<p>A published visual novel.</p>',
-        'cover_url' => 'https://cdn.example.com/cover.png',
+        'cover_url' => 'https://example.com/cover.png',
         'status' => GameStatus::Published->value,
         'screenshots' => [
-            'https://cdn.example.com/shot-1.png',
-            'https://cdn.example.com/shot-2.png',
+            'https://example.com/shot-1.png',
+            'https://example.com/shot-2.png',
         ],
         'releases' => [[
             'title' => 'Windows Chinese package',

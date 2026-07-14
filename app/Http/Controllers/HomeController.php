@@ -15,6 +15,7 @@ class HomeController extends Controller
             ->published()
             ->with($this->cardRelations())
             ->latest('published_at')
+            ->limit(12)
             ->get();
 
         return Inertia::render('welcome', [
@@ -28,14 +29,7 @@ class HomeController extends Controller
         return [
             'category' => fn ($query) => $query->select(['id', 'name']),
             'tags' => fn ($query) => $query->select(['tags.id', 'name']),
-            'releases' => fn ($query) => $query
-                ->where('is_active', true)
-                ->whereHas('downloadLinks', fn ($links) => $links->where('is_active', true))
-                ->with([
-                    'platforms:id,name,slug',
-                    'languages:id,name',
-                    'downloadLinks' => fn ($links) => $links->where('is_active', true),
-                ]),
+            'releases' => fn ($query) => $query->withCardSummary(),
         ];
     }
 }

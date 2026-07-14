@@ -50,8 +50,11 @@ class GamePresenter
     }
 
     /** @return array<string, mixed> */
-    public static function detail(Game $game): array
-    {
+    public static function detail(
+        Game $game,
+        bool $includeScreenshots = true,
+        bool $includeReleases = true,
+    ): array {
         return [
             ...self::card($game),
             'subtitle' => $game->subtitle,
@@ -59,37 +62,43 @@ class GamePresenter
             'developer' => $game->developer ?? 'Unknown',
             'releaseDate' => $game->release_date?->toDateString(),
             'downloads' => $game->downloads_count,
-            'screenshots' => $game->screenshots
-                ->map(fn ($screenshot): string => self::mediaUrl($screenshot->path ?: $screenshot->url))
-                ->values()
-                ->all(),
-            'releases' => $game->releases
-                ->map(fn (GameRelease $release): array => [
-                    'id' => $release->id,
-                    'title' => $release->title ?: null,
-                    'platforms' => $release->platforms
-                        ->map(fn ($platform): array => [
-                            'name' => $platform->name,
-                            'slug' => $platform->slug,
-                        ])
-                        ->values()
-                        ->all(),
-                    'languages' => $release->languages->pluck('name')->values()->all(),
-                    'version' => $release->version,
-                    'fileSize' => $release->file_size,
-                    'description' => $release->description,
-                    'publishedAt' => $release->published_at?->toDateString(),
-                    'downloadLinks' => $release->downloadLinks
-                        ->map(fn ($link): array => [
-                            'id' => $link->id,
-                            'label' => $link->label ?: 'Download',
-                            'url' => $link->url,
-                        ])
-                        ->values()
-                        ->all(),
-                ])
-                ->values()
-                ->all(),
+            'screenshots' => $includeScreenshots
+                ? $game->screenshots
+                    ->map(fn ($screenshot): string => self::mediaUrl($screenshot->path ?: $screenshot->url))
+                    ->values()
+                    ->all()
+                : [],
+            'releases' => $includeReleases
+                ? $game->releases
+                    ->map(fn (GameRelease $release): array => [
+                        'id' => $release->id,
+                        'title' => $release->title ?: null,
+                        'platforms' => $release->platforms
+                            ->map(fn ($platform): array => [
+                                'name' => $platform->name,
+                                'slug' => $platform->slug,
+                            ])
+                            ->values()
+                            ->all(),
+                        'languages' => $release->languages->pluck('name')->values()->all(),
+                        'version' => $release->version,
+                        'fileSize' => $release->file_size,
+                        'description' => $release->description,
+                        'publishedAt' => $release->published_at?->toDateString(),
+                        'downloadLinks' => $release->relationLoaded('downloadLinks')
+                            ? $release->downloadLinks
+                                ->map(fn ($link): array => [
+                                    'id' => $link->id,
+                                    'label' => $link->label ?: 'Download',
+                                    'url' => $link->url,
+                                ])
+                                ->values()
+                                ->all()
+                            : [],
+                    ])
+                    ->values()
+                    ->all()
+                : [],
         ];
     }
 

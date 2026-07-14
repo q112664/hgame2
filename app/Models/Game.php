@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Actions\Games\DeleteGameMedia;
 use App\GameStatus;
 use Database\Factories\GameFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,6 +22,13 @@ class Game extends Model
 {
     /** @use HasFactory<GameFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Game $game): void {
+            app(DeleteGameMedia::class)($game);
+        });
+    }
 
     protected function casts(): array
     {

@@ -46,7 +46,7 @@ class ProfileController extends Controller
         $user->save();
 
         if ($previousPath !== null && $previousPath !== $path) {
-            Media::disk()->delete($previousPath);
+            Media::delete($previousPath);
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Avatar updated.')]);
@@ -63,7 +63,7 @@ class ProfileController extends Controller
         $path = $user->avatarPath();
 
         if ($path !== null) {
-            Media::disk()->delete($path);
+            Media::delete($path);
             $user->avatar = null;
             $user->save();
         }
@@ -86,7 +86,7 @@ class ProfileController extends Controller
         $user->delete();
 
         if ($avatarPath !== null) {
-            Media::disk()->delete($avatarPath);
+            Media::delete($avatarPath);
         }
 
         $request->session()->invalidate();

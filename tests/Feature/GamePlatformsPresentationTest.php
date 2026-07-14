@@ -42,6 +42,41 @@ test('home and resource pages expose platform name and slug for icon mapping', f
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resource.platforms', $expectedPlatforms)
+            ->where('resource.releases', [])
+            ->where('resource.hasDownloads', true)
+        );
+
+    $this->get(route('resources.downloads', $game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
             ->where('resource.releases.0.platforms', $expectedPlatforms)
+            ->where('resource.hasDownloads', true)
+        );
+});
+
+test('future-dated releases are hidden from resource pages', function () {
+    $game = Game::factory()->create(['slug' => 'scheduled-release-game']);
+    $platform = Platform::factory()->create(['name' => 'Windows', 'slug' => 'windows']);
+    $language = Language::factory()->create(['name' => 'Chinese', 'code' => 'zh']);
+
+    $release = GameRelease::factory()->for($game)->create([
+        'platform_id' => $platform->id,
+        'language_id' => $language->id,
+        'published_at' => now()->addDay(),
+    ]);
+    GameDownloadLink::factory()->for($release, 'release')->create();
+
+    $this->get(route('resources.details', $game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('resource.platforms', [])
+            ->where('resource.hasDownloads', false)
+        );
+
+    $this->get(route('resources.downloads', $game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('resource.releases', [])
+            ->where('resource.hasDownloads', false)
         );
 });

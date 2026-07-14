@@ -27,27 +27,50 @@ class MigrateMediaDisk
             ];
         }
 
+        $collection = $this->collectPaths($fromDisk);
+
+        if ($collection['errors'] !== []) {
+            return [
+                'migrated' => 0,
+                'skipped' => 0,
+                'failed' => count($collection['errors']),
+                'rewritten' => 0,
+                'errors' => array_slice($collection['errors'], 0, 10),
+            ];
+        }
+
         $migrated = 0;
         $skipped = 0;
         $failed = 0;
         /** @var list<string> $errors */
         $errors = [];
+        $databasePaths = array_fill_keys($collection['databasePaths'], true);
 
-        $paths = $this->collectPaths($fromDisk);
-
-        foreach ($paths as $path) {
+        foreach ($collection['paths'] as $path) {
             try {
                 if (! Storage::disk($fromDisk)->exists($path)) {
-                    $skipped++;
+                    if (isset($databasePaths[$path]) && ! Storage::disk($toDisk)->exists($path)) {
+                        $failed++;
+                        $errors[] = "Referenced media [{$path}] is missing on [{$fromDisk}].";
+                    } else {
+                        $skipped++;
+                    }
 
                     continue;
                 }
 
                 if (Storage::disk($toDisk)->exists($path)) {
+                    if (! $this->filesMatch($fromDisk, $toDisk, $path)) {
+                        $failed++;
+                        $errors[] = "Target [{$path}] exists on [{$toDisk}] but does not match the source.";
+
+                        continue;
+                    }
+
                     $skipped++;
 
-                    if ($deleteSource) {
-                        Storage::disk($fromDisk)->delete($path);
+                    if ($deleteSource && ! $this->deleteSource($fromDisk, $path, $errors)) {
+                        $failed++;
                     }
 
                     continue;
@@ -55,15 +78,17 @@ class MigrateMediaDisk
 
                 $stream = Storage::disk($fromDisk)->readStream($path);
 
-                if ($stream === false) {
+                if ($stream === null) {
                     $failed++;
                     $errors[] = "Unable to read [{$path}] from [{$fromDisk}].";
 
                     continue;
                 }
 
+                $written = false;
+
                 try {
-                    Storage::disk($toDisk)->writeStream($path, $stream, [
+                    $written = Storage::disk($toDisk)->writeStream($path, $stream, [
                         'visibility' => 'public',
                     ]);
                 } finally {
@@ -72,8 +97,19 @@ class MigrateMediaDisk
                     }
                 }
 
-                if ($deleteSource) {
-                    Storage::disk($fromDisk)->delete($path);
+                if ($written === false || ! $this->filesMatch($fromDisk, $toDisk, $path)) {
+                    Storage::disk($toDisk)->delete($path);
+
+                    $failed++;
+                    $errors[] = "Failed to verify copy of [{$path}] to [{$toDisk}].";
+
+                    continue;
+                }
+
+                if ($deleteSource && ! $this->deleteSource($fromDisk, $path, $errors)) {
+                    $failed++;
+
+                    continue;
                 }
 
                 $migrated++;
@@ -83,7 +119,9 @@ class MigrateMediaDisk
             }
         }
 
-        $rewritten = $this->rewriteEmbeddedMediaUrls($fromDisk, $toDisk);
+        $rewritten = $failed === 0
+            ? $this->rewriteEmbeddedMediaUrls($fromDisk, $toDisk)
+            : 0;
 
         return [
             'migrated' => $migrated,
@@ -95,44 +133,143 @@ class MigrateMediaDisk
     }
 
     /**
-     * @return list<string>
+     * @param  list<string>  $errors
+     */
+    private function deleteSource(string $fromDisk, string $path, array &$errors): bool
+    {
+        $deleted = Storage::disk($fromDisk)->delete($path);
+
+        if ($deleted === false || Storage::disk($fromDisk)->exists($path)) {
+            $errors[] = "Copied [{$path}] but failed to delete it from [{$fromDisk}].";
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function filesMatch(string $fromDisk, string $toDisk, string $path): bool
+    {
+        if (! Storage::disk($fromDisk)->exists($path) || ! Storage::disk($toDisk)->exists($path)) {
+            return false;
+        }
+
+        $fromSize = Storage::disk($fromDisk)->size($path);
+        $toSize = Storage::disk($toDisk)->size($path);
+
+        if ($fromSize !== $toSize) {
+            return false;
+        }
+
+        return hash_equals(
+            $this->fileFingerprint($fromDisk, $path),
+            $this->fileFingerprint($toDisk, $path),
+        );
+    }
+
+    private function fileFingerprint(string $disk, string $path): string
+    {
+        try {
+            return (string) Storage::disk($disk)->checksum($path, ['checksum_algo' => 'sha256']);
+        } catch (Throwable) {
+            return hash('sha256', (string) Storage::disk($disk)->get($path));
+        }
+    }
+
+    /**
+     * @return array{paths: list<string>, databasePaths: list<string>, errors: list<string>}
      */
     private function collectPaths(string $fromDisk): array
     {
-        $paths = collect();
+        $databasePaths = collect();
+        /** @var list<string> $errors */
+        $errors = [];
 
         Game::query()
             ->whereNotNull('cover_path')
             ->where('cover_path', '!=', '')
             ->pluck('cover_path')
-            ->each(fn (string $path) => $paths->push($path));
+            ->each(fn (string $path) => $databasePaths->push($path));
 
         GameScreenshot::query()
             ->whereNotNull('path')
             ->where('path', '!=', '')
             ->pluck('path')
-            ->each(fn (string $path) => $paths->push($path));
+            ->each(fn (string $path) => $databasePaths->push($path));
 
         User::query()
             ->whereNotNull('avatar')
             ->where('avatar', '!=', '')
             ->pluck('avatar')
-            ->each(fn (string $path) => $paths->push($path));
+            ->each(fn (string $path) => $databasePaths->push($path));
+
+        Game::query()
+            ->whereNotNull('description')
+            ->where('description', '!=', '')
+            ->pluck('description')
+            ->each(function (string $description) use ($databasePaths): void {
+                foreach ($this->pathsFromDescription($description) as $path) {
+                    $databasePaths->push($path);
+                }
+            });
+
+        $paths = collect($databasePaths->all());
 
         foreach (['avatars', 'games/covers', 'games/screenshots', 'games/content'] as $directory) {
             try {
-                $paths = $paths->merge(Storage::disk($fromDisk)->allFiles($directory));
-            } catch (Throwable) {
-                // Disk may be unavailable or empty; DB paths are still migrated.
+                $paths = $paths->merge($this->listDirectoryFiles($fromDisk, $directory));
+            } catch (Throwable $exception) {
+                $errors[] = "Failed to list [{$directory}] on [{$fromDisk}]: {$exception->getMessage()}";
             }
         }
 
-        return $paths
+        /** @var list<string> $normalizedDatabasePaths */
+        $normalizedDatabasePaths = array_values($databasePaths
             ->filter(fn (mixed $path): bool => is_string($path) && $path !== '')
             ->reject(fn (string $path): bool => Str::startsWith($path, ['http://', 'https://', '/']))
             ->unique()
-            ->values()
-            ->all();
+            ->all());
+
+        /** @var list<string> $normalizedPaths */
+        $normalizedPaths = array_values($paths
+            ->filter(fn (mixed $path): bool => is_string($path) && $path !== '')
+            ->reject(fn (string $path): bool => Str::startsWith($path, ['http://', 'https://', '/']))
+            ->unique()
+            ->all());
+
+        return [
+            'paths' => $normalizedPaths,
+            'databasePaths' => $normalizedDatabasePaths,
+            'errors' => $errors,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function listDirectoryFiles(string $disk, string $directory): array
+    {
+        return array_values(Storage::disk($disk)->allFiles($directory));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function pathsFromDescription(string $description): array
+    {
+        preg_match_all(
+            '#(?:/storage/|https?://[^"\'>\s]+/)(games/(?:covers|screenshots|content)/[^"\'>\s?]+)#i',
+            $description,
+            $matches,
+        );
+
+        $paths = [];
+
+        foreach ($matches[1] as $path) {
+            $paths[] = ltrim($path, '/');
+        }
+
+        return $paths;
     }
 
     private function rewriteEmbeddedMediaUrls(string $fromDisk, string $toDisk): int

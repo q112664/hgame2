@@ -24,6 +24,7 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useAppearance } from '@/hooks/use-appearance';
 import { cn } from '@/lib/utils';
 import { home, login, register, search } from '@/routes';
+import { index as resourcesIndex } from '@/routes/resources';
 import type { User } from '@/types';
 
 type NavItem = {
@@ -34,8 +35,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
     { title: 'Home', href: home().url },
-    { title: 'Latest', href: '#latest', external: true },
-    { title: 'Categories', href: '#categories', external: true },
+    { title: 'Resources', href: resourcesIndex().url },
 ];
 
 const navLinkClassName = cn(
@@ -206,7 +206,7 @@ export function SiteHeader() {
 
     return (
         <header className="sticky top-0 z-40 border-b border-black/5 bg-background/75 backdrop-blur-md dark:border-white/10 supports-backdrop-filter:bg-background/65">
-            <div className="mx-auto flex h-14 max-w-[90rem] items-center gap-4 px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
                 <Sheet open={open} onOpenChange={setOpen}>
                     <SheetTrigger asChild>
                         <button

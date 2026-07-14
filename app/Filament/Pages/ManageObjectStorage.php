@@ -82,7 +82,7 @@ class ManageObjectStorage extends Page
                             ])
                             ->required()
                             ->live()
-                            ->helperText('New uploads use this disk. Use Migrate to copy existing files.'),
+                            ->helperText('Saving switches the active disk for new uploads. Use Migrate to copy existing files first when changing disks.'),
                     ]),
                 Section::make('S3 credentials')
                     ->description('Required when the active disk is S3. Compatible with MinIO, R2, OSS, and other S3 APIs.')
@@ -161,7 +161,7 @@ class ManageObjectStorage extends Page
                 ->color('gray')
                 ->requiresConfirmation()
                 ->modalHeading('Migrate media files')
-                ->modalDescription('Copy media files to the currently selected disk, then keep using that disk for new uploads. Existing files on the target are skipped.')
+                ->modalDescription('Copy media files to the selected target disk. The active disk switches only after every file copies successfully.')
                 ->form([
                     Toggle::make('delete_source')
                         ->label('Delete files from the source disk after a successful copy')
@@ -177,23 +177,8 @@ class ManageObjectStorage extends Page
     {
         $data = $this->form->getState();
 
+        $this->persistCredentials($data);
         Setting::set('media_disk', (string) $data['media_disk']);
-
-        if (($data['media_disk'] ?? null) === 's3') {
-            Setting::set('aws_access_key_id', (string) $data['aws_access_key_id']);
-            Setting::setEncrypted('aws_secret_access_key', filled($data['aws_secret_access_key'] ?? null)
-                ? (string) $data['aws_secret_access_key']
-                : null);
-            Setting::set('aws_default_region', (string) $data['aws_default_region']);
-            Setting::set('aws_bucket', (string) $data['aws_bucket']);
-            Setting::set('aws_url', filled($data['aws_url'] ?? null) ? (string) $data['aws_url'] : '');
-            Setting::set('aws_endpoint', filled($data['aws_endpoint'] ?? null) ? (string) $data['aws_endpoint'] : '');
-            Setting::set(
-                'aws_use_path_style_endpoint',
-                ($data['aws_use_path_style_endpoint'] ?? false) ? '1' : '0',
-            );
-        }
-
         Setting::applyMediaConfigToConfig();
 
         Notification::make()
@@ -204,17 +189,38 @@ class ManageObjectStorage extends Page
 
     public function migrateMedia(MigrateMediaDisk $migrate, bool $deleteSource = false): void
     {
-        $this->save();
+        $data = $this->form->getState();
+        $target = (string) $data['media_disk'];
+        $source = Setting::mediaDisk();
 
-        $target = Setting::mediaDisk();
-        $source = $target === 's3' ? 'public' : 's3';
+        $this->persistCredentials($data);
+        Setting::applyMediaConfigToConfig();
+
+        if ($target === $source) {
+            Notification::make()
+                ->title('Nothing to migrate')
+                ->body('The selected disk is already the active media disk.')
+                ->warning()
+                ->send();
+
+            return;
+        }
 
         $result = $migrate($source, $target, $deleteSource);
+
+        if ($result['failed'] === 0) {
+            Setting::set('media_disk', $target);
+            Setting::applyMediaConfigToConfig();
+        }
 
         $body = "Migrated {$result['migrated']}, skipped {$result['skipped']}, failed {$result['failed']}, rewritten descriptions {$result['rewritten']}.";
 
         if ($result['errors'] !== []) {
             $body .= ' '.implode(' ', $result['errors']);
+        }
+
+        if ($result['failed'] > 0) {
+            $body .= ' Active disk was not changed.';
         }
 
         Notification::make()
@@ -223,5 +229,28 @@ class ManageObjectStorage extends Page
             ->{$result['failed'] > 0 ? 'warning' : 'success'}()
             ->persistent()
             ->send();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function persistCredentials(array $data): void
+    {
+        if (($data['media_disk'] ?? null) !== 's3') {
+            return;
+        }
+
+        Setting::set('aws_access_key_id', (string) $data['aws_access_key_id']);
+        Setting::setEncrypted('aws_secret_access_key', filled($data['aws_secret_access_key'] ?? null)
+            ? (string) $data['aws_secret_access_key']
+            : null);
+        Setting::set('aws_default_region', (string) $data['aws_default_region']);
+        Setting::set('aws_bucket', (string) $data['aws_bucket']);
+        Setting::set('aws_url', filled($data['aws_url'] ?? null) ? (string) $data['aws_url'] : '');
+        Setting::set('aws_endpoint', filled($data['aws_endpoint'] ?? null) ? (string) $data['aws_endpoint'] : '');
+        Setting::set(
+            'aws_use_path_style_endpoint',
+            ($data['aws_use_path_style_endpoint'] ?? false) ? '1' : '0',
+        );
     }
 }

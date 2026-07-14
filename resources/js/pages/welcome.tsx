@@ -14,7 +14,6 @@ export default function Welcome({ resources }: Props) {
             <Head title="hgame - Galgame Resource Downloads" />
             <SiteHero />
             <LatestResources resources={resources} />
-            <div id="categories" className="sr-only" aria-hidden />
         </SiteLayout>
     );
 }

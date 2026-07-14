@@ -39,7 +39,7 @@ beforeEach(function () {
     GameScreenshot::factory()->for($this->game)->create();
 });
 
-test('resource tab pages render a published game with its available releases', function (string $routeName, string $activeTab) {
+test('resource tab pages share hero metadata without shipping every tab payload', function (string $routeName, string $activeTab) {
     $this->get(route($routeName, $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -55,7 +55,30 @@ test('resource tab pages render a published game with its available releases', f
                 ['name' => 'Windows', 'slug' => 'windows'],
             ])
             ->where('resource.languages', ['Chinese'])
-            ->has('resource.screenshots', 1)
+            ->where('resource.isFavorited', false)
+            ->where('resource.adminEditUrl', null)
+            ->where('resource.hasDownloads', true)
+        );
+})->with([
+    'details' => ['resources.details', 'details'],
+    'downloads' => ['resources.downloads', 'downloads'],
+    'screenshots' => ['resources.screenshots', 'screenshots'],
+]);
+
+test('details tab omits screenshots and full release download payloads', function () {
+    $this->get(route('resources.details', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('resource.screenshots', [])
+            ->where('resource.releases', [])
+        );
+});
+
+test('downloads tab includes releases and download links without screenshots', function () {
+    $this->get(route('resources.downloads', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('resource.screenshots', [])
             ->has('resource.releases', 1)
             ->where('resource.releases.0.title', 'Official release')
             ->where('resource.releases.0.platforms', [
@@ -64,14 +87,17 @@ test('resource tab pages render a published game with its available releases', f
             ->where('resource.releases.0.languages', ['Chinese'])
             ->has('resource.releases.0.downloadLinks', 2)
             ->where('resource.releases.0.downloadLinks.0.label', 'Baidu Netdisk')
-            ->where('resource.isFavorited', false)
-            ->where('resource.adminEditUrl', null)
         );
-})->with([
-    'details' => ['resources.details', 'details'],
-    'downloads' => ['resources.downloads', 'downloads'],
-    'screenshots' => ['resources.screenshots', 'screenshots'],
-]);
+});
+
+test('screenshots tab includes screenshots without release download payloads', function () {
+    $this->get(route('resources.screenshots', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('resource.screenshots', 1)
+            ->where('resource.releases', [])
+        );
+});
 
 test('administrators receive an edit url on the resource page', function () {
     $this->actingAs(User::factory()->admin()->create())
@@ -143,7 +169,7 @@ test('inactive releases or releases without download links do not advertise a pl
     $this->get(route('resources.details', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('resource.releases', 1)
+            ->where('resource.releases', [])
             ->where('resource.platforms', [
                 ['name' => 'Windows', 'slug' => 'windows'],
             ])

@@ -199,6 +199,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
     );
     const shouldScrollToDownloads = useRef(false);
     const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
+    const isTabPending = visualActiveTab !== activeTab;
 
     useEffect(() => {
         setIsFavorite(resource.isFavorited);
@@ -339,7 +340,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                 onIndexChange={setLightboxIndex}
             />
 
-            <div className="mx-auto flex max-w-[90rem] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
                 <section className="overflow-hidden rounded-md bg-card ring-1 ring-foreground/10">
                     <div className="flex flex-col sm:flex-row">
                         <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted sm:aspect-auto sm:h-[280px] sm:w-auto sm:max-w-[498px]">
@@ -433,32 +434,47 @@ export default function ResourceShow({ activeTab, resource }: Props) {
 
                             <div className="mt-auto flex flex-col gap-2 pt-1">
                                 <div className="flex items-center gap-2">
-                                    <Button
-                                        size="lg"
-                                        className={cn(
-                                            'border-0 px-4 shadow-none',
-                                            'bg-sky-600 text-white hover:bg-sky-500',
-                                            'dark:bg-sky-500 dark:text-white dark:hover:bg-sky-400',
-                                        )}
-                                        asChild
-                                    >
-                                        <Link
-                                            href={
-                                                resourceDownloads(resource.id)
-                                                    .url
-                                            }
-                                            preserveState
-                                            preserveScroll
-                                            onStart={showDownloads}
-                                            onError={() => {
-                                                shouldScrollToDownloads.current = false;
-                                                setVisualActiveTab(activeTab);
-                                            }}
+                                    {resource.hasDownloads ? (
+                                        <Button
+                                            size="lg"
+                                            className={cn(
+                                                'border-0 px-4 shadow-none',
+                                                'bg-sky-600 text-white hover:bg-sky-500',
+                                                'dark:bg-sky-500 dark:text-white dark:hover:bg-sky-400',
+                                            )}
+                                            asChild
+                                        >
+                                            <Link
+                                                href={
+                                                    resourceDownloads(
+                                                        resource.id,
+                                                    ).url
+                                                }
+                                                preserveState
+                                                preserveScroll
+                                                onStart={showDownloads}
+                                                onError={() => {
+                                                    shouldScrollToDownloads.current = false;
+                                                    setVisualActiveTab(
+                                                        activeTab,
+                                                    );
+                                                }}
+                                            >
+                                                <Download data-icon="inline-start" />
+                                                Download
+                                            </Link>
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            size="lg"
+                                            variant="secondary"
+                                            className="border-0 px-4 shadow-none"
+                                            disabled
                                         >
                                             <Download data-icon="inline-start" />
-                                            Download
-                                        </Link>
-                                    </Button>
+                                            Unavailable
+                                        </Button>
+                                    )}
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Button
@@ -610,125 +626,150 @@ export default function ResourceShow({ activeTab, resource }: Props) {
 
                     <TabsContent value="downloads">
                         <div className="flex flex-col gap-4">
-                            {resource.releases.map((release) => {
-                                return (
-                                    <article
-                                        key={release.id}
-                                        className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10"
-                                    >
-                                        <div className="flex flex-col gap-1 border-b border-foreground/5 bg-gradient-to-r from-sky-500/8 via-violet-500/6 to-transparent px-4 py-3.5 sm:px-5">
-                                            <h3 className="font-heading text-base font-semibold tracking-tight text-foreground">
-                                                {release.title ??
-                                                    'Download package'}
-                                            </h3>
-                                            {release.version ? (
-                                                <p className="text-xs text-muted-foreground">
-                                                    Version {release.version}
-                                                </p>
-                                            ) : null}
-                                        </div>
+                            {isTabPending ? (
+                                <div
+                                    className="flex items-center justify-center py-16"
+                                    aria-busy="true"
+                                    aria-label="Loading downloads"
+                                >
+                                    <Spinner className="size-8 text-muted-foreground" />
+                                </div>
+                            ) : resource.releases.length > 0 ? (
+                                resource.releases.map((release) => {
+                                    return (
+                                        <article
+                                            key={release.id}
+                                            className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10"
+                                        >
+                                            <div className="flex flex-col gap-1 border-b border-foreground/5 bg-gradient-to-r from-sky-500/8 via-violet-500/6 to-transparent px-4 py-3.5 sm:px-5">
+                                                <h3 className="font-heading text-base font-semibold tracking-tight text-foreground">
+                                                    {release.title ??
+                                                        'Download package'}
+                                                </h3>
+                                                {release.version ? (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Version{' '}
+                                                        {release.version}
+                                                    </p>
+                                                ) : null}
+                                            </div>
 
-                                        <div className="space-y-4 p-4 sm:p-5">
-                                            {release.description ? (
-                                                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                                                    {release.description}
-                                                </p>
-                                            ) : null}
+                                            <div className="space-y-4 p-4 sm:p-5">
+                                                {release.description ? (
+                                                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                                                        {release.description}
+                                                    </p>
+                                                ) : null}
 
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {release.platforms.map(
-                                                    (platform) => (
-                                                        <Badge
-                                                            key={platform.slug}
-                                                            variant="outline"
-                                                            className={platformBadgeClassName(
-                                                                platform.slug,
-                                                            )}
-                                                        >
-                                                            <PlatformIcon
-                                                                slug={
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {release.platforms.map(
+                                                        (platform) => (
+                                                            <Badge
+                                                                key={
                                                                     platform.slug
                                                                 }
-                                                                data-icon="inline-start"
-                                                            />
-                                                            {platform.name}
-                                                        </Badge>
-                                                    ),
-                                                )}
-                                                {release.languages.map(
-                                                    (language) => (
-                                                        <Badge
-                                                            key={language}
-                                                            variant="outline"
+                                                                variant="outline"
+                                                                className={platformBadgeClassName(
+                                                                    platform.slug,
+                                                                )}
+                                                            >
+                                                                <PlatformIcon
+                                                                    slug={
+                                                                        platform.slug
+                                                                    }
+                                                                    data-icon="inline-start"
+                                                                />
+                                                                {
+                                                                    platform.name
+                                                                }
+                                                            </Badge>
+                                                        ),
+                                                    )}
+                                                    {release.languages.map(
+                                                        (language) => (
+                                                            <Badge
+                                                                key={language}
+                                                                variant="outline"
+                                                                className={
+                                                                    languageBadgeClassName
+                                                                }
+                                                            >
+                                                                {language}
+                                                            </Badge>
+                                                        ),
+                                                    )}
+                                                    {release.fileSize ? (
+                                                        <span
                                                             className={
-                                                                languageBadgeClassName
+                                                                fileSizeChipClassName
                                                             }
                                                         >
-                                                            {language}
-                                                        </Badge>
-                                                    ),
-                                                )}
-                                                {release.fileSize ? (
+                                                            <HardDrive className="size-3.5" />
+                                                            {release.fileSize}
+                                                        </span>
+                                                    ) : null}
                                                     <span
                                                         className={
-                                                            fileSizeChipClassName
+                                                            dateChipClassName
                                                         }
                                                     >
-                                                        <HardDrive className="size-3.5" />
-                                                        {release.fileSize}
-                                                    </span>
-                                                ) : null}
-                                                <span
-                                                    className={dateChipClassName}
-                                                >
-                                                    <CalendarDays className="size-3.5" />
-                                                    <time
-                                                        dateTime={
-                                                            release.publishedAt ??
-                                                            undefined
-                                                        }
-                                                    >
-                                                        {release.publishedAt ??
-                                                            'Unscheduled'}
-                                                    </time>
-                                                </span>
-                                            </div>
-
-                                            <div className="h-px bg-foreground/5" />
-
-                                            <div className="flex flex-wrap gap-2">
-                                                {release.downloadLinks.map(
-                                                    (link, index) => (
-                                                        <Button
-                                                            key={link.id}
-                                                            asChild
-                                                            variant="outline"
-                                                            className={cn(
-                                                                'h-10 border shadow-none',
-                                                                downloadButtonPalettes[
-                                                                    index %
-                                                                        downloadButtonPalettes.length
-                                                                ],
-                                                            )}
+                                                        <CalendarDays className="size-3.5" />
+                                                        <time
+                                                            dateTime={
+                                                                release.publishedAt ??
+                                                                undefined
+                                                            }
                                                         >
-                                                            <a href={link.url}>
-                                                                <Download data-icon="inline-start" />
-                                                                {link.label ||
-                                                                    (release
-                                                                        .downloadLinks
-                                                                        .length >
-                                                                    1
-                                                                        ? `Download ${index + 1}`
-                                                                        : 'Download')}
-                                                            </a>
-                                                        </Button>
-                                                    ),
-                                                )}
+                                                            {release.publishedAt ??
+                                                                'Unscheduled'}
+                                                        </time>
+                                                    </span>
+                                                </div>
+
+                                                <div className="h-px bg-foreground/5" />
+
+                                                <div className="flex flex-wrap gap-2">
+                                                    {release.downloadLinks.map(
+                                                        (link, index) => (
+                                                            <Button
+                                                                key={link.id}
+                                                                asChild
+                                                                variant="outline"
+                                                                className={cn(
+                                                                    'h-10 border shadow-none',
+                                                                    downloadButtonPalettes[
+                                                                        index %
+                                                                            downloadButtonPalettes.length
+                                                                    ],
+                                                                )}
+                                                            >
+                                                                <a
+                                                                    href={
+                                                                        link.url
+                                                                    }
+                                                                >
+                                                                    <Download data-icon="inline-start" />
+                                                                    {link.label ||
+                                                                        (release
+                                                                            .downloadLinks
+                                                                            .length >
+                                                                        1
+                                                                            ? `Download ${index + 1}`
+                                                                            : 'Download')}
+                                                                </a>
+                                                            </Button>
+                                                        ),
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </article>
-                                );
-                            })}
+                                        </article>
+                                    );
+                                })
+                            ) : (
+                                <p className="rounded-md bg-card px-4 py-8 text-center text-sm text-muted-foreground ring-1 ring-foreground/10">
+                                    No downloads available yet
+                                </p>
+                            )}
                         </div>
                     </TabsContent>
 

@@ -46,7 +46,7 @@ class SyncGameScreenshots
             ->get()
             ->each(function (GameScreenshot $screenshot): void {
                 if (filled($screenshot->path)) {
-                    Media::disk()->delete($screenshot->path);
+                    Media::delete($screenshot->path);
                 }
 
                 $screenshot->delete();

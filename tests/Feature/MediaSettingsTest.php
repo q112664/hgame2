@@ -123,6 +123,7 @@ test('administrators can trigger media migration from object storage settings', 
     Storage::fake('public');
     Storage::fake('s3');
 
+    Setting::set('media_disk', 'public');
     Storage::disk('public')->put('games/covers/one.jpg', 'one');
 
     Game::factory()->create([
@@ -148,6 +149,105 @@ test('administrators can trigger media migration from object storage settings', 
     expect(Setting::mediaDisk())->toBe('s3')
         ->and(Storage::disk('s3')->exists('games/covers/one.jpg'))->toBeTrue()
         ->and(Storage::disk('public')->exists('games/covers/one.jpg'))->toBeTrue();
+});
+
+test('failed media migration does not switch the active disk', function () {
+    Storage::fake('public');
+    Storage::fake('s3');
+
+    Setting::set('media_disk', 'public');
+    Storage::disk('public')->put('games/covers/one.jpg', 'source');
+    Storage::disk('s3')->put('games/covers/one.jpg', 'different-target');
+
+    Game::factory()->create([
+        'cover_path' => 'games/covers/one.jpg',
+    ]);
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageObjectStorage::class)
+        ->fillForm([
+            'media_disk' => 's3',
+            'aws_access_key_id' => 'testing-key',
+            'aws_secret_access_key' => 'testing-secret',
+            'aws_default_region' => 'us-east-1',
+            'aws_bucket' => 'hgame-media',
+            'aws_url' => 'https://cdn.example.com',
+            'aws_endpoint' => null,
+            'aws_use_path_style_endpoint' => false,
+        ])
+        ->call('migrateMedia', true)
+        ->assertNotified();
+
+    expect(Setting::mediaDisk())->toBe('public')
+        ->and(Storage::disk('public')->exists('games/covers/one.jpg'))->toBeTrue()
+        ->and(Storage::disk('s3')->get('games/covers/one.jpg'))->toBe('different-target');
+});
+
+test('migration fails when a database-referenced file is missing on the source disk', function () {
+    Storage::fake('public');
+    Storage::fake('s3');
+
+    Setting::set('media_disk', 'public');
+
+    Game::factory()->create([
+        'cover_path' => 'games/covers/missing.jpg',
+    ]);
+
+    $result = app(MigrateMediaDisk::class)('public', 's3');
+
+    expect($result['failed'])->toBeGreaterThan(0)
+        ->and($result['migrated'])->toBe(0)
+        ->and($result['rewritten'])->toBe(0)
+        ->and($result['errors'][0])->toContain('games/covers/missing.jpg')
+        ->and(Storage::disk('s3')->exists('games/covers/missing.jpg'))->toBeFalse();
+});
+
+test('migration only deletes source after a verified copy', function () {
+    Storage::fake('public');
+    Storage::fake('s3');
+
+    Storage::disk('public')->put('games/covers/cover.jpg', 'cover-bytes');
+
+    $result = app(MigrateMediaDisk::class)('public', 's3', deleteSource: true);
+
+    expect($result['failed'])->toBe(0)
+        ->and($result['migrated'])->toBe(1)
+        ->and(Storage::disk('s3')->get('games/covers/cover.jpg'))->toBe('cover-bytes')
+        ->and(Storage::disk('public')->exists('games/covers/cover.jpg'))->toBeFalse();
+});
+
+test('migration fails closed when directory listing fails', function () {
+    Storage::fake('public');
+    Storage::fake('s3');
+
+    Setting::set('site_url', 'http://hgame.test');
+    Storage::disk('public')->put('games/content/embed.jpg', 'content');
+
+    $game = Game::factory()->create([
+        'description' => '<p><img src="http://hgame.test/storage/games/content/embed.jpg"></p>',
+    ]);
+
+    $migrator = new class extends MigrateMediaDisk
+    {
+        protected function listDirectoryFiles(string $disk, string $directory): array
+        {
+            if ($directory === 'games/content') {
+                throw new RuntimeException('list permission denied');
+            }
+
+            return parent::listDirectoryFiles($disk, $directory);
+        }
+    };
+
+    $result = $migrator('public', 's3');
+
+    expect($result['failed'])->toBeGreaterThan(0)
+        ->and($result['migrated'])->toBe(0)
+        ->and($result['rewritten'])->toBe(0)
+        ->and($result['errors'][0])->toContain('games/content')
+        ->and($game->refresh()->description)->toContain('http://hgame.test/storage/')
+        ->and(Storage::disk('s3')->exists('games/content/embed.jpg'))->toBeFalse();
 });
 
 test('regular users cannot access object storage settings', function () {

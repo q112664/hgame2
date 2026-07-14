@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', HomeController::class)->name('home');
 Route::get('/search', SearchController::class)->name('search');
 
+Route::get('/resources', [ResourceController::class, 'index'])
+    ->name('resources.index');
 Route::get('/resources/{resource}/details', [ResourceController::class, 'details'])
     ->name('resources.details');
 Route::get('/resources/{resource}/downloads', [ResourceController::class, 'downloads'])

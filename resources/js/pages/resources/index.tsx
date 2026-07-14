@@ -412,6 +412,13 @@ function TagFilterDialog({
     );
 }
 
+function scrollToResourceResults() {
+    document.getElementById('resource-results')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+    });
+}
+
 function ResourcePagination({
     resources,
     filters,
@@ -431,6 +438,13 @@ function ResourcePagination({
             !link.label.includes('Next'),
     );
 
+    const paginationLinkProps = {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['resources', 'filters'] as const,
+        onSuccess: scrollToResourceResults,
+    };
+
     return (
         <nav
             className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between"
@@ -443,14 +457,13 @@ function ResourcePagination({
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-1">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1 border-foreground/10 bg-card shadow-none"
-                    disabled={resources.current_page <= 1}
-                    asChild={resources.current_page > 1}
-                >
-                    {resources.current_page > 1 ? (
+                {resources.current_page > 1 ? (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 border-foreground/10 bg-card shadow-none"
+                        asChild
+                    >
                         <Link
                             href={resourcesIndex.url({
                                 query: filterQuery(
@@ -458,20 +471,23 @@ function ResourcePagination({
                                     resources.current_page - 1,
                                 ),
                             })}
-                            preserveState
-                            preserveScroll
-                            only={['resources', 'filters']}
+                            {...paginationLinkProps}
                         >
-                            <ChevronLeft className="size-4" />
+                            <ChevronLeft data-icon="inline-start" />
                             Prev
                         </Link>
-                    ) : (
-                        <span>
-                            <ChevronLeft className="size-4" />
-                            Prev
-                        </span>
-                    )}
-                </Button>
+                    </Button>
+                ) : (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 border-foreground/10 bg-card shadow-none"
+                        disabled
+                    >
+                        <ChevronLeft data-icon="inline-start" />
+                        Prev
+                    </Button>
+                )}
 
                 {pageLinks.map((link, index) => {
                     const label = link.label
@@ -514,9 +530,7 @@ function ResourcePagination({
                                           })
                                         : link.url
                                 }
-                                preserveState
-                                preserveScroll
-                                only={['resources', 'filters']}
+                                {...paginationLinkProps}
                                 aria-current={
                                     link.active ? 'page' : undefined
                                 }
@@ -527,16 +541,13 @@ function ResourcePagination({
                     );
                 })}
 
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1 border-foreground/10 bg-card shadow-none"
-                    disabled={resources.current_page >= resources.last_page}
-                    asChild={
-                        resources.current_page < resources.last_page
-                    }
-                >
-                    {resources.current_page < resources.last_page ? (
+                {resources.current_page < resources.last_page ? (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 border-foreground/10 bg-card shadow-none"
+                        asChild
+                    >
                         <Link
                             href={resourcesIndex.url({
                                 query: filterQuery(
@@ -544,20 +555,23 @@ function ResourcePagination({
                                     resources.current_page + 1,
                                 ),
                             })}
-                            preserveState
-                            preserveScroll
-                            only={['resources', 'filters']}
+                            {...paginationLinkProps}
                         >
                             Next
-                            <ChevronRight className="size-4" />
+                            <ChevronRight data-icon="inline-end" />
                         </Link>
-                    ) : (
-                        <span>
-                            Next
-                            <ChevronRight className="size-4" />
-                        </span>
-                    )}
-                </Button>
+                    </Button>
+                ) : (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 border-foreground/10 bg-card shadow-none"
+                        disabled
+                    >
+                        Next
+                        <ChevronRight data-icon="inline-end" />
+                    </Button>
+                )}
             </div>
         </nav>
     );
@@ -725,14 +739,18 @@ export default function ResourcesIndex({
 
                 {isPending ? (
                     <div
-                        className="flex justify-center py-16"
+                        id="resource-results"
+                        className="flex scroll-mt-20 justify-center py-16"
                         aria-busy="true"
                         aria-label="Loading resources"
                     >
                         <Spinner className="size-8 text-muted-foreground" />
                     </div>
                 ) : resources.data.length > 0 ? (
-                    <>
+                    <div
+                        id="resource-results"
+                        className="flex scroll-mt-20 flex-col gap-8"
+                    >
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {resources.data.map((resource) => (
                                 <ResourceCard
@@ -746,9 +764,12 @@ export default function ResourcesIndex({
                             resources={resources}
                             filters={filters}
                         />
-                    </>
+                    </div>
                 ) : (
-                    <p className="py-16 text-center text-sm text-muted-foreground">
+                    <p
+                        id="resource-results"
+                        className="scroll-mt-20 py-16 text-center text-sm text-muted-foreground"
+                    >
                         No resources match these filters
                     </p>
                 )}

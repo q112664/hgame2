@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ListPublishedGames
 {
-    public const PER_PAGE = 24;
+    public const PER_PAGE = 8;
 
     public const SORT_LATEST = 'latest';
 

@@ -131,6 +131,20 @@ const downloadButtonPalettes = [
     'border-rose-500/25 bg-rose-500/10 text-rose-800 hover:bg-rose-500/15 dark:text-rose-200',
 ] as const;
 
+const tabPanelClassName = 'min-h-80';
+
+function TabPendingState({ label }: { label: string }) {
+    return (
+        <div
+            className="flex min-h-80 items-center justify-center"
+            aria-busy="true"
+            aria-label={label}
+        >
+            <Spinner className="size-8 text-muted-foreground" />
+        </div>
+    );
+}
+
 function ResourceScreenshot({
     src,
     alt,
@@ -597,7 +611,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                         ))}
                     </TabsList>
 
-                    <TabsContent value="details">
+                    <TabsContent value="details" className={tabPanelClassName}>
                         <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
                             <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
                                 About
@@ -624,16 +638,13 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                         </section>
                     </TabsContent>
 
-                    <TabsContent value="downloads">
+                    <TabsContent
+                        value="downloads"
+                        className={tabPanelClassName}
+                    >
                         <div className="flex flex-col gap-4">
                             {isTabPending ? (
-                                <div
-                                    className="flex items-center justify-center py-16"
-                                    aria-busy="true"
-                                    aria-label="Loading downloads"
-                                >
-                                    <Spinner className="size-8 text-muted-foreground" />
-                                </div>
+                                <TabPendingState label="Loading downloads" />
                             ) : resource.releases.length > 0 ? (
                                 resource.releases.map((release) => {
                                     return (
@@ -773,19 +784,31 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="screenshots">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                            {resource.screenshots.map((screenshot, index) => (
-                                <ResourceScreenshot
-                                    key={screenshot}
-                                    src={screenshot}
-                                    alt={`${resource.title} screenshot ${index + 1}`}
-                                    onOpen={() =>
-                                        openLightbox(screenshotSlides, index)
-                                    }
-                                />
-                            ))}
-                        </div>
+                    <TabsContent
+                        value="screenshots"
+                        className={tabPanelClassName}
+                    >
+                        {isTabPending ? (
+                            <TabPendingState label="Loading screenshots" />
+                        ) : (
+                            <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-3">
+                                {resource.screenshots.map(
+                                    (screenshot, index) => (
+                                        <ResourceScreenshot
+                                            key={screenshot}
+                                            src={screenshot}
+                                            alt={`${resource.title} screenshot ${index + 1}`}
+                                            onOpen={() =>
+                                                openLightbox(
+                                                    screenshotSlides,
+                                                    index,
+                                                )
+                                            }
+                                        />
+                                    ),
+                                )}
+                            </div>
+                        )}
                     </TabsContent>
                 </Tabs>
             </div>

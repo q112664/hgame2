@@ -39,6 +39,7 @@ class GameDownloadLink extends Model
         static::deleted($touchGame);
     }
 
+    /** @return BelongsTo<GameRelease, $this> */
     public function release(): BelongsTo
     {
         return $this->belongsTo(GameRelease::class, 'game_release_id');

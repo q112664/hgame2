@@ -14,6 +14,7 @@ class Category extends Model
     /** @use HasFactory<CategoryFactory> */
     use HasFactory;
 
+    /** @return HasMany<Game, $this> */
     public function games(): HasMany
     {
         return $this->hasMany(Game::class);

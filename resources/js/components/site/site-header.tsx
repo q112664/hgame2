@@ -1,6 +1,8 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { Bell, Menu, Moon, Search, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useAuthDialog } from '@/components/auth/auth-dialog';
+import type { AuthDialogView } from '@/components/auth/auth-dialog';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -23,7 +25,7 @@ import { UserAvatar } from '@/components/user-avatar';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useAppearance } from '@/hooks/use-appearance';
 import { cn } from '@/lib/utils';
-import { home, login, register, search } from '@/routes';
+import { home, search } from '@/routes';
 import { index as resourcesIndex } from '@/routes/resources';
 import type { User } from '@/types';
 
@@ -42,7 +44,7 @@ const navLinkClassName = cn(
     'inline-flex h-8 items-center rounded-md px-2.5 text-sm font-medium',
     'text-foreground transition-colors',
     'hover:bg-black/5 dark:hover:bg-white/10',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+    'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
 );
 
 const softButtonClassName = cn(
@@ -162,7 +164,7 @@ function UserAvatarMenu({ user }: { user: User }) {
                     className={cn(
                         'inline-flex items-center gap-2 outline-none select-none',
                         'opacity-100 transition-opacity hover:opacity-70',
-                        'focus:outline-none focus-visible:outline-none focus-visible:ring-0',
+                        'focus:outline-none focus-visible:ring-0 focus-visible:outline-none',
                     )}
                     aria-label="Open user menu"
                 >
@@ -186,10 +188,16 @@ function UserAvatarMenu({ user }: { user: User }) {
 export function SiteHeader() {
     const page = usePage();
     const { auth } = page.props;
-    const loginHref = login({ query: { redirect: page.url } });
-    const registerHref = register({ query: { redirect: page.url } });
+    const { openAuthDialog } = useAuthDialog();
     const [open, setOpen] = useState(false);
     const closeMenu = () => setOpen(false);
+    const openAuth = (view: AuthDialogView) => {
+        openAuthDialog(view, { redirect: page.url });
+    };
+    const openMobileAuth = (view: AuthDialogView) => {
+        closeMenu();
+        requestAnimationFrame(() => openAuth(view));
+    };
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -205,7 +213,7 @@ export function SiteHeader() {
     }, []);
 
     return (
-        <header className="sticky top-0 z-40 border-b border-black/5 bg-background/75 backdrop-blur-md dark:border-white/10 supports-backdrop-filter:bg-background/65">
+        <header className="sticky top-0 z-40 border-b border-black/5 bg-background/75 backdrop-blur-md supports-backdrop-filter:bg-background/65 dark:border-white/10">
             <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
                 <Sheet open={open} onOpenChange={setOpen}>
                     <SheetTrigger asChild>
@@ -254,26 +262,20 @@ export function SiteHeader() {
                                                 softButtonClassName,
                                                 'w-full',
                                             )}
-                                            asChild
+                                            onClick={() =>
+                                                openMobileAuth('login')
+                                            }
                                         >
-                                            <Link
-                                                href={loginHref}
-                                                onClick={closeMenu}
-                                            >
-                                                Log in
-                                            </Link>
+                                            Log in
                                         </Button>
                                         <Button
                                             size="sm"
                                             className="w-full"
-                                            asChild
+                                            onClick={() =>
+                                                openMobileAuth('register')
+                                            }
                                         >
-                                            <Link
-                                                href={registerHref}
-                                                onClick={closeMenu}
-                                            >
-                                                Sign up
-                                            </Link>
+                                            Sign up
                                         </Button>
                                     </div>
                                 </div>
@@ -285,7 +287,7 @@ export function SiteHeader() {
                 <div className="flex min-w-0 flex-1 items-center gap-6">
                     <Link
                         href={home()}
-                        className="font-heading shrink-0 text-lg font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80"
+                        className="shrink-0 font-heading text-lg font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80"
                     >
                         hgame
                     </Link>
@@ -324,12 +326,15 @@ export function SiteHeader() {
                                 variant="ghost"
                                 size="sm"
                                 className={softButtonClassName}
-                                asChild
+                                onClick={() => openAuth('login')}
                             >
-                                <Link href={loginHref}>Log in</Link>
+                                Log in
                             </Button>
-                            <Button size="sm" asChild>
-                                <Link href={registerHref}>Sign up</Link>
+                            <Button
+                                size="sm"
+                                onClick={() => openAuth('register')}
+                            >
+                                Sign up
                             </Button>
                         </div>
                     )}

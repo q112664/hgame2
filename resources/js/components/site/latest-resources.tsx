@@ -15,10 +15,10 @@ export function LatestResources({ resources }: Props) {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div className="flex flex-col gap-2">
                         <h2 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
-                            Latest resources
+                            Recently published
                         </h2>
                         <p className="text-sm text-muted-foreground">
-                            Recently updated visual novels and galgame resources
+                            Newly added visual novels and galgame resources
                         </p>
                     </div>
                     <Button

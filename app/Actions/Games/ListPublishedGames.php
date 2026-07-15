@@ -2,6 +2,7 @@
 
 namespace App\Actions\Games;
 
+use App\GameStatus;
 use App\Models\Category;
 use App\Models\Game;
 use App\Models\Language;
@@ -47,10 +48,10 @@ class ListPublishedGames
     public function __invoke(array $filters, int $perPage = self::PER_PAGE): array
     {
         $paginator = $this->applySort($this->query($filters), $filters['sort'])
-            ->with($this->cardRelations())
+            ->withCardData()
             ->paginate($perPage)
             ->withQueryString()
-            ->through(GamePresenter::card(...));
+            ->through(fn (Game $game): array => GamePresenter::card($game));
 
         return [
             'resources' => $paginator,
@@ -78,7 +79,16 @@ class ListPublishedGames
             $query->whereHas(
                 'releases',
                 fn (Builder $releases): Builder => $releases
-                    ->available()
+                    ->where('is_active', true)
+                    ->where(function (Builder $published): void {
+                        $published
+                            ->whereNull('published_at')
+                            ->orWhere('published_at', '<=', now());
+                    })
+                    ->whereHas(
+                        'downloadLinks',
+                        fn (Builder $links): Builder => $links->where('is_active', true),
+                    )
                     ->whereHas(
                         'platforms',
                         fn (Builder $platforms): Builder => $platforms->where('slug', $filters['platform']),
@@ -90,7 +100,16 @@ class ListPublishedGames
             $query->whereHas(
                 'releases',
                 fn (Builder $releases): Builder => $releases
-                    ->available()
+                    ->where('is_active', true)
+                    ->where(function (Builder $published): void {
+                        $published
+                            ->whereNull('published_at')
+                            ->orWhere('published_at', '<=', now());
+                    })
+                    ->whereHas(
+                        'downloadLinks',
+                        fn (Builder $links): Builder => $links->where('is_active', true),
+                    )
                     ->whereHas(
                         'languages',
                         fn (Builder $languages): Builder => $languages->where('code', $filters['language']),
@@ -132,10 +151,13 @@ class ListPublishedGames
      */
     private function filterOptions(): array
     {
-        $publishedGames = fn (Builder $games): Builder => $games->published();
+        $publishedGames = fn (Builder $games): Builder => $games
+            ->where('status', GameStatus::Published)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now());
 
         return [
-            'categories' => Category::query()
+            'categories' => array_values(Category::query()
                 ->whereHas('games', $publishedGames)
                 ->orderBy('name')
                 ->get(['name', 'slug'])
@@ -144,12 +166,21 @@ class ListPublishedGames
                     'slug' => $category->slug,
                 ])
                 ->values()
-                ->all(),
-            'platforms' => Platform::query()
+                ->all()),
+            'platforms' => array_values(Platform::query()
                 ->whereHas(
                     'releases',
                     fn (Builder $releases): Builder => $releases
-                        ->available()
+                        ->where('is_active', true)
+                        ->where(function (Builder $published): void {
+                            $published
+                                ->whereNull('published_at')
+                                ->orWhere('published_at', '<=', now());
+                        })
+                        ->whereHas(
+                            'downloadLinks',
+                            fn (Builder $links): Builder => $links->where('is_active', true),
+                        )
                         ->whereHas('game', $publishedGames),
                 )
                 ->orderBy('name')
@@ -159,12 +190,21 @@ class ListPublishedGames
                     'slug' => $platform->slug,
                 ])
                 ->values()
-                ->all(),
-            'languages' => Language::query()
+                ->all()),
+            'languages' => array_values(Language::query()
                 ->whereHas(
                     'releases',
                     fn (Builder $releases): Builder => $releases
-                        ->available()
+                        ->where('is_active', true)
+                        ->where(function (Builder $published): void {
+                            $published
+                                ->whereNull('published_at')
+                                ->orWhere('published_at', '<=', now());
+                        })
+                        ->whereHas(
+                            'downloadLinks',
+                            fn (Builder $links): Builder => $links->where('is_active', true),
+                        )
                         ->whereHas('game', $publishedGames),
                 )
                 ->orderBy('name')
@@ -174,8 +214,8 @@ class ListPublishedGames
                     'code' => $language->code,
                 ])
                 ->values()
-                ->all(),
-            'tags' => Tag::query()
+                ->all()),
+            'tags' => array_values(Tag::query()
                 ->whereHas('games', $publishedGames)
                 ->orderBy('name')
                 ->get(['name', 'slug'])
@@ -184,17 +224,7 @@ class ListPublishedGames
                     'slug' => $tag->slug,
                 ])
                 ->values()
-                ->all(),
-        ];
-    }
-
-    /** @return array<string, callable> */
-    private function cardRelations(): array
-    {
-        return [
-            'category' => fn ($query) => $query->select(['id', 'name']),
-            'tags' => fn ($query) => $query->select(['tags.id', 'name']),
-            'releases' => fn ($query) => $query->withCardSummary(),
+                ->all()),
         ];
     }
 }

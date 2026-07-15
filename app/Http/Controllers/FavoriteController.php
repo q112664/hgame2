@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Games\RemoveGameFavorite;
 use App\Actions\Games\ToggleGameFavorite;
 use App\Models\Game;
 use App\Support\GamePresenter;
@@ -12,52 +13,54 @@ use Inertia\Response;
 
 class FavoriteController extends Controller
 {
+    private const PER_PAGE = 20;
+
     public function index(Request $request): Response
     {
-        $games = $request->user()
+        $resources = $request->user()
             ->favoritedGames()
             ->published()
-            ->with($this->cardRelations())
+            ->withCardData()
             ->orderByPivot('created_at', 'desc')
-            ->get();
-
-        $resources = $games
-            ->map(fn (Game $game): array => [
+            ->paginate(self::PER_PAGE)
+            ->withQueryString()
+            ->through(fn (Game $game): array => [
                 ...GamePresenter::card($game),
                 'hasDownloadUpdate' => $game->hasUnreadDownloadUpdate(),
-            ])
-            ->values();
+            ]);
+
+        $downloadUpdateCount = $request->user()
+            ->favoritedGames()
+            ->published()
+            ->whereNotNull('games.downloads_updated_at')
+            ->whereRaw(
+                'games.downloads_updated_at > COALESCE(favorites.downloads_seen_at, favorites.created_at)',
+            )
+            ->count();
 
         return Inertia::render('favorites', [
             'resources' => $resources,
-            'downloadUpdateCount' => $resources
-                ->where('hasDownloadUpdate', true)
-                ->count(),
+            'downloadUpdateCount' => $downloadUpdateCount,
         ]);
     }
 
     public function toggle(
         Request $request,
-        string $resource,
+        Game $resource,
         ToggleGameFavorite $toggleGameFavorite,
     ): RedirectResponse {
-        $game = Game::query()
-            ->published()
-            ->where('slug', $resource)
-            ->firstOrFail();
-
-        $toggleGameFavorite($request->user(), $game);
+        $toggleGameFavorite($request->user(), $resource);
 
         return back();
     }
 
-    /** @return array<string, callable> */
-    private function cardRelations(): array
-    {
-        return [
-            'category' => fn ($query) => $query->select(['id', 'name']),
-            'tags' => fn ($query) => $query->select(['tags.id', 'name']),
-            'releases' => fn ($query) => $query->withCardSummary(),
-        ];
+    public function destroy(
+        Request $request,
+        Game $resource,
+        RemoveGameFavorite $removeGameFavorite,
+    ): RedirectResponse {
+        $removeGameFavorite($request->user(), $resource);
+
+        return back();
     }
 }

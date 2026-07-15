@@ -65,7 +65,9 @@ final class Media
 
                 $deleted = Storage::disk($disk)->delete($path);
 
-                if ($deleted === false || Storage::disk($disk)->exists($path)) {
+                if ($deleted === false) {
+                    $failed[] = $disk;
+                } elseif (Storage::disk($disk)->exists($path)) {
                     $failed[] = $disk;
                 }
             } catch (Throwable $exception) {

@@ -96,12 +96,21 @@ class PublishGame
                         'sort_order' => $sortOrder,
                     ]);
 
-                    $platformIds = collect($releaseData['platforms'] ?? [])
-                        ->map(fn (mixed $value): int => $this->resolvePlatform((string) $value)->id)
-                        ->all();
-                    $languageIds = collect($releaseData['languages'] ?? [])
-                        ->map(fn (mixed $value): int => $this->resolveLanguage((string) $value)->id)
-                        ->all();
+                    $platformValues = is_array($releaseData['platforms'] ?? null)
+                        ? array_values($releaseData['platforms'])
+                        : [];
+                    $platformIds = array_map(
+                        fn (mixed $value): int => $this->resolvePlatform((string) $value)->id,
+                        $platformValues,
+                    );
+
+                    $languageValues = is_array($releaseData['languages'] ?? null)
+                        ? array_values($releaseData['languages'])
+                        : [];
+                    $languageIds = array_map(
+                        fn (mixed $value): int => $this->resolveLanguage((string) $value)->id,
+                        $languageValues,
+                    );
 
                     $release->platforms()->sync($platformIds);
                     $release->languages()->sync($languageIds);

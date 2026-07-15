@@ -50,7 +50,12 @@ test('resource tab pages share hero metadata without shipping every tab payload'
             ->where('resource.subtitle', 'A warm countryside love story')
             ->where('resource.developer', $this->game->developer ?? 'Unknown')
             ->where('resource.releaseDate', $this->game->release_date?->toDateString())
-            ->where('resource.description', fn (string $description): bool => str_contains($description, '<strong>Rich details</strong>') && ! str_contains($description, '<script>'))
+            ->where(
+                'resource.description',
+                $activeTab === 'details'
+                    ? fn (string $description): bool => str_contains($description, '<strong>Rich details</strong>') && ! str_contains($description, '<script>')
+                    : '',
+            )
             ->where('resource.platforms', [
                 ['name' => 'Windows', 'slug' => 'windows'],
             ])
@@ -65,10 +70,26 @@ test('resource tab pages share hero metadata without shipping every tab payload'
     'screenshots' => ['resources.screenshots', 'screenshots'],
 ]);
 
+test('resource tab endpoints keep the active tab contract for direct navigation', function () {
+    foreach ([
+        'details' => 'resources.details',
+        'downloads' => 'resources.downloads',
+        'screenshots' => 'resources.screenshots',
+    ] as $activeTab => $routeName) {
+        $this->get(route($routeName, $this->game->slug))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('resources/show')
+                ->where('activeTab', $activeTab)
+            );
+    }
+});
+
 test('details tab omits screenshots and full release download payloads', function () {
     $this->get(route('resources.details', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
+            ->where('resource.description', fn (string $description): bool => str_contains($description, '<strong>Rich details</strong>') && ! str_contains($description, '<script>'))
             ->where('resource.screenshots', [])
             ->where('resource.releases', [])
         );
@@ -78,6 +99,7 @@ test('downloads tab includes releases and download links without screenshots', f
     $this->get(route('resources.downloads', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
+            ->where('resource.description', '')
             ->where('resource.screenshots', [])
             ->has('resource.releases', 1)
             ->where('resource.releases.0.title', 'Official release')
@@ -94,6 +116,7 @@ test('screenshots tab includes screenshots without release download payloads', f
     $this->get(route('resources.screenshots', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
+            ->where('resource.description', '')
             ->has('resource.screenshots', 1)
             ->where('resource.releases', [])
         );
@@ -157,6 +180,44 @@ test('home omits card version when no release version is filled', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->where('resources.0.id', $this->game->slug)
             ->where('resources.0.version', null)
+        );
+});
+
+test('home lists recent resource updates by effective activity time', function () {
+    $updatedAt = now()->subHour();
+    $this->game->updateQuietly([
+        'downloads_updated_at' => now()->subDays(2),
+    ]);
+    $newer = Game::factory()->create([
+        'published_at' => now()->subDay(),
+        'downloads_updated_at' => $updatedAt,
+    ]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('recentUpdates.0.id', $newer->slug)
+            ->where('recentUpdates.0.activityType', 'updated')
+            ->where('recentUpdates.0.updatedAt', $updatedAt->toIso8601String())
+        );
+});
+
+test('home falls back to publication time for resources without an update timestamp', function () {
+    $publishedAt = now()->subHour();
+    $this->game->updateQuietly([
+        'downloads_updated_at' => now()->subDays(2),
+    ]);
+    $published = Game::factory()->create([
+        'published_at' => $publishedAt,
+        'downloads_updated_at' => null,
+    ]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('recentUpdates.0.id', $published->slug)
+            ->where('recentUpdates.0.activityType', 'published')
+            ->where('recentUpdates.0.updatedAt', $publishedAt->toIso8601String())
         );
 });
 

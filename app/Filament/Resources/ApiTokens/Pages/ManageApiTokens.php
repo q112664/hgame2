@@ -3,11 +3,11 @@
 namespace App\Filament\Resources\ApiTokens\Pages;
 
 use App\Filament\Resources\ApiTokens\ApiTokenResource;
-use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Filament\Actions\CreateAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ManageRecords;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -27,10 +27,17 @@ class ManageApiTokens extends ManageRecords
         return [
             CreateAction::make()
                 ->label('Create token')
-                ->using(function (array $data): PersonalAccessToken {
-                    $user = User::query()
-                        ->where('is_admin', true)
-                        ->find($data['user_id'] ?? null);
+                ->using(function (array $data): Model {
+                    $userId = filter_var(
+                        $data['user_id'] ?? null,
+                        FILTER_VALIDATE_INT,
+                        FILTER_NULL_ON_FAILURE,
+                    );
+                    $user = $userId === null
+                        ? null
+                        : User::query()
+                            ->where('is_admin', true)
+                            ->find($userId);
 
                     if ($user === null) {
                         throw ValidationException::withMessages([

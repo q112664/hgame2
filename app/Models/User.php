@@ -40,11 +40,11 @@ use Laravel\Sanctum\NewAccessToken;
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser, PasskeyUser
 {
-    /** @use HasFactory<UserFactory> */
     use HasApiTokens {
         createToken as createSanctumToken;
     }
 
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
@@ -87,6 +87,7 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
         return (bool) $this->is_admin;
     }
 
+    /** @return BelongsToMany<Game, $this> */
     public function favoritedGames(): BelongsToMany
     {
         return $this->belongsToMany(Game::class, 'favorites')

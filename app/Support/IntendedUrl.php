@@ -21,13 +21,13 @@ class IntendedUrl
         'dashboard',
     ];
 
-    public static function remember(Request $request): void
+    public static function remember(Request $request, bool $overwrite = false): void
     {
-        if ($request->session()->has('url.intended')) {
+        if (! $overwrite && $request->session()->has('url.intended')) {
             return;
         }
 
-        $candidate = $request->query('redirect');
+        $candidate = $request->query('redirect') ?? $request->input('redirect');
 
         if (! is_string($candidate) || $candidate === '') {
             $candidate = $request->headers->get('referer');

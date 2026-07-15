@@ -11,6 +11,7 @@ use App\Models\Game;
 use App\Support\GamePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,50 +26,63 @@ class ResourceController extends Controller
         return Inertia::render('resources/index', $listPublishedGames($request->filters()));
     }
 
-    public function show(string $resource): RedirectResponse
+    public function show(Game $resource): RedirectResponse
     {
-        Game::query()
-            ->published()
-            ->where('slug', $resource)
-            ->firstOrFail();
-
         return to_route('resources.details', ['resource' => $resource]);
     }
 
-    public function details(Request $request, string $resource): Response
+    public function details(Request $request, Game $resource): Response
     {
         return $this->renderResource($request, $resource, 'details');
     }
 
     public function downloads(
         Request $request,
-        string $resource,
-        MarkFavoriteDownloadsSeen $markFavoriteDownloadsSeen,
+        Game $resource,
     ): Response {
-        $game = $this->findGame($resource, includeScreenshots: false, includeDownloadLinks: true);
+        $game = $this->findGame(
+            $resource,
+            includeScreenshots: false,
+            includeDownloadLinks: true,
+            includeTags: false,
+        );
         ($this->recordGameView)($request, $game);
-
-        if (auth()->check()) {
-            $markFavoriteDownloadsSeen(auth()->user(), $game->id);
-        }
 
         return Inertia::render('resources/show', [
             'activeTab' => 'downloads',
-            'resource' => $this->presentResource($game, includeScreenshots: false, includeReleases: true),
+            'resource' => $this->presentResource(
+                $game,
+                includeScreenshots: false,
+                includeReleases: true,
+                includeDescription: false,
+                includeTags: false,
+            ),
         ]);
     }
 
-    public function screenshots(Request $request, string $resource): Response
+    public function markDownloadsSeen(
+        Request $request,
+        Game $resource,
+        MarkFavoriteDownloadsSeen $markFavoriteDownloadsSeen,
+    ): HttpResponse {
+        $markFavoriteDownloadsSeen($request->user(), $resource->id);
+
+        return response()->noContent();
+    }
+
+    public function screenshots(Request $request, Game $resource): Response
     {
         return $this->renderResource($request, $resource, 'screenshots');
     }
 
-    private function renderResource(Request $request, string $resource, string $activeTab): Response
+    private function renderResource(Request $request, Game $resource, string $activeTab): Response
     {
+        $includeDetails = $activeTab === 'details';
         $game = $this->findGame(
             $resource,
             includeScreenshots: $activeTab === 'screenshots',
             includeDownloadLinks: $activeTab === 'downloads',
+            includeTags: $includeDetails,
         );
         ($this->recordGameView)($request, $game);
 
@@ -78,32 +92,34 @@ class ResourceController extends Controller
                 $game,
                 includeScreenshots: $activeTab === 'screenshots',
                 includeReleases: $activeTab === 'downloads',
+                includeDescription: $includeDetails,
+                includeTags: $includeDetails,
             ),
         ]);
     }
 
     private function findGame(
-        string $resource,
+        Game $resource,
         bool $includeScreenshots,
         bool $includeDownloadLinks,
+        bool $includeTags,
     ): Game {
         $with = [
             'category:id,name',
-            'tags:id,name',
             'releases' => $includeDownloadLinks
                 ? fn ($query) => $query->withDownloadDetails()
                 : fn ($query) => $query->withCardSummary(),
         ];
 
+        if ($includeTags) {
+            $with['tags'] = fn ($query) => $query->select(['tags.id', 'name']);
+        }
+
         if ($includeScreenshots) {
             $with['screenshots'] = fn ($query) => $query->orderBy('sort_order');
         }
 
-        return Game::query()
-            ->published()
-            ->where('slug', $resource)
-            ->with($with)
-            ->firstOrFail();
+        return $resource->load($with);
     }
 
     /**
@@ -113,12 +129,16 @@ class ResourceController extends Controller
         Game $game,
         bool $includeScreenshots,
         bool $includeReleases,
+        bool $includeDescription,
+        bool $includeTags,
     ): array {
         return [
             ...GamePresenter::detail(
                 $game,
                 includeScreenshots: $includeScreenshots,
                 includeReleases: $includeReleases,
+                includeDescription: $includeDescription,
+                includeTags: $includeTags,
             ),
             'hasDownloads' => $game->releases->isNotEmpty(),
             'isFavorited' => auth()->user()

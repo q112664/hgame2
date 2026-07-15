@@ -1,17 +1,12 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { Search } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { SearchResults } from '@/components/site/search-results';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import type { SearchResource } from '@/hooks/use-resource-search';
+import { useResourceSearch } from '@/hooks/use-resource-search';
 import { SiteLayout } from '@/layouts/site-layout';
 import { cn } from '@/lib/utils';
-import { search } from '@/routes';
-import { details as resourceDetails } from '@/routes/resources';
-import type { GameCard } from '@/types/resources';
-
-type SearchResource = Pick<GameCard, 'id' | 'title' | 'thumbnail'> & {
-    subtitle: string | null;
-};
 
 type Props = {
     query: string;
@@ -19,78 +14,17 @@ type Props = {
 };
 
 export default function SearchPage({ query: initialQuery, resources }: Props) {
-    const [query, setQuery] = useState(initialQuery);
-    const [isSearching, setIsSearching] = useState(false);
-    const [stableResources, setStableResources] = useState(resources);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const isFirstRender = useRef(true);
-    const requestId = useRef(0);
-
-    useEffect(() => {
-        const frame = requestAnimationFrame(() => inputRef.current?.focus());
-
-        return () => cancelAnimationFrame(frame);
-    }, []);
-
-    useEffect(() => {
-        if (isFirstRender.current) {
-            isFirstRender.current = false;
-
-            return;
-        }
-
-        const trimmed = query.trim();
-        const timer = window.setTimeout(() => {
-            const currentRequestId = ++requestId.current;
-
-            router.get(
-                search.url({
-                    query: trimmed === '' ? {} : { q: trimmed },
-                }),
-                {},
-                {
-                    preserveState: true,
-                    preserveScroll: true,
-                    replace: true,
-                    only: ['query', 'resources'],
-                    onStart: () => {
-                        if (currentRequestId === requestId.current) {
-                            setIsSearching(true);
-                        }
-                    },
-                    onFinish: () => {
-                        if (currentRequestId === requestId.current) {
-                            setIsSearching(false);
-                        }
-                    },
-                },
-            );
-        }, 300);
-
-        return () => window.clearTimeout(timer);
-    }, [query]);
-
-    const trimmedQuery = query.trim();
-    const hasQuery = trimmedQuery !== '';
-    const isPending =
-        hasQuery && (trimmedQuery !== initialQuery.trim() || isSearching);
-
-    useEffect(() => {
-        if (!hasQuery) {
-            setStableResources([]);
-
-            return;
-        }
-
-        if (!isPending) {
-            setStableResources(resources);
-        }
-    }, [hasQuery, isPending, resources]);
-
-    const showPendingPlaceholder = isPending && stableResources.length === 0;
-    const showResults = hasQuery && stableResources.length > 0;
-    const showEmptyResults =
-        hasQuery && !isPending && stableResources.length === 0;
+    const {
+        query,
+        setQuery,
+        inputRef,
+        stableResources,
+        isPending,
+        hasQuery,
+        showPendingPlaceholder,
+        showResults,
+        showEmptyResults,
+    } = useResourceSearch({ initialQuery, resources });
 
     return (
         <SiteLayout>
@@ -146,48 +80,10 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
                     ) : null}
 
                     {showResults ? (
-                        <ul
-                            className={cn(
-                                'divide-y divide-foreground/8 transition-opacity duration-150',
-                                isPending ? 'opacity-50' : 'opacity-100',
-                            )}
-                            aria-busy={isPending}
-                        >
-                            {stableResources.map((resource) => (
-                                <li key={resource.id}>
-                                    <Link
-                                        href={resourceDetails(resource.id)}
-                                        className={cn(
-                                            'group flex items-center gap-4 py-4 sm:gap-5 sm:py-5',
-                                            'transition-opacity duration-150 hover:opacity-80',
-                                            isPending && 'pointer-events-none',
-                                        )}
-                                        prefetch={!isPending}
-                                        tabIndex={isPending ? -1 : undefined}
-                                    >
-                                        <div className="aspect-video w-32 shrink-0 overflow-hidden rounded-md bg-muted sm:w-40">
-                                            <img
-                                                src={resource.thumbnail}
-                                                alt=""
-                                                className="size-full object-cover"
-                                                loading="lazy"
-                                                referrerPolicy="no-referrer"
-                                            />
-                                        </div>
-                                        <div className="min-w-0 flex-1 space-y-1">
-                                            <span className="line-clamp-2 text-base font-medium leading-snug text-foreground sm:text-lg">
-                                                {resource.title}
-                                            </span>
-                                            {resource.subtitle ? (
-                                                <span className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                                                    {resource.subtitle}
-                                                </span>
-                                            ) : null}
-                                        </div>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
+                        <SearchResults
+                            resources={stableResources}
+                            isPending={isPending}
+                        />
                     ) : null}
                 </div>
             </div>

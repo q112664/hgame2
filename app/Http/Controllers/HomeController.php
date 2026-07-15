@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Games\ListRecentResourceUpdates;
 use App\Models\Game;
 use App\Support\GamePresenter;
 use Inertia\Inertia;
@@ -9,27 +10,20 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
-    public function __invoke(): Response
+    public function __invoke(ListRecentResourceUpdates $listRecentResourceUpdates): Response
     {
         $games = Game::query()
             ->published()
-            ->with($this->cardRelations())
+            ->withCardData()
             ->latest('published_at')
             ->limit(12)
             ->get();
 
         return Inertia::render('welcome', [
-            'resources' => $games->map(GamePresenter::card(...))->values(),
+            'resources' => $games
+                ->map(fn (Game $game): array => GamePresenter::card($game))
+                ->values(),
+            'recentUpdates' => $listRecentResourceUpdates(),
         ]);
-    }
-
-    /** @return array<string, callable> */
-    private function cardRelations(): array
-    {
-        return [
-            'category' => fn ($query) => $query->select(['id', 'name']),
-            'tags' => fn ($query) => $query->select(['tags.id', 'name']),
-            'releases' => fn ($query) => $query->withCardSummary(),
-        ];
     }
 }

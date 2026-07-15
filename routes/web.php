@@ -24,6 +24,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
     Route::post('/resources/{resource}/favorite', [FavoriteController::class, 'toggle'])
         ->name('resources.favorite');
+    Route::delete('/resources/{resource}/favorite', [FavoriteController::class, 'destroy'])
+        ->name('resources.favorite.destroy');
+    Route::post('/resources/{resource}/downloads/seen', [ResourceController::class, 'markDownloadsSeen'])
+        ->name('resources.downloads.seen');
 });
 
 require __DIR__.'/settings.php';

@@ -14,6 +14,7 @@ class Tag extends Model
     /** @use HasFactory<TagFactory> */
     use HasFactory;
 
+    /** @return BelongsToMany<Game, $this> */
     public function games(): BelongsToMany
     {
         return $this->belongsToMany(Game::class);

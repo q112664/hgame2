@@ -14,6 +14,7 @@ class Language extends Model
     /** @use HasFactory<LanguageFactory> */
     use HasFactory;
 
+    /** @return BelongsToMany<GameRelease, $this> */
     public function releases(): BelongsToMany
     {
         return $this->belongsToMany(GameRelease::class);

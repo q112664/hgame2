@@ -1,6 +1,4 @@
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { motion, useReducedMotion } from 'motion/react';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import SettingsController from '@/actions/App/Http/Controllers/Settings/SettingsController';
@@ -14,12 +12,11 @@ import type { Props as ManageTwoFactorProps } from '@/components/manage-two-fact
 import ManageTwoFactor from '@/components/manage-two-factor';
 import PasswordInput from '@/components/password-input';
 import { ProfileAvatarForm } from '@/components/profile-avatar-form';
+import { RouteTabs } from '@/components/site/route-tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SiteLayout } from '@/layouts/site-layout';
-import { cn } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
@@ -38,8 +35,7 @@ type Props = {
     passwordRules?: string;
     requiresPasswordConfirmation: boolean;
     status?: string;
-} &
-    ManagePasskeysProps &
+} & ManagePasskeysProps &
     ManageTwoFactorProps;
 
 const settingsTabs: Array<{
@@ -52,86 +48,9 @@ const settingsTabs: Array<{
     { value: 'appearance', label: 'Appearance', href: editAppearance().url },
 ];
 
-function isSettingsTab(value: unknown): value is SettingsTab {
-    return settingsTabs.some((tab) => tab.value === value);
-}
-
-const tabTriggerClassName = cn(
-    'relative z-10 h-9 rounded-lg border-transparent px-4 text-sm font-medium shadow-none',
-    'text-muted-foreground transition-colors',
-    'hover:bg-transparent hover:text-foreground/80',
-    'data-active:border-transparent data-active:bg-transparent data-active:text-foreground data-active:shadow-none',
-    'data-active:hover:bg-transparent data-active:hover:text-foreground',
-    'group-data-[variant=default]/tabs-list:data-active:shadow-none',
-    'dark:hover:text-foreground/80 dark:data-active:border-transparent dark:data-active:bg-transparent',
-    'dark:data-active:hover:bg-transparent dark:data-active:hover:text-foreground',
-);
-
 export default function Settings(props: Props) {
     const { auth } = usePage<PageProps>().props;
-    const shouldReduceMotion = useReducedMotion();
     const activeTab = props.activeTab;
-    const [visualActiveTab, setVisualActiveTab] =
-        useState<SettingsTab>(activeTab);
-    const tabsListRef = useRef<HTMLDivElement>(null);
-    const tabRefs = useRef<Partial<Record<SettingsTab, HTMLElement | null>>>(
-        {},
-    );
-    const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
-
-    useEffect(() => {
-        const resetVisualActiveTab = () => setVisualActiveTab(activeTab);
-        const removeNavigateListener = router.on('navigate', (event) => {
-            const page = event.detail.page;
-            const nextActiveTab = page.props.activeTab;
-
-            if (
-                page.component === 'settings/index' &&
-                isSettingsTab(nextActiveTab)
-            ) {
-                setVisualActiveTab(nextActiveTab);
-            }
-        });
-        const removeHttpExceptionListener = router.on(
-            'httpException',
-            resetVisualActiveTab,
-        );
-        const removeNetworkErrorListener = router.on(
-            'networkError',
-            resetVisualActiveTab,
-        );
-
-        return () => {
-            removeNavigateListener();
-            removeHttpExceptionListener();
-            removeNetworkErrorListener();
-        };
-    }, [activeTab]);
-
-    useLayoutEffect(() => {
-        const updatePill = () => {
-            const list = tabsListRef.current;
-            const activeTrigger = tabRefs.current[visualActiveTab];
-
-            if (!list || !activeTrigger) {
-                return;
-            }
-
-            const listRect = list.getBoundingClientRect();
-            const triggerRect = activeTrigger.getBoundingClientRect();
-
-            setPill({
-                left: triggerRect.left - listRect.left,
-                width: triggerRect.width,
-                ready: true,
-            });
-        };
-
-        updatePill();
-        window.addEventListener('resize', updatePill);
-
-        return () => window.removeEventListener('resize', updatePill);
-    }, [visualActiveTab]);
 
     return (
         <SiteLayout>
@@ -147,56 +66,10 @@ export default function Settings(props: Props) {
                     </p>
                 </header>
 
-                <Tabs value={activeTab} className="gap-4">
-                    <TabsList
-                        ref={tabsListRef}
-                        className="relative grid h-auto w-full grid-cols-3 gap-0.5 rounded-xl bg-card p-1 ring-1 ring-foreground/10 group-data-horizontal/tabs:h-auto sm:inline-grid sm:w-auto"
-                    >
-                        {pill.ready ? (
-                            <motion.span
-                                aria-hidden
-                                className="absolute top-1 bottom-1 rounded-lg bg-muted"
-                                initial={false}
-                                animate={{ left: pill.left, width: pill.width }}
-                                transition={
-                                    shouldReduceMotion
-                                        ? { duration: 0 }
-                                        : {
-                                              type: 'tween',
-                                              duration: 0.2,
-                                              ease: 'easeInOut',
-                                          }
-                                }
-                            />
-                        ) : null}
-                        {settingsTabs.map((tab) => (
-                            <TabsTrigger
-                                key={tab.value}
-                                value={tab.value}
-                                asChild
-                                className={tabTriggerClassName}
-                                ref={(node) => {
-                                    tabRefs.current[tab.value] = node;
-                                }}
-                            >
-                                <Link
-                                    href={tab.href}
-                                    preserveState
-                                    preserveScroll
-                                    onStart={() =>
-                                        setVisualActiveTab(tab.value)
-                                    }
-                                    onError={() =>
-                                        setVisualActiveTab(activeTab)
-                                    }
-                                >
-                                    {tab.label}
-                                </Link>
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
+                <div className="flex flex-col gap-4">
+                    <RouteTabs tabs={settingsTabs} activeValue={activeTab} />
 
-                    <TabsContent value="profile">
+                    {activeTab === 'profile' ? (
                         <section className="space-y-8 rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
                             <ProfileAvatarForm />
 
@@ -221,7 +94,9 @@ export default function Settings(props: Props) {
                                                 <Input
                                                     id="name"
                                                     className="block w-full"
-                                                    defaultValue={auth.user.name}
+                                                    defaultValue={
+                                                        auth.user.name
+                                                    }
                                                     name="name"
                                                     required
                                                     autoComplete="name"
@@ -240,7 +115,9 @@ export default function Settings(props: Props) {
                                                     id="email"
                                                     type="email"
                                                     className="block w-full"
-                                                    defaultValue={auth.user.email}
+                                                    defaultValue={
+                                                        auth.user.email
+                                                    }
                                                     name="email"
                                                     required
                                                     autoComplete="username"
@@ -297,10 +174,10 @@ export default function Settings(props: Props) {
                                 <DeleteUser />
                             </div>
                         </section>
-                    </TabsContent>
+                    ) : null}
 
-                    <TabsContent value="security">
-                        {props.requiresPasswordConfirmation ? (
+                    {activeTab === 'security' ? (
+                        props.requiresPasswordConfirmation ? (
                             <section className="space-y-6 rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
                                 <Heading
                                     variant="small"
@@ -453,10 +330,10 @@ export default function Settings(props: Props) {
                                     passkeys={props.passkeys}
                                 />
                             </section>
-                        )}
-                    </TabsContent>
+                        )
+                    ) : null}
 
-                    <TabsContent value="appearance">
+                    {activeTab === 'appearance' ? (
                         <section className="space-y-6 rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
                             <Heading
                                 variant="small"
@@ -465,8 +342,8 @@ export default function Settings(props: Props) {
                             />
                             <AppearanceTabs />
                         </section>
-                    </TabsContent>
-                </Tabs>
+                    ) : null}
+                </div>
             </div>
         </SiteLayout>
     );

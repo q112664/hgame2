@@ -3,7 +3,9 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Middleware;
+use Laravel\Fortify\Features;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -40,6 +42,11 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+            ],
+            'authModal' => $request->user() ? null : [
+                'canRegister' => Features::enabled(Features::registration()),
+                'canResetPassword' => Features::enabled(Features::resetPasswords()),
+                'passwordRules' => Password::defaults()->toPasswordRulesString(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

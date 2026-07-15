@@ -12,7 +12,7 @@ class TagImporter
      */
     public function import(string $names): array
     {
-        return collect(preg_split('/[,，\s]+/u', $names) ?: [])
+        return array_values(collect(preg_split('/[,，\s]+/u', $names) ?: [])
             ->map(fn (string $name): string => trim($name))
             ->filter()
             ->map(fn (string $name): string => (string) preg_replace('/\s+/u', ' ', $name))
@@ -22,7 +22,7 @@ class TagImporter
             ->pluck('id')
             ->map(fn (mixed $id): int => (int) $id)
             ->values()
-            ->all();
+            ->all());
     }
 
     /**
@@ -31,7 +31,7 @@ class TagImporter
      */
     public function importNames(array $names): array
     {
-        return collect($names)
+        return array_values(collect($names)
             ->map(fn (string $name): string => trim($name))
             ->filter()
             ->map(fn (string $name): string => (string) preg_replace('/\s+/u', ' ', $name))
@@ -41,7 +41,7 @@ class TagImporter
             ->pluck('id')
             ->map(fn (mixed $id): int => (int) $id)
             ->values()
-            ->all();
+            ->all());
     }
 
     protected function resolve(string $name): Tag

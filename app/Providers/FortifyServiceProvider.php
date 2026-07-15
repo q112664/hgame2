@@ -53,6 +53,7 @@ class FortifyServiceProvider extends ServiceProvider
             IntendedUrl::remember($request);
 
             return Inertia::render('auth/login', [
+                'canRegister' => Features::enabled(Features::registration()),
                 'canResetPassword' => Features::enabled(Features::resetPasswords()),
                 'status' => $request->session()->get('status'),
             ]);

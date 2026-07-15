@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\Games\PublishGame;
+use App\GameStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreGameRequest;
 use App\Models\Game;
@@ -40,11 +41,15 @@ class GameController extends Controller
      */
     private function payload(Game $game): array
     {
+        $status = $game->getAttribute('status');
+
         return [
             'id' => $game->slug,
             'title' => $game->title,
             'subtitle' => $game->subtitle,
-            'status' => $game->status->value,
+            'status' => $status instanceof GameStatus
+                ? $status->value
+                : (string) $status,
             'url' => route('resources.details', $game),
             'screenshots_count' => $game->screenshots->count(),
             'releases_count' => $game->releases->count(),

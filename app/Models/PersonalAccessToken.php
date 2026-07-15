@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Laravel\Sanctum\PersonalAccessToken as SanctumPersonalAccessToken;
 
@@ -39,6 +40,7 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
         ];
     }
 
+    /** @return MorphTo<Model, $this> */
     public function tokenable(): MorphTo
     {
         return $this->morphTo('tokenable');

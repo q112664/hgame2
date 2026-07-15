@@ -14,6 +14,7 @@ class Platform extends Model
     /** @use HasFactory<PlatformFactory> */
     use HasFactory;
 
+    /** @return BelongsToMany<GameRelease, $this> */
     public function releases(): BelongsToMany
     {
         return $this->belongsToMany(GameRelease::class);

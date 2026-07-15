@@ -5,25 +5,24 @@ namespace App\Actions\Games;
 use App\Models\Game;
 use App\Support\GamePresenter;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class SearchGames
 {
     /**
-     * @return Collection<int, array{id: string, title: string, subtitle: string|null, thumbnail: string}>
+     * @return list<array{id: string, title: string, subtitle: string|null, thumbnail: string}>
      */
-    public function __invoke(?string $query, int $limit = 50): Collection
+    public function __invoke(?string $query, int $limit = 50): array
     {
         $term = Str::of($query ?? '')->trim()->toString();
 
         if ($term === '') {
-            return collect();
+            return [];
         }
 
         $like = '%'.addcslashes($term, '%_\\').'%';
 
-        return Game::query()
+        return array_values(Game::query()
             ->published()
             ->where(function (Builder $builder) use ($like): void {
                 $builder
@@ -56,7 +55,8 @@ class SearchGames
             ->latest('published_at')
             ->limit($limit)
             ->get(['slug', 'title', 'subtitle', 'cover_url', 'cover_path'])
-            ->map(GamePresenter::search(...))
-            ->values();
+            ->map(fn (Game $game): array => GamePresenter::search($game))
+            ->values()
+            ->all());
     }
 }

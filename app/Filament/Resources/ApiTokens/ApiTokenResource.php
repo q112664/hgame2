@@ -20,6 +20,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 class ApiTokenResource extends Resource
@@ -54,7 +55,11 @@ class ApiTokenResource extends Resource
                                 ->orderBy('email')
                                 ->pluck('email', 'id')
                                 ->all())
-                            ->default(fn (): ?int => auth()->id())
+                            ->default(function (): ?int {
+                                $userId = auth()->id();
+
+                                return is_int($userId) ? $userId : null;
+                            })
                             ->required()
                             ->searchable(),
                         TextInput::make('name')
@@ -132,7 +137,7 @@ class ApiTokenResource extends Resource
         return true;
     }
 
-    public static function canEdit($record): bool
+    public static function canEdit(Model $record): bool
     {
         return false;
     }

@@ -81,31 +81,37 @@ class GameRelease extends Model
             ->orderBy('sort_order');
     }
 
+    /** @return BelongsTo<Game, $this> */
     public function game(): BelongsTo
     {
         return $this->belongsTo(Game::class);
     }
 
+    /** @return BelongsTo<Platform, $this> */
     public function platform(): BelongsTo
     {
         return $this->belongsTo(Platform::class);
     }
 
+    /** @return BelongsToMany<Platform, $this> */
     public function platforms(): BelongsToMany
     {
         return $this->belongsToMany(Platform::class);
     }
 
+    /** @return BelongsTo<Language, $this> */
     public function language(): BelongsTo
     {
         return $this->belongsTo(Language::class);
     }
 
+    /** @return BelongsToMany<Language, $this> */
     public function languages(): BelongsToMany
     {
         return $this->belongsToMany(Language::class);
     }
 
+    /** @return HasMany<GameDownloadLink, $this> */
     public function downloadLinks(): HasMany
     {
         return $this->hasMany(GameDownloadLink::class)->orderBy('sort_order');

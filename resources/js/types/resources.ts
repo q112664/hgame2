@@ -19,6 +19,19 @@ export type GameCard = {
     hasDownloadUpdate?: boolean;
 };
 
+export type GameUpdateListItem = {
+    id: string;
+    title: string;
+    subtitle: string | null;
+    thumbnail: string;
+    developer: string;
+    version: string | null;
+    platforms: GamePlatform[];
+    languages: string[];
+    updatedAt: string | null;
+    activityType: 'updated' | 'published';
+};
+
 export type GameDownloadLink = {
     id: number;
     label: string;

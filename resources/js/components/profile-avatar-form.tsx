@@ -71,7 +71,9 @@ export function ProfileAvatarForm() {
                                             return;
                                         }
 
-                                        setPreviewUrl(URL.createObjectURL(file));
+                                        setPreviewUrl(
+                                            URL.createObjectURL(file),
+                                        );
                                         event.currentTarget.form?.requestSubmit();
                                     }}
                                 />

@@ -7,22 +7,19 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+    abbreviateCategory,
+    abbreviateLanguage,
+    abbreviateVersion,
+    formatDate,
+    formatViews,
+} from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
 import { details as resourceDetails } from '@/routes/resources';
 import type { GameCard } from '@/types/resources';
 
 type Props = {
     resource: GameCard;
-};
-
-const languageAbbrev: Record<string, string> = {
-    Chinese: 'CN',
-    Japanese: 'JP',
-    English: 'EN',
-};
-
-const categoryAbbrev: Record<string, string> = {
-    'Visual Novel': 'VN',
 };
 
 const overlayChipClassName = cn(
@@ -33,34 +30,9 @@ const overlayChipClassName = cn(
 
 const languageChipClassName = cn(
     'inline-flex h-5 items-center justify-center rounded px-1.5',
-    'bg-background/90 text-[11px] font-medium leading-none text-foreground shadow-xs',
+    'bg-background/90 text-[11px] leading-none font-medium text-foreground shadow-xs',
     'ring-1 ring-foreground/10',
 );
-
-function abbreviateLanguage(language: string): string {
-    return languageAbbrev[language] ?? language.slice(0, 2).toUpperCase();
-}
-
-function abbreviateCategory(category: string): string {
-    return categoryAbbrev[category] ?? category;
-}
-
-function abbreviateVersion(version: string): string {
-    const withoutPrefix = version.trim().replace(/^(version|ver|v)\s*/i, '');
-    const short = withoutPrefix.split(/\s+/)[0] ?? withoutPrefix;
-
-    return short ? `v${short}` : version.trim();
-}
-
-function formatViews(views: number): string {
-    return new Intl.NumberFormat('en-US').format(views);
-}
-
-function formatDate(date: string): string {
-    const [year, month, day] = date.split('-');
-
-    return `${year}-${month}-${day}`;
-}
 
 export function ResourceCard({ resource }: Props) {
     return (

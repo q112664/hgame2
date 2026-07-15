@@ -15,6 +15,12 @@ export type Auth = {
     user: User;
 };
 
+export type AuthModalConfig = {
+    canRegister: boolean;
+    canResetPassword: boolean;
+    passwordRules: string;
+};
+
 /* @chisel-passkeys */
 export type Passkey = {
     id: number;

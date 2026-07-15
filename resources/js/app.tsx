@@ -1,12 +1,15 @@
 import { createInertiaApp } from '@inertiajs/react';
-import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
-import { StrictMode, type ReactNode } from 'react';
+import { StrictMode } from 'react';
+import type { ReactNode } from 'react';
+import { createRoot, hydrateRoot } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
 import { useFlashToast } from '@/hooks/use-flash-toast';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
+import AuthModalLayout from '@/layouts/auth-modal-layout';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -43,11 +46,11 @@ createInertiaApp({
             case name === 'favorites':
             case name.startsWith('resources/'):
             case name === 'settings/index':
-                return null;
+                return AuthModalLayout;
             case name.startsWith('auth/'):
-                return AuthLayout;
+                return [AuthModalLayout, AuthLayout];
             default:
-                return AppLayout;
+                return [AuthModalLayout, AppLayout];
         }
     },
     setup({ el, App, props }) {

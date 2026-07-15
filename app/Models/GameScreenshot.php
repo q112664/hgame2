@@ -14,6 +14,7 @@ class GameScreenshot extends Model
     /** @use HasFactory<GameScreenshotFactory> */
     use HasFactory;
 
+    /** @return BelongsTo<Game, $this> */
     public function game(): BelongsTo
     {
         return $this->belongsTo(Game::class);

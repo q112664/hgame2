@@ -79,12 +79,16 @@ class GameForm
                                 // Filament always appends the returned key to the multi-select
                                 // state. Leave the last ID out of $set so it is not duplicated,
                                 // otherwise validation sees more values than option labels.
-                                $selected = collect($get('tags') ?? [])
-                                    ->map(fn (mixed $id): int => (int) $id)
-                                    ->merge($ids)
-                                    ->unique()
-                                    ->values()
-                                    ->all();
+                                $selectedValues = $get('tags');
+                                $selected = array_values(array_unique([
+                                    ...(is_array($selectedValues)
+                                        ? array_map(
+                                            fn (mixed $id): int => (int) $id,
+                                            $selectedValues,
+                                        )
+                                        : []),
+                                    ...$ids,
+                                ]));
 
                                 $createdOptionKey = (int) array_pop($selected);
 

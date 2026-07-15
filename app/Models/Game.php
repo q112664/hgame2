@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Support\Carbon;
 
 #[Fillable([
@@ -45,31 +46,49 @@ class Game extends Model
         return 'slug';
     }
 
+    /** @return BelongsTo<Category, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
+    /** @return BelongsToMany<Tag, $this> */
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class);
     }
 
+    /** @return HasMany<GameRelease, $this> */
     public function releases(): HasMany
     {
         return $this->hasMany(GameRelease::class)->orderBy('sort_order');
     }
 
+    /** @return HasMany<GameScreenshot, $this> */
     public function screenshots(): HasMany
     {
         return $this->hasMany(GameScreenshot::class)->orderBy('sort_order');
     }
 
+    /** @return BelongsToMany<User, $this> */
     public function favoritedBy(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'favorites')
             ->withPivot('downloads_seen_at')
             ->withTimestamps();
+    }
+
+    /**
+     * @param  Builder<Game>  $query
+     * @return Builder<Game>
+     */
+    public function scopeWithCardData(Builder $query): Builder
+    {
+        return $query->with([
+            'category:id,name',
+            'tags:id,name',
+            'releases' => fn ($releases) => $releases->withCardSummary(),
+        ]);
     }
 
     public function touchDownloadsUpdatedAt(): void
@@ -81,23 +100,31 @@ class Game extends Model
 
     public function hasUnreadDownloadUpdate(): bool
     {
-        if ($this->downloads_updated_at === null || $this->pivot === null) {
+        $updatedAt = $this->getAttribute('downloads_updated_at');
+        $pivot = $this->getRelationValue('pivot');
+
+        if ($updatedAt === null || ! $pivot instanceof Pivot) {
             return false;
         }
 
-        $seenAt = $this->pivot->downloads_seen_at ?? $this->pivot->created_at;
+        $updatedAt = $updatedAt instanceof Carbon
+            ? $updatedAt
+            : Carbon::parse((string) $updatedAt);
+        $seenAt = $pivot->getAttribute('downloads_seen_at')
+            ?? $pivot->getAttribute('created_at');
 
         if ($seenAt === null) {
             return true;
         }
 
-        return $this->downloads_updated_at->greaterThan(
+        return $updatedAt->greaterThan(
             $seenAt instanceof Carbon
                 ? $seenAt
                 : Carbon::parse($seenAt),
         );
     }
 
+    /** @param Builder<Game> $query */
     public function scopePublished(Builder $query): void
     {
         $query->where('status', GameStatus::Published)

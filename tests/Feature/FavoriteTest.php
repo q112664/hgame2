@@ -62,10 +62,47 @@ test('favorites page lists the users favorited games newest first', function () 
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('favorites')
-            ->has('resources', 2)
-            ->where('resources.0.id', 'newer-favorite')
-            ->where('resources.1.id', 'older-favorite')
+            ->has('resources.data', 2)
+            ->where('resources.data.0.id', 'newer-favorite')
+            ->where('resources.data.1.id', 'older-favorite')
         );
+});
+
+test('favorites page paginates resources', function () {
+    $user = User::factory()->create();
+    $games = Game::factory()->count(21)->create();
+
+    $user->favoritedGames()->attach($games->modelKeys());
+
+    $this->actingAs($user)
+        ->get(route('favorites.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('resources.current_page', 1)
+            ->where('resources.last_page', 2)
+            ->has('resources.data', 20)
+        );
+
+    $this->actingAs($user)
+        ->get(route('favorites.index', ['page' => 2]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('resources.current_page', 2)
+            ->has('resources.data', 1)
+        );
+});
+
+test('an authenticated user can remove a favorite from the favorites page', function () {
+    $user = User::factory()->create();
+    $game = Game::factory()->create();
+    $user->favoritedGames()->attach($game->id);
+
+    $this->actingAs($user)
+        ->delete(route('resources.favorite.destroy', $game->slug))
+        ->assertRedirect();
+
+    expect($user->fresh()->favoritedGames()->where('games.id', $game->id)->exists())
+        ->toBeFalse();
 });
 
 test('favorites page ignores unpublished favorited games', function () {
@@ -78,7 +115,7 @@ test('favorites page ignores unpublished favorited games', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('favorites')
-            ->has('resources', 0)
+            ->has('resources.data', 0)
         );
 });
 
@@ -104,8 +141,8 @@ test('favorites page notifies when favorited game downloads are updated', functi
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('downloadUpdateCount', 1)
-            ->where('resources.0.id', 'updated-favorite')
-            ->where('resources.0.hasDownloadUpdate', true)
+            ->where('resources.data.0.id', 'updated-favorite')
+            ->where('resources.data.0.hasDownloadUpdate', true)
         );
 
     $this->actingAs($user)
@@ -116,7 +153,19 @@ test('favorites page notifies when favorited game downloads are updated', functi
         ->get(route('favorites.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
+            ->where('downloadUpdateCount', 1)
+            ->where('resources.data.0.hasDownloadUpdate', true)
+        );
+
+    $this->actingAs($user)
+        ->post(route('resources.downloads.seen', $game->slug))
+        ->assertNoContent();
+
+    $this->actingAs($user)
+        ->get(route('favorites.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
             ->where('downloadUpdateCount', 0)
-            ->where('resources.0.hasDownloadUpdate', false)
+            ->where('resources.data.0.hasDownloadUpdate', false)
         );
 });

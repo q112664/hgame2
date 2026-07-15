@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
+use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
 
 test('login screen can be rendered', function () {
@@ -35,6 +36,42 @@ test('users return to the previous page after logging in', function () {
 
     $this->assertAuthenticated();
     $response->assertRedirect(url('/resources/senren-banka/details'));
+});
+
+test('users return to the modal redirect after logging in', function () {
+    $user = User::factory()->create();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+        'redirect' => '/resources/senren-banka/details',
+    ]);
+
+    $this->assertAuthenticatedAs($user);
+    $response->assertRedirect(url('/resources/senren-banka/details'));
+});
+
+test('guest pages share the authentication modal configuration', function () {
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('authModal')
+            ->where('authModal.canRegister', Features::enabled(Features::registration()))
+            ->where('authModal.canResetPassword', Features::enabled(Features::resetPasswords()))
+            ->where('authModal.passwordRules', fn ($rules) => is_string($rules) && $rules !== '')
+        );
+});
+
+test('external modal redirects are ignored after logging in', function () {
+    $user = User::factory()->create();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+        'redirect' => 'https://example.com/account',
+    ]);
+
+    $response->assertRedirect(route('home', absolute: false));
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {

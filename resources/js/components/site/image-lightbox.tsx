@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react';
 import Lightbox from 'yet-another-react-lightbox';
 import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails';
 import 'yet-another-react-lightbox/styles.css';
@@ -46,7 +45,7 @@ export function ImageLightbox({
                 root: {
                     '--yarl__thumbnails_container_background_color':
                         'rgba(0, 0, 0, 0.88)',
-                } as CSSProperties,
+                },
                 container: { backgroundColor: 'rgba(0, 0, 0, 0.88)' },
             }}
         />

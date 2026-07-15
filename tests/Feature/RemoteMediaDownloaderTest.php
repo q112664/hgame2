@@ -24,6 +24,21 @@ test('remote media downloader stores successful downloads', function () {
         ->and(Storage::disk(Media::diskName())->get($path))->toBe($png);
 });
 
+test('remote media downloader rejects oversized responses before storing them', function () {
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
+
+    Http::fake([
+        'https://example.com/*' => Http::response($png.str_repeat('x', 20 * 1024 * 1024), 200, [
+            'Content-Type' => 'image/png',
+        ]),
+    ]);
+
+    expect(fn () => app(RemoteMediaDownloader::class)->download('https://example.com/large.png', 'games/covers'))
+        ->toThrow(ValidationException::class);
+
+    expect(Storage::disk(Media::diskName())->allFiles('games/covers'))->toBeEmpty();
+});
+
 test('remote media downloader rejects private network urls', function (string $url) {
     expect(fn () => SafeRemoteUrl::assert($url))
         ->toThrow(ValidationException::class);

@@ -36,5 +36,6 @@ class CreateGame extends CreateRecord
         $game = $this->record;
 
         app(SyncGameScreenshots::class)($game, $this->screenshotPaths);
+        $game->forceFill(['downloads_updated_at' => null])->saveQuietly();
     }
 }

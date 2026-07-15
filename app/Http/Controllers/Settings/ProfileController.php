@@ -10,6 +10,7 @@ use App\Support\Media;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ProfileController extends Controller
@@ -46,7 +47,7 @@ class ProfileController extends Controller
         $user->save();
 
         if ($previousPath !== null && $previousPath !== $path) {
-            Media::delete($previousPath);
+            DB::afterCommit(fn (): bool => Media::delete($previousPath));
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Avatar updated.')]);
@@ -63,9 +64,9 @@ class ProfileController extends Controller
         $path = $user->avatarPath();
 
         if ($path !== null) {
-            Media::delete($path);
             $user->avatar = null;
             $user->save();
+            DB::afterCommit(fn (): bool => Media::delete($path));
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Avatar removed.')]);
@@ -86,7 +87,7 @@ class ProfileController extends Controller
         $user->delete();
 
         if ($avatarPath !== null) {
-            Media::delete($avatarPath);
+            DB::afterCommit(fn (): bool => Media::delete($avatarPath));
         }
 
         $request->session()->invalidate();

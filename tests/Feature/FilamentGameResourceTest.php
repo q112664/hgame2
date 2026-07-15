@@ -63,7 +63,8 @@ test('an administrator can create a game with a release and download link', func
         ->and($game->releases->first()->languages)->toHaveCount(1)
         ->and($game->releases->first()->downloadLinks)->toHaveCount(1)
         ->and($game->releases->first()->downloadLinks->first()->url)->toBe('https://example.com/game.zip')
-        ->and($game->releases->first()->downloadLinks->first()->is_active)->toBeTrue();
+        ->and($game->releases->first()->downloadLinks->first()->is_active)->toBeTrue()
+        ->and($game->downloads_updated_at)->toBeNull();
 
     Storage::disk(Media::diskName())->assertExists($game->cover_path);
     Storage::disk(Media::diskName())->assertExists($game->screenshots->first()->path);

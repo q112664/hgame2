@@ -16,6 +16,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Storage::fake(Media::diskName());
+    Storage::fake('s3');
 
     $this->admin = User::factory()->admin()->create();
     $this->category = Category::factory()->create([
@@ -34,7 +35,7 @@ beforeEach(function () {
     $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
 
     Http::fake([
-        'https://example.com/*' => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        'https://example.com/*' => fn () => Http::response($png, 200, ['Content-Type' => 'image/png']),
     ]);
 });
 
@@ -101,7 +102,8 @@ test('an administrator can publish a complete game via the api', function () {
         ->and($game->releases)->toHaveCount(1)
         ->and($game->releases->first()->platforms->pluck('name')->all())->toBe(['Windows'])
         ->and($game->releases->first()->languages->pluck('name')->all())->toBe(['Chinese'])
-        ->and($game->releases->first()->downloadLinks)->toHaveCount(1);
+        ->and($game->releases->first()->downloadLinks)->toHaveCount(1)
+        ->and($game->downloads_updated_at)->toBeNull();
 
     Storage::disk(Media::diskName())->assertExists($game->cover_path);
     Storage::disk(Media::diskName())->assertExists($game->screenshots->first()->path);

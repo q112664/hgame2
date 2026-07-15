@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable([
     'category_id', 'title', 'subtitle', 'slug', 'description', 'developer', 'cover_url', 'cover_path',
@@ -21,13 +22,24 @@ use Illuminate\Support\Carbon;
 ])]
 class Game extends Model
 {
+    /** @var list<string> */
+    public array $mediaPathsForDeletion = [];
+
     /** @use HasFactory<GameFactory> */
     use HasFactory;
 
     protected static function booted(): void
     {
         static::deleting(function (Game $game): void {
-            app(DeleteGameMedia::class)($game);
+            $game->mediaPathsForDeletion = app(DeleteGameMedia::class)->pathsFor($game);
+        });
+
+        static::deleted(function (Game $game): void {
+            $paths = $game->mediaPathsForDeletion;
+
+            DB::afterCommit(function () use ($game, $paths): void {
+                app(DeleteGameMedia::class)->deletePaths($game, $paths);
+            });
         });
     }
 

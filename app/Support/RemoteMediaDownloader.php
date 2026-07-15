@@ -32,38 +32,55 @@ class RemoteMediaDownloader
             ]);
         }
 
-        $contents = $response->body();
+        $contentLength = (string) $response->header('Content-Length');
 
-        if ($contents === '' || strlen($contents) > self::MaxBytes) {
+        if ($contentLength !== '' && ctype_digit($contentLength) && (int) $contentLength > self::MaxBytes) {
             throw ValidationException::withMessages([
                 'media' => "Media from [{$url}] is empty or exceeds the 20MB limit.",
             ]);
         }
 
-        $detected = (new \finfo(FILEINFO_MIME_TYPE))->buffer($contents) ?: '';
+        $temporary = tmpfile();
 
-        if (! in_array($detected, self::AllowedMimeTypes, true)) {
+        if ($temporary === false) {
             throw ValidationException::withMessages([
-                'media' => "Media from [{$url}] must be a JPEG, PNG, WebP, or GIF image.",
+                'media' => "Unable to buffer media downloaded from [{$url}].",
             ]);
         }
 
-        $extensions = [
-            'image/jpeg' => 'jpg',
-            'image/png' => 'png',
-            'image/webp' => 'webp',
-            'image/gif' => 'gif',
-        ];
+        try {
+            $bytes = $this->bufferResponse($response, $temporary, $url);
+            $temporaryPath = stream_get_meta_data($temporary)['uri'] ?? null;
+            $detected = is_string($temporaryPath)
+                ? ((new \finfo(FILEINFO_MIME_TYPE))->file($temporaryPath) ?: '')
+                : '';
 
-        $path = trim($directory, '/').'/'.Str::uuid()->toString().'.'.$extensions[$detected];
+            if ($bytes === 0 || ! in_array($detected, self::AllowedMimeTypes, true)) {
+                throw ValidationException::withMessages([
+                    'media' => "Media from [{$url}] must be a JPEG, PNG, WebP, or GIF image.",
+                ]);
+            }
 
-        if (Media::disk()->put($path, $contents, 'public') === false) {
-            throw ValidationException::withMessages([
-                'media' => "Failed to store media downloaded from [{$url}].",
-            ]);
+            $extensions = [
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/webp' => 'webp',
+                'image/gif' => 'gif',
+            ];
+
+            $path = trim($directory, '/').'/'.Str::uuid()->toString().'.'.$extensions[$detected];
+            rewind($temporary);
+
+            if (Media::disk()->put($path, $temporary, 'public') === false) {
+                throw ValidationException::withMessages([
+                    'media' => "Failed to store media downloaded from [{$url}].",
+                ]);
+            }
+
+            return $path;
+        } finally {
+            fclose($temporary);
         }
-
-        return $path;
     }
 
     private function fetchPinned(string $url): Response
@@ -82,6 +99,7 @@ class RemoteMediaDownloader
                     ])
                     ->withOptions([
                         'allow_redirects' => false,
+                        'stream' => true,
                         'curl' => [
                             CURLOPT_RESOLVE => $pin['curl_resolve'],
                         ],
@@ -111,6 +129,48 @@ class RemoteMediaDownloader
         throw ValidationException::withMessages([
             'media' => "Media URL [{$url}] exceeded the redirect limit.",
         ]);
+    }
+
+    /**
+     * @param  resource  $target
+     */
+    private function bufferResponse(Response $response, mixed $target, string $url): int
+    {
+        $body = $response->toPsrResponse()->getBody();
+        $bytes = 0;
+
+        while (! $body->eof()) {
+            $chunk = $body->read(8192);
+
+            if ($chunk === '') {
+                break;
+            }
+
+            $bytes += strlen($chunk);
+
+            if ($bytes > self::MaxBytes) {
+                throw ValidationException::withMessages([
+                    'media' => "Media from [{$url}] is empty or exceeds the 20MB limit.",
+                ]);
+            }
+
+            $offset = 0;
+            $length = strlen($chunk);
+
+            while ($offset < $length) {
+                $written = fwrite($target, substr($chunk, $offset));
+
+                if ($written === false || $written === 0) {
+                    throw ValidationException::withMessages([
+                        'media' => "Unable to buffer media downloaded from [{$url}].",
+                    ]);
+                }
+
+                $offset += $written;
+            }
+        }
+
+        return $bytes;
     }
 
     private function resolveRedirectUrl(string $currentUrl, string $location): string

@@ -184,6 +184,31 @@ test('failed media migration does not switch the active disk', function () {
         ->and(Storage::disk('s3')->get('games/covers/one.jpg'))->toBe('different-target');
 });
 
+test('a later migration failure leaves earlier source files intact', function () {
+    Storage::fake('public');
+    Storage::fake('s3');
+
+    Setting::set('media_disk', 'public');
+
+    $cover = 'games/covers/cover.jpg';
+    $screenshot = 'games/screenshots/shot.jpg';
+
+    Storage::disk('public')->put($cover, 'cover');
+    Storage::disk('public')->put($screenshot, 'shot');
+    Storage::disk('s3')->put($screenshot, 'different-target');
+
+    $game = Game::factory()->create(['cover_path' => $cover]);
+    GameScreenshot::factory()->for($game)->create(['path' => $screenshot]);
+
+    $result = app(MigrateMediaDisk::class)('public', 's3', deleteSource: true);
+
+    expect($result['failed'])->toBeGreaterThan(0)
+        ->and($result['can_switch'])->toBeFalse()
+        ->and(Storage::disk('public')->exists($cover))->toBeTrue()
+        ->and(Storage::disk('s3')->exists($cover))->toBeTrue()
+        ->and(Setting::mediaDisk())->toBe('public');
+});
+
 test('migration fails when a database-referenced file is missing on the source disk', function () {
     Storage::fake('public');
     Storage::fake('s3');

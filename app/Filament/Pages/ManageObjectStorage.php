@@ -208,7 +208,7 @@ class ManageObjectStorage extends Page
 
         $result = $migrate($source, $target, $deleteSource);
 
-        if ($result['failed'] === 0) {
+        if ($result['can_switch']) {
             Setting::set('media_disk', $target);
             Setting::applyMediaConfigToConfig();
         }
@@ -219,7 +219,9 @@ class ManageObjectStorage extends Page
             $body .= ' '.implode(' ', $result['errors']);
         }
 
-        if ($result['failed'] > 0) {
+        if ($result['can_switch']) {
+            $body .= ' Active disk was switched successfully.';
+        } elseif ($result['failed'] > 0) {
             $body .= ' Active disk was not changed.';
         }
 

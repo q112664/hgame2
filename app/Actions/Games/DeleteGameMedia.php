@@ -11,15 +11,30 @@ class DeleteGameMedia
 {
     public function __invoke(Game $game): void
     {
-        $paths = collect([
+        $this->deletePaths($game, $this->pathsFor($game));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function pathsFor(Game $game): array
+    {
+        return array_values(collect([
             $game->cover_path,
             ...$game->screenshots()->pluck('path')->all(),
             ...$this->pathsFromDescription((string) $game->description),
         ])
             ->filter(fn (mixed $path): bool => is_string($path) && $path !== '')
             ->unique()
-            ->values();
+            ->values()
+            ->all());
+    }
 
+    /**
+     * @param  list<string>  $paths
+     */
+    public function deletePaths(Game $game, array $paths): void
+    {
         foreach ($paths as $path) {
             if ($this->isReferencedElsewhere($game, $path)) {
                 continue;

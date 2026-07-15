@@ -13,7 +13,7 @@ use Throwable;
 class MigrateMediaDisk
 {
     /**
-     * @return array{migrated: int, skipped: int, failed: int, rewritten: int, errors: list<string>}
+     * @return array{migrated: int, skipped: int, failed: int, source_delete_failed: int, can_switch: bool, rewritten: int, errors: list<string>}
      */
     public function __invoke(string $fromDisk, string $toDisk, bool $deleteSource = false): array
     {
@@ -22,6 +22,8 @@ class MigrateMediaDisk
                 'migrated' => 0,
                 'skipped' => 0,
                 'failed' => 0,
+                'source_delete_failed' => 0,
+                'can_switch' => false,
                 'rewritten' => 0,
                 'errors' => ['Source and target disks must be different.'],
             ];
@@ -34,6 +36,8 @@ class MigrateMediaDisk
                 'migrated' => 0,
                 'skipped' => 0,
                 'failed' => count($collection['errors']),
+                'source_delete_failed' => 0,
+                'can_switch' => false,
                 'rewritten' => 0,
                 'errors' => array_slice($collection['errors'], 0, 10),
             ];
@@ -69,10 +73,6 @@ class MigrateMediaDisk
 
                     $skipped++;
 
-                    if ($deleteSource && ! $this->deleteSource($fromDisk, $path, $errors)) {
-                        $failed++;
-                    }
-
                     continue;
                 }
 
@@ -106,12 +106,6 @@ class MigrateMediaDisk
                     continue;
                 }
 
-                if ($deleteSource && ! $this->deleteSource($fromDisk, $path, $errors)) {
-                    $failed++;
-
-                    continue;
-                }
-
                 $migrated++;
             } catch (Throwable $exception) {
                 $failed++;
@@ -119,14 +113,27 @@ class MigrateMediaDisk
             }
         }
 
-        $rewritten = $failed === 0
+        $canSwitch = $failed === 0;
+        $sourceDeleteFailed = 0;
+
+        if ($canSwitch && $deleteSource) {
+            foreach ($collection['paths'] as $path) {
+                if (! $this->deleteSource($fromDisk, $path, $errors)) {
+                    $sourceDeleteFailed++;
+                }
+            }
+        }
+
+        $rewritten = $canSwitch
             ? $this->rewriteEmbeddedMediaUrls($fromDisk, $toDisk)
             : 0;
 
         return [
             'migrated' => $migrated,
             'skipped' => $skipped,
-            'failed' => $failed,
+            'failed' => $failed + $sourceDeleteFailed,
+            'source_delete_failed' => $sourceDeleteFailed,
+            'can_switch' => $canSwitch,
             'rewritten' => $rewritten,
             'errors' => array_slice($errors, 0, 10),
         ];

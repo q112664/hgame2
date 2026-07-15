@@ -5,6 +5,7 @@ namespace App\Actions\Games;
 use App\Models\Game;
 use App\Models\GameScreenshot;
 use App\Support\Media;
+use Illuminate\Support\Facades\DB;
 
 class SyncGameScreenshots
 {
@@ -41,15 +42,25 @@ class SyncGameScreenshots
             $keptIds[] = $screenshot->id;
         }
 
+        $removedPaths = $game->screenshots()
+            ->whereKeyNot($keptIds)
+            ->get()
+            ->map(fn (GameScreenshot $screenshot): ?string => filled($screenshot->path) ? $screenshot->path : null)
+            ->filter()
+            ->values()
+            ->all();
+
         $game->screenshots()
             ->whereKeyNot($keptIds)
             ->get()
             ->each(function (GameScreenshot $screenshot): void {
-                if (filled($screenshot->path)) {
-                    Media::delete($screenshot->path);
-                }
-
                 $screenshot->delete();
             });
+
+        DB::afterCommit(function () use ($removedPaths): void {
+            foreach ($removedPaths as $path) {
+                Media::delete($path);
+            }
+        });
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Game;
 use App\Models\GameScreenshot;
 use App\Models\Platform;
 use App\Support\Media;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -40,6 +41,23 @@ test('deleting a game removes cover screenshots and content attachments from med
         ->and(Storage::disk('s3')->exists($cover))->toBeFalse()
         ->and(Storage::disk('public')->exists($screenshot))->toBeFalse()
         ->and(Storage::disk('public')->exists($content))->toBeFalse();
+});
+
+test('rolling back a game deletion keeps its media files', function () {
+    $cover = 'games/covers/rollback.jpg';
+
+    Storage::disk('public')->put($cover, 'cover');
+
+    $game = Game::factory()->create(['cover_path' => $cover]);
+
+    expect(fn () => DB::transaction(function () use ($game): void {
+        $game->delete();
+
+        throw new RuntimeException('rollback');
+    }))->toThrow(RuntimeException::class);
+
+    expect(Game::query()->whereKey($game->id)->exists())->toBeTrue()
+        ->and(Storage::disk('public')->exists($cover))->toBeTrue();
 });
 
 test('failed game publish cleans up uploaded media objects', function () {

@@ -32,24 +32,40 @@ class PublishGame
         $uploadedPaths = [];
 
         try {
-            return DB::transaction(function () use ($data, &$uploadedPaths): Game {
-                $categoryId = null;
+            $categoryId = null;
 
-                if (filled($data['category'] ?? null)) {
-                    $categoryId = $this->resolveCategory((string) $data['category'])->id;
-                }
+            if (filled($data['category'] ?? null)) {
+                $categoryId = $this->resolveCategory((string) $data['category'])->id;
+            }
 
-                $status = GameStatus::from((string) ($data['status'] ?? GameStatus::Published->value));
-                $slug = filled($data['slug'] ?? null)
-                    ? (string) $data['slug']
-                    : $this->uniqueSlug(GameForm::slugFromTitle($data['title'] ?? null));
+            $status = GameStatus::from((string) ($data['status'] ?? GameStatus::Published->value));
+            $slug = filled($data['slug'] ?? null)
+                ? (string) $data['slug']
+                : $this->uniqueSlug(GameForm::slugFromTitle($data['title'] ?? null));
 
-                $coverPath = $this->mediaDownloader->download(
-                    (string) $data['cover_url'],
-                    'games/covers',
-                );
-                $uploadedPaths[] = $coverPath;
+            $coverPath = $this->mediaDownloader->download(
+                (string) $data['cover_url'],
+                'games/covers',
+            );
+            $uploadedPaths[] = $coverPath;
 
+            /** @var list<string> $screenshotPaths */
+            $screenshotPaths = [];
+
+            foreach (array_values($data['screenshots'] ?? []) as $screenshotUrl) {
+                $path = $this->mediaDownloader->download((string) $screenshotUrl, 'games/screenshots');
+                $uploadedPaths[] = $path;
+                $screenshotPaths[] = $path;
+            }
+
+            return DB::transaction(function () use (
+                $data,
+                $categoryId,
+                $status,
+                $slug,
+                $coverPath,
+                $screenshotPaths,
+            ): Game {
                 $game = Game::query()->create([
                     'category_id' => $categoryId,
                     'title' => $data['title'],
@@ -74,10 +90,7 @@ class PublishGame
                     $game->tags()->sync($this->tagImporter->importNames($tags));
                 }
 
-                foreach (array_values($data['screenshots'] ?? []) as $sortOrder => $screenshotUrl) {
-                    $path = $this->mediaDownloader->download((string) $screenshotUrl, 'games/screenshots');
-                    $uploadedPaths[] = $path;
-
+                foreach ($screenshotPaths as $sortOrder => $path) {
                     $game->screenshots()->create([
                         'path' => $path,
                         'sort_order' => $sortOrder,
@@ -126,6 +139,8 @@ class PublishGame
                         ]);
                     }
                 }
+
+                $game->forceFill(['downloads_updated_at' => null])->saveQuietly();
 
                 return $game->fresh([
                     'category',

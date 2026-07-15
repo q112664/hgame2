@@ -131,20 +131,6 @@ const downloadButtonPalettes = [
     'border-rose-500/25 bg-rose-500/10 text-rose-800 hover:bg-rose-500/15 dark:text-rose-200',
 ] as const;
 
-const tabPanelClassName = 'min-h-80';
-
-function TabPendingState({ label }: { label: string }) {
-    return (
-        <div
-            className="flex min-h-80 items-center justify-center"
-            aria-busy="true"
-            aria-label={label}
-        >
-            <Spinner className="size-8 text-muted-foreground" />
-        </div>
-    );
-}
-
 function ResourceScreenshot({
     src,
     alt,
@@ -211,7 +197,6 @@ export default function ResourceShow({ activeTab, resource }: Props) {
     const tabRefs = useRef<Partial<Record<ResourceTab, HTMLElement | null>>>(
         {},
     );
-    const shouldScrollToDownloads = useRef(false);
     const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
     const isTabPending = visualActiveTab !== activeTab;
 
@@ -269,35 +254,12 @@ export default function ResourceShow({ activeTab, resource }: Props) {
 
         updatePill();
 
-        if (
-            shouldScrollToDownloads.current &&
-            visualActiveTab === 'downloads'
-        ) {
-            shouldScrollToDownloads.current = false;
-            tabsListRef.current?.scrollIntoView({
-                behavior: 'auto',
-                block: 'start',
-            });
-            tabRefs.current.downloads?.focus({ preventScroll: true });
-        }
-
         window.addEventListener('resize', updatePill);
 
         return () => window.removeEventListener('resize', updatePill);
     }, [visualActiveTab]);
 
     const showDownloads = () => {
-        if (visualActiveTab === 'downloads') {
-            tabsListRef.current?.scrollIntoView({
-                behavior: 'auto',
-                block: 'start',
-            });
-            tabRefs.current.downloads?.focus({ preventScroll: true });
-
-            return;
-        }
-
-        shouldScrollToDownloads.current = true;
         setVisualActiveTab('downloads');
     };
 
@@ -467,12 +429,11 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                                 preserveState
                                                 preserveScroll
                                                 onStart={showDownloads}
-                                                onError={() => {
-                                                    shouldScrollToDownloads.current = false;
+                                                onError={() =>
                                                     setVisualActiveTab(
                                                         activeTab,
-                                                    );
-                                                }}
+                                                    )
+                                                }
                                             >
                                                 <Download data-icon="inline-start" />
                                                 Download
@@ -559,7 +520,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                     </div>
                 </section>
 
-                <Tabs value={visualActiveTab} className="gap-4">
+                <Tabs value={activeTab} className="gap-4">
                     <TabsList
                         ref={tabsListRef}
                         className="relative grid h-auto w-full scroll-mt-20 grid-cols-3 gap-0.5 rounded-xl bg-card p-1 ring-1 ring-foreground/10 group-data-horizontal/tabs:h-auto sm:inline-grid sm:w-auto"
@@ -592,7 +553,12 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                 ref={(node) => {
                                     tabRefs.current[tab.value] = node;
                                 }}
-                                className={tabTriggerClassName}
+                                className={cn(
+                                    tabTriggerClassName,
+                                    visualActiveTab === tab.value
+                                        ? 'text-foreground data-active:text-foreground'
+                                        : 'text-muted-foreground data-active:text-muted-foreground',
+                                )}
                             >
                                 <Link
                                     href={tab.href(resource.id)}
@@ -611,7 +577,14 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                         ))}
                     </TabsList>
 
-                    <TabsContent value="details" className={tabPanelClassName}>
+                    <div
+                        aria-busy={isTabPending || undefined}
+                        className={cn(
+                            'transition-opacity duration-200',
+                            isTabPending && 'pointer-events-none opacity-50',
+                        )}
+                    >
+                    <TabsContent value="details">
                         <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
                             <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
                                 About
@@ -638,14 +611,9 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                         </section>
                     </TabsContent>
 
-                    <TabsContent
-                        value="downloads"
-                        className={tabPanelClassName}
-                    >
+                    <TabsContent value="downloads">
                         <div className="flex flex-col gap-4">
-                            {isTabPending ? (
-                                <TabPendingState label="Loading downloads" />
-                            ) : resource.releases.length > 0 ? (
+                            {resource.releases.length > 0 ? (
                                 resource.releases.map((release) => {
                                     return (
                                         <article
@@ -784,32 +752,21 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                         </div>
                     </TabsContent>
 
-                    <TabsContent
-                        value="screenshots"
-                        className={tabPanelClassName}
-                    >
-                        {isTabPending ? (
-                            <TabPendingState label="Loading screenshots" />
-                        ) : (
-                            <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-3">
-                                {resource.screenshots.map(
-                                    (screenshot, index) => (
-                                        <ResourceScreenshot
-                                            key={screenshot}
-                                            src={screenshot}
-                                            alt={`${resource.title} screenshot ${index + 1}`}
-                                            onOpen={() =>
-                                                openLightbox(
-                                                    screenshotSlides,
-                                                    index,
-                                                )
-                                            }
-                                        />
-                                    ),
-                                )}
-                            </div>
-                        )}
+                    <TabsContent value="screenshots">
+                        <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-3">
+                            {resource.screenshots.map((screenshot, index) => (
+                                <ResourceScreenshot
+                                    key={screenshot}
+                                    src={screenshot}
+                                    alt={`${resource.title} screenshot ${index + 1}`}
+                                    onOpen={() =>
+                                        openLightbox(screenshotSlides, index)
+                                    }
+                                />
+                            ))}
+                        </div>
                     </TabsContent>
+                    </div>
                 </Tabs>
             </div>
         </SiteLayout>

@@ -14,8 +14,8 @@ export function RichHtml({ html, className, onImageClick }: Props) {
     return (
         <div
             className={cn(
-                'prose max-w-none prose-neutral dark:prose-invert',
-                'prose-a:text-sky-700 dark:prose-a:text-sky-300 prose-img:rounded-md',
+                'prose max-w-none prose-headings:text-foreground prose-p:text-foreground prose-blockquote:text-muted-foreground prose-strong:text-foreground prose-code:text-foreground prose-li:text-foreground prose-hr:border-border',
+                'prose-a:text-info prose-img:rounded-sm',
                 onImageClick && 'prose-img:cursor-zoom-in',
                 className,
             )}

@@ -70,10 +70,10 @@ export default function Settings(props: Props) {
                     <RouteTabs tabs={settingsTabs} activeValue={activeTab} />
 
                     {activeTab === 'profile' ? (
-                        <section className="space-y-8 rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+                        <section className="space-y-8 rounded-md border border-border bg-card p-4 sm:p-5">
                             <ProfileAvatarForm />
 
-                            <div className="space-y-6 border-t border-foreground/10 pt-8">
+                            <div className="space-y-6 border-t border-border pt-8">
                                 <Heading
                                     variant="small"
                                     title="Profile"
@@ -138,7 +138,7 @@ export default function Settings(props: Props) {
                                                         <Link
                                                             href={send()}
                                                             as="button"
-                                                            className="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors hover:decoration-current! dark:decoration-neutral-500"
+                                                            className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-current!"
                                                         >
                                                             Re-send the
                                                             verification email.
@@ -147,7 +147,7 @@ export default function Settings(props: Props) {
 
                                                     {props.status ===
                                                     'verification-link-sent' ? (
-                                                        <p className="mt-2 text-sm font-medium text-green-600">
+                                                        <p className="mt-2 text-sm font-medium text-success">
                                                             A new verification
                                                             link has been sent
                                                             to your email
@@ -170,7 +170,7 @@ export default function Settings(props: Props) {
                                 </Form>
                             </div>
 
-                            <div className="border-t border-foreground/10 pt-8">
+                            <div className="border-t border-border pt-8">
                                 <DeleteUser />
                             </div>
                         </section>
@@ -178,7 +178,7 @@ export default function Settings(props: Props) {
 
                     {activeTab === 'security' ? (
                         props.requiresPasswordConfirmation ? (
-                            <section className="space-y-6 rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+                            <section className="space-y-6 rounded-md border border-border bg-card p-4 sm:p-5">
                                 <Heading
                                     variant="small"
                                     title="Confirm your password"
@@ -221,7 +221,7 @@ export default function Settings(props: Props) {
                                 </Form>
                             </section>
                         ) : (
-                            <section className="space-y-10 rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+                            <section className="space-y-10 rounded-md border border-border bg-card p-4 sm:p-5">
                                 <div className="space-y-6">
                                     <Heading
                                         variant="small"
@@ -334,7 +334,7 @@ export default function Settings(props: Props) {
                     ) : null}
 
                     {activeTab === 'appearance' ? (
-                        <section className="space-y-6 rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+                        <section className="space-y-6 rounded-md border border-border bg-card p-4 sm:p-5">
                             <Heading
                                 variant="small"
                                 title="Appearance"

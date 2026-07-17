@@ -75,7 +75,7 @@ export function ResourcePagination({
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 border-foreground/10 bg-card shadow-none"
+                        className="h-8 border-border bg-card shadow-none"
                         asChild
                     >
                         <Link
@@ -95,7 +95,7 @@ export function ResourcePagination({
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 border-foreground/10 bg-card shadow-none"
+                        className="h-8 border-border bg-card shadow-none"
                         disabled
                     >
                         <ChevronLeft data-icon="inline-start" />
@@ -128,7 +128,7 @@ export function ResourcePagination({
                             size="sm"
                             className={cn(
                                 'size-8 p-0 shadow-none',
-                                !link.active && 'border-foreground/10 bg-card',
+                                !link.active && 'border-border bg-card',
                             )}
                             asChild
                         >
@@ -153,7 +153,7 @@ export function ResourcePagination({
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 border-foreground/10 bg-card shadow-none"
+                        className="h-8 border-border bg-card shadow-none"
                         asChild
                     >
                         <Link
@@ -173,7 +173,7 @@ export function ResourcePagination({
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 border-foreground/10 bg-card shadow-none"
+                        className="h-8 border-border bg-card shadow-none"
                         disabled
                     >
                         Next

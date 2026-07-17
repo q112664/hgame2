@@ -10,7 +10,7 @@ import { login } from '@/routes';
 import { store } from '@/routes/register';
 
 const inlineButtonClassName =
-    'text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors hover:decoration-current dark:decoration-neutral-500';
+    'text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-current';
 
 type Props = {
     passwordRules: string;

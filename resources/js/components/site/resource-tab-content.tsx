@@ -37,7 +37,7 @@ export function ResourceScreenshot({
         <button
             type="button"
             onClick={onOpen}
-            className="relative aspect-video overflow-hidden rounded-md bg-card ring-1 ring-foreground/10 transition-[ring-color] hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="relative aspect-video overflow-hidden rounded-md border border-border bg-card transition-[border-color] hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
             aria-label={`View ${alt}`}
         >
             {!loaded ? (
@@ -96,7 +96,7 @@ export function ResourceTabContent({
                 }
             >
                 {activeTab === 'details' ? (
-                    <section className="rounded-md bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+                    <section className="rounded-md border border-border bg-card p-4 sm:p-5">
                         <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
                             About
                         </h2>
@@ -111,7 +111,7 @@ export function ResourceTabContent({
                                     {resource.tags.map((tag) => (
                                         <span
                                             key={tag}
-                                            className="inline-flex h-6 items-center rounded-full bg-muted px-2.5 text-xs font-medium text-muted-foreground"
+                                            className="inline-flex h-6 items-center rounded-sm bg-muted px-2.5 text-xs font-medium text-muted-foreground"
                                         >
                                             {tag}
                                         </span>
@@ -128,9 +128,9 @@ export function ResourceTabContent({
                             resource.releases.map((release) => (
                                 <article
                                     key={release.id}
-                                    className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10"
+                                    className="overflow-hidden rounded-md border border-border bg-card"
                                 >
-                                    <div className="flex flex-col gap-1 border-b border-foreground/5 bg-gradient-to-r from-sky-500/8 via-violet-500/6 to-transparent px-4 py-3.5 sm:px-5">
+                                    <div className="flex flex-col gap-1 border-b border-border bg-muted/50 px-4 py-3.5 sm:px-5">
                                         <h3 className="font-heading text-base font-semibold tracking-tight text-foreground">
                                             {release.title ??
                                                 'Download package'}
@@ -238,7 +238,7 @@ export function ResourceTabContent({
                                 </article>
                             ))
                         ) : (
-                            <p className="rounded-md bg-card px-4 py-8 text-center text-sm text-muted-foreground ring-1 ring-foreground/10">
+                            <p className="rounded-md border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
                                 No downloads available yet
                             </p>
                         )}

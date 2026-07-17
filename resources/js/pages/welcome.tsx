@@ -13,8 +13,13 @@ export default function Welcome({ resources, recentUpdates }: Props) {
     return (
         <SiteLayout>
             <Head title="hgame - Galgame Resource Downloads" />
-            <RecentResourceUpdates updates={recentUpdates} />
-            <LatestResources resources={resources} />
+            <div className="bg-background">
+                <RecentResourceUpdates updates={recentUpdates} />
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="border-t border-border" />
+                </div>
+                <LatestResources resources={resources} />
+            </div>
         </SiteLayout>
     );
 }

@@ -35,7 +35,7 @@ export function ProfileAvatarForm() {
                     key={avatarUser.avatar ?? 'empty'}
                     user={avatarUser}
                     className="size-20"
-                    fallbackClassName="rounded-full bg-neutral-200 text-lg text-black dark:bg-neutral-700 dark:text-white"
+                    fallbackClassName="rounded-full bg-accent text-lg text-accent-foreground"
                 />
 
                 <div className="flex flex-wrap items-center gap-2">

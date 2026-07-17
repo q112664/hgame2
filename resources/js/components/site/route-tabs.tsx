@@ -87,14 +87,14 @@ export function RouteTabs<Value extends string>({
             }}
             aria-label={ariaLabel}
             className={cn(
-                'relative grid h-auto w-full scroll-mt-20 grid-cols-3 gap-0.5 rounded-xl bg-card p-1 ring-1 ring-foreground/10 sm:inline-grid sm:w-auto',
+                'relative grid h-auto w-full scroll-mt-20 grid-cols-3 gap-0.5 rounded-md border border-border bg-card p-1 sm:inline-grid sm:w-auto',
                 className,
             )}
         >
             {pill.ready ? (
                 <motion.span
                     aria-hidden
-                    className="absolute top-1 bottom-1 rounded-lg bg-muted"
+                    className="absolute top-1 bottom-1 rounded-sm bg-accent"
                     initial={false}
                     animate={{ left: pill.left, width: pill.width }}
                     transition={
@@ -125,11 +125,11 @@ export function RouteTabs<Value extends string>({
                         activeValue === tab.value ? 'page' : undefined
                     }
                     className={cn(
-                        'relative z-10 inline-flex h-9 items-center justify-center rounded-lg border-transparent px-4 text-sm font-medium shadow-none',
+                        'relative z-10 inline-flex h-9 items-center justify-center rounded-md border-transparent px-4 text-sm font-medium shadow-none',
                         'text-muted-foreground transition-colors',
                         'hover:bg-transparent hover:text-foreground/80',
                         'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-                        'dark:hover:text-foreground/80',
+                        'hover:text-foreground/80',
                         effectiveDisplayedValue === tab.value
                             ? 'text-foreground'
                             : 'text-muted-foreground',

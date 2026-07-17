@@ -1,6 +1,5 @@
 import { Link } from '@inertiajs/react';
 import { ResourceCard } from '@/components/site/resource-card';
-import { Button } from '@/components/ui/button';
 import { index as resourcesIndex } from '@/routes/resources';
 import type { GameCard } from '@/types/resources';
 
@@ -11,30 +10,33 @@ type Props = {
 export function LatestResources({ resources }: Props) {
     return (
         <section id="latest" className="scroll-mt-16">
-            <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-8">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="flex flex-col gap-2">
-                        <h2 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
-                            Recently published
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            Newly added visual novels and galgame resources
-                        </p>
-                    </div>
-                    <Button
-                        asChild
-                        variant="outline"
-                        className="border-foreground/10 bg-card shadow-none"
+            <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+                <div className="flex items-baseline justify-between gap-4">
+                    <h2 className="font-heading text-lg font-semibold text-foreground sm:text-xl">
+                        New
+                    </h2>
+                    <Link
+                        href={resourcesIndex()}
+                        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
-                        <Link href={resourcesIndex()}>View all</Link>
-                    </Button>
+                        View all
+                    </Link>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {resources.map((resource) => (
-                        <ResourceCard key={resource.id} resource={resource} />
-                    ))}
-                </div>
+                {resources.length > 0 ? (
+                    <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {resources.map((resource) => (
+                            <ResourceCard
+                                key={resource.id}
+                                resource={resource}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <p className="mt-6 text-sm text-muted-foreground">
+                        No resources yet.
+                    </p>
+                )}
             </div>
         </section>
     );

@@ -164,7 +164,7 @@ export default function ResourcesIndex({
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="h-9 gap-2 border-foreground/10 bg-card shadow-none"
+                                className="h-9 gap-2 border-border bg-card shadow-none"
                                 disabled={!hasActiveFilters}
                                 onClick={() =>
                                     applyFilters({

@@ -13,7 +13,7 @@ export function UserInfo({
             <UserAvatar
                 user={user}
                 className="h-8 w-8"
-                fallbackClassName="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white"
+                fallbackClassName="rounded-md bg-accent text-accent-foreground"
             />
             <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>

@@ -43,20 +43,19 @@ const navItems: NavItem[] = [
 const navLinkClassName = cn(
     'inline-flex h-8 items-center rounded-md px-2.5 text-sm font-medium',
     'text-foreground transition-colors',
-    'hover:bg-black/5 dark:hover:bg-white/10',
+    'hover:bg-foreground/10',
     'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
 );
 
 const softButtonClassName = cn(
-    'hover:bg-black/5 hover:text-foreground',
-    'aria-expanded:bg-black/5 aria-expanded:text-foreground',
-    'dark:hover:bg-white/10 dark:aria-expanded:bg-white/10',
+    'hover:bg-foreground/10 hover:text-foreground',
+    'aria-expanded:bg-foreground/5 aria-expanded:text-foreground',
 );
 
 const iconButtonClassName = cn(
     'inline-flex size-9 items-center justify-center rounded-md text-foreground',
     'transition-colors outline-none select-none',
-    'hover:bg-black/5 dark:hover:bg-white/10',
+    'hover:bg-foreground/10',
     'focus-visible:ring-2 focus-visible:ring-ring/50',
 );
 
@@ -114,7 +113,7 @@ function NotificationButton() {
                 </TooltipContent>
             </Tooltip>
             <DropdownMenuContent className="w-80" align="end">
-                <div className="border-b border-foreground/10 px-3 py-2">
+                <div className="border-b border-border px-3 py-2">
                     <p className="text-sm font-medium text-foreground">
                         Notifications
                     </p>
@@ -171,7 +170,7 @@ function UserAvatarMenu({ user }: { user: User }) {
                     <UserAvatar
                         user={user}
                         className="size-8"
-                        fallbackClassName="rounded-full bg-neutral-200 text-xs text-black dark:bg-neutral-700 dark:text-white"
+                        fallbackClassName="rounded-full bg-accent text-xs text-accent-foreground"
                     />
                     <span className="hidden max-w-32 truncate text-sm font-medium text-foreground md:inline">
                         {user.name}
@@ -213,7 +212,7 @@ export function SiteHeader() {
     }, []);
 
     return (
-        <header className="sticky top-0 z-40 border-b border-black/5 bg-background/75 backdrop-blur-md supports-backdrop-filter:bg-background/65 dark:border-white/10">
+        <header className="sticky top-0 z-40 border-b border-border/80 bg-surface-raised/85 backdrop-blur-md supports-backdrop-filter:bg-surface-raised/70">
             <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
                 <Sheet open={open} onOpenChange={setOpen}>
                     <SheetTrigger asChild>
@@ -230,12 +229,12 @@ export function SiteHeader() {
                     </SheetTrigger>
                     <SheetContent
                         side="left"
-                        className="w-[85vw] max-w-xs gap-0 bg-background p-0"
+                        className="w-[85vw] max-w-xs gap-0 bg-surface-raised p-0"
                     >
                         <SheetTitle className="sr-only">
                             Navigation menu
                         </SheetTitle>
-                        <div className="flex h-14 shrink-0 items-center border-b border-black/5 px-4 dark:border-white/10">
+                        <div className="flex h-14 shrink-0 items-center border-b border-border/80 px-4">
                             <Link
                                 href={home()}
                                 className="font-heading text-lg font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80"
@@ -253,7 +252,7 @@ export function SiteHeader() {
 
                             {!auth.user && (
                                 <div className="mt-auto flex flex-col gap-3 pt-6">
-                                    <Separator className="bg-black/8 dark:bg-white/10" />
+                                    <Separator className="bg-border" />
                                     <div className="grid gap-2">
                                         <Button
                                             variant="ghost"

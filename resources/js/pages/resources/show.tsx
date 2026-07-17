@@ -301,7 +301,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
             />
 
             <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-                <section className="overflow-hidden rounded-md bg-card ring-1 ring-foreground/10">
+                <section className="overflow-hidden rounded-md border border-border bg-card">
                     <div className="flex flex-col sm:flex-row">
                         <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted sm:aspect-auto sm:h-[280px] sm:w-auto sm:max-w-[498px]">
                             <img
@@ -399,8 +399,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                             size="lg"
                                             className={cn(
                                                 'border-0 px-4 shadow-none',
-                                                'bg-sky-600 text-white hover:bg-sky-500',
-                                                'dark:bg-sky-500 dark:text-white dark:hover:bg-sky-400',
+                                                'bg-primary text-primary-foreground hover:bg-primary/90',
                                             )}
                                             asChild
                                         >
@@ -485,7 +484,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                                 className={cn(
                                                     'border-0 shadow-none ring-0',
                                                     isFavorite
-                                                        ? 'bg-rose-500/12 text-rose-600 hover:bg-rose-500/18 dark:text-rose-400'
+                                                        ? 'bg-primary/12 text-primary hover:bg-primary/18'
                                                         : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
                                                 )}
                                                 aria-label={

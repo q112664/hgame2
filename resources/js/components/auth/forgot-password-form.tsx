@@ -10,7 +10,7 @@ import { login } from '@/routes';
 import { email } from '@/routes/password';
 
 const inlineButtonClassName =
-    'text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors hover:decoration-current dark:decoration-neutral-500';
+    'text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-current';
 
 type Props = {
     status?: string;
@@ -24,7 +24,7 @@ export default function ForgotPasswordForm({ status, onLogin }: Props) {
         <div className="space-y-6">
             {status || sent ? (
                 <p
-                    className="text-center text-sm font-medium text-green-600 dark:text-green-400"
+                    className="text-center text-sm font-medium text-success"
                     role="status"
                 >
                     {status ??

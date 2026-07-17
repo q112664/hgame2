@@ -95,7 +95,7 @@ export function FilterMenu({
                     <Button
                         type="button"
                         variant="outline"
-                        className="h-9 w-full justify-between border-foreground/10 bg-card px-3 font-normal shadow-none"
+                        className="h-9 w-full justify-between border-border bg-card px-3 font-normal shadow-none"
                     >
                         <span className="truncate">{selectedLabel}</span>
                         <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
@@ -146,7 +146,7 @@ export function SortMenu({
                 <Button
                     type="button"
                     variant="outline"
-                    className="h-9 gap-2 border-foreground/10 bg-card px-3 font-normal shadow-none"
+                    className="h-9 gap-2 border-border bg-card px-3 font-normal shadow-none"
                 >
                     <ArrowUpDown className="size-4 text-muted-foreground" />
                     <span className="truncate">{selectedLabel}</span>
@@ -270,14 +270,14 @@ export function TagFilterDialog({
                 <Button
                     type="button"
                     variant="outline"
-                    className="h-9 justify-start gap-2 border-foreground/10 bg-card shadow-none"
+                    className="h-9 justify-start gap-2 border-border bg-card shadow-none"
                 >
                     <Tags className="size-4 text-muted-foreground" />
                     <span>Tags</span>
                     {selected.length > 0 ? (
                         <Badge
                             variant="secondary"
-                            className="ml-auto h-5 rounded-md px-1.5 text-[11px]"
+                            className="ml-auto h-5 rounded-sm px-1.5 text-[11px]"
                         >
                             {selected.length}
                         </Badge>
@@ -299,12 +299,12 @@ export function TagFilterDialog({
                         value={query}
                         onChange={(event) => setQuery(event.target.value)}
                         placeholder="Search tags…"
-                        className="h-10 border-foreground/10 bg-background pl-9 shadow-none"
+                        className="h-10 border-border bg-background pl-9 shadow-none"
                         autoFocus
                     />
                 </div>
 
-                <div className="max-h-72 overflow-y-auto rounded-lg ring-1 ring-foreground/10">
+                <div className="max-h-72 overflow-y-auto rounded-md border border-border">
                     {filtered.length === 0 ? (
                         <p className="px-3 py-8 text-center text-sm text-muted-foreground">
                             No tags found
@@ -321,7 +321,7 @@ export function TagFilterDialog({
                                             htmlFor={id}
                                             className={cn(
                                                 'flex cursor-pointer items-center gap-3 rounded-md px-2.5 py-2',
-                                                'hover:bg-muted/60',
+                                                'hover:bg-muted',
                                             )}
                                         >
                                             <Checkbox

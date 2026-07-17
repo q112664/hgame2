@@ -44,8 +44,8 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
                             onChange={(event) => setQuery(event.target.value)}
                             placeholder="Search…"
                             className={cn(
-                                'h-12 rounded-md border-foreground/10 bg-card pr-11 pl-11 text-base shadow-none',
-                                'ring-1 ring-foreground/10 transition-[box-shadow,ring-color]',
+                                'h-12 rounded-md border-border bg-card pr-11 pl-11 text-base shadow-none',
+                                'ring-1 ring-border transition-[box-shadow,ring-color]',
                                 'placeholder:text-muted-foreground/70',
                                 'focus-visible:ring-2 focus-visible:ring-foreground/20',
                             )}

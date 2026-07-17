@@ -74,7 +74,7 @@ export default function Favorites({ resources, downloadUpdateCount }: Props) {
                 </div>
 
                 {downloadUpdateCount > 0 ? (
-                    <p className="rounded-md bg-sky-500/10 px-4 py-2.5 text-sm text-sky-800 ring-1 ring-sky-500/15 dark:text-sky-200">
+                    <p className="rounded-sm border border-info/25 bg-info/10 px-4 py-2.5 text-sm text-info">
                         {downloadUpdateCount === 1
                             ? '1 favorite has updated downloads'
                             : `${downloadUpdateCount} favorites have updated downloads`}
@@ -110,7 +110,7 @@ export default function Favorites({ resources, downloadUpdateCount }: Props) {
                                             />
                                             {resource.hasDownloadUpdate ? (
                                                 <span
-                                                    className="absolute top-2 right-2 size-2.5 rounded-full bg-sky-500 ring-2 ring-background"
+                                                    className="absolute top-2 right-2 size-2.5 rounded-full bg-info ring-2 ring-background"
                                                     aria-hidden
                                                 />
                                             ) : null}
@@ -129,7 +129,7 @@ export default function Favorites({ resources, downloadUpdateCount }: Props) {
                                                     ) : null}
                                                 </div>
                                                 {resource.hasDownloadUpdate ? (
-                                                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-500/12 px-2.5 py-1 text-xs font-medium text-sky-700 dark:text-sky-300">
+                                                    <span className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-info/12 px-2.5 py-1 text-xs font-medium text-info">
                                                         <Download className="size-3.5" />
                                                         Updated
                                                     </span>

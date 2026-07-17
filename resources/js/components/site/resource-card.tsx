@@ -23,22 +23,22 @@ type Props = {
 };
 
 const overlayChipClassName = cn(
-    'inline-flex h-6 items-center justify-center rounded-md px-2',
-    'bg-background/90 text-xs font-medium text-foreground shadow-xs',
-    'ring-1 ring-foreground/10',
+    'inline-flex h-6 items-center justify-center rounded-sm px-2',
+    'bg-background/90 text-xs font-medium text-foreground shadow-none',
+    'ring-1 ring-border/80',
 );
 
 const languageChipClassName = cn(
-    'inline-flex h-5 items-center justify-center rounded px-1.5',
-    'bg-background/90 text-[11px] leading-none font-medium text-foreground shadow-xs',
-    'ring-1 ring-foreground/10',
+    'inline-flex h-5 items-center justify-center rounded-sm px-1.5',
+    'bg-background/90 font-mono text-[11px] leading-none font-medium text-foreground shadow-none',
+    'ring-1 ring-border/80',
 );
 
 export function ResourceCard({ resource }: Props) {
     return (
         <Card
             size="sm"
-            className="h-full gap-0 rounded-md py-0 transition-[ring-color] duration-150 hover:ring-foreground/15"
+            className="h-full gap-0 rounded-md py-0 transition-[ring-color] duration-150 hover:ring-primary/25"
         >
             <Link
                 href={resourceDetails(resource.id)}
@@ -125,7 +125,7 @@ export function ResourceCard({ resource }: Props) {
                     </CardTitle>
                 </CardHeader>
 
-                <CardContent className="mt-auto flex items-center justify-between gap-2 pt-1.5 pb-3 text-xs text-muted-foreground">
+                <CardContent className="mt-auto flex items-center justify-between gap-2 pt-1.5 pb-3 font-mono text-xs text-muted-foreground">
                     <time dateTime={resource.publishedAt ?? undefined}>
                         {resource.publishedAt
                             ? formatDate(resource.publishedAt)

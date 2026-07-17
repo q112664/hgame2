@@ -13,7 +13,7 @@ import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
 const inlineButtonClassName =
-    'text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors hover:decoration-current dark:decoration-neutral-500';
+    'text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-current';
 
 type Props = {
     canRegister?: boolean;

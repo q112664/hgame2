@@ -43,7 +43,7 @@ export const dateChipClassName = cn(
 );
 
 export const downloadButtonPalettes = [
-    'border-primary/30 bg-primary/10 text-primary hover:bg-primary/15',
-    'border-info/30 bg-info/10 text-info hover:bg-info/15',
-    'border-success/30 bg-success/10 text-success hover:bg-success/15',
+    'border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 dark:border-primary/40 dark:bg-primary/15 dark:hover:bg-primary/25',
+    'border-info/30 bg-info/10 text-info hover:bg-info/15 dark:border-info/40 dark:bg-info/15 dark:hover:bg-info/25',
+    'border-success/30 bg-success/10 text-success hover:bg-success/15 dark:border-success/40 dark:bg-success/15 dark:hover:bg-success/25',
 ] as const;

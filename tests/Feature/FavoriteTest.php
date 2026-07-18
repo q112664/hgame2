@@ -70,7 +70,7 @@ test('favorites page lists the users favorited games newest first', function () 
 
 test('favorites page paginates resources', function () {
     $user = User::factory()->create();
-    $games = Game::factory()->count(21)->create();
+    $games = Game::factory()->count(9)->create();
 
     $user->favoritedGames()->attach($games->modelKeys());
 
@@ -80,7 +80,8 @@ test('favorites page paginates resources', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->where('resources.current_page', 1)
             ->where('resources.last_page', 2)
-            ->has('resources.data', 20)
+            ->where('resources.per_page', 8)
+            ->has('resources.data', 8)
         );
 
     $this->actingAs($user)
@@ -88,6 +89,7 @@ test('favorites page paginates resources', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resources.current_page', 2)
+            ->where('resources.per_page', 8)
             ->has('resources.data', 1)
         );
 });

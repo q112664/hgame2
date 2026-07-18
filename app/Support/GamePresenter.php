@@ -43,17 +43,6 @@ class GamePresenter
         ];
     }
 
-    /** @return array{id: string, title: string, subtitle: string|null, thumbnail: string} */
-    public static function search(Game $game): array
-    {
-        return [
-            'id' => $game->slug,
-            'title' => $game->title,
-            'subtitle' => $game->subtitle,
-            'thumbnail' => self::mediaUrl($game->cover_path ?: $game->cover_url),
-        ];
-    }
-
     /** @return array<string, mixed> */
     public static function recentUpdate(Game $game): array
     {
@@ -128,7 +117,7 @@ class GamePresenter
                         'languages' => $release->languages->pluck('name')->values()->all(),
                         'version' => $release->version,
                         'fileSize' => $release->file_size,
-                        'description' => $release->description,
+                        'description' => str($release->description ?? '')->sanitizeHtml()->toString(),
                         'publishedAt' => self::dateString($release->published_at),
                         'downloadLinks' => $release->relationLoaded('downloadLinks')
                             ? $release->downloadLinks

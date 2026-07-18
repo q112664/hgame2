@@ -128,93 +128,101 @@ export function ResourceTabContent({
                             resource.releases.map((release) => (
                                 <article
                                     key={release.id}
-                                    className="overflow-hidden rounded-md border border-border bg-card"
+                                    className="rounded-md border border-border bg-card p-3 sm:p-4"
                                 >
-                                    <div className="flex flex-col gap-1 border-b border-border bg-muted/50 px-4 py-3.5 sm:px-5">
-                                        <h3 className="font-heading text-base font-semibold tracking-tight text-foreground">
-                                            {release.title ??
-                                                'Download package'}
-                                        </h3>
-                                        {release.version ? (
-                                            <p className="text-xs text-muted-foreground">
-                                                Version {release.version}
-                                            </p>
-                                        ) : null}
-                                    </div>
+                                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                        <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h3 className="font-heading text-sm font-semibold text-foreground sm:text-base">
+                                                    {release.title ??
+                                                        'Download package'}
+                                                </h3>
+                                                {release.version ? (
+                                                    <span className="inline-flex h-6 items-center rounded-sm bg-muted px-2 font-mono text-xs text-muted-foreground">
+                                                        v{release.version}
+                                                    </span>
+                                                ) : null}
+                                            </div>
 
-                                    <div className="space-y-4 p-4 sm:p-5">
-                                        {release.description ? (
-                                            <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                                                {release.description}
-                                            </p>
-                                        ) : null}
+                                            {release.description ? (
+                                                <RichHtml
+                                                    html={release.description}
+                                                    className="prose-sm text-muted-foreground prose-p:my-0 [&:has(>p:only-child:empty)]:hidden"
+                                                />
+                                            ) : null}
 
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {release.platforms.map(
-                                                (platform) => (
-                                                    <Badge
-                                                        key={platform.slug}
-                                                        variant="outline"
-                                                        className={platformBadgeClassName(
-                                                            platform.slug,
-                                                        )}
-                                                    >
-                                                        <PlatformIcon
-                                                            slug={platform.slug}
-                                                            data-icon="inline-start"
-                                                        />
-                                                        {platform.name}
-                                                    </Badge>
-                                                ),
-                                            )}
-                                            {release.languages.map(
-                                                (language) => (
-                                                    <Badge
-                                                        key={language}
-                                                        variant="outline"
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {release.platforms.map(
+                                                    (platform) => (
+                                                        <Badge
+                                                            key={platform.slug}
+                                                            variant="outline"
+                                                            className={platformBadgeClassName(
+                                                                platform.slug,
+                                                            )}
+                                                        >
+                                                            <PlatformIcon
+                                                                slug={
+                                                                    platform.slug
+                                                                }
+                                                                data-icon="inline-start"
+                                                            />
+                                                            {platform.name}
+                                                        </Badge>
+                                                    ),
+                                                )}
+                                                {release.languages.map(
+                                                    (language) => (
+                                                        <Badge
+                                                            key={language}
+                                                            variant="outline"
+                                                            className={
+                                                                languageBadgeClassName
+                                                            }
+                                                        >
+                                                            {language}
+                                                        </Badge>
+                                                    ),
+                                                )}
+                                                {release.fileSize ? (
+                                                    <span
                                                         className={
-                                                            languageBadgeClassName
+                                                            fileSizeChipClassName
                                                         }
                                                     >
-                                                        {language}
-                                                    </Badge>
-                                                ),
-                                            )}
-                                            {release.fileSize ? (
+                                                        <HardDrive className="size-3.5" />
+                                                        {release.fileSize}
+                                                    </span>
+                                                ) : null}
                                                 <span
                                                     className={
-                                                        fileSizeChipClassName
+                                                        dateChipClassName
                                                     }
                                                 >
-                                                    <HardDrive className="size-3.5" />
-                                                    {release.fileSize}
+                                                    <CalendarDays className="size-3.5" />
+                                                    <time
+                                                        dateTime={
+                                                            release.publishedAt ??
+                                                            undefined
+                                                        }
+                                                    >
+                                                        {release.publishedAt ??
+                                                            'Unscheduled'}
+                                                    </time>
                                                 </span>
-                                            ) : null}
-                                            <span className={dateChipClassName}>
-                                                <CalendarDays className="size-3.5" />
-                                                <time
-                                                    dateTime={
-                                                        release.publishedAt ??
-                                                        undefined
-                                                    }
-                                                >
-                                                    {release.publishedAt ??
-                                                        'Unscheduled'}
-                                                </time>
-                                            </span>
+                                            </div>
                                         </div>
 
-                                        <div className="h-px bg-foreground/5" />
-
-                                        <div className="flex flex-wrap gap-2">
+                                        <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-[42%] lg:justify-end">
                                             {release.downloadLinks.map(
                                                 (link, index) => (
                                                     <Button
                                                         key={link.id}
                                                         asChild
                                                         variant="outline"
+                                                        size="sm"
                                                         className={cn(
-                                                            'h-10 border shadow-none',
+                                                            'h-8 border shadow-none',
                                                             downloadButtonPalettes[
                                                                 index %
                                                                     downloadButtonPalettes.length

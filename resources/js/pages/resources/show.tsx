@@ -484,8 +484,8 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                                 className={cn(
                                                     'border-0 shadow-none ring-0',
                                                     isFavorite
-                                                        ? 'bg-primary/12 text-primary hover:bg-primary/18'
-                                                        : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+                                                        ? 'bg-primary/12 text-primary hover:bg-primary/18 dark:border dark:border-primary/30 dark:bg-primary/15 dark:hover:bg-primary/25'
+                                                        : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground dark:border dark:border-foreground/15 dark:bg-surface-raised dark:text-foreground dark:hover:border-foreground/25 dark:hover:bg-surface-strong',
                                                 )}
                                                 aria-label={
                                                     isFavorite

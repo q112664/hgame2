@@ -5,26 +5,27 @@ namespace App\Actions\Games;
 use App\Models\Game;
 use App\Support\GamePresenter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 
 class SearchGames
 {
     /**
-     * @return list<array{id: string, title: string, subtitle: string|null, thumbnail: string}>
+     * @return LengthAwarePaginator<int, array<string, mixed>>
      */
-    public function __invoke(?string $query, int $limit = 50): array
+    public function __invoke(?string $query, int $perPage = 8): LengthAwarePaginator
     {
         $term = Str::of($query ?? '')->trim()->toString();
+        $games = Game::query()
+            ->published()
+            ->withCardData();
 
         if ($term === '') {
-            return [];
-        }
+            $games->whereKey([]);
+        } else {
+            $like = '%'.addcslashes($term, '%_\\').'%';
 
-        $like = '%'.addcslashes($term, '%_\\').'%';
-
-        return array_values(Game::query()
-            ->published()
-            ->where(function (Builder $builder) use ($like): void {
+            $games->where(function (Builder $builder) use ($like): void {
                 $builder
                     ->where('title', 'like', $like)
                     ->orWhere('subtitle', 'like', $like)
@@ -51,12 +52,27 @@ class SearchGames
                             ->where('name', 'like', $like)
                             ->orWhere('code', 'like', $like),
                     );
-            })
+            });
+        }
+
+        return $games
             ->latest('published_at')
-            ->limit($limit)
-            ->get(['slug', 'title', 'subtitle', 'cover_url', 'cover_path'])
-            ->map(fn (Game $game): array => GamePresenter::search($game))
-            ->values()
-            ->all());
+            ->paginate(
+                perPage: $perPage,
+                columns: [
+                    'id',
+                    'category_id',
+                    'slug',
+                    'title',
+                    'subtitle',
+                    'developer',
+                    'cover_url',
+                    'cover_path',
+                    'published_at',
+                    'views_count',
+                ],
+            )
+            ->withQueryString()
+            ->through(fn (Game $game): array => GamePresenter::card($game));
     }
 }

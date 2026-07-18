@@ -28,6 +28,7 @@ beforeEach(function () {
         'title' => 'Official release',
         'version' => '1.2 demo',
         'file_size' => '5.4 GB',
+        'description' => '<p>Release notes<script>alert(1)</script></p>',
     ]);
 
     GameDownloadLink::factory()->for($release, 'release')->create([
@@ -107,6 +108,10 @@ test('downloads tab includes releases and download links without screenshots', f
                 ['name' => 'Windows', 'slug' => 'windows'],
             ])
             ->where('resource.releases.0.languages', ['Chinese'])
+            ->where(
+                'resource.releases.0.description',
+                fn (string $description): bool => str_contains($description, '<p>Release notes</p>') && ! str_contains($description, '<script>'),
+            )
             ->has('resource.releases.0.downloadLinks', 2)
             ->where('resource.releases.0.downloadLinks.0.label', 'Baidu Netdisk')
         );

@@ -1,21 +1,20 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
+import type { PaginatedData } from '@/components/site/site-pagination';
 import { search } from '@/routes';
 import type { GameCard } from '@/types/resources';
 
-export type SearchResource = Pick<GameCard, 'id' | 'title' | 'thumbnail'> & {
-    subtitle: string | null;
-};
+export type SearchResource = GameCard;
+export type PaginatedSearchResources = PaginatedData<SearchResource>;
 
 type Props = {
     initialQuery: string;
-    resources: SearchResource[];
+    resources: PaginatedSearchResources;
 };
 
 export function useResourceSearch({ initialQuery, resources }: Props) {
     const [query, setQuery] = useState(initialQuery);
     const [isSearching, setIsSearching] = useState(false);
-    const [stableResources, setStableResources] = useState(resources);
     const inputRef = useRef<HTMLInputElement>(null);
     const isFirstRender = useRef(true);
     const requestId = useRef(0);
@@ -49,22 +48,7 @@ export function useResourceSearch({ initialQuery, resources }: Props) {
                     only: ['query', 'resources'],
                     onStart: () => {
                         if (currentRequestId === requestId.current) {
-                            if (trimmed === '') {
-                                setStableResources([]);
-                            }
-
                             setIsSearching(true);
-                        }
-                    },
-                    onSuccess: (page) => {
-                        if (currentRequestId === requestId.current) {
-                            const nextResources = page.props.resources;
-
-                            if (Array.isArray(nextResources)) {
-                                setStableResources(
-                                    nextResources as SearchResource[],
-                                );
-                            }
                         }
                     },
                     onFinish: () => {
@@ -88,12 +72,11 @@ export function useResourceSearch({ initialQuery, resources }: Props) {
         query,
         setQuery,
         inputRef,
-        stableResources,
+        stableResources: resources,
         isPending,
         hasQuery,
-        showPendingPlaceholder: isPending && stableResources.length === 0,
-        showResults: hasQuery && stableResources.length > 0,
-        showEmptyResults:
-            hasQuery && !isPending && stableResources.length === 0,
+        showPendingPlaceholder: isPending && resources.data.length === 0,
+        showResults: hasQuery && resources.data.length > 0,
+        showEmptyResults: hasQuery && !isPending && resources.data.length === 0,
     };
 }

@@ -1,17 +1,30 @@
 import { Head } from '@inertiajs/react';
-import { Search } from 'lucide-react';
-import { SearchResults } from '@/components/site/search-results';
+import { Search, SearchX } from 'lucide-react';
+import {
+    SearchResults,
+    SearchResultsSkeleton,
+} from '@/components/site/search-results';
+import { SitePageContainer } from '@/components/site/site-page-container';
+import { SitePagination } from '@/components/site/site-pagination';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import type { SearchResource } from '@/hooks/use-resource-search';
+import type { PaginatedSearchResources } from '@/hooks/use-resource-search';
 import { useResourceSearch } from '@/hooks/use-resource-search';
 import { SiteLayout } from '@/layouts/site-layout';
 import { cn } from '@/lib/utils';
+import { search as searchRoute } from '@/routes';
 
 type Props = {
     query: string;
-    resources: SearchResource[];
+    resources: PaginatedSearchResources;
 };
+
+function scrollToSearchResults() {
+    document.getElementById('search-results')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+    });
+}
 
 export default function SearchPage({ query: initialQuery, resources }: Props) {
     const {
@@ -20,7 +33,6 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
         inputRef,
         stableResources,
         isPending,
-        hasQuery,
         showPendingPlaceholder,
         showResults,
         showEmptyResults,
@@ -30,12 +42,18 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
         <SiteLayout>
             <Head title="Search" />
 
-            <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+            <SitePageContainer className="gap-8">
+                <header>
+                    <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                        Search
+                    </h1>
+                </header>
+
                 <div className="flex flex-col gap-6">
                     <label className="sr-only" htmlFor="site-search-input">
                         Search
                     </label>
-                    <div className="relative mx-auto w-full max-w-2xl">
+                    <div className="relative w-full max-w-3xl">
                         <Search className="pointer-events-none absolute top-1/2 left-4 z-10 size-4.5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             id="site-search-input"
@@ -57,36 +75,47 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
                         ) : null}
                     </div>
 
-                    {!hasQuery ? (
-                        <p className="text-center text-base text-muted-foreground">
-                            Type to search
-                        </p>
-                    ) : null}
+                    {showPendingPlaceholder ? <SearchResultsSkeleton /> : null}
 
-                    {showPendingPlaceholder ? (
-                        <div
-                            className="flex justify-center py-10"
-                            aria-busy="true"
-                            aria-label="Searching"
-                        >
-                            <Spinner className="size-6 text-muted-foreground" />
+                    {showEmptyResults ? (
+                        <div className="flex min-h-56 flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border bg-card/50 px-6 text-center">
+                            <SearchX className="size-6 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground">
+                                No matches for “{query.trim()}”
+                            </p>
                         </div>
                     ) : null}
 
-                    {showEmptyResults ? (
-                        <p className="text-center text-base text-muted-foreground">
-                            No results
-                        </p>
-                    ) : null}
-
                     {showResults ? (
-                        <SearchResults
-                            resources={stableResources}
-                            isPending={isPending}
-                        />
+                        <div
+                            id="search-results"
+                            className="flex scroll-mt-20 flex-col gap-8"
+                        >
+                            <SearchResults
+                                resources={stableResources.data}
+                                isPending={isPending}
+                            />
+
+                            {!isPending ? (
+                                <SitePagination
+                                    pagination={stableResources}
+                                    pageUrl={(page) =>
+                                        searchRoute.url({
+                                            query: {
+                                                q: query.trim(),
+                                                page,
+                                            },
+                                        })
+                                    }
+                                    ariaLabel="Search pagination"
+                                    only={['query', 'resources']}
+                                    onSuccess={scrollToSearchResults}
+                                />
+                            ) : null}
+                        </div>
                     ) : null}
                 </div>
-            </div>
+            </SitePageContainer>
         </SiteLayout>
     );
 }

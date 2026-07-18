@@ -1,17 +1,10 @@
 import { Head, Link, router, useHttp, usePage } from '@inertiajs/react';
-import {
-    Building2,
-    CalendarDays,
-    Download,
-    Eye,
-    Heart,
-    Pencil,
-} from 'lucide-react';
+import { Building2, CalendarDays, Download, Eye, Pencil } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
-import { useAuthDialog } from '@/components/auth/auth-dialog';
 import { ImageLightbox } from '@/components/site/image-lightbox';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
+import { FavoriteButton } from '@/components/site/favorite-button';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
     categoryBadgeClassName,
@@ -28,11 +21,11 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { SiteLayout } from '@/layouts/site-layout';
+import { useFavorite } from '@/hooks/use-favorite';
 import { cn } from '@/lib/utils';
 import {
     details as resourceDetails,
     downloads as resourceDownloads,
-    favorite as toggleFavorite,
     screenshots as resourceScreenshots,
 } from '@/routes/resources';
 import { seen as markDownloadsSeen } from '@/routes/resources/downloads';
@@ -70,21 +63,18 @@ const resourceTabs: Array<{
 export default function ResourceShow({ activeTab, resource }: Props) {
     const shouldReduceMotion = useReducedMotion();
     const [pendingTab, setPendingTab] = useState<ResourceTab | null>(null);
-    const [favoriteState, setFavoriteState] = useState({
-        source: resource.isFavorited,
-        value: resource.isFavorited,
+    const {
+        isFavorited: isFavorite,
+        isToggling: isTogglingFavorite,
+        toggleFavorite: handleFavoriteClick,
+    } = useFavorite({
+        resourceId: resource.id,
+        initialIsFavorited: resource.isFavorited,
     });
-    const isFavorite =
-        favoriteState.source === resource.isFavorited
-            ? favoriteState.value
-            : resource.isFavorited;
-    const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
     const [lightboxSlides, setLightboxSlides] = useState<LightboxSlide[]>([]);
     const [lightboxIndex, setLightboxIndex] = useState(-1);
     const page = usePage();
     const { auth } = page.props;
-    const pageUrl = page.url;
-    const { openAuthDialog } = useAuthDialog();
     const authUserId = auth.user?.id;
     const { post: postDownloadsSeen } = useHttp<Record<string, never>>();
     const tabsListRef = useRef<HTMLElement | null>(null);
@@ -256,37 +246,6 @@ export default function ResourceShow({ activeTab, resource }: Props) {
 
     const closeLightbox = () => {
         setLightboxIndex(-1);
-    };
-
-    const handleFavoriteClick = () => {
-        if (!auth.user) {
-            openAuthDialog('login', { redirect: pageUrl });
-
-            return;
-        }
-
-        const nextFavorited = !isFavorite;
-        setFavoriteState({
-            source: resource.isFavorited,
-            value: nextFavorited,
-        });
-        setIsTogglingFavorite(true);
-
-        router.post(
-            toggleFavorite.url(resource.id),
-            {},
-            {
-                preserveScroll: true,
-                preserveState: true,
-                only: ['resource'],
-                onError: () =>
-                    setFavoriteState({
-                        source: resource.isFavorited,
-                        value: !nextFavorited,
-                    }),
-                onFinish: () => setIsTogglingFavorite(false),
-            },
-        );
     };
 
     return (
@@ -475,42 +434,11 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                             Unavailable
                                         </Button>
                                     )}
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
-                                                size="icon-lg"
-                                                className={cn(
-                                                    'border-0 shadow-none ring-0',
-                                                    isFavorite
-                                                        ? 'bg-primary/12 text-primary hover:bg-primary/18 dark:border dark:border-primary/30 dark:bg-primary/15 dark:hover:bg-primary/25'
-                                                        : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground dark:border dark:border-foreground/15 dark:bg-surface-raised dark:text-foreground dark:hover:border-foreground/25 dark:hover:bg-surface-strong',
-                                                )}
-                                                aria-label={
-                                                    isFavorite
-                                                        ? 'Remove from favorites'
-                                                        : 'Add to favorites'
-                                                }
-                                                aria-pressed={isFavorite}
-                                                disabled={isTogglingFavorite}
-                                                onClick={handleFavoriteClick}
-                                            >
-                                                <Heart
-                                                    className={cn(
-                                                        'size-5',
-                                                        isFavorite &&
-                                                            'fill-current',
-                                                    )}
-                                                />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            {isFavorite
-                                                ? 'Remove from favorites'
-                                                : 'Add to favorites'}
-                                        </TooltipContent>
-                                    </Tooltip>
+                                    <FavoriteButton
+                                        isFavorited={isFavorite}
+                                        isToggling={isTogglingFavorite}
+                                        onToggle={handleFavoriteClick}
+                                    />
                                     {resource.adminEditUrl ? (
                                         <Tooltip>
                                             <TooltipTrigger asChild>

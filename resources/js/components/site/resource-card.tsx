@@ -30,7 +30,7 @@ const overlayChipClassName = cn(
 
 const languageChipClassName = cn(
     'inline-flex h-5 items-center justify-center rounded-sm px-1.5',
-    'bg-background/90 font-mono text-[11px] leading-none font-medium text-foreground shadow-none',
+    'bg-background/90 text-[11px] leading-none font-medium text-foreground shadow-none',
     'ring-1 ring-border/80',
 );
 
@@ -54,7 +54,7 @@ export function ResourceCard({ resource }: Props) {
                         referrerPolicy="no-referrer"
                     />
 
-                    <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-1.5 p-1">
+                    <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-1.5 p-2">
                         <span className={overlayChipClassName}>
                             {abbreviateCategory(resource.category)}
                         </span>
@@ -94,7 +94,7 @@ export function ResourceCard({ resource }: Props) {
                         </div>
                     </div>
 
-                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-1.5 p-1">
+                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-1.5 p-2">
                         {resource.version ? (
                             <span className={languageChipClassName}>
                                 {abbreviateVersion(resource.version)}
@@ -125,7 +125,7 @@ export function ResourceCard({ resource }: Props) {
                     </CardTitle>
                 </CardHeader>
 
-                <CardContent className="mt-auto flex items-center justify-between gap-2 pt-1.5 pb-3 font-mono text-xs text-muted-foreground">
+                <CardContent className="mt-auto flex items-center justify-between gap-2 pt-1.5 pb-3 text-xs text-muted-foreground">
                     <time dateTime={resource.publishedAt ?? undefined}>
                         {resource.publishedAt
                             ? formatDate(resource.publishedAt)

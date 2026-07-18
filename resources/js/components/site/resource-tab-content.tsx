@@ -128,120 +128,119 @@ export function ResourceTabContent({
                             resource.releases.map((release) => (
                                 <article
                                     key={release.id}
-                                    className="rounded-md border border-border bg-card p-3 sm:p-4"
+                                    className="overflow-hidden rounded-md border border-border bg-card"
                                 >
-                                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                        <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <h3 className="font-heading text-sm font-semibold text-foreground sm:text-base">
-                                                    {release.title ??
-                                                        'Download package'}
-                                                </h3>
-                                                {release.version ? (
-                                                    <span className="inline-flex h-6 items-center rounded-sm bg-muted px-2 font-mono text-xs text-muted-foreground">
-                                                        v{release.version}
-                                                    </span>
-                                                ) : null}
-                                            </div>
-
-                                            {release.description ? (
-                                                <RichHtml
-                                                    html={release.description}
-                                                    className="prose-sm text-muted-foreground prose-p:my-0 [&:has(>p:only-child:empty)]:hidden"
-                                                />
-                                            ) : null}
-
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {release.platforms.map(
-                                                    (platform) => (
-                                                        <Badge
-                                                            key={platform.slug}
-                                                            variant="outline"
-                                                            className={platformBadgeClassName(
-                                                                platform.slug,
-                                                            )}
-                                                        >
-                                                            <PlatformIcon
-                                                                slug={
-                                                                    platform.slug
-                                                                }
-                                                                data-icon="inline-start"
-                                                            />
-                                                            {platform.name}
-                                                        </Badge>
-                                                    ),
-                                                )}
-                                                {release.languages.map(
-                                                    (language) => (
-                                                        <Badge
-                                                            key={language}
-                                                            variant="outline"
-                                                            className={
-                                                                languageBadgeClassName
-                                                            }
-                                                        >
-                                                            {language}
-                                                        </Badge>
-                                                    ),
-                                                )}
-                                                {release.fileSize ? (
-                                                    <span
-                                                        className={
-                                                            fileSizeChipClassName
-                                                        }
-                                                    >
-                                                        <HardDrive className="size-3.5" />
-                                                        {release.fileSize}
-                                                    </span>
-                                                ) : null}
-                                                <span
-                                                    className={
-                                                        dateChipClassName
-                                                    }
-                                                >
-                                                    <CalendarDays className="size-3.5" />
-                                                    <time
-                                                        dateTime={
-                                                            release.publishedAt ??
-                                                            undefined
-                                                        }
-                                                    >
-                                                        {release.publishedAt ??
-                                                            'Unscheduled'}
-                                                    </time>
+                                    {/* Header: title + version + description */}
+                                    <div className="flex flex-col gap-2.5 border-b border-border/70 p-3 sm:p-4">
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                                            <h3 className="font-heading text-sm font-semibold text-foreground sm:text-base">
+                                                {release.title ??
+                                                    'Download package'}
+                                            </h3>
+                                            {release.version ? (
+                                                <span className="inline-flex h-6 items-center rounded-sm bg-muted px-2 text-xs font-medium text-muted-foreground">
+                                                    v{release.version}
                                                 </span>
-                                            </div>
+                                            ) : null}
                                         </div>
 
-                                        <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-[42%] lg:justify-end">
-                                            {release.downloadLinks.map(
-                                                (link, index) => (
-                                                    <Button
-                                                        key={link.id}
-                                                        asChild
+                                        {release.description ? (
+                                            <RichHtml
+                                                html={release.description}
+                                                className="prose-sm text-muted-foreground prose-p:my-0 [&:has(>p:only-child:empty)]:hidden"
+                                            />
+                                        ) : null}
+                                    </div>
+
+                                    {/* Tags + actions */}
+                                    <div className="flex flex-col gap-3 p-3 sm:p-4">
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {release.platforms.map(
+                                                (platform) => (
+                                                    <Badge
+                                                        key={platform.slug}
                                                         variant="outline"
-                                                        size="sm"
-                                                        className={cn(
-                                                            'h-8 border shadow-none',
-                                                            downloadButtonPalettes[
-                                                                index %
-                                                                    downloadButtonPalettes.length
-                                                            ],
+                                                        className={platformBadgeClassName(
+                                                            platform.slug,
                                                         )}
                                                     >
-                                                        <a href={link.url}>
-                                                            <Download data-icon="inline-start" />
-                                                            {link.label ||
-                                                                (release
-                                                                    .downloadLinks
-                                                                    .length > 1
-                                                                    ? `Download ${index + 1}`
-                                                                    : 'Download')}
-                                                        </a>
-                                                    </Button>
+                                                        <PlatformIcon
+                                                            slug={platform.slug}
+                                                            data-icon="inline-start"
+                                                        />
+                                                        {platform.name}
+                                                    </Badge>
                                                 ),
                                             )}
+                                            {release.languages.map(
+                                                (language) => (
+                                                    <Badge
+                                                        key={language}
+                                                        variant="outline"
+                                                        className={
+                                                            languageBadgeClassName
+                                                        }
+                                                    >
+                                                        {language}
+                                                    </Badge>
+                                                ),
+                                            )}
+                                            {release.fileSize ? (
+                                                <span
+                                                    className={
+                                                        fileSizeChipClassName
+                                                    }
+                                                >
+                                                    <HardDrive className="size-3.5" />
+                                                    {release.fileSize}
+                                                </span>
+                                            ) : null}
+                                            <span className={dateChipClassName}>
+                                                <CalendarDays className="size-3.5" />
+                                                <time
+                                                    dateTime={
+                                                        release.publishedAt ??
+                                                        undefined
+                                                    }
+                                                >
+                                                    {release.publishedAt ??
+                                                        'Unscheduled'}
+                                                </time>
+                                            </span>
                                         </div>
+
+                                        {release.downloadLinks.length > 0 ? (
+                                            <div className="flex flex-wrap gap-2 pt-0.5">
+                                                {release.downloadLinks.map(
+                                                    (link, index) => (
+                                                        <Button
+                                                            key={link.id}
+                                                            asChild
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className={cn(
+                                                                'h-8 border shadow-none',
+                                                                downloadButtonPalettes[
+                                                                    index %
+                                                                        downloadButtonPalettes.length
+                                                                ],
+                                                            )}
+                                                        >
+                                                            <a href={link.url}>
+                                                                <Download data-icon="inline-start" />
+                                                                {link.label ||
+                                                                    (release
+                                                                        .downloadLinks
+                                                                        .length >
+                                                                    1
+                                                                        ? `Download ${index + 1}`
+                                                                        : 'Download')}
+                                                            </a>
+                                                        </Button>
+                                                    ),
+                                                )}
+                                            </div>
+                                        ) : null}
                                     </div>
                                 </article>
                             ))

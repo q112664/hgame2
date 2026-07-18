@@ -24,9 +24,10 @@ type Props = {
     dateField?: 'publishedAt' | 'releaseDate';
 };
 
-const metaChipClassName = cn(
+const overlayChipClassName = cn(
     'inline-flex h-5 max-w-full items-center justify-center rounded-sm px-1.5',
-    'bg-muted text-[11px] leading-none font-medium text-muted-foreground',
+    'bg-black/40 text-[11px] leading-none font-medium text-white/90',
+    'ring-1 ring-white/15 backdrop-blur-[2px]',
 );
 
 export function ResourceCard({
@@ -41,14 +42,14 @@ export function ResourceCard({
     return (
         <Card
             size="sm"
-            className="h-full gap-0 rounded-md py-0 transition-[ring-color] duration-150 hover:ring-primary/25"
+            className="h-full gap-0 rounded-md py-0 transition-[ring-color] duration-150 hover:ring-foreground/12"
         >
             <Link
                 href={resourceDetails(resource.id)}
                 className="group flex h-full flex-col"
                 prefetch
             >
-                <div className="aspect-[16/10] overflow-hidden rounded-t-md bg-muted">
+                <div className="relative aspect-[16/10] overflow-hidden rounded-t-md bg-muted">
                     <img
                         src={resource.thumbnail}
                         alt={resource.title}
@@ -56,46 +57,26 @@ export function ResourceCard({
                         loading="lazy"
                         referrerPolicy="no-referrer"
                     />
-                </div>
 
-                <CardHeader className="gap-2 pt-3 pb-0">
-                    <CardTitle className="line-clamp-2 text-sm leading-snug">
-                        {resource.title}
-                    </CardTitle>
-
-                    <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                            <span className={metaChipClassName}>
-                                {abbreviateCategory(resource.category)}
-                            </span>
-                            {resource.version ? (
-                                <span
-                                    className={cn(
-                                        metaChipClassName,
-                                        'shrink-0 font-mono',
-                                    )}
-                                >
-                                    {abbreviateVersion(resource.version)}
-                                </span>
-                            ) : null}
-                        </div>
-
-                        {(resource.platforms.length > 0 ||
-                            resource.languages.length > 0) && (
-                            <div className="flex flex-wrap items-center gap-1">
-                                {resource.platforms.map((platform) => (
+                    <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-1.5">
+                        <span className={overlayChipClassName}>
+                            {abbreviateCategory(resource.category)}
+                        </span>
+                        <div className="flex flex-wrap justify-end gap-1">
+                            {resource.platforms.length > 0 ? (
+                                resource.platforms.map((platform) => (
                                     <Tooltip key={platform.slug}>
                                         <TooltipTrigger asChild>
                                             <span
                                                 className={cn(
-                                                    metaChipClassName,
+                                                    overlayChipClassName,
                                                     'size-5 px-0',
                                                 )}
                                                 aria-label={platform.name}
                                             >
                                                 <PlatformIcon
                                                     slug={platform.slug}
-                                                    className="size-3.5"
+                                                    className="size-3"
                                                 />
                                             </span>
                                         </TooltipTrigger>
@@ -103,26 +84,49 @@ export function ResourceCard({
                                             {platform.name}
                                         </TooltipContent>
                                     </Tooltip>
-                                ))}
-                                {resource.languages.map((language) => (
-                                    <span
-                                        key={language}
-                                        className={metaChipClassName}
-                                    >
-                                        {abbreviateLanguage(language)}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                                ))
+                            ) : null}
+                        </div>
                     </div>
+
+                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-1.5">
+                        {resource.version ? (
+                            <span
+                                className={cn(
+                                    overlayChipClassName,
+                                    'font-mono',
+                                )}
+                            >
+                                {abbreviateVersion(resource.version)}
+                            </span>
+                        ) : (
+                            <span />
+                        )}
+                        <div className="flex flex-wrap justify-end gap-1">
+                            {resource.languages.map((language) => (
+                                <span
+                                    key={language}
+                                    className={overlayChipClassName}
+                                >
+                                    {abbreviateLanguage(language)}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <CardHeader className="gap-1 pt-2.5 pb-0">
+                    <CardTitle className="line-clamp-2 text-sm leading-snug font-medium text-foreground/85">
+                        {resource.title}
+                    </CardTitle>
                 </CardHeader>
 
-                <CardContent className="mt-auto flex items-center justify-between gap-2 pt-2 pb-3 text-xs text-muted-foreground">
+                <CardContent className="mt-auto flex items-center justify-between gap-2 pt-1.5 pb-2.5 text-[11px] text-muted-foreground/80">
                     <time dateTime={displayDate ?? undefined}>
                         {displayDate ? formatDate(displayDate) : 'Unscheduled'}
                     </time>
                     <span className="inline-flex items-center gap-1">
-                        <Eye className="size-3.5" />
+                        <Eye className="size-3" />
                         {formatViews(resource.views)}
                     </span>
                 </CardContent>

@@ -3,7 +3,6 @@ import { ArrowUpDown, ChevronDown, Search, Tags } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -284,7 +283,7 @@ export function TagFilterDialog({
                     ) : null}
                 </Button>
             </DialogTrigger>
-            <DialogContent className="gap-4 sm:max-w-lg">
+            <DialogContent className="gap-4 sm:max-w-xl">
                 <DialogHeader>
                     <DialogTitle>Filter by tags</DialogTitle>
                     <DialogDescription>
@@ -304,41 +303,37 @@ export function TagFilterDialog({
                     />
                 </div>
 
-                <div className="max-h-72 overflow-y-auto rounded-md border border-border">
+                <div className="max-h-80 overflow-y-auto rounded-md border border-border bg-muted/30 p-3">
                     {filtered.length === 0 ? (
-                        <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+                        <p className="py-8 text-center text-sm text-muted-foreground">
                             No tags found
                         </p>
                     ) : (
-                        <ul className="divide-y divide-foreground/5 p-1">
+                        <div className="flex flex-wrap gap-1.5">
                             {filtered.map((tag) => {
                                 const checked = draft.includes(tag.slug);
-                                const id = `tag-filter-${tag.slug}`;
 
                                 return (
-                                    <li key={tag.slug}>
-                                        <label
-                                            htmlFor={id}
-                                            className={cn(
-                                                'flex cursor-pointer items-center gap-3 rounded-md px-2.5 py-2',
-                                                'hover:bg-muted',
-                                            )}
-                                        >
-                                            <Checkbox
-                                                id={id}
-                                                checked={checked}
-                                                onCheckedChange={() =>
-                                                    toggleTag(tag.slug)
-                                                }
-                                            />
-                                            <span className="text-sm text-foreground">
-                                                {tag.name}
-                                            </span>
-                                        </label>
-                                    </li>
+                                    <button
+                                        key={tag.slug}
+                                        type="button"
+                                        aria-pressed={checked}
+                                        onClick={() => toggleTag(tag.slug)}
+                                        className={cn(
+                                            'inline-flex h-7 max-w-full items-center rounded-sm px-2.5 text-xs font-medium transition-colors',
+                                            'ring-1 ring-inset focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                                            checked
+                                                ? 'bg-foreground text-background ring-foreground'
+                                                : 'bg-card text-muted-foreground ring-border hover:bg-muted hover:text-foreground',
+                                        )}
+                                    >
+                                        <span className="truncate">
+                                            {tag.name}
+                                        </span>
+                                    </button>
                                 );
                             })}
-                        </ul>
+                        </div>
                     )}
                 </div>
 

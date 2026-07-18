@@ -1,5 +1,13 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Bell, Menu, Moon, Search, Sun } from 'lucide-react';
+import {
+    BookOpen,
+    Dices,
+    Menu,
+    Moon,
+    Search,
+    Sun,
+    type LucideIcon,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
 import type { AuthDialogView } from '@/components/auth/auth-dialog';
@@ -26,22 +34,29 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useAppearance } from '@/hooks/use-appearance';
 import { cn } from '@/lib/utils';
 import { home, search } from '@/routes';
-import { index as resourcesIndex } from '@/routes/resources';
+import { index as docsIndex } from '@/routes/docs';
+import {
+    index as resourcesIndex,
+    random as resourcesRandom,
+} from '@/routes/resources';
 import type { User } from '@/types';
 
 type NavItem = {
     title: string;
     href: string;
+    icon?: LucideIcon;
     external?: boolean;
 };
 
 const navItems: NavItem[] = [
     { title: 'Home', href: home().url },
     { title: 'Resources', href: resourcesIndex().url },
+    { title: 'Docs', href: docsIndex().url, icon: BookOpen },
+    { title: 'Random', href: resourcesRandom().url, icon: Dices },
 ];
 
 const navLinkClassName = cn(
-    'inline-flex h-8 items-center rounded-md px-2.5 text-sm font-medium',
+    'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium',
     'text-foreground transition-colors',
     'hover:bg-foreground/10',
     'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
@@ -68,61 +83,42 @@ function NavLinks({
 }) {
     return (
         <nav className={cn('flex items-center gap-0.5', className)}>
-            {navItems.map((item) =>
-                item.external ? (
-                    <a
-                        key={item.title}
-                        href={item.href}
-                        className={navLinkClassName}
-                        onClick={onNavigate}
-                    >
+            {navItems.map((item) => {
+                const Icon = item.icon;
+                const content = (
+                    <>
+                        {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
                         {item.title}
-                    </a>
-                ) : (
+                    </>
+                );
+
+                if (item.external) {
+                    return (
+                        <a
+                            key={item.title}
+                            href={item.href}
+                            className={navLinkClassName}
+                            onClick={onNavigate}
+                        >
+                            {content}
+                        </a>
+                    );
+                }
+
+                return (
                     <Link
                         key={item.title}
                         href={item.href}
                         className={navLinkClassName}
                         onClick={onNavigate}
+                        // Random must not be prefetched or the redirect is sticky.
+                        prefetch={item.href === resourcesRandom().url ? false : undefined}
                     >
-                        {item.title}
+                        {content}
                     </Link>
-                ),
-            )}
+                );
+            })}
         </nav>
-    );
-}
-
-function NotificationButton() {
-    return (
-        <DropdownMenu>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                        <button
-                            type="button"
-                            className={iconButtonClassName}
-                            aria-label="Notifications"
-                        >
-                            <Bell className="size-4" />
-                        </button>
-                    </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={4}>
-                    Notifications
-                </TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent className="w-80" align="end">
-                <div className="border-b border-border px-3 py-2">
-                    <p className="text-sm font-medium text-foreground">
-                        Notifications
-                    </p>
-                </div>
-                <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-                    No notifications yet.
-                </div>
-            </DropdownMenuContent>
-        </DropdownMenu>
     );
 }
 
@@ -311,8 +307,6 @@ export function SiteHeader() {
                                 Search resources
                             </TooltipContent>
                         </Tooltip>
-
-                        <NotificationButton />
 
                         <ThemeToggle />
                     </div>

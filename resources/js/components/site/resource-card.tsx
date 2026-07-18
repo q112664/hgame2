@@ -20,21 +20,24 @@ import type { GameCard } from '@/types/resources';
 
 type Props = {
     resource: GameCard;
+    /** Which date to show in the card footer. Defaults to site publish time. */
+    dateField?: 'publishedAt' | 'releaseDate';
 };
 
-const overlayChipClassName = cn(
-    'inline-flex h-6 items-center justify-center rounded-sm px-2',
-    'bg-background/90 text-xs font-medium text-foreground shadow-none',
-    'ring-1 ring-border/80',
+const metaChipClassName = cn(
+    'inline-flex h-5 max-w-full items-center justify-center rounded-sm px-1.5',
+    'bg-muted text-[11px] leading-none font-medium text-muted-foreground',
 );
 
-const languageChipClassName = cn(
-    'inline-flex h-5 items-center justify-center rounded-sm px-1.5',
-    'bg-background/90 text-[11px] leading-none font-medium text-foreground shadow-none',
-    'ring-1 ring-border/80',
-);
+export function ResourceCard({
+    resource,
+    dateField = 'publishedAt',
+}: Props) {
+    const displayDate =
+        dateField === 'releaseDate'
+            ? (resource.releaseDate ?? resource.publishedAt)
+            : resource.publishedAt;
 
-export function ResourceCard({ resource }: Props) {
     return (
         <Card
             size="sm"
@@ -45,7 +48,7 @@ export function ResourceCard({ resource }: Props) {
                 className="group flex h-full flex-col"
                 prefetch
             >
-                <div className="relative aspect-[16/12] overflow-hidden rounded-t-md bg-muted">
+                <div className="aspect-[16/10] overflow-hidden rounded-t-md bg-muted">
                     <img
                         src={resource.thumbnail}
                         alt={resource.title}
@@ -53,20 +56,40 @@ export function ResourceCard({ resource }: Props) {
                         loading="lazy"
                         referrerPolicy="no-referrer"
                     />
+                </div>
 
-                    <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-1.5 p-2">
-                        <span className={overlayChipClassName}>
-                            {abbreviateCategory(resource.category)}
-                        </span>
-                        <div className="flex flex-wrap justify-end gap-1.5">
-                            {resource.platforms.length > 0 ? (
-                                resource.platforms.map((platform) => (
+                <CardHeader className="gap-2 pt-3 pb-0">
+                    <CardTitle className="line-clamp-2 text-sm leading-snug">
+                        {resource.title}
+                    </CardTitle>
+
+                    <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className={metaChipClassName}>
+                                {abbreviateCategory(resource.category)}
+                            </span>
+                            {resource.version ? (
+                                <span
+                                    className={cn(
+                                        metaChipClassName,
+                                        'shrink-0 font-mono',
+                                    )}
+                                >
+                                    {abbreviateVersion(resource.version)}
+                                </span>
+                            ) : null}
+                        </div>
+
+                        {(resource.platforms.length > 0 ||
+                            resource.languages.length > 0) && (
+                            <div className="flex flex-wrap items-center gap-1">
+                                {resource.platforms.map((platform) => (
                                     <Tooltip key={platform.slug}>
                                         <TooltipTrigger asChild>
                                             <span
                                                 className={cn(
-                                                    overlayChipClassName,
-                                                    'size-6 px-0',
+                                                    metaChipClassName,
+                                                    'size-5 px-0',
                                                 )}
                                                 aria-label={platform.name}
                                             >
@@ -80,56 +103,23 @@ export function ResourceCard({ resource }: Props) {
                                             {platform.name}
                                         </TooltipContent>
                                     </Tooltip>
-                                ))
-                            ) : (
-                                <span
-                                    className={cn(
-                                        overlayChipClassName,
-                                        'size-6 px-0',
-                                    )}
-                                >
-                                    —
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-1.5 p-2">
-                        {resource.version ? (
-                            <span className={languageChipClassName}>
-                                {abbreviateVersion(resource.version)}
-                            </span>
-                        ) : (
-                            <span />
-                        )}
-                        <div className="flex flex-wrap justify-end gap-1">
-                            {resource.languages.length > 0 ? (
-                                resource.languages.map((language) => (
+                                ))}
+                                {resource.languages.map((language) => (
                                     <span
                                         key={language}
-                                        className={languageChipClassName}
+                                        className={metaChipClassName}
                                     >
                                         {abbreviateLanguage(language)}
                                     </span>
-                                ))
-                            ) : (
-                                <span className={languageChipClassName}>—</span>
-                            )}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                </div>
-
-                <CardHeader className="gap-1.5 pt-3 pb-0">
-                    <CardTitle className="line-clamp-2 text-sm leading-snug">
-                        {resource.title}
-                    </CardTitle>
                 </CardHeader>
 
-                <CardContent className="mt-auto flex items-center justify-between gap-2 pt-1.5 pb-3 text-xs text-muted-foreground">
-                    <time dateTime={resource.publishedAt ?? undefined}>
-                        {resource.publishedAt
-                            ? formatDate(resource.publishedAt)
-                            : 'Unscheduled'}
+                <CardContent className="mt-auto flex items-center justify-between gap-2 pt-2 pb-3 text-xs text-muted-foreground">
+                    <time dateTime={displayDate ?? undefined}>
+                        {displayDate ? formatDate(displayDate) : 'Unscheduled'}
                     </time>
                     <span className="inline-flex items-center gap-1">
                         <Eye className="size-3.5" />

@@ -26,6 +26,22 @@ class ResourceController extends Controller
         return Inertia::render('resources/index', $listPublishedGames($request->filters()));
     }
 
+    public function random(): RedirectResponse
+    {
+        $game = Game::query()
+            ->published()
+            ->inRandomOrder()
+            ->first(['id', 'slug']);
+
+        $response = $game === null
+            ? to_route('resources.index')
+            : to_route('resources.details', $game);
+
+        return $response->withHeaders([
+            'Cache-Control' => 'no-store, private',
+        ]);
+    }
+
     public function show(Game $resource): RedirectResponse
     {
         return to_route('resources.details', ['resource' => $resource]);

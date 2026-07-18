@@ -14,6 +14,7 @@ export type GameCard = {
     languages: string[];
     version: string | null;
     tags: string[];
+    releaseDate: string | null;
     publishedAt: string | null;
     views: number;
     hasDownloadUpdate?: boolean;

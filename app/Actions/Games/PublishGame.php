@@ -9,6 +9,7 @@ use App\Models\Game;
 use App\Models\Language;
 use App\Models\Platform;
 use App\Support\Media;
+use App\Support\MediaThumbnail;
 use App\Support\RemoteMediaDownloader;
 use App\Support\TagImporter;
 use Illuminate\Support\Facades\DB;
@@ -154,6 +155,7 @@ class PublishGame
         } catch (Throwable $exception) {
             foreach ($uploadedPaths as $path) {
                 Media::delete($path);
+                MediaThumbnail::deleteFor($path);
             }
 
             throw $exception;

@@ -45,6 +45,7 @@ createInertiaApp({
             case name === 'search':
             case name === 'favorites':
             case name.startsWith('resources/'):
+            case name.startsWith('docs/'):
             case name === 'settings/index':
                 return AuthModalLayout;
             case name.startsWith('auth/'):

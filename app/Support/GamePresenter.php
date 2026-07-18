@@ -17,7 +17,7 @@ class GamePresenter
             'id' => $game->slug,
             'title' => $game->title,
             'subtitle' => $game->subtitle,
-            'thumbnail' => self::mediaUrl($game->cover_path ?: $game->cover_url),
+            'thumbnail' => self::cardThumbnailUrl($game),
             'category' => filled($categoryName) ? $categoryName : 'Uncategorized',
             'developer' => $game->developer ?? 'Unknown',
             'platforms' => $game->releases
@@ -38,6 +38,7 @@ class GamePresenter
             'tags' => $includeTags
                 ? $game->tags->pluck('name')->values()->all()
                 : [],
+            'releaseDate' => self::dateString($game->release_date),
             'publishedAt' => self::dateString($game->published_at),
             'views' => $game->views_count,
         ];
@@ -52,7 +53,7 @@ class GamePresenter
             'id' => $game->slug,
             'title' => $game->title,
             'subtitle' => $game->subtitle,
-            'thumbnail' => self::mediaUrl($game->cover_path ?: $game->cover_url),
+            'thumbnail' => self::cardThumbnailUrl($game),
             'developer' => $game->developer ?? 'Unknown',
             'version' => $game->releases
                 ->pluck('version')
@@ -89,6 +90,8 @@ class GamePresenter
     ): array {
         return [
             ...self::card($game, includeTags: $includeTags),
+            // Detail hero uses the full cover; list cards use the card thumbnail.
+            'thumbnail' => self::mediaUrl($game->cover_path ?: $game->cover_url),
             'subtitle' => $game->subtitle,
             'description' => $includeDescription
                 ? str($game->description ?? '')->sanitizeHtml()->toString()
@@ -134,6 +137,15 @@ class GamePresenter
                     ->all()
                 : [],
         ];
+    }
+
+    private static function cardThumbnailUrl(Game $game): string
+    {
+        if (filled($game->cover_path)) {
+            return MediaThumbnail::url($game->cover_path);
+        }
+
+        return self::mediaUrl($game->cover_url);
     }
 
     private static function mediaUrl(?string $path): string

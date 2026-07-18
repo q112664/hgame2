@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Games\ListRecentResourceUpdates;
 use App\Filament\Resources\Games\GameResource;
 use App\Models\Game;
 use App\Models\GameDownloadLink;
@@ -7,7 +8,9 @@ use App\Models\GameRelease;
 use App\Models\GameScreenshot;
 use App\Models\Language;
 use App\Models\Platform;
+use App\Models\Setting;
 use App\Models\User;
+use App\Support\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -174,6 +177,53 @@ test('home receives only published games', function () {
             ])
             ->where('resources.0.languages', ['Chinese'])
             ->where('resources.0.version', '1.2 demo')
+            ->where('heroBackgroundUrl', Setting::defaultHeroBackgroundUrl())
+        );
+});
+
+test('home uses the configured hero background image', function () {
+    Setting::set('hero_background_path', 'site/hero/custom.jpg');
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('welcome')
+            ->where('heroBackgroundUrl', Media::url('site/hero/custom.jpg'))
+        );
+});
+
+test('home recent releases are ordered by game release date', function () {
+    $this->game->update([
+        'release_date' => now()->subMonths(6)->toDateString(),
+        'published_at' => now()->subDay(),
+    ]);
+
+    $olderRelease = Game::factory()->create([
+        'slug' => 'older-release',
+        'release_date' => now()->subYears(2)->toDateString(),
+        'published_at' => now(),
+    ]);
+    $newestRelease = Game::factory()->create([
+        'slug' => 'newest-release',
+        'release_date' => now()->subWeek()->toDateString(),
+        'published_at' => now()->subDays(3),
+    ]);
+    Game::factory()->create([
+        'slug' => 'no-release-date',
+        'release_date' => null,
+        'published_at' => now(),
+    ]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('welcome')
+            ->has('recentReleases', 3)
+            ->where('recentReleases.0.id', $newestRelease->slug)
+            ->where('recentReleases.1.id', $this->game->slug)
+            ->where('recentReleases.2.id', $olderRelease->slug)
+            ->where('recentReleases.0.releaseDate', $newestRelease->release_date?->toDateString())
+            ->has('resources', 4)
         );
 });
 
@@ -188,7 +238,7 @@ test('home omits card version when no release version is filled', function () {
         );
 });
 
-test('home lists recent resource updates by effective activity time', function () {
+test('recent resource updates are ordered by effective activity time', function () {
     $updatedAt = now()->subHour();
     $this->game->updateQuietly([
         'downloads_updated_at' => now()->subDays(2),
@@ -198,16 +248,14 @@ test('home lists recent resource updates by effective activity time', function (
         'downloads_updated_at' => $updatedAt,
     ]);
 
-    $this->get(route('home'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('recentUpdates.0.id', $newer->slug)
-            ->where('recentUpdates.0.activityType', 'updated')
-            ->where('recentUpdates.0.updatedAt', $updatedAt->toIso8601String())
-        );
+    $updates = app(ListRecentResourceUpdates::class)();
+
+    expect($updates[0]['id'])->toBe($newer->slug)
+        ->and($updates[0]['activityType'])->toBe('updated')
+        ->and($updates[0]['updatedAt'])->toBe($updatedAt->toIso8601String());
 });
 
-test('home falls back to publication time for resources without an update timestamp', function () {
+test('recent resource updates fall back to publication time without an update timestamp', function () {
     $publishedAt = now()->subHour();
     $this->game->updateQuietly([
         'downloads_updated_at' => now()->subDays(2),
@@ -217,12 +265,19 @@ test('home falls back to publication time for resources without an update timest
         'downloads_updated_at' => null,
     ]);
 
+    $updates = app(ListRecentResourceUpdates::class)();
+
+    expect($updates[0]['id'])->toBe($published->slug)
+        ->and($updates[0]['activityType'])->toBe('published')
+        ->and($updates[0]['updatedAt'])->toBe($publishedAt->toIso8601String());
+});
+
+test('home does not include recent updates payload', function () {
     $this->get(route('home'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('recentUpdates.0.id', $published->slug)
-            ->where('recentUpdates.0.activityType', 'published')
-            ->where('recentUpdates.0.updatedAt', $publishedAt->toIso8601String())
+            ->component('welcome')
+            ->missing('recentUpdates')
         );
 });
 

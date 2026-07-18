@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Media;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -99,6 +100,31 @@ class Setting extends Model
         }
 
         return (string) config('filesystems.media', 'public');
+    }
+
+    public static function defaultHeroBackgroundUrl(): string
+    {
+        return '/images/hero-bg.jpg';
+    }
+
+    public static function heroBackgroundPath(): ?string
+    {
+        $path = static::get('hero_background_path');
+
+        return filled($path) ? $path : null;
+    }
+
+    public static function heroBackgroundUrl(): string
+    {
+        $path = static::heroBackgroundPath();
+
+        if ($path === null) {
+            return static::defaultHeroBackgroundUrl();
+        }
+
+        $url = Media::url($path);
+
+        return $url !== '' ? $url : static::defaultHeroBackgroundUrl();
     }
 
     public static function applySiteUrlToConfig(?string $url = null): void

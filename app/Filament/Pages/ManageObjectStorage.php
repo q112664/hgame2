@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Actions\Media\GenerateCoverThumbnails;
 use App\Actions\Media\MigrateMediaDisk;
 use App\Models\Setting;
 use BackedEnum;
@@ -123,6 +124,23 @@ class ManageObjectStorage extends Page
                             ->label('Use path-style endpoint')
                             ->helperText('Enable for MinIO and some S3-compatible providers.'),
                     ]),
+                Section::make('Cover thumbnails')
+                    ->description('Resource cards load 560px WebP thumbnails derived from each game cover. New covers generate automatically; use regenerate after changing size rules or fixing missing thumbs.')
+                    ->schema([
+                        Actions::make([
+                            Action::make('regenerateCoverThumbnails')
+                                ->label('Regenerate cover thumbnails')
+                                ->color('gray')
+                                ->icon(Heroicon::OutlinedPhoto)
+                                ->requiresConfirmation()
+                                ->modalHeading('Regenerate cover thumbnails')
+                                ->modalDescription('Rebuild 560px card thumbnails for every game with a stored cover. Existing thumbnails will be overwritten.')
+                                ->modalSubmitActionLabel('Regenerate')
+                                ->action(function (GenerateCoverThumbnails $generate): void {
+                                    $this->regenerateCoverThumbnails($generate);
+                                }),
+                        ]),
+                    ]),
             ]);
     }
 
@@ -228,6 +246,18 @@ class ManageObjectStorage extends Page
         Notification::make()
             ->title($result['failed'] > 0 ? 'Media migration finished with errors' : 'Media migration finished')
             ->body($body)
+            ->{$result['failed'] > 0 ? 'warning' : 'success'}()
+            ->persistent()
+            ->send();
+    }
+
+    public function regenerateCoverThumbnails(GenerateCoverThumbnails $generate): void
+    {
+        $result = $generate(force: true);
+
+        Notification::make()
+            ->title($result['failed'] > 0 ? 'Thumbnail regeneration finished with errors' : 'Cover thumbnails regenerated')
+            ->body("Generated {$result['generated']}, skipped {$result['skipped']}, failed {$result['failed']}.")
             ->{$result['failed'] > 0 ? 'warning' : 'success'}()
             ->persistent()
             ->send();

@@ -6,6 +6,9 @@ use App\Models\Game;
 use App\Models\GameScreenshot;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Media;
+use App\Support\MediaThumbnail;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -149,6 +152,31 @@ test('administrators can trigger media migration from object storage settings', 
     expect(Setting::mediaDisk())->toBe('s3')
         ->and(Storage::disk('s3')->exists('games/covers/one.jpg'))->toBeTrue()
         ->and(Storage::disk('public')->exists('games/covers/one.jpg'))->toBeTrue();
+});
+
+test('administrators can regenerate cover thumbnails from object storage settings', function () {
+    Storage::fake(Media::diskName());
+
+    $path = UploadedFile::fake()
+        ->image('cover.jpg', 1280, 720)
+        ->store('games/covers', Media::diskName());
+
+    Game::withoutEvents(fn () => Game::factory()->create([
+        'cover_path' => $path,
+        'cover_url' => '',
+    ]));
+
+    $thumbnailPath = MediaThumbnail::pathFor($path);
+
+    expect(Media::disk()->exists($thumbnailPath))->toBeFalse();
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageObjectStorage::class)
+        ->call('regenerateCoverThumbnails')
+        ->assertNotified();
+
+    expect(Media::disk()->exists($thumbnailPath))->toBeTrue();
 });
 
 test('failed media migration does not switch the active disk', function () {

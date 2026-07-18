@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Actions\Games\DeleteGameMedia;
 use App\GameStatus;
+use App\Support\MediaThumbnail;
 use Database\Factories\GameFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,6 +31,19 @@ class Game extends Model
 
     protected static function booted(): void
     {
+        static::saved(function (Game $game): void {
+            if (blank($game->cover_path)) {
+                return;
+            }
+
+            // wasChanged() is empty on insert; wasRecentlyCreated covers first save.
+            if (! $game->wasRecentlyCreated && ! $game->wasChanged('cover_path')) {
+                return;
+            }
+
+            MediaThumbnail::generate((string) $game->cover_path);
+        });
+
         static::deleting(function (Game $game): void {
             $game->mediaPathsForDeletion = app(DeleteGameMedia::class)->pathsFor($game);
         });

@@ -33,6 +33,53 @@ test('administrators can update the site url', function () {
         ->and(config('filesystems.disks.public.url'))->toBe('http://hgame.test/storage');
 });
 
+test('administrators can upload a custom hero background image', function () {
+    Storage::fake(Media::diskName());
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'hero_background_path' => UploadedFile::fake()->image('hero.jpg', 1600, 900),
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    $path = Setting::heroBackgroundPath();
+
+    expect($path)->not->toBeNull()
+        ->and($path)->toStartWith('site/hero/')
+        ->and(Setting::heroBackgroundUrl())->toContain('/storage/'.$path);
+
+    Storage::disk(Media::diskName())->assertExists($path);
+});
+
+test('clearing the hero background restores the default image url', function () {
+    Storage::fake(Media::diskName());
+
+    $previous = UploadedFile::fake()
+        ->image('old-hero.jpg', 1600, 900)
+        ->store('site/hero', Media::diskName());
+
+    Setting::set('hero_background_path', $previous);
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'hero_background_path' => null,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect(Setting::heroBackgroundPath())->toBeNull()
+        ->and(Setting::heroBackgroundUrl())->toBe(Setting::defaultHeroBackgroundUrl())
+        ->and(Storage::disk(Media::diskName())->exists($previous))->toBeFalse();
+});
+
 test('avatar urls use the configured site url', function () {
     Storage::fake(Media::diskName());
 

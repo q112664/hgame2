@@ -3,8 +3,10 @@
 namespace App\Filament\Pages;
 
 use App\Models\Setting;
+use App\Support\Media;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -43,6 +45,7 @@ class ManageSiteSettings extends Page
     {
         $this->form->fill([
             'site_url' => Setting::siteUrl(),
+            'hero_background_path' => Setting::heroBackgroundPath(),
         ]);
     }
 
@@ -67,6 +70,20 @@ class ManageSiteSettings extends Page
                             ->maxLength(255)
                             ->placeholder('http://hgame.test')
                             ->helperText('Example: http://hgame.test or https://example.com'),
+                    ]),
+                Section::make('Homepage hero')
+                    ->description('Background image for the homepage hero card. Clear the upload to restore the built-in default artwork.')
+                    ->schema([
+                        FileUpload::make('hero_background_path')
+                            ->label('Hero background')
+                            ->image()
+                            ->imageEditor()
+                            ->disk(Media::diskName())
+                            ->directory('site/hero')
+                            ->visibility('public')
+                            ->maxSize(5120)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->helperText('Recommended wide image (about 16:9). Max 5MB. JPEG, PNG, or WebP.'),
                     ]),
             ]);
     }
@@ -107,12 +124,35 @@ class ManageSiteSettings extends Page
     public function save(): void
     {
         $data = $this->form->getState();
+        $previousPath = Setting::heroBackgroundPath();
+        $nextPath = $this->normalizeUploadPath($data['hero_background_path'] ?? null);
 
         Setting::set('site_url', rtrim((string) $data['site_url'], '/'));
+        Setting::set('hero_background_path', $nextPath);
+
+        if (
+            filled($previousPath)
+            && $previousPath !== $nextPath
+        ) {
+            Media::delete($previousPath);
+        }
 
         Notification::make()
             ->title('Settings saved')
             ->success()
             ->send();
+    }
+
+    private function normalizeUploadPath(mixed $value): ?string
+    {
+        if (is_array($value)) {
+            $value = $value[0] ?? null;
+        }
+
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        return $value;
     }
 }

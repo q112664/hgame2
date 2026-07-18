@@ -5,6 +5,7 @@ namespace App\Actions\Games;
 use App\Models\Game;
 use App\Models\GameScreenshot;
 use App\Support\Media;
+use App\Support\MediaThumbnail;
 use Illuminate\Support\Facades\Log;
 
 class DeleteGameMedia
@@ -19,15 +20,19 @@ class DeleteGameMedia
      */
     public function pathsFor(Game $game): array
     {
-        return array_values(collect([
+        $paths = collect([
             $game->cover_path,
             ...$game->screenshots()->pluck('path')->all(),
             ...$this->pathsFromDescription((string) $game->description),
         ])
             ->filter(fn (mixed $path): bool => is_string($path) && $path !== '')
-            ->unique()
-            ->values()
-            ->all());
+            ->values();
+
+        if (is_string($game->cover_path) && $game->cover_path !== '' && MediaThumbnail::isManagedPath($game->cover_path)) {
+            $paths->push(MediaThumbnail::pathFor($game->cover_path));
+        }
+
+        return array_values($paths->unique()->all());
     }
 
     /**

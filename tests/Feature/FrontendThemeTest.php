@@ -64,6 +64,24 @@ test('search favorites and settings share the site page container', function () 
     }
 });
 
+test('docs pages use the public site shell instead of the starter kit app layout', function () {
+    $filesystem = app(Filesystem::class);
+    $bootstrap = $filesystem->get(resource_path('js/app.tsx'));
+
+    expect($bootstrap)
+        ->toContain("name.startsWith('docs/')")
+        ->toContain('return AuthModalLayout');
+
+    foreach (['docs/index.tsx', 'docs/show.tsx'] as $page) {
+        $source = $filesystem->get(resource_path("js/pages/{$page}"));
+
+        expect($source)
+            ->toContain("import { SiteLayout } from '@/layouts/site-layout';")
+            ->toContain('<SiteLayout')
+            ->not->toContain('AppLayout');
+    }
+});
+
 test('search and favorite results use detailed card grids', function () {
     $filesystem = app(Filesystem::class);
     $searchResults = $filesystem->get(resource_path('js/components/site/search-results.tsx'));

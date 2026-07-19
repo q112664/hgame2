@@ -17,10 +17,10 @@ type FavoriteButtonProps = {
 };
 
 const heartActiveClassName =
-    'bg-primary/12 text-primary hover:bg-primary/18 dark:border dark:border-primary/30 dark:bg-primary/15 dark:hover:bg-primary/25';
+    'bg-favorite/12 text-favorite hover:bg-favorite/18 dark:border dark:border-favorite/30 dark:bg-favorite/15 dark:hover:bg-favorite/25';
 
 const heartIdleClassName =
-    'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground dark:border dark:border-foreground/15 dark:bg-surface-raised dark:text-foreground dark:hover:border-foreground/25 dark:hover:bg-surface-strong';
+    'bg-muted text-muted-foreground hover:bg-favorite/10 hover:text-favorite dark:border dark:border-foreground/15 dark:bg-surface-raised dark:text-foreground dark:hover:border-favorite/25 dark:hover:bg-favorite/15 dark:hover:text-favorite';
 
 /**
  * Heart-shaped favorite toggle used on resource pages.

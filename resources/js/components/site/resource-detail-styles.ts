@@ -28,18 +28,14 @@ export function platformBadgeClassName(slug: string): string {
     );
 }
 
-export const metaChipClassName = cn(
-    'inline-flex h-6 items-center gap-1.5 rounded-sm border px-2.5 text-xs font-medium',
+export const fileSizeBadgeClassName = cn(
+    heroBadgeClassName,
+    'bg-success/12 text-success',
 );
 
-export const fileSizeChipClassName = cn(
-    metaChipClassName,
-    'border-success/25 bg-success/12 text-success',
-);
-
-export const dateChipClassName = cn(
-    metaChipClassName,
-    'border-border bg-muted text-muted-foreground',
+export const dateBadgeClassName = cn(
+    heroBadgeClassName,
+    'bg-muted text-muted-foreground',
 );
 
 export const downloadButtonPalettes = [

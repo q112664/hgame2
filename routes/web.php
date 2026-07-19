@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DocController;
+use App\Http\Controllers\DownloadLinkController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ResourceController;
@@ -12,6 +13,10 @@ Route::get('/search', SearchController::class)->name('search');
 
 Route::get('/docs', [DocController::class, 'index'])->name('docs.index');
 Route::get('/docs/{doc}', [DocController::class, 'show'])->name('docs.show');
+
+Route::get('/go/{downloadLink}', [DownloadLinkController::class, 'show'])
+    ->name('download-links.show')
+    ->whereNumber('downloadLink');
 
 Route::get('/resources', [ResourceController::class, 'index'])
     ->name('resources.index');

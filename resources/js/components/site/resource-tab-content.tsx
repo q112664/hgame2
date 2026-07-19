@@ -1,12 +1,13 @@
+import { Link } from '@inertiajs/react';
 import { CalendarDays, Download, HardDrive } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
-    dateChipClassName,
+    dateBadgeClassName,
     downloadButtonPalettes,
-    fileSizeChipClassName,
+    fileSizeBadgeClassName,
     languageBadgeClassName,
     platformBadgeClassName,
 } from '@/components/site/resource-detail-styles';
@@ -15,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
+import { show as downloadLinkShow } from '@/routes/download-links';
 import type { GameDetail } from '@/types/resources';
 
 type ResourceTab = 'details' | 'downloads' | 'screenshots';
@@ -97,28 +99,19 @@ export function ResourceTabContent({
             >
                 {activeTab === 'details' ? (
                     <section className="rounded-md border border-border bg-card p-4 sm:p-5">
-                        <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
-                            About
-                        </h2>
-                        <RichHtml html={resource.description} />
-
                         {resource.tags.length > 0 ? (
-                            <div className="mt-6">
-                                <h2 className="mb-3 font-heading text-base font-semibold text-foreground">
-                                    Tags
-                                </h2>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {resource.tags.map((tag) => (
-                                        <span
-                                            key={tag}
-                                            className="inline-flex h-6 items-center rounded-sm bg-muted px-2.5 text-xs font-medium text-muted-foreground"
-                                        >
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
+                            <div className="mb-4 flex flex-wrap gap-1.5">
+                                {resource.tags.map((tag) => (
+                                    <span
+                                        key={tag}
+                                        className="inline-flex h-6 items-center rounded-sm bg-muted px-2.5 text-xs font-medium text-muted-foreground"
+                                    >
+                                        {tag}
+                                    </span>
+                                ))}
                             </div>
                         ) : null}
+                        <RichHtml html={resource.description} />
                     </section>
                 ) : null}
 
@@ -186,17 +179,21 @@ export function ResourceTabContent({
                                                 ),
                                             )}
                                             {release.fileSize ? (
-                                                <span
+                                                <Badge
+                                                    variant="outline"
                                                     className={
-                                                        fileSizeChipClassName
+                                                        fileSizeBadgeClassName
                                                     }
                                                 >
-                                                    <HardDrive className="size-3.5" />
+                                                    <HardDrive data-icon="inline-start" />
                                                     {release.fileSize}
-                                                </span>
+                                                </Badge>
                                             ) : null}
-                                            <span className={dateChipClassName}>
-                                                <CalendarDays className="size-3.5" />
+                                            <Badge
+                                                variant="outline"
+                                                className={dateBadgeClassName}
+                                            >
+                                                <CalendarDays data-icon="inline-start" />
                                                 <time
                                                     dateTime={
                                                         release.publishedAt ??
@@ -206,7 +203,7 @@ export function ResourceTabContent({
                                                     {release.publishedAt ??
                                                         'Unscheduled'}
                                                 </time>
-                                            </span>
+                                            </Badge>
                                         </div>
 
                                         {release.downloadLinks.length > 0 ? (
@@ -226,7 +223,12 @@ export function ResourceTabContent({
                                                                 ],
                                                             )}
                                                         >
-                                                            <a href={link.url}>
+                                                            <Link
+                                                                href={downloadLinkShow(
+                                                                    link.id,
+                                                                )}
+                                                                prefetch
+                                                            >
                                                                 <Download data-icon="inline-start" />
                                                                 {link.label ||
                                                                     (release
@@ -235,7 +237,7 @@ export function ResourceTabContent({
                                                                     1
                                                                         ? `Download ${index + 1}`
                                                                         : 'Download')}
-                                                            </a>
+                                                            </Link>
                                                         </Button>
                                                     ),
                                                 )}

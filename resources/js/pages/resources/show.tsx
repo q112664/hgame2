@@ -1,5 +1,12 @@
 import { Head, Link, router, useHttp, usePage } from '@inertiajs/react';
-import { Building2, CalendarDays, Download, Eye, Pencil } from 'lucide-react';
+import {
+    Building2,
+    CalendarDays,
+    Download,
+    Eye,
+    Pencil,
+    XIcon,
+} from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { ImageLightbox } from '@/components/site/image-lightbox';
@@ -15,6 +22,14 @@ import { ResourceTabContent } from '@/components/site/resource-tab-content';
 import { RouteTabs } from '@/components/site/route-tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     Tooltip,
     TooltipContent,
@@ -73,6 +88,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
     });
     const [lightboxSlides, setLightboxSlides] = useState<LightboxSlide[]>([]);
     const [lightboxIndex, setLightboxIndex] = useState(-1);
+    const [coverDialogOpen, setCoverDialogOpen] = useState(false);
     const page = usePage();
     const { auth } = page.props;
     const authUserId = auth.user?.id;
@@ -235,6 +251,8 @@ export default function ResourceShow({ activeTab, resource }: Props) {
         alt: `${resource.title} screenshot ${index + 1}`,
     }));
 
+    const hasCover = Boolean(resource.thumbnail);
+
     const openLightbox = (slides: LightboxSlide[], index: number) => {
         if (slides.length === 0) {
             return;
@@ -259,16 +277,75 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                 onIndexChange={setLightboxIndex}
             />
 
+            <Dialog open={coverDialogOpen} onOpenChange={setCoverDialogOpen}>
+                <DialogContent
+                    showCloseButton={false}
+                    className={cn(
+                        'max-h-[min(90vh,900px)] w-full max-w-[min(96vw,56rem)] gap-3 overflow-hidden p-3 sm:p-4',
+                        'bg-popover sm:max-w-[min(96vw,56rem)]',
+                    )}
+                >
+                    <DialogHeader className="flex-row items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                            <DialogTitle className="line-clamp-1 pr-1">
+                                {resource.title}
+                            </DialogTitle>
+                            <DialogDescription className="sr-only">
+                                Full size cover image for {resource.title}
+                            </DialogDescription>
+                        </div>
+                        <DialogClose asChild>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                className="shrink-0"
+                                aria-label="Close"
+                            >
+                                <XIcon />
+                            </Button>
+                        </DialogClose>
+                    </DialogHeader>
+                    <div className="overflow-hidden rounded-md bg-muted">
+                        <img
+                            src={resource.thumbnail}
+                            alt={resource.title}
+                            className="mx-auto max-h-[min(78vh,800px)] w-auto max-w-full object-contain"
+                            referrerPolicy="no-referrer"
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
                 <section className="overflow-hidden rounded-md border border-border bg-card">
                     <div className="flex flex-col sm:flex-row">
                         <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted sm:aspect-auto sm:h-[280px] sm:w-auto sm:max-w-[498px]">
-                            <img
-                                src={resource.thumbnail}
-                                alt={resource.title}
-                                className="size-full object-cover"
-                                referrerPolicy="no-referrer"
-                            />
+                            {hasCover ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setCoverDialogOpen(true)}
+                                    className={cn(
+                                        'size-full cursor-zoom-in focus-visible:outline-none',
+                                        'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset',
+                                    )}
+                                    aria-label={`View full size cover for ${resource.title}`}
+                                >
+                                    <img
+                                        src={resource.thumbnail}
+                                        alt={resource.title}
+                                        className="size-full object-cover"
+                                        referrerPolicy="no-referrer"
+                                    />
+                                </button>
+                            ) : (
+                                <img
+                                    src={resource.thumbnail}
+                                    alt={resource.title}
+                                    className="size-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                />
+                            )}
                         </div>
 
                         <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:p-5">

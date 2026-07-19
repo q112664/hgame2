@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { DetailedResourceCard } from '@/components/site/detailed-resource-card';
+import { FavoriteResourceCard } from '@/components/site/favorite-resource-card';
 import { FavoritesPagination } from '@/components/site/favorites-pagination';
 import type { PaginatedFavorites } from '@/components/site/favorites-pagination';
 import { SitePageContainer } from '@/components/site/site-page-container';
@@ -65,10 +65,10 @@ export default function Favorites({ resources, downloadUpdateCount }: Props) {
 
                 <div id="favorite-results" className="scroll-mt-20">
                     {resources.data.length > 0 ? (
-                        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                             {resources.data.map((resource) => (
                                 <li key={resource.id} className="h-full">
-                                    <DetailedResourceCard
+                                    <FavoriteResourceCard
                                         resource={resource}
                                         href={
                                             resource.hasDownloadUpdate

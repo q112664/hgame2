@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { Eye } from 'lucide-react';
 import { PlatformIcon } from '@/components/site/platform-icon';
+import { overlayChipClassName } from '@/components/site/resource-card-styles';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Tooltip,
@@ -23,12 +24,6 @@ type Props = {
     /** Which date to show in the card footer. Defaults to site publish time. */
     dateField?: 'publishedAt' | 'releaseDate';
 };
-
-const overlayChipClassName = cn(
-    'inline-flex h-5 max-w-full items-center justify-center rounded-sm px-1.5',
-    'bg-black/40 text-[11px] leading-none font-medium text-white/90',
-    'ring-1 ring-white/15 backdrop-blur-[2px]',
-);
 
 export function ResourceCard({
     resource,
@@ -63,40 +58,35 @@ export function ResourceCard({
                             {abbreviateCategory(resource.category)}
                         </span>
                         <div className="flex flex-wrap justify-end gap-1">
-                            {resource.platforms.length > 0 ? (
-                                resource.platforms.map((platform) => (
-                                    <Tooltip key={platform.slug}>
-                                        <TooltipTrigger asChild>
-                                            <span
-                                                className={cn(
-                                                    overlayChipClassName,
-                                                    'size-5 px-0',
-                                                )}
-                                                aria-label={platform.name}
-                                            >
-                                                <PlatformIcon
-                                                    slug={platform.slug}
-                                                    className="size-3"
-                                                />
-                                            </span>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="bottom">
-                                            {platform.name}
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ))
-                            ) : null}
+                            {resource.platforms.length > 0
+                                ? resource.platforms.map((platform) => (
+                                      <Tooltip key={platform.slug}>
+                                          <TooltipTrigger asChild>
+                                              <span
+                                                  className={cn(
+                                                      overlayChipClassName,
+                                                      'size-5 px-0',
+                                                  )}
+                                                  aria-label={platform.name}
+                                              >
+                                                  <PlatformIcon
+                                                      slug={platform.slug}
+                                                      className="size-3"
+                                                  />
+                                              </span>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="bottom">
+                                              {platform.name}
+                                          </TooltipContent>
+                                      </Tooltip>
+                                  ))
+                                : null}
                         </div>
                     </div>
 
                     <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-1.5">
                         {resource.version ? (
-                            <span
-                                className={cn(
-                                    overlayChipClassName,
-                                    'font-mono',
-                                )}
-                            >
+                            <span className={overlayChipClassName}>
                                 {abbreviateVersion(resource.version)}
                             </span>
                         ) : (

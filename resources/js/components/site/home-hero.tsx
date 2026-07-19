@@ -56,7 +56,7 @@ export function HomeHero({ backgroundUrl = null }: Props) {
 
                     <div className="relative flex min-h-[220px] flex-col justify-center gap-5 p-6 sm:min-h-[260px] sm:p-8 lg:max-w-xl lg:p-10">
                         <div className="flex flex-col gap-2">
-                            <p className="font-mono text-[11px] font-medium tracking-wide text-surface-inverse-foreground/70 uppercase">
+                            <p className="text-[11px] font-medium tracking-wide text-surface-inverse-foreground/70 uppercase">
                                 Visual novel / galgame
                             </p>
                             <h1 className="font-heading text-2xl font-semibold tracking-tight text-surface-inverse-foreground sm:text-3xl">

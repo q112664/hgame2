@@ -52,7 +52,7 @@ export default function DocsShow({ doc, related }: Props) {
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-wrap items-center gap-2">
                             <Badge variant="secondary">{doc.category}</Badge>
-                            <span className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                                 <Clock className="size-3.5" />
                                 {doc.readingMinutes} min read
                             </span>
@@ -63,7 +63,7 @@ export default function DocsShow({ doc, related }: Props) {
                         <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
                             {doc.excerpt}
                         </p>
-                        <p className="font-mono text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                             Published {formatDate(doc.publishedAt)}
                             {doc.updatedAt !== doc.publishedAt
                                 ? ` · Updated ${formatDate(doc.updatedAt)}`
@@ -149,7 +149,7 @@ export default function DocsShow({ doc, related }: Props) {
                                                     {item.excerpt}
                                                 </CardDescription>
                                             </CardHeader>
-                                            <CardContent className="pt-0 font-mono text-[11px] text-muted-foreground">
+                                            <CardContent className="pt-0 text-[11px] text-muted-foreground">
                                                 {item.readingMinutes} min
                                             </CardContent>
                                         </Card>

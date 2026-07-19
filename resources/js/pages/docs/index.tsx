@@ -65,7 +65,7 @@ export default function DocsIndex({ docs, categories, filters }: Props) {
                             browsing and managing resources on hgame.
                         </p>
                     </div>
-                    <p className="font-mono text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                         {docs.length} article{docs.length === 1 ? '' : 's'}
                     </p>
                 </div>
@@ -118,7 +118,7 @@ export default function DocsIndex({ docs, categories, filters }: Props) {
                                                 <Badge variant="secondary">
                                                     {doc.category}
                                                 </Badge>
-                                                <span className="inline-flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
+                                                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                                                     <Clock className="size-3" />
                                                     {doc.readingMinutes} min
                                                 </span>
@@ -130,7 +130,7 @@ export default function DocsIndex({ docs, categories, filters }: Props) {
                                                 {doc.excerpt}
                                             </CardDescription>
                                         </CardHeader>
-                                        <CardContent className="mt-auto flex items-center justify-between gap-3 pt-0 font-mono text-xs text-muted-foreground">
+                                        <CardContent className="mt-auto flex items-center justify-between gap-3 pt-0 text-xs text-muted-foreground">
                                             <time dateTime={doc.updatedAt}>
                                                 Updated {formatDate(doc.updatedAt)}
                                             </time>

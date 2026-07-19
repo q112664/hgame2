@@ -8,7 +8,8 @@ test('the shared theme defines light and dark semantic tokens', function () {
 
     expect($stylesheet)
         ->toContain(':root')
-        ->toContain('.dark');
+        ->toContain('.dark')
+        ->toContain('Ink Archive');
 
     foreach (
         [
@@ -30,6 +31,19 @@ test('the shared theme defines light and dark semantic tokens', function () {
     ) {
         expect($stylesheet)->toContain("--{$token}:");
     }
+});
+
+test('ink archive theme uses cool paper surfaces and ink primary', function () {
+    $stylesheet = app(Filesystem::class)->get(resource_path('css/app.css'));
+
+    expect($stylesheet)
+        ->toContain('--background: #f4f5f7;')
+        ->toContain('--primary: #3a4d73;')
+        ->toContain('--radius: 0.375rem;')
+        ->toContain('--background: #0e1014;')
+        ->toContain('--primary: #9aafd4;')
+        ->not->toContain('#c84b5a')
+        ->not->toContain('#ef7a86');
 });
 
 test('frontend components use semantic colors instead of palette-specific classes', function () {
@@ -86,6 +100,7 @@ test('search and favorite results use detailed card grids', function () {
     $filesystem = app(Filesystem::class);
     $searchResults = $filesystem->get(resource_path('js/components/site/search-results.tsx'));
     $favorites = $filesystem->get(resource_path('js/pages/favorites.tsx'));
+    $favoriteCard = $filesystem->get(resource_path('js/components/site/favorite-resource-card.tsx'));
 
     expect($searchResults)
         ->toContain('sm:grid-cols-2')
@@ -94,10 +109,15 @@ test('search and favorite results use detailed card grids', function () {
         ->toContain('<DetailedResourceCard');
 
     expect($favorites)
-        ->toContain('sm:grid-cols-2')
-        ->toContain('lg:grid-cols-3')
-        ->toContain('xl:grid-cols-4')
-        ->toContain('<DetailedResourceCard');
+        ->toContain('md:grid-cols-2')
+        ->toContain('<FavoriteResourceCard')
+        ->not->toContain('lg:grid-cols-3')
+        ->not->toContain('xl:grid-cols-4');
+
+    expect($favoriteCard)
+        ->toContain('flex h-full min-h-0')
+        ->toContain('aspect-[16/10] w-[42%]')
+        ->toContain('Remove favorite');
 });
 
 test('detailed resource cards avoid decorative hover motion and shadows', function () {
@@ -110,13 +130,26 @@ test('detailed resource cards avoid decorative hover motion and shadows', functi
         ->not->toContain('group-hover:scale-');
 });
 
-test('detailed resource cards omit developer and tag metadata', function () {
+test('resource and detailed cards share frosted thumbnail overlay chips', function () {
     $filesystem = app(Filesystem::class);
-    $source = $filesystem->get(resource_path('js/components/site/detailed-resource-card.tsx'));
+    $styles = $filesystem->get(resource_path('js/components/site/resource-card-styles.ts'));
+    $resourceCard = $filesystem->get(resource_path('js/components/site/resource-card.tsx'));
+    $detailedCard = $filesystem->get(resource_path('js/components/site/detailed-resource-card.tsx'));
 
-    expect($source)
-        ->not->toContain('{resource.developer}')
-        ->not->toContain('resource.tags');
+    expect($styles)
+        ->toContain('overlayChipClassName')
+        ->toContain('bg-black/40')
+        ->toContain('backdrop-blur-[2px]');
+
+    expect($resourceCard)
+        ->toContain("import { overlayChipClassName } from '@/components/site/resource-card-styles';")
+        ->not->toContain('font-mono');
+
+    expect($detailedCard)
+        ->toContain("import { overlayChipClassName } from '@/components/site/resource-card-styles';")
+        ->toContain('abbreviateLanguage')
+        ->not->toContain('font-mono')
+        ->not->toContain('bg-background/90 text-xs font-medium text-foreground ring-1 ring-border/80');
 });
 
 test('site pages share the reusable pagination component', function () {
@@ -170,7 +203,7 @@ test('button variants use deliberate dark mode surfaces and borders', function (
     $filesystem = app(Filesystem::class);
     $button = $filesystem->get(resource_path('js/components/ui/button.tsx'));
     $resourceStyles = $filesystem->get(resource_path('js/components/site/resource-detail-styles.ts'));
-    $resourceShow = $filesystem->get(resource_path('js/pages/resources/show.tsx'));
+    $favoriteButton = $filesystem->get(resource_path('js/components/site/favorite-button.tsx'));
     $resourceCard = $filesystem->get(resource_path('js/components/site/detailed-resource-card.tsx'));
 
     expect($button)
@@ -183,11 +216,13 @@ test('button variants use deliberate dark mode surfaces and borders', function (
         ->toContain('dark:bg-info/15')
         ->toContain('dark:bg-success/15');
 
-    expect($resourceShow)
+    expect($favoriteButton)
         ->toContain('dark:border-primary/30 dark:bg-primary/15')
         ->toContain('dark:border-foreground/15 dark:bg-surface-raised');
 
     expect($resourceCard)
-        ->toContain('dark:bg-surface-raised/95')
-        ->toContain('dark:hover:bg-surface-strong');
+        ->toContain('Remove favorite')
+        ->toContain('overlayChipClassName')
+        ->toContain('sm:group-hover:opacity-100')
+        ->toContain('<Spinner');
 });

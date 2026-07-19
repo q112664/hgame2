@@ -1,8 +1,9 @@
 import { Link } from '@inertiajs/react';
-import { Download, Eye, Trash2 } from 'lucide-react';
+import { Download, Eye, X } from 'lucide-react';
 import { PlatformIcon } from '@/components/site/platform-icon';
-import { Button } from '@/components/ui/button';
+import { overlayChipClassName } from '@/components/site/resource-card-styles';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Tooltip,
     TooltipContent,
@@ -31,16 +32,6 @@ type Props = {
     onRemove?: () => void;
 };
 
-const overlayChipClassName = cn(
-    'inline-flex h-6 items-center justify-center rounded-sm px-2',
-    'bg-background/90 text-xs font-medium text-foreground ring-1 ring-border/80',
-);
-
-const detailChipClassName = cn(
-    'inline-flex h-6 items-center justify-center rounded-sm px-2',
-    'bg-muted font-mono text-[11px] leading-none font-medium text-muted-foreground',
-);
-
 export function DetailedResourceCard({
     resource,
     href,
@@ -53,8 +44,8 @@ export function DetailedResourceCard({
         <Card
             size="sm"
             className={cn(
-                'relative h-full gap-0 rounded-md py-0',
-                isRemoving && 'opacity-50',
+                'group relative h-full gap-0 rounded-md py-0',
+                isRemoving && 'opacity-60',
             )}
         >
             <Link
@@ -66,7 +57,7 @@ export function DetailedResourceCard({
                 prefetch={!isPending}
                 tabIndex={isPending ? -1 : undefined}
             >
-                <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+                <div className="relative aspect-[16/10] overflow-hidden rounded-t-md bg-muted">
                     <img
                         src={resource.thumbnail}
                         alt={resource.title}
@@ -75,15 +66,43 @@ export function DetailedResourceCard({
                         referrerPolicy="no-referrer"
                     />
 
-                    <div className="absolute inset-0 ring-1 ring-foreground/8 ring-inset" />
-
-                    <div className="absolute top-2 left-2">
+                    <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-1.5">
                         <span className={overlayChipClassName}>
                             {abbreviateCategory(resource.category)}
                         </span>
+                        <div
+                            className={cn(
+                                'flex flex-wrap justify-end gap-1',
+                                onRemove && 'pr-6',
+                            )}
+                        >
+                            {resource.platforms.length > 0
+                                ? resource.platforms.map((platform) => (
+                                      <Tooltip key={platform.slug}>
+                                          <TooltipTrigger asChild>
+                                              <span
+                                                  className={cn(
+                                                      overlayChipClassName,
+                                                      'size-5 px-0',
+                                                  )}
+                                                  aria-label={platform.name}
+                                              >
+                                                  <PlatformIcon
+                                                      slug={platform.slug}
+                                                      className="size-3"
+                                                  />
+                                              </span>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="bottom">
+                                              {platform.name}
+                                          </TooltipContent>
+                                      </Tooltip>
+                                  ))
+                                : null}
+                        </div>
                     </div>
 
-                    <div className="absolute inset-x-0 bottom-2 flex items-end justify-between gap-2 px-2">
+                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-1.5">
                         {resource.version ? (
                             <span className={overlayChipClassName}>
                                 {abbreviateVersion(resource.version)}
@@ -91,36 +110,22 @@ export function DetailedResourceCard({
                         ) : (
                             <span />
                         )}
-
-                        <div className="flex flex-wrap justify-end gap-1.5">
-                            {resource.platforms.map((platform) => (
-                                <Tooltip key={platform.slug}>
-                                    <TooltipTrigger asChild>
-                                        <span
-                                            className={cn(
-                                                overlayChipClassName,
-                                                'size-6 px-0',
-                                            )}
-                                            aria-label={platform.name}
-                                        >
-                                            <PlatformIcon
-                                                slug={platform.slug}
-                                                className="size-3.5"
-                                            />
-                                        </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom">
-                                        {platform.name}
-                                    </TooltipContent>
-                                </Tooltip>
+                        <div className="flex flex-wrap justify-end gap-1">
+                            {resource.languages.map((language) => (
+                                <span
+                                    key={language}
+                                    className={overlayChipClassName}
+                                >
+                                    {abbreviateLanguage(language)}
+                                </span>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                <CardHeader className="flex-1 gap-1.5 pt-3 pb-0">
+                <CardHeader className="flex-1 gap-1.5 pt-2.5 pb-0">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <CardTitle className="line-clamp-2 text-base leading-snug">
+                        <CardTitle className="line-clamp-2 text-sm leading-snug font-medium text-foreground/85">
                             {resource.title}
                         </CardTitle>
                         {resource.hasDownloadUpdate ? (
@@ -138,48 +143,43 @@ export function DetailedResourceCard({
                     ) : null}
                 </CardHeader>
 
-                <CardContent className="flex min-w-0 flex-col gap-3 pt-3 pb-3">
-                    {resource.languages.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                            {resource.languages.map((language) => (
-                                <span
-                                    key={language}
-                                    className={detailChipClassName}
-                                >
-                                    {abbreviateLanguage(language)}
-                                </span>
-                            ))}
-                        </div>
-                    ) : null}
-
-                    <div className="mt-auto flex items-center justify-between gap-3 font-mono text-xs text-muted-foreground">
-                        <time dateTime={resource.publishedAt ?? undefined}>
-                            {resource.publishedAt
-                                ? formatDate(resource.publishedAt)
-                                : 'Unscheduled'}
-                        </time>
-                        <span className="inline-flex items-center gap-1">
-                            <Eye className="size-3.5" />
-                            {formatViews(resource.views)}
-                        </span>
-                    </div>
+                <CardContent className="mt-auto flex items-center justify-between gap-2 pt-1.5 pb-2.5 text-[11px] text-muted-foreground/80">
+                    <time dateTime={resource.publishedAt ?? undefined}>
+                        {resource.publishedAt
+                            ? formatDate(resource.publishedAt)
+                            : 'Unscheduled'}
+                    </time>
+                    <span className="inline-flex items-center gap-1">
+                        <Eye className="size-3" />
+                        {formatViews(resource.views)}
+                    </span>
                 </CardContent>
             </Link>
 
             {onRemove ? (
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Button
+                        <button
                             type="button"
-                            variant="secondary"
-                            size="icon-sm"
-                            className="absolute top-2 right-2 z-10 bg-background/90 text-muted-foreground ring-1 ring-border/80 hover:text-destructive dark:border-foreground/15 dark:bg-surface-raised/95 dark:text-foreground dark:ring-0 dark:hover:border-foreground/25 dark:hover:bg-surface-strong dark:hover:text-destructive"
+                            className={cn(
+                                overlayChipClassName,
+                                'absolute top-1.5 right-1.5 z-10 size-5 px-0',
+                                'transition-[opacity,background-color] hover:bg-black/55 hover:text-white',
+                                'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
+                                'focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                                'disabled:pointer-events-none disabled:opacity-50',
+                                isRemoving && 'opacity-100',
+                            )}
                             aria-label={`Remove ${resource.title} from favorites`}
                             disabled={disableRemove}
                             onClick={onRemove}
                         >
-                            <Trash2 />
-                        </Button>
+                            {isRemoving ? (
+                                <Spinner className="size-3 text-white/90" />
+                            ) : (
+                                <X className="size-3" aria-hidden />
+                            )}
+                        </button>
                     </TooltipTrigger>
                     <TooltipContent>Remove favorite</TooltipContent>
                 </Tooltip>

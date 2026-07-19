@@ -101,7 +101,7 @@ function PageJump({
                 value={pageInput}
                 aria-invalid={pageInput.trim() !== '' && targetPage === null}
                 aria-label={`Page number, 1 to ${lastPage}`}
-                className="h-8 w-16 bg-card px-1.5 text-center font-mono text-sm"
+                className="h-8 w-16 bg-card px-1.5 text-center text-sm"
                 onChange={(event) => setPageInput(event.target.value)}
                 onFocus={(event) => event.currentTarget.select()}
                 onBlur={() => {

@@ -16,11 +16,11 @@ export function SiteFooter() {
                     >
                         hgame
                     </Link>
-                    <p className="font-mono text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                         Visual novel / galgame resource downloads
                     </p>
                 </div>
-                <p className="font-mono text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                     © {year} hgame. All rights reserved.
                 </p>
             </div>

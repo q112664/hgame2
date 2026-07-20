@@ -9,13 +9,32 @@ type Props = {
 /**
  * Renders Filament RichEditor HTML with Tailwind Typography defaults.
  * Preflight resets heading/paragraph/list styles; prose restores readable layout.
+ * Theme tokens override default prose grays so body text stays readable in dark mode
+ * (including plain-text descriptions that are not wrapped in `<p>`).
  */
 export function RichHtml({ html, className, onImageClick }: Props) {
     return (
         <div
             className={cn(
-                'prose max-w-none prose-headings:text-foreground prose-p:text-foreground prose-blockquote:text-muted-foreground prose-strong:text-foreground prose-code:text-foreground prose-li:text-foreground prose-hr:border-border',
-                'prose-a:text-info prose-img:rounded-sm',
+                'prose max-w-none',
+                '[--tw-prose-body:var(--color-foreground)]',
+                '[--tw-prose-headings:var(--color-foreground)]',
+                '[--tw-prose-lead:var(--color-muted-foreground)]',
+                '[--tw-prose-links:var(--color-info)]',
+                '[--tw-prose-bold:var(--color-foreground)]',
+                '[--tw-prose-counters:var(--color-muted-foreground)]',
+                '[--tw-prose-bullets:var(--color-muted-foreground)]',
+                '[--tw-prose-hr:var(--color-border)]',
+                '[--tw-prose-quotes:var(--color-muted-foreground)]',
+                '[--tw-prose-quote-borders:var(--color-border)]',
+                '[--tw-prose-captions:var(--color-muted-foreground)]',
+                '[--tw-prose-kbd:var(--color-foreground)]',
+                '[--tw-prose-code:var(--color-foreground)]',
+                '[--tw-prose-pre-code:var(--color-foreground)]',
+                '[--tw-prose-pre-bg:var(--color-muted)]',
+                '[--tw-prose-th-borders:var(--color-border)]',
+                '[--tw-prose-td-borders:var(--color-border)]',
+                'prose-img:rounded-sm',
                 onImageClick && 'prose-img:cursor-zoom-in',
                 className,
             )}

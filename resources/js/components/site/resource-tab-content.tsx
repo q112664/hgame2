@@ -140,7 +140,7 @@ export function ResourceTabContent({
                                         {release.description ? (
                                             <RichHtml
                                                 html={release.description}
-                                                className="prose-sm text-muted-foreground prose-p:my-0 [&:has(>p:only-child:empty)]:hidden"
+                                                className="prose-sm [--tw-prose-body:var(--color-muted-foreground)] prose-p:my-0 [&:has(>p:only-child:empty)]:hidden"
                                             />
                                         ) : null}
                                     </div>

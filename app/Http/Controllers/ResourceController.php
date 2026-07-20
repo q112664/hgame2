@@ -128,7 +128,7 @@ class ResourceController extends Controller
         ];
 
         if ($includeTags) {
-            $with['tags'] = fn ($query) => $query->select(['tags.id', 'name']);
+            $with['tags'] = fn ($query) => $query->select(['tags.id', 'name', 'slug']);
         }
 
         if ($includeScreenshots) {

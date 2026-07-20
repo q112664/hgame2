@@ -36,7 +36,13 @@ class GamePresenter
                 ->filter()
                 ->first(),
             'tags' => $includeTags
-                ? $game->tags->pluck('name')->values()->all()
+                ? $game->tags
+                    ->map(fn ($tag): array => [
+                        'name' => $tag->name,
+                        'slug' => $tag->slug,
+                    ])
+                    ->values()
+                    ->all()
                 : [],
             'releaseDate' => self::dateString($game->release_date),
             'publishedAt' => self::dateString($game->published_at),

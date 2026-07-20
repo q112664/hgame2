@@ -112,7 +112,7 @@ class Game extends Model
     {
         return $query->with([
             'category:id,name',
-            'tags:id,name',
+            'tags:id,name,slug',
             'releases' => fn ($releases) => $releases->withCardSummary(),
         ]);
     }

@@ -3,6 +3,11 @@ export type GamePlatform = {
     slug: string;
 };
 
+export type GameTag = {
+    name: string;
+    slug: string;
+};
+
 export type GameCard = {
     id: string;
     title: string;
@@ -13,7 +18,7 @@ export type GameCard = {
     platforms: GamePlatform[];
     languages: string[];
     version: string | null;
-    tags: string[];
+    tags: GameTag[];
     releaseDate: string | null;
     publishedAt: string | null;
     views: number;

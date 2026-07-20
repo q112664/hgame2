@@ -10,6 +10,7 @@ import {
     fileSizeBadgeClassName,
     languageBadgeClassName,
     platformBadgeClassName,
+    tagBadgeClassName,
 } from '@/components/site/resource-detail-styles';
 import { RichHtml } from '@/components/site/rich-html';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { show as downloadLinkShow } from '@/routes/download-links';
+import { index as resourcesIndex } from '@/routes/resources';
 import type { GameDetail } from '@/types/resources';
 
 type ResourceTab = 'details' | 'downloads' | 'screenshots';
@@ -100,14 +102,18 @@ export function ResourceTabContent({
                 {activeTab === 'details' ? (
                     <section className="rounded-md border border-border bg-card p-4 sm:p-5">
                         {resource.tags.length > 0 ? (
-                            <div className="mb-4 flex flex-wrap gap-1.5">
+                            <div className="mb-4 flex flex-wrap gap-2">
                                 {resource.tags.map((tag) => (
-                                    <span
-                                        key={tag}
-                                        className="inline-flex h-6 items-center rounded-sm bg-muted px-2.5 text-xs font-medium text-muted-foreground"
+                                    <Link
+                                        key={tag.slug}
+                                        href={resourcesIndex.url({
+                                            query: { tags: [tag.slug] },
+                                        })}
+                                        className={tagBadgeClassName}
+                                        prefetch
                                     >
-                                        {tag}
-                                    </span>
+                                        {tag.name}
+                                    </Link>
                                 ))}
                             </div>
                         ) : null}

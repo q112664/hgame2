@@ -323,6 +323,28 @@ docker compose up -d --build
 
 也可在后台 **Admin → Site settings** 里把 Site URL 改成 `https://你的域名`。
 
+## Mixed Content（HTTPS 页面加载 http 资源）？
+
+1Panel 反代终结 TLS 后，容器收到的是 HTTP。必须：
+
+1. `.env` 的 `APP_URL=https://你的域名`（注意是 **https**）
+2. 数据库 `site_url` 也是 `https://你的域名`
+3. 应用信任反向代理（代码已配置 `trustProxies`）
+
+修复：
+
+```bash
+cd /opt/apps/hgame
+# 确认 .env 里 APP_URL 用 https
+docker compose exec app php artisan tinker --execute 'App\Models\Setting::set("site_url", "https://你的域名");'
+docker compose exec app php artisan optimize:clear
+docker compose up -d --build
+```
+
+浏览器强制刷新后再打开。
+
+## 12. 最小检查清单
+
 - [ ] 代码已放到服务器，含 Dockerfile
 - [ ] `.env` 已配置 `APP_KEY` / `APP_URL` / 强数据库密码 / `APP_DEBUG=false`
 - [ ] 生产已取消 Postgres 公网端口映射

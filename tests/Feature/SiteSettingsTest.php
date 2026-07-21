@@ -43,6 +43,15 @@ test('site url config is applied without forcing the root url in console', funct
         ->and($forcedRoot->getValue(app('url')))->toBeNull();
 });
 
+test('https site url forces https scheme', function () {
+    Setting::applySiteUrlToConfig('https://acg.example.com');
+
+    $forcedScheme = new ReflectionProperty(app('url'), 'forceScheme');
+
+    expect($forcedScheme->getValue(app('url')))->toBe('https://')
+        ->and(config('app.url'))->toBe('https://acg.example.com');
+});
+
 test('administrators can upload a custom hero background image', function () {
     Storage::fake(Media::diskName());
 

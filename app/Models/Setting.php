@@ -140,10 +140,14 @@ class Setting extends Model
             'filesystems.disks.public.url' => $siteUrl.'/storage',
         ]);
 
-        // Keep Wayfinder/Vite builds emitting relative paths. Absolute roots are
-        // only needed for HTTP requests (and queue mail uses config('app.url')).
+        // Keep Wayfinder/Vite builds emitting relative paths by not forcing an
+        // absolute root during console/image builds. HTTP requests still need it.
         if (! app()->runningInConsole()) {
             URL::forceRootUrl($siteUrl);
+        }
+
+        if (str_starts_with($siteUrl, 'https://')) {
+            URL::forceScheme('https');
         }
     }
 

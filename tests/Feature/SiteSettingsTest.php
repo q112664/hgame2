@@ -33,6 +33,16 @@ test('administrators can update the site url', function () {
         ->and(config('filesystems.disks.public.url'))->toBe('http://hgame.test/storage');
 });
 
+test('site url config is applied without forcing the root url in console', function () {
+    $forcedRoot = new ReflectionProperty(app('url'), 'forcedRoot');
+
+    Setting::applySiteUrlToConfig('https://acg.example.com');
+
+    expect(config('app.url'))->toBe('https://acg.example.com')
+        ->and(config('filesystems.disks.public.url'))->toBe('https://acg.example.com/storage')
+        ->and($forcedRoot->getValue(app('url')))->toBeNull();
+});
+
 test('administrators can upload a custom hero background image', function () {
     Storage::fake(Media::diskName());
 

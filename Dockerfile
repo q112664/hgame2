@@ -28,12 +28,14 @@ RUN npm install
 
 COPY --chown=www-data:www-data . .
 
-# Dummy env so artisan / filament / wayfinder can run at build time
+# Dummy env so artisan / filament / wayfinder can run at build time.
+# Wayfinder must emit relative URLs (see Setting::applySiteUrlToConfig).
 RUN cp .env.example .env \
     && php artisan key:generate --force \
     && composer dump-autoload --optimize --classmap-authoritative --no-dev \
     && php artisan package:discover --ansi \
     && php artisan filament:upgrade \
+    && php artisan wayfinder:generate --with-form --no-interaction \
     && npm run build \
     && rm -f .env \
     && rm -rf node_modules /root/.npm /var/www/.composer/cache

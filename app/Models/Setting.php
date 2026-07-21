@@ -140,7 +140,11 @@ class Setting extends Model
             'filesystems.disks.public.url' => $siteUrl.'/storage',
         ]);
 
-        URL::forceRootUrl($siteUrl);
+        // Keep Wayfinder/Vite builds emitting relative paths. Absolute roots are
+        // only needed for HTTP requests (and queue mail uses config('app.url')).
+        if (! app()->runningInConsole()) {
+            URL::forceRootUrl($siteUrl);
+        }
     }
 
     public static function applyMediaConfigToConfig(): void

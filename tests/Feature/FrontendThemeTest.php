@@ -9,7 +9,7 @@ test('the shared theme defines light and dark semantic tokens', function () {
     expect($stylesheet)
         ->toContain(':root')
         ->toContain('.dark')
-        ->toContain('Ink Archive');
+        ->toContain('bIkeymG');
 
     foreach (
         [
@@ -33,19 +33,17 @@ test('the shared theme defines light and dark semantic tokens', function () {
     }
 });
 
-test('ink archive theme uses cool paper surfaces and ink primary', function () {
+test('neutral vega theme uses #3498db primary on white surfaces', function () {
     $stylesheet = app(Filesystem::class)->get(resource_path('css/app.css'));
 
     expect($stylesheet)
-        ->toContain('--background: #f4f5f7;')
-        ->toContain('--primary: #3a4d73;')
-        ->toContain('--radius: 0.375rem;')
-        ->toContain('--background: #0e1014;')
-        ->toContain('--primary: #9aafd4;')
-        ->not->toContain('#c84b5a')
-        ->not->toContain('#ef7a86');
+        ->toContain('--background: oklch(1 0 0);')
+        ->toContain('--primary: #3498db;')
+        ->toContain('--radius: 0.625rem;')
+        ->toContain('--background: oklch(0.145 0 0);')
+        ->not->toContain('#3a4d73')
+        ->not->toContain('oklch(0.5854 0.2041 277.1173)');
 });
-
 test('frontend components use semantic colors instead of palette-specific classes', function () {
     $filesystem = app(Filesystem::class);
     $source = collect($filesystem->allFiles(resource_path('js')))

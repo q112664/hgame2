@@ -10,9 +10,9 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: "${APP_DEBUG:-false}"
-      DB_CONNECTION: mysql
-      DB_HOST: mysql
-      DB_PORT: 3306
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_DATABASE: "${DB_DATABASE:-hgame}"
       DB_USERNAME: "${DB_USERNAME:-hgame}"
       DB_PASSWORD: "${DB_PASSWORD:-secret}"
@@ -28,7 +28,7 @@ services:
     volumes:
       - app_storage:/var/www/html/storage
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     restart: unless-stopped
 
@@ -41,9 +41,9 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: "${APP_DEBUG:-false}"
-      DB_CONNECTION: mysql
-      DB_HOST: mysql
-      DB_PORT: 3306
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_DATABASE: "${DB_DATABASE:-hgame}"
       DB_USERNAME: "${DB_USERNAME:-hgame}"
       DB_PASSWORD: "${DB_PASSWORD:-secret}"
@@ -55,25 +55,24 @@ services:
     volumes:
       - app_storage:/var/www/html/storage
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       app:
         condition: service_started
     restart: unless-stopped
 
-  mysql:
-    image: mysql:8.4
+  postgres:
+    image: postgres:16
     environment:
-      MYSQL_DATABASE: "${DB_DATABASE:-hgame}"
-      MYSQL_USER: "${DB_USERNAME:-hgame}"
-      MYSQL_PASSWORD: "${DB_PASSWORD:-secret}"
-      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-rootsecret}"
+      POSTGRES_DB: "${DB_DATABASE:-hgame}"
+      POSTGRES_USER: "${DB_USERNAME:-hgame}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-secret}"
     ports:
-      - "${FORWARD_DB_PORT:-3306}:3306"
+      - "${FORWARD_DB_PORT:-5432}:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p$${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -82,4 +81,4 @@ services:
 
 volumes:
   app_storage:
-  mysql_data:
+  postgres_data:

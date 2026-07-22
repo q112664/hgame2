@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowRight, BookOpen, Clock } from 'lucide-react';
+import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,8 +11,9 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import { SiteLayout } from '@/layouts/site-layout';
+import { formatDate } from '@/lib/resource-formatters';
+import { cn } from '@/lib/utils';
 import { index as docsIndex, show as docsShow } from '@/routes/docs';
 import type { DocListItem } from '@/types/docs';
 
@@ -22,14 +24,6 @@ type Props = {
         category: string | null;
     };
 };
-
-function formatDate(value: string): string {
-    return new Intl.DateTimeFormat(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    }).format(new Date(`${value}T00:00:00`));
-}
 
 export default function DocsIndex({ docs, categories, filters }: Props) {
     const applyCategory = (category: string | null) => {
@@ -145,11 +139,11 @@ export default function DocsIndex({ docs, categories, filters }: Props) {
                         ))}
                     </ul>
                 ) : (
-                    <div className="rounded-md border border-dashed border-border bg-card px-6 py-16 text-center">
-                        <p className="text-sm text-muted-foreground">
-                            No docs in this category yet.
-                        </p>
-                    </div>
+                    <SiteEmptyState
+                        icon={BookOpen}
+                        title="No docs in this category yet"
+                        description="Pick another category, or check back after new guides are published."
+                    />
                 )}
             </SitePageContainer>
         </SiteLayout>

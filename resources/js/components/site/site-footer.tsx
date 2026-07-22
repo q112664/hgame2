@@ -1,8 +1,10 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
+import { SiteLogo } from '@/components/site/site-logo';
 import { Separator } from '@/components/ui/separator';
 import { home } from '@/routes';
 
 export function SiteFooter() {
+    const { siteLogo } = usePage().props;
     const year = new Date().getFullYear();
 
     return (
@@ -12,16 +14,16 @@ export function SiteFooter() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <Link
                         href={home()}
-                        className="font-heading text-base font-semibold text-foreground"
+                        className="transition-opacity hover:opacity-80"
                     >
-                        hgame
+                        <SiteLogo textClassName="text-base" />
                     </Link>
                     <p className="text-xs text-muted-foreground">
                         Visual novel / galgame resource downloads
                     </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                    © {year} hgame. All rights reserved.
+                    © {year} {siteLogo.text}. All rights reserved.
                 </p>
             </div>
         </footer>

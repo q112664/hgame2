@@ -2,7 +2,13 @@ import { Link } from '@inertiajs/react';
 import { Download, Eye, X } from 'lucide-react';
 import type { DetailedResource } from '@/components/site/detailed-resource-card';
 import { PlatformIcon } from '@/components/site/platform-icon';
-import { overlayChipClassName } from '@/components/site/resource-card-styles';
+import {
+    overlayChipClassName,
+    resourceCardMetaClassName,
+    resourceCardSubtitleClassName,
+    resourceCardTitleClassName,
+    resourceCardUpdateBadgeClassName,
+} from '@/components/site/resource-card-styles';
 import { Card } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -72,29 +78,23 @@ export function FavoriteResourceCard({
                     </span>
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 sm:p-3.5">
-                    <div
-                        className={cn(
-                            'flex min-w-0 flex-wrap items-start gap-2',
-                            onRemove && 'pr-7',
-                        )}
-                    >
-                        <h3 className="line-clamp-2 text-sm leading-snug font-medium text-foreground/90">
+                <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 sm:gap-2.5 sm:p-3.5">
+                    <div className={cn('flex min-w-0 flex-col gap-1.5', onRemove && 'pr-7')}>
+                        <h3 className={resourceCardTitleClassName}>
                             {resource.title}
                         </h3>
                         {resource.hasDownloadUpdate ? (
-                            <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-sm bg-info/12 px-1.5 text-[11px] font-medium text-info">
+                            <span className={resourceCardUpdateBadgeClassName}>
                                 <Download className="size-3" />
                                 Updated
                             </span>
                         ) : null}
+                        {resource.subtitle ? (
+                            <p className={resourceCardSubtitleClassName}>
+                                {resource.subtitle}
+                            </p>
+                        ) : null}
                     </div>
-
-                    {resource.subtitle ? (
-                        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                            {resource.subtitle}
-                        </p>
-                    ) : null}
 
                     <div className="flex min-w-0 flex-wrap items-center gap-1">
                         {resource.version ? (
@@ -130,14 +130,19 @@ export function FavoriteResourceCard({
                         ))}
                     </div>
 
-                    <div className="mt-auto flex items-center justify-between gap-2 pt-1 text-[11px] text-muted-foreground/80">
+                    <div
+                        className={cn(
+                            'mt-auto flex items-center justify-between gap-2 pt-0.5',
+                            resourceCardMetaClassName,
+                        )}
+                    >
                         <time dateTime={resource.publishedAt ?? undefined}>
                             {resource.publishedAt
                                 ? formatDate(resource.publishedAt)
                                 : 'Unscheduled'}
                         </time>
                         <span className="inline-flex items-center gap-1">
-                            <Eye className="size-3" />
+                            <Eye className="size-3.5 shrink-0 opacity-70" />
                             {formatViews(resource.views)}
                         </span>
                     </div>

@@ -72,7 +72,7 @@ HTML,
 <h2>Create an account</h2>
 <p>Use Sign up from the header to register with email and password. After registration you can sign in, manage favorites, and update your profile.</p>
 <h2>Profile and avatar</h2>
-<p>Settings lets you change your display name and avatar. Avatars are stored on the active media disk configured by the site administrator.</p>
+<p>Settings lets you change your display name and avatar. Avatars are stored on the site media disk.</p>
 <h2>Two-factor authentication</h2>
 <p>Enable 2FA from security settings for stronger account protection. Recovery codes should be stored offline in case you lose access to your authenticator app.</p>
 HTML,
@@ -110,7 +110,7 @@ HTML,
 <p>Games are managed under the Filament admin panel. Each game has details, cover media, screenshots, tags, and one or more download releases.</p>
 <h2>Covers and thumbnails</h2>
 <p>Upload a cover image when creating or editing a game. The site generates a smaller card thumbnail automatically so list pages stay fast.</p>
-<p>If thumbnails need rebuilding after a size policy change, use <strong>Object storage → Regenerate cover thumbnails</strong> in Settings.</p>
+<p>Administrators can set thumbnail max width and WebP quality under Settings → Cover thumbnails, and regenerate existing thumbs from that page. You can also run <code>php artisan media:generate-cover-thumbnails</code>.</p>
 <h2>Releases and links</h2>
 <p>Releases attach platforms, languages, version strings, file size labels, and download URLs. Keep version labels consistent so users can spot updates easily.</p>
 <h2>API publish</h2>

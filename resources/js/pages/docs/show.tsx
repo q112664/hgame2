@@ -12,8 +12,9 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
 import { SiteLayout } from '@/layouts/site-layout';
+import { formatDate } from '@/lib/resource-formatters';
+import { cn } from '@/lib/utils';
 import { index as docsIndex, show as docsShow } from '@/routes/docs';
 import type { DocArticle, DocListItem } from '@/types/docs';
 
@@ -21,14 +22,6 @@ type Props = {
     doc: DocArticle;
     related: DocListItem[];
 };
-
-function formatDate(value: string): string {
-    return new Intl.DateTimeFormat(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    }).format(new Date(`${value}T00:00:00`));
-}
 
 export default function DocsShow({ doc, related }: Props) {
     return (

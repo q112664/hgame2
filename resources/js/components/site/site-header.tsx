@@ -5,12 +5,14 @@ import {
     Menu,
     Moon,
     Search,
-    Sun,
-    type LucideIcon,
+    Sun
+    
 } from 'lucide-react';
+import type {LucideIcon} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
 import type { AuthDialogView } from '@/components/auth/auth-dialog';
+import { SiteLogo } from '@/components/site/site-logo';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -81,15 +83,52 @@ function NavLinks({
     className?: string;
     onNavigate?: () => void;
 }) {
+    const { url } = usePage();
+    const currentPath = url.split('?')[0] || '/';
+
+    const isActive = (href: string, title: string): boolean => {
+        if (title === 'Random') {
+            return false;
+        }
+
+        const targetPath = href.split('?')[0] || '/';
+
+        if (title === 'Home') {
+            return currentPath === '/' || currentPath === '';
+        }
+
+        if (title === 'Resources') {
+            return (
+                currentPath === '/resources' ||
+                (currentPath.startsWith('/resources/') &&
+                    !currentPath.startsWith('/resources/random'))
+            );
+        }
+
+        if (title === 'Docs') {
+            return currentPath === '/docs' || currentPath.startsWith('/docs/');
+        }
+
+        return (
+            currentPath === targetPath ||
+            currentPath.startsWith(`${targetPath}/`)
+        );
+    };
+
     return (
         <nav className={cn('flex items-center gap-0.5', className)}>
             {navItems.map((item) => {
                 const Icon = item.icon;
+                const active = isActive(item.href, item.title);
                 const content = (
                     <>
                         {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
                         {item.title}
                     </>
+                );
+                const itemClassName = cn(
+                    navLinkClassName,
+                    active && 'bg-foreground/10 text-foreground',
                 );
 
                 if (item.external) {
@@ -97,8 +136,9 @@ function NavLinks({
                         <a
                             key={item.title}
                             href={item.href}
-                            className={navLinkClassName}
+                            className={itemClassName}
                             onClick={onNavigate}
+                            aria-current={active ? 'page' : undefined}
                         >
                             {content}
                         </a>
@@ -109,8 +149,9 @@ function NavLinks({
                     <Link
                         key={item.title}
                         href={item.href}
-                        className={navLinkClassName}
+                        className={itemClassName}
                         onClick={onNavigate}
+                        aria-current={active ? 'page' : undefined}
                         // Random must not be prefetched or the redirect is sticky.
                         prefetch={item.href === resourcesRandom().url ? false : undefined}
                     >
@@ -233,10 +274,10 @@ export function SiteHeader() {
                         <div className="flex h-14 shrink-0 items-center border-b border-border/80 px-4">
                             <Link
                                 href={home()}
-                                className="font-heading text-lg font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80"
+                                className="transition-opacity hover:opacity-80"
                                 onClick={closeMenu}
                             >
-                                hgame
+                                <SiteLogo />
                             </Link>
                         </div>
 
@@ -282,9 +323,9 @@ export function SiteHeader() {
                 <div className="flex min-w-0 flex-1 items-center gap-6">
                     <Link
                         href={home()}
-                        className="shrink-0 font-heading text-lg font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80"
+                        className="shrink-0 transition-opacity hover:opacity-80"
                     >
-                        hgame
+                        <SiteLogo />
                     </Link>
 
                     <NavLinks className="hidden md:flex" />

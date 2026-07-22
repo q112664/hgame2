@@ -53,8 +53,9 @@ export const dateBadgeClassName = cn(
     'bg-muted text-muted-foreground',
 );
 
-export const downloadButtonPalettes = [
-    'border-0 bg-primary/12 text-primary hover:bg-primary/18 dark:bg-primary/15 dark:hover:bg-primary/25',
-    'border-0 bg-info/12 text-info hover:bg-info/18 dark:bg-info/15 dark:hover:bg-info/25',
-    'border-0 bg-success/12 text-success hover:bg-success/18 dark:bg-success/15 dark:hover:bg-success/25',
-] as const;
+/** Shared download CTA — neutral so color is not mistaken for host meaning. */
+export const downloadButtonClassName = cn(
+    'h-8 border-0 bg-primary/12 text-primary shadow-none',
+    'hover:bg-primary/18 dark:bg-primary/15 dark:hover:bg-primary/25',
+);
+

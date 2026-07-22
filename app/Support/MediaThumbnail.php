@@ -2,21 +2,33 @@
 
 namespace App\Support;
 
+use App\Models\Setting;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Generates card-sized cover thumbnails (max width 560px).
+ * Generates card-sized cover thumbnails as WebP.
  *
  * Card grid at max-w-7xl with up to 4 columns renders covers around ~290–400px CSS.
- * 560px balances 3–4 column retina quality with smaller payloads than full originals.
+ * Default 560px balances 3–4 column retina quality with smaller payloads than full originals.
+ * Max width and quality are configurable in admin settings.
  */
 final class MediaThumbnail
 {
-    public const int MaxWidth = 560;
+    public const int MaxWidth = Setting::DEFAULT_COVER_THUMBNAIL_MAX_WIDTH;
 
-    public const int Quality = 80;
+    public const int Quality = Setting::DEFAULT_COVER_THUMBNAIL_QUALITY;
+
+    public static function maxWidth(): int
+    {
+        return Setting::coverThumbnailMaxWidth();
+    }
+
+    public static function quality(): int
+    {
+        return Setting::coverThumbnailQuality();
+    }
 
     public static function pathFor(string $path): string
     {
@@ -69,12 +81,14 @@ final class MediaThumbnail
      *
      * @return string|null Thumbnail path when created or already small enough to skip.
      */
-    public static function generate(string $path, int $maxWidth = self::MaxWidth): ?string
+    public static function generate(string $path, ?int $maxWidth = null, ?int $quality = null): ?string
     {
         if (! self::isManagedPath($path) || ! Media::disk()->exists($path)) {
             return null;
         }
 
+        $maxWidth ??= self::maxWidth();
+        $quality ??= self::quality();
         $thumbnailPath = self::pathFor($path);
 
         try {
@@ -131,7 +145,7 @@ final class MediaThumbnail
                     );
 
                     ob_start();
-                    imagewebp($canvas, null, self::Quality);
+                    imagewebp($canvas, null, $quality);
                     $encoded = ob_get_clean();
 
                     if (! is_string($encoded) || $encoded === '') {

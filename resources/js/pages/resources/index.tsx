@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { RotateCcw, X } from 'lucide-react';
+import { Library, RotateCcw, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ResourceCard } from '@/components/site/resource-card';
 import {
@@ -15,11 +15,14 @@ import type {
 } from '@/components/site/resource-filter-controls';
 import { ResourcePagination } from '@/components/site/resource-pagination';
 import type { PaginatedResources } from '@/components/site/resource-pagination';
+import { SiteEmptyState } from '@/components/site/site-empty-state';
+import { SitePageContainer } from '@/components/site/site-page-container';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { SiteLayout } from '@/layouts/site-layout';
+import { cn } from '@/lib/utils';
 
 type Props = {
     resources: PaginatedResources;
@@ -61,7 +64,7 @@ export default function ResourcesIndex({
         <SiteLayout>
             <Head title="Resources" />
 
-            <section className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+            <SitePageContainer className="gap-8">
                 <div className="flex flex-col gap-2">
                     <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                         Resources
@@ -186,21 +189,26 @@ export default function ResourcesIndex({
                     </div>
                 </div>
 
-                {isPending ? (
+                {resources.data.length > 0 ? (
                     <div
                         id="resource-results"
-                        className="flex scroll-mt-20 justify-center py-16"
-                        aria-busy="true"
-                        aria-label="Loading resources"
+                        className="relative flex scroll-mt-20 flex-col gap-8"
+                        aria-busy={isPending || undefined}
                     >
-                        <Spinner className="size-8 text-muted-foreground" />
-                    </div>
-                ) : resources.data.length > 0 ? (
-                    <div
-                        id="resource-results"
-                        className="flex scroll-mt-20 flex-col gap-8"
-                    >
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {isPending ? (
+                            <div className="absolute inset-0 z-10 flex items-start justify-center pt-16">
+                                <Spinner
+                                    className="size-8 text-muted-foreground"
+                                    aria-label="Loading resources"
+                                />
+                            </div>
+                        ) : null}
+                        <div
+                            className={cn(
+                                'grid grid-cols-1 gap-4 transition-opacity duration-150 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+                                isPending && 'pointer-events-none opacity-50',
+                            )}
+                        >
                             {resources.data.map((resource) => (
                                 <ResourceCard
                                     key={resource.id}
@@ -209,20 +217,23 @@ export default function ResourcesIndex({
                             ))}
                         </div>
 
-                        <ResourcePagination
-                            resources={resources}
-                            filters={filters}
-                        />
+                        {!isPending ? (
+                            <ResourcePagination
+                                resources={resources}
+                                filters={filters}
+                            />
+                        ) : null}
                     </div>
                 ) : (
-                    <p
-                        id="resource-results"
-                        className="scroll-mt-20 py-16 text-center text-sm text-muted-foreground"
-                    >
-                        No resources match these filters
-                    </p>
+                    <div id="resource-results" className="scroll-mt-20">
+                        <SiteEmptyState
+                            icon={Library}
+                            title="No resources match these filters"
+                            description="Clear filters or try a different category, platform, language, or tag."
+                        />
+                    </div>
                 )}
-            </section>
+            </SitePageContainer>
         </SiteLayout>
     );
 }

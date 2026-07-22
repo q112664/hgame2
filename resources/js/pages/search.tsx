@@ -4,6 +4,7 @@ import {
     SearchResults,
     SearchResultsSkeleton,
 } from '@/components/site/search-results';
+import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { SitePagination } from '@/components/site/site-pagination';
 import { Button } from '@/components/ui/button';
@@ -140,12 +141,11 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
                     {showPendingPlaceholder ? <SearchResultsSkeleton /> : null}
 
                     {showEmptyResults ? (
-                        <div className="flex min-h-56 flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border bg-card/50 px-6 text-center">
-                            <SearchX className="size-6 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">
-                                No matches for “{query.trim()}”
-                            </p>
-                        </div>
+                        <SiteEmptyState
+                            icon={SearchX}
+                            title={`No matches for “${query.trim()}”`}
+                            description="Try a shorter query or different keywords."
+                        />
                     ) : null}
 
                     {showResults ? (

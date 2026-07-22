@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { Dices, Library } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ type Props = {
 };
 
 export function HomeHero({ backgroundUrl = null }: Props) {
+    const { siteLogo } = usePage().props;
     const heroBackgroundSrc =
         backgroundUrl && backgroundUrl !== ''
             ? backgroundUrl
@@ -37,7 +38,6 @@ export function HomeHero({ backgroundUrl = null }: Props) {
                         decoding="async"
                     />
 
-                    {/* Soft brand gradient wash over the artwork */}
                     <div
                         className={cn(
                             'absolute inset-0',
@@ -55,13 +55,32 @@ export function HomeHero({ backgroundUrl = null }: Props) {
                     />
 
                     <div className="relative flex min-h-[220px] flex-col justify-center gap-5 p-6 sm:min-h-[260px] sm:p-8 lg:max-w-xl lg:p-10">
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-2.5">
                             <p className="text-[11px] font-medium tracking-wide text-surface-inverse-foreground/70 uppercase">
-                                Visual novel / galgame
+                                Visual novel / galgame library
                             </p>
-                            <h1 className="font-heading text-2xl font-semibold tracking-tight text-surface-inverse-foreground sm:text-3xl">
-                                Resource library
-                            </h1>
+                            <div className="flex flex-wrap items-center gap-3">
+                                {siteLogo.imageUrl &&
+                                (siteLogo.mode === 'image' ||
+                                    siteLogo.mode === 'both') ? (
+                                    <img
+                                        src={siteLogo.imageUrl}
+                                        alt=""
+                                        className="h-10 w-auto max-w-48 object-contain sm:h-12"
+                                        referrerPolicy="no-referrer"
+                                    />
+                                ) : null}
+                                {(siteLogo.mode === 'text' ||
+                                    siteLogo.mode === 'both' ||
+                                    !siteLogo.imageUrl) && (
+                                    <h1 className="font-heading text-3xl font-semibold tracking-tight text-surface-inverse-foreground sm:text-4xl">
+                                        {siteLogo.text}
+                                    </h1>
+                                )}
+                            </div>
+                            {siteLogo.mode === 'image' && siteLogo.imageUrl ? (
+                                <h1 className="sr-only">{siteLogo.text}</h1>
+                            ) : null}
                             <p className="max-w-md text-sm leading-relaxed text-surface-inverse-foreground/80">
                                 Browse, search, and download galgame packages.
                             </p>

@@ -96,8 +96,8 @@ class GamePresenter
     ): array {
         return [
             ...self::card($game, includeTags: $includeTags),
-            // Detail hero uses the full cover; list cards use the card thumbnail.
-            'thumbnail' => self::mediaUrl($game->cover_path ?: $game->cover_url),
+            // Hero uses the card thumbnail; cover is the full-size original for the lightbox.
+            'cover' => self::mediaUrl($game->cover_path ?: $game->cover_url),
             'subtitle' => $game->subtitle,
             'description' => $includeDescription
                 ? str($game->description ?? '')->sanitizeHtml()->toString()

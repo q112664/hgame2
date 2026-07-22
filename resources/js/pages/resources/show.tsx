@@ -9,9 +9,9 @@ import {
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
+import { FavoriteButton } from '@/components/site/favorite-button';
 import { ImageLightbox } from '@/components/site/image-lightbox';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
-import { FavoriteButton } from '@/components/site/favorite-button';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
     categoryBadgeClassName,
@@ -20,6 +20,7 @@ import {
 } from '@/components/site/resource-detail-styles';
 import { ResourceTabContent } from '@/components/site/resource-tab-content';
 import { RouteTabs } from '@/components/site/route-tabs';
+import { SitePageContainer } from '@/components/site/site-page-container';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,8 +36,9 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { SiteLayout } from '@/layouts/site-layout';
 import { useFavorite } from '@/hooks/use-favorite';
+import { SiteLayout } from '@/layouts/site-layout';
+import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
 import {
     details as resourceDetails,
@@ -251,7 +253,8 @@ export default function ResourceShow({ activeTab, resource }: Props) {
         alt: `${resource.title} screenshot ${index + 1}`,
     }));
 
-    const hasCover = Boolean(resource.thumbnail);
+    const hasCover = Boolean(resource.cover || resource.thumbnail);
+    const coverSrc = resource.cover || resource.thumbnail;
 
     const openLightbox = (slides: LightboxSlide[], index: number) => {
         if (slides.length === 0) {
@@ -307,17 +310,25 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                         </DialogClose>
                     </DialogHeader>
                     <div className="overflow-hidden rounded-md bg-muted">
-                        <img
-                            src={resource.thumbnail}
-                            alt={resource.title}
-                            className="mx-auto max-h-[min(78vh,800px)] w-auto max-w-full object-contain"
-                            referrerPolicy="no-referrer"
-                        />
+                        <a
+                            href={coverSrc}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                            aria-label={`Open full size cover for ${resource.title}`}
+                        >
+                            <img
+                                src={coverSrc}
+                                alt={resource.title}
+                                className="mx-auto max-h-[min(78vh,800px)] w-auto max-w-full object-contain"
+                                referrerPolicy="no-referrer"
+                            />
+                        </a>
                     </div>
                 </DialogContent>
             </Dialog>
 
-            <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+            <SitePageContainer density="compact">
                 <section className="overflow-hidden rounded-md border border-border bg-card">
                     <div className="flex flex-col sm:flex-row">
                         <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted sm:aspect-auto sm:h-[280px] sm:w-auto sm:max-w-[498px]">
@@ -414,7 +425,9 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                             resource.releaseDate ?? undefined
                                         }
                                     >
-                                        {resource.releaseDate ?? '—'}
+                                        {resource.releaseDate
+                                            ? formatDate(resource.releaseDate)
+                                            : '—'}
                                     </time>
                                 </span>
                                 <span className="inline-flex items-center gap-1.5">
@@ -580,7 +593,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                         onOpenLightbox={openLightbox}
                     />
                 </div>
-            </div>
+            </SitePageContainer>
         </SiteLayout>
     );
 }

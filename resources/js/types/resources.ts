@@ -57,6 +57,7 @@ export type GameRelease = {
 };
 
 export type GameDetail = GameCard & {
+    cover: string;
     subtitle: string | null;
     description: string;
     developer: string;

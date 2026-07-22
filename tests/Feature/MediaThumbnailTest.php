@@ -16,7 +16,7 @@ beforeEach(function () {
     Storage::fake(Media::diskName());
 });
 
-test('it generates a 560px webp thumbnail for wide cover images', function () {
+test('it generates a webp thumbnail at the default max width for wide cover images', function () {
     $path = UploadedFile::fake()
         ->image('cover.jpg', 1280, 800)
         ->store('games/covers', Media::diskName());
@@ -29,7 +29,7 @@ test('it generates a 560px webp thumbnail for wide cover images', function () {
     $binary = Media::disk()->get($thumbnailPath);
     $size = getimagesizefromstring($binary);
 
-    expect($size[0])->toBe(MediaThumbnail::MaxWidth)
+    expect($size[0])->toBe(MediaThumbnail::maxWidth())
         ->and($size[1])->toBe(350)
         ->and($size['mime'])->toBe('image/webp');
 });
@@ -66,8 +66,9 @@ test('saving a game with a cover generates a card thumbnail', function () {
     ]));
 
     expect($card['thumbnail'])->toContain('/thumbs/')
-        ->and($detail['thumbnail'])->not->toContain('/thumbs/')
-        ->and($detail['thumbnail'])->toContain($path);
+        ->and($detail['thumbnail'])->toContain('/thumbs/')
+        ->and($detail['cover'])->not->toContain('/thumbs/')
+        ->and($detail['cover'])->toContain($path);
 });
 
 test('deleting a game removes its cover thumbnail', function () {

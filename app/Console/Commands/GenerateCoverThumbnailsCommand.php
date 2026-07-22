@@ -8,7 +8,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('media:generate-cover-thumbnails {--force : Regenerate thumbnails even when they already exist}')]
-#[Description('Generate 560px WebP thumbnails for game covers used on resource cards')]
+#[Description('Generate WebP thumbnails for game covers used on resource cards (size from admin settings)')]
 class GenerateCoverThumbnailsCommand extends Command
 {
     public function handle(GenerateCoverThumbnails $generate): int

@@ -1,8 +1,10 @@
 import { Head, router } from '@inertiajs/react';
+import { Heart } from 'lucide-react';
 import { useState } from 'react';
 import { FavoriteResourceCard } from '@/components/site/favorite-resource-card';
 import { FavoritesPagination } from '@/components/site/favorites-pagination';
 import type { PaginatedFavorites } from '@/components/site/favorites-pagination';
+import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { SiteLayout } from '@/layouts/site-layout';
 import {
@@ -87,11 +89,19 @@ export default function Favorites({ resources, downloadUpdateCount }: Props) {
                             ))}
                         </ul>
                     ) : (
-                        <p className="py-8 text-center text-base text-muted-foreground">
-                            {resources.total > 0
-                                ? 'No favorites on this page'
-                                : 'No favorites yet'}
-                        </p>
+                        <SiteEmptyState
+                            icon={Heart}
+                            title={
+                                resources.total > 0
+                                    ? 'No favorites on this page'
+                                    : 'No favorites yet'
+                            }
+                            description={
+                                resources.total > 0
+                                    ? 'Try another page of your favorites list.'
+                                    : 'Save resources from detail pages to find them here later.'
+                            }
+                        />
                     )}
 
                     <div className="mt-8">

@@ -17,16 +17,6 @@ class HomeController extends Controller
     {
         return Inertia::render('welcome', [
             'heroBackgroundUrl' => Setting::heroBackgroundUrl(),
-            'recentReleases' => $this->presentCards(
-                Game::query()
-                    ->published()
-                    ->withCardData()
-                    ->whereNotNull('release_date')
-                    ->latest('release_date')
-                    ->orderByDesc('id')
-                    ->limit(self::HomeSectionLimit)
-                    ->get(),
-            ),
             'resources' => $this->presentCards(
                 Game::query()
                     ->published()

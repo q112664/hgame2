@@ -99,6 +99,89 @@ test('clearing the hero background restores the default image url', function () 
         ->and(Storage::disk(Media::diskName())->exists($previous))->toBeFalse();
 });
 
+test('administrators can save a text-only site logo', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'site_logo_mode' => 'text',
+            'site_logo_text' => 'Archive',
+            'site_logo_path' => null,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    expect(Setting::siteLogo())->toMatchArray([
+        'mode' => 'text',
+        'text' => 'Archive',
+        'imageUrl' => null,
+    ]);
+});
+
+test('administrators can save an image-only site logo', function () {
+    Storage::fake(Media::diskName());
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'site_logo_mode' => 'image',
+            'site_logo_text' => 'hgame',
+            'site_logo_path' => UploadedFile::fake()->image('logo.png', 128, 128),
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    $logo = Setting::siteLogo();
+
+    expect($logo['mode'])->toBe('image')
+        ->and($logo['imageUrl'])->toContain('/storage/site/logo/')
+        ->and(Setting::siteLogoPath())->toStartWith('site/logo/');
+
+    Storage::disk(Media::diskName())->assertExists(Setting::siteLogoPath());
+});
+
+test('administrators can save a combined image and text site logo', function () {
+    Storage::fake(Media::diskName());
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'site_logo_mode' => 'both',
+            'site_logo_text' => 'hgame',
+            'site_logo_path' => UploadedFile::fake()->image('mark.webp', 96, 96),
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    $logo = Setting::siteLogo();
+
+    expect($logo['mode'])->toBe('both')
+        ->and($logo['text'])->toBe('hgame')
+        ->and($logo['imageUrl'])->toContain('/storage/site/logo/');
+});
+
+test('site logo is shared with the frontend', function () {
+    Setting::set('site_logo_mode', 'text');
+    Setting::set('site_logo_text', 'Catalog');
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('name', 'Catalog')
+            ->where('siteLogo.mode', 'text')
+            ->where('siteLogo.text', 'Catalog')
+            ->where('siteLogo.imageUrl', null)
+        );
+});
+
 test('avatar urls use the configured site url', function () {
     Storage::fake(Media::diskName());
 

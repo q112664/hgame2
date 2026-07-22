@@ -30,7 +30,9 @@ export function formatViews(views: number): string {
 }
 
 export function formatDate(date: string): string {
-    const [year, month, day] = date.split('-');
-
-    return `${year}-${month}-${day}`;
+    return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    }).format(new Date(`${date}T00:00:00`));
 }

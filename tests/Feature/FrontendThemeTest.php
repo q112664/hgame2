@@ -1,49 +1,32 @@
 <?php
 
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Facades\File;
+use Symfony\Component\Finder\SplFileInfo;
 
-test('the shared theme defines light and dark semantic tokens', function () {
-    $filesystem = app(Filesystem::class);
-    $stylesheet = $filesystem->get(resource_path('css/app.css'));
+test('frontend theme keeps the neutral blue primary with tinted page background', function () {
+    $css = File::get(resource_path('css/app.css'));
 
-    expect($stylesheet)
-        ->toContain(':root')
-        ->toContain('.dark')
-        ->toContain('bIkeymG');
-
-    foreach (
-        [
-            'background',
-            'foreground',
-            'primary',
-            'muted',
-            'border',
-            'ring',
-            'brand',
-            'info',
-            'success',
-            'warning',
-            'surface-sunken',
-            'surface-raised',
-            'surface-inverse',
-            'surface-inverse-foreground',
-        ] as $token
-    ) {
-        expect($stylesheet)->toContain("--{$token}:");
-    }
-});
-
-test('neutral vega theme uses #3498db primary on white surfaces', function () {
-    $stylesheet = app(Filesystem::class)->get(resource_path('css/app.css'));
-
-    expect($stylesheet)
-        ->toContain('--background: oklch(1 0 0);')
+    expect($css)
+        ->toContain('Neutral Vega (bIkeymG)')
         ->toContain('--primary: #3498db;')
-        ->toContain('--radius: 0.625rem;')
-        ->toContain('--background: oklch(0.145 0 0);')
-        ->not->toContain('#3a4d73')
-        ->not->toContain('oklch(0.5854 0.2041 277.1173)');
+        ->toContain('--ring: #3498db;')
+        ->toContain('--brand: #3498db;')
+        ->toContain('--sidebar-primary: #3498db;')
+        ->toContain('--sidebar-ring: #3498db;')
+        ->toContain('--chart-1: #3498db;')
+        ->toContain('--background: oklch(0.97 0 0);')
+        ->toContain('--card: oklch(1 0 0);')
+        ->toContain('--background: oklch(0.13 0 0);')
+        ->toContain('--card: oklch(0.205 0 0);')
+        ->toContain("--font-sans: 'Inter Variable', sans-serif;")
+        ->toContain('--radius-sm: calc(var(--radius) - 4px);')
+        ->not->toContain('--primary: oklch(0.205 0 0);')
+        ->not->toContain('--primary: oklch(0.922 0 0);')
+        ->not->toContain('--background: oklch(1 0 0);')
+        ->not->toContain('--background: oklch(0.145 0 0);');
 });
+
 test('frontend components use semantic colors instead of palette-specific classes', function () {
     $filesystem = app(Filesystem::class);
     $source = collect($filesystem->allFiles(resource_path('js')))
@@ -60,20 +43,58 @@ test('frontend components use semantic colors instead of palette-specific classe
     expect($matches[0])->toBeEmpty();
 });
 
-test('search favorites and settings share the site page container', function () {
+test('search favorites settings and resources share the site page container', function () {
     $filesystem = app(Filesystem::class);
 
     $container = $filesystem->get(resource_path('js/components/site/site-page-container.tsx'));
 
-    expect($container)->toContain('max-w-7xl');
+    expect($container)
+        ->toContain('max-w-7xl')
+        ->toContain("density?: 'default' | 'compact'");
 
-    foreach (['search.tsx', 'favorites.tsx', 'settings/index.tsx'] as $page) {
+    foreach ([
+        'search.tsx',
+        'favorites.tsx',
+        'settings/index.tsx',
+        'resources/index.tsx',
+        'resources/show.tsx',
+    ] as $page) {
         $source = $filesystem->get(resource_path("js/pages/{$page}"));
 
         expect($source)
             ->toContain("import { SitePageContainer } from '@/components/site/site-page-container';")
             ->toContain('<SitePageContainer');
     }
+});
+
+test('site empty states and download buttons stay neutral', function () {
+    $filesystem = app(Filesystem::class);
+
+    expect($filesystem->get(resource_path('js/components/site/site-empty-state.tsx')))
+        ->toContain('border-dashed')
+        ->toContain('bg-card/50');
+
+    expect($filesystem->get(resource_path('js/components/site/resource-detail-styles.ts')))
+        ->toContain('downloadButtonClassName')
+        ->not->toContain('downloadButtonPalettes');
+
+    expect($filesystem->get(resource_path('js/components/site/resource-tab-content.tsx')))
+        ->toContain('downloadButtonClassName')
+        ->toContain('SiteEmptyState')
+        ->not->toContain('downloadButtonPalettes');
+
+    expect($filesystem->get(resource_path('js/lib/resource-formatters.ts')))
+        ->toContain("Intl.DateTimeFormat('en-US'")
+        ->not->toContain('`${year}-${month}-${day}`');
+
+    expect($filesystem->get(resource_path('js/components/site/site-header.tsx')))
+        ->toContain("aria-current={active ? 'page' : undefined}");
+
+    expect($filesystem->get(resource_path('js/components/site/home-hero.tsx')))
+        ->toContain('siteLogo.text');
+
+    expect($filesystem->get(resource_path('js/components/site/site-footer.tsx')))
+        ->toContain('<SiteLogo');
 });
 
 test('docs pages use the public site shell instead of the starter kit app layout', function () {
@@ -136,15 +157,21 @@ test('resource and detailed cards share frosted thumbnail overlay chips', functi
 
     expect($styles)
         ->toContain('overlayChipClassName')
+        ->toContain('resourceCardTitleClassName')
         ->toContain('bg-black/40')
-        ->toContain('backdrop-blur-[2px]');
+        ->toContain('backdrop-blur-[2px]')
+        ->toContain('font-semibold tracking-tight text-foreground');
 
     expect($resourceCard)
-        ->toContain("import { overlayChipClassName } from '@/components/site/resource-card-styles';")
-        ->not->toContain('font-mono');
+        ->toContain('resourceCardTitleClassName')
+        ->toContain('@/components/site/resource-card-styles')
+        ->not->toContain('font-mono')
+        ->not->toContain('text-foreground/85');
 
     expect($detailedCard)
-        ->toContain("import { overlayChipClassName } from '@/components/site/resource-card-styles';")
+        ->toContain('resourceCardTitleClassName')
+        ->toContain('resourceCardSubtitleClassName')
+        ->toContain('@/components/site/resource-card-styles')
         ->toContain('abbreviateLanguage')
         ->not->toContain('font-mono')
         ->not->toContain('bg-background/90 text-xs font-medium text-foreground ring-1 ring-border/80');
@@ -191,9 +218,10 @@ test('download release items use the compact responsive layout', function () {
 
     expect($source)
         ->toContain('p-3 sm:p-4')
-        ->toContain('lg:flex-row')
-        ->toContain('lg:max-w-[42%]')
+        ->toContain('flex flex-col gap-2.5 border-b border-border/70')
+        ->toContain('flex flex-wrap gap-2')
         ->toContain('size="sm"')
+        ->toContain('downloadButtonClassName')
         ->not->toContain('border-b border-border bg-muted/50 px-4 py-3.5');
 });
 
@@ -210,12 +238,14 @@ test('button variants use deliberate dark mode surfaces and borders', function (
         ->toContain('dark:border-destructive/25 dark:bg-destructive/15');
 
     expect($resourceStyles)
+        ->toContain('downloadButtonClassName')
         ->toContain('dark:bg-primary/15')
-        ->toContain('dark:bg-info/15')
-        ->toContain('dark:bg-success/15');
+        ->toContain('bg-info/15')
+        ->toContain('bg-success/15')
+        ->not->toContain('downloadButtonPalettes');
 
     expect($favoriteButton)
-        ->toContain('dark:border-primary/30 dark:bg-primary/15')
+        ->toContain('dark:border-favorite/30 dark:bg-favorite/15')
         ->toContain('dark:border-foreground/15 dark:bg-surface-raised');
 
     expect($resourceCard)

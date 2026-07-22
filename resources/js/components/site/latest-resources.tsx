@@ -1,5 +1,7 @@
 import { Link } from '@inertiajs/react';
+import { Library } from 'lucide-react';
 import { ResourceCard } from '@/components/site/resource-card';
+import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { index as resourcesIndex } from '@/routes/resources';
 import type { GameCard } from '@/types/resources';
 
@@ -48,9 +50,13 @@ export function LatestResources({
                         ))}
                     </div>
                 ) : (
-                    <p className="mt-4 text-sm text-muted-foreground">
-                        {emptyMessage}
-                    </p>
+                    <div className="mt-4">
+                        <SiteEmptyState
+                            icon={Library}
+                            title={emptyMessage}
+                            className="min-h-40 py-10"
+                        />
+                    </div>
                 )}
             </div>
         </section>

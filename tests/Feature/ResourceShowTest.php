@@ -12,6 +12,8 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Support\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -96,6 +98,32 @@ test('details tab omits screenshots and full release download payloads', functio
             ->where('resource.description', fn (string $description): bool => str_contains($description, '<strong>Rich details</strong>') && ! str_contains($description, '<script>'))
             ->where('resource.screenshots', [])
             ->where('resource.releases', [])
+        );
+});
+
+test('details hero uses a card thumbnail while cover stays full size', function () {
+    Storage::fake(Media::diskName());
+
+    $path = UploadedFile::fake()
+        ->image('cover.jpg', 1280, 720)
+        ->store('games/covers', Media::diskName());
+
+    $this->game->update([
+        'cover_path' => $path,
+        'cover_url' => '',
+    ]);
+
+    $this->get(route('resources.details', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where(
+                'resource.thumbnail',
+                fn (string $thumbnail): bool => str_contains($thumbnail, '/thumbs/'),
+            )
+            ->where(
+                'resource.cover',
+                fn (string $cover): bool => str_contains($cover, $path) && ! str_contains($cover, '/thumbs/'),
+            )
         );
 });
 
@@ -192,25 +220,20 @@ test('home uses the configured hero background image', function () {
         );
 });
 
-test('home recent releases are ordered by game release date', function () {
+test('home resources are ordered by published date', function () {
     $this->game->update([
         'release_date' => now()->subMonths(6)->toDateString(),
         'published_at' => now()->subDay(),
     ]);
 
-    $olderRelease = Game::factory()->create([
-        'slug' => 'older-release',
-        'release_date' => now()->subYears(2)->toDateString(),
-        'published_at' => now(),
-    ]);
-    $newestRelease = Game::factory()->create([
-        'slug' => 'newest-release',
+    $olderPublished = Game::factory()->create([
+        'slug' => 'older-published',
         'release_date' => now()->subWeek()->toDateString(),
         'published_at' => now()->subDays(3),
     ]);
-    Game::factory()->create([
-        'slug' => 'no-release-date',
-        'release_date' => null,
+    $newestPublished = Game::factory()->create([
+        'slug' => 'newest-published',
+        'release_date' => now()->subYears(2)->toDateString(),
         'published_at' => now(),
     ]);
 
@@ -218,12 +241,11 @@ test('home recent releases are ordered by game release date', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('welcome')
-            ->has('recentReleases', 3)
-            ->where('recentReleases.0.id', $newestRelease->slug)
-            ->where('recentReleases.1.id', $this->game->slug)
-            ->where('recentReleases.2.id', $olderRelease->slug)
-            ->where('recentReleases.0.releaseDate', $newestRelease->release_date?->toDateString())
-            ->has('resources', 4)
+            ->missing('recentReleases')
+            ->has('resources', 3)
+            ->where('resources.0.id', $newestPublished->slug)
+            ->where('resources.1.id', $this->game->slug)
+            ->where('resources.2.id', $olderPublished->slug)
         );
 });
 

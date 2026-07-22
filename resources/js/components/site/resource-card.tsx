@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { Eye } from 'lucide-react';
 import { PlatformIcon } from '@/components/site/platform-icon';
-import { overlayChipClassName } from '@/components/site/resource-card-styles';
+import { overlayChipClassName, resourceCardMetaClassName, resourceCardTitleClassName } from '@/components/site/resource-card-styles';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Tooltip,
@@ -105,18 +105,23 @@ export function ResourceCard({
                     </div>
                 </div>
 
-                <CardHeader className="gap-1 pt-2.5 pb-0">
-                    <CardTitle className="line-clamp-2 text-sm leading-snug font-medium text-foreground/85">
+                <CardHeader className="gap-1.5 pt-3 pb-0">
+                    <CardTitle className={resourceCardTitleClassName}>
                         {resource.title}
                     </CardTitle>
                 </CardHeader>
 
-                <CardContent className="mt-auto flex items-center justify-between gap-2 pt-1.5 pb-2.5 text-[11px] text-muted-foreground/80">
+                <CardContent
+                    className={cn(
+                        'mt-auto flex items-center justify-between gap-2 pt-2 pb-3',
+                        resourceCardMetaClassName,
+                    )}
+                >
                     <time dateTime={displayDate ?? undefined}>
                         {displayDate ? formatDate(displayDate) : 'Unscheduled'}
                     </time>
                     <span className="inline-flex items-center gap-1">
-                        <Eye className="size-3" />
+                        <Eye className="size-3.5 shrink-0 opacity-70" />
                         {formatViews(resource.views)}
                     </span>
                 </CardContent>

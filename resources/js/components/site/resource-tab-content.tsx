@@ -1,21 +1,23 @@
 import { Link } from '@inertiajs/react';
-import { CalendarDays, Download, HardDrive } from 'lucide-react';
+import { CalendarDays, Download, HardDrive, Images } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
     dateBadgeClassName,
-    downloadButtonPalettes,
+    downloadButtonClassName,
     fileSizeBadgeClassName,
     languageBadgeClassName,
     platformBadgeClassName,
     tagBadgeClassName,
 } from '@/components/site/resource-detail-styles';
 import { RichHtml } from '@/components/site/rich-html';
+import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
 import { show as downloadLinkShow } from '@/routes/download-links';
 import { index as resourcesIndex } from '@/routes/resources';
@@ -206,8 +208,11 @@ export function ResourceTabContent({
                                                         undefined
                                                     }
                                                 >
-                                                    {release.publishedAt ??
-                                                        'Unscheduled'}
+                                                    {release.publishedAt
+                                                        ? formatDate(
+                                                              release.publishedAt,
+                                                          )
+                                                        : 'Unscheduled'}
                                                 </time>
                                             </Badge>
                                         </div>
@@ -221,13 +226,7 @@ export function ResourceTabContent({
                                                             asChild
                                                             variant="outline"
                                                             size="sm"
-                                                            className={cn(
-                                                                'h-8 border shadow-none',
-                                                                downloadButtonPalettes[
-                                                                    index %
-                                                                        downloadButtonPalettes.length
-                                                                ],
-                                                            )}
+                                                            className={downloadButtonClassName}
                                                         >
                                                             <Link
                                                                 href={downloadLinkShow(
@@ -253,26 +252,35 @@ export function ResourceTabContent({
                                 </article>
                             ))
                         ) : (
-                            <p className="rounded-md border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-                                No downloads available yet
-                            </p>
+                            <SiteEmptyState
+                                title="No downloads available yet"
+                                description="Check back later for release packages and download links."
+                            />
                         )}
                     </div>
                 ) : null}
 
                 {activeTab === 'screenshots' ? (
-                    <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-3">
-                        {resource.screenshots.map((screenshot, index) => (
-                            <ResourceScreenshot
-                                key={screenshot}
-                                src={screenshot}
-                                alt={`${resource.title} screenshot ${index + 1}`}
-                                onOpen={() =>
-                                    onOpenLightbox(screenshotSlides, index)
-                                }
-                            />
-                        ))}
-                    </div>
+                    resource.screenshots.length > 0 ? (
+                        <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-3">
+                            {resource.screenshots.map((screenshot, index) => (
+                                <ResourceScreenshot
+                                    key={screenshot}
+                                    src={screenshot}
+                                    alt={`${resource.title} screenshot ${index + 1}`}
+                                    onOpen={() =>
+                                        onOpenLightbox(screenshotSlides, index)
+                                    }
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <SiteEmptyState
+                            icon={Images}
+                            title="No screenshots yet"
+                            description="This resource does not have screenshots uploaded."
+                        />
+                    )
                 ) : null}
             </motion.div>
         </div>

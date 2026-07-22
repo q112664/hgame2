@@ -53,9 +53,22 @@ export const dateBadgeClassName = cn(
     'bg-muted text-muted-foreground',
 );
 
-/** Shared download CTA — neutral so color is not mistaken for host meaning. */
+/**
+ * Compact download chip for release link rows — quiet surface, ink hover.
+ * Stays neutral so host labels are not implied by color.
+ */
 export const downloadButtonClassName = cn(
-    'h-8 border-0 bg-primary/12 text-primary shadow-none',
-    'hover:bg-primary/18 dark:bg-primary/15 dark:hover:bg-primary/25',
+    'h-8 gap-1.5 border border-border/80 bg-muted/60 text-foreground shadow-none',
+    'hover:border-foreground/20 hover:bg-foreground hover:text-background',
+    'dark:border-foreground/15 dark:bg-surface-raised',
+    'dark:hover:border-transparent dark:hover:bg-foreground dark:hover:text-background',
+);
+
+/** Primary download CTA on resource hero / confirm pages. */
+export const downloadHeroButtonClassName = cn(
+    'border-0 bg-foreground px-4 text-background shadow-none',
+    'hover:bg-foreground/88',
+    'dark:border dark:border-foreground/20 dark:bg-surface-strong dark:text-foreground',
+    'dark:hover:border-foreground/35 dark:hover:bg-surface-raised dark:hover:text-foreground',
 );
 

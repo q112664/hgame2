@@ -15,12 +15,14 @@ import type { LightboxSlide } from '@/components/site/image-lightbox';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
     categoryBadgeClassName,
+    downloadHeroButtonClassName,
     languageBadgeClassName,
     platformBadgeClassName,
 } from '@/components/site/resource-detail-styles';
 import { ResourceTabContent } from '@/components/site/resource-tab-content';
 import { RouteTabs } from '@/components/site/route-tabs';
 import { SitePageContainer } from '@/components/site/site-page-container';
+import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,12 +42,15 @@ import { useFavorite } from '@/hooks/use-favorite';
 import { SiteLayout } from '@/layouts/site-layout';
 import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
+import { home } from '@/routes';
 import {
     details as resourceDetails,
     downloads as resourceDownloads,
+    index as resourcesIndex,
     screenshots as resourceScreenshots,
 } from '@/routes/resources';
 import { seen as markDownloadsSeen } from '@/routes/resources/downloads';
+import type { BreadcrumbItem } from '@/types';
 import type { GameDetail } from '@/types/resources';
 
 type Props = {
@@ -256,6 +261,12 @@ export default function ResourceShow({ activeTab, resource }: Props) {
     const hasCover = Boolean(resource.cover || resource.thumbnail);
     const coverSrc = resource.cover || resource.thumbnail;
 
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Home', href: home() },
+        { title: 'Resources', href: resourcesIndex() },
+        { title: resource.title, href: resourceDetails(resource.id) },
+    ];
+
     const openLightbox = (slides: LightboxSlide[], index: number) => {
         if (slides.length === 0) {
             return;
@@ -329,6 +340,8 @@ export default function ResourceShow({ activeTab, resource }: Props) {
             </Dialog>
 
             <SitePageContainer density="compact">
+                <Breadcrumbs breadcrumbs={breadcrumbs} />
+
                 <section className="overflow-hidden rounded-md border border-border bg-card">
                     <div className="flex flex-col sm:flex-row">
                         <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted sm:aspect-auto sm:h-[280px] sm:w-auto sm:max-w-[498px]">
@@ -446,10 +459,8 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                     {resource.hasDownloads ? (
                                         <Button
                                             size="lg"
-                                            className={cn(
-                                                'border-0 px-4 shadow-none',
-                                                'bg-primary text-primary-foreground hover:bg-primary/90',
-                                            )}
+                                            variant="secondary"
+                                            className={downloadHeroButtonClassName}
                                             asChild
                                         >
                                             <Link

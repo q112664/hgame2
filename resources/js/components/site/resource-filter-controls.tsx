@@ -52,6 +52,22 @@ export type FilterOptions = {
 
 const ALL_VALUE = '__all__';
 
+/** Shared inset field surface for filter controls inside the filter panel. */
+export const filterControlClassName = cn(
+    'h-9 border-border/70 bg-muted/45 font-normal text-foreground shadow-none',
+    'hover:border-border hover:bg-muted/70',
+    'dark:border-foreground/12 dark:bg-surface-raised',
+    'dark:hover:border-foreground/20 dark:hover:bg-surface-strong',
+);
+
+/** Slightly inked surface when a filter has an active value. */
+export const filterControlActiveClassName = cn(
+    'border-foreground/18 bg-foreground/[0.05]',
+    'hover:border-foreground/25 hover:bg-foreground/[0.08]',
+    'dark:border-foreground/25 dark:bg-foreground/10',
+    'dark:hover:border-foreground/35 dark:hover:bg-foreground/14',
+);
+
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
     { value: 'latest', label: 'Latest' },
     { value: 'oldest', label: 'Oldest' },
@@ -85,19 +101,35 @@ export function FilterMenu({
             ? allLabel
             : (options.find((option) => option.value === value)?.label ??
               allLabel);
+    const isActive = value !== null;
 
     return (
         <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted-foreground">{label}</span>
+            <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                {label}
+            </span>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button
                         type="button"
                         variant="outline"
-                        className="h-9 w-full justify-between border-border bg-card px-3 font-normal shadow-none"
+                        className={cn(
+                            'w-full justify-between px-3',
+                            filterControlClassName,
+                            isActive && filterControlActiveClassName,
+                        )}
                     >
-                        <span className="truncate">{selectedLabel}</span>
-                        <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                        <span
+                            className={cn(
+                                'truncate',
+                                isActive
+                                    ? 'text-foreground'
+                                    : 'text-muted-foreground',
+                            )}
+                        >
+                            {selectedLabel}
+                        </span>
+                        <ChevronDown className="size-4 shrink-0 text-muted-foreground/80" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -138,6 +170,7 @@ export function SortMenu({
     const selectedLabel =
         SORT_OPTIONS.find((option) => option.value === value)?.label ??
         'Latest';
+    const isActive = value !== 'latest';
 
     return (
         <DropdownMenu>
@@ -145,11 +178,24 @@ export function SortMenu({
                 <Button
                     type="button"
                     variant="outline"
-                    className="h-9 gap-2 border-border bg-card px-3 font-normal shadow-none"
+                    className={cn(
+                        'gap-2 px-3',
+                        filterControlClassName,
+                        isActive && filterControlActiveClassName,
+                    )}
                 >
-                    <ArrowUpDown className="size-4 text-muted-foreground" />
-                    <span className="truncate">{selectedLabel}</span>
-                    <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                    <ArrowUpDown className="size-4 text-muted-foreground/80" />
+                    <span
+                        className={cn(
+                            'truncate',
+                            isActive
+                                ? 'text-foreground'
+                                : 'text-muted-foreground',
+                        )}
+                    >
+                        {selectedLabel}
+                    </span>
+                    <ChevronDown className="size-4 shrink-0 text-muted-foreground/80" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-44">
@@ -269,14 +315,26 @@ export function TagFilterDialog({
                 <Button
                     type="button"
                     variant="outline"
-                    className="h-9 justify-start gap-2 border-border bg-card shadow-none"
+                    className={cn(
+                        'justify-start gap-2',
+                        filterControlClassName,
+                        selected.length > 0 && filterControlActiveClassName,
+                    )}
                 >
-                    <Tags className="size-4 text-muted-foreground" />
-                    <span>Tags</span>
+                    <Tags className="size-4 text-muted-foreground/80" />
+                    <span
+                        className={cn(
+                            selected.length > 0
+                                ? 'text-foreground'
+                                : 'text-muted-foreground',
+                        )}
+                    >
+                        Tags
+                    </span>
                     {selected.length > 0 ? (
                         <Badge
                             variant="secondary"
-                            className="ml-auto h-5 rounded-sm px-1.5 text-[11px]"
+                            className="ml-auto h-5 rounded-sm border-0 bg-foreground/10 px-1.5 text-[11px] text-foreground"
                         >
                             {selected.length}
                         </Badge>

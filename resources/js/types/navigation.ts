@@ -12,3 +12,11 @@ export type NavItem = {
     icon?: LucideIcon | null;
     isActive?: boolean;
 };
+
+export type NavigationMenuItem = {
+    label: string;
+    url: string;
+    icon: string | null;
+    openInNewTab: boolean;
+    match: 'exact' | 'prefix' | 'none';
+};

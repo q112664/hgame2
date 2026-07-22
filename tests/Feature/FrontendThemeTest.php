@@ -41,14 +41,40 @@ test('neutral preset theme uses oklch tokens and default radius', function () {
         ->toContain('--background: oklch(0.97 0 0);')
         ->toContain('--card: oklch(1 0 0);')
         ->toContain('--primary: oklch(0.205 0 0);')
+        ->toContain('--auth: oklch(0.52 0.2 293);')
         ->toContain('--radius: 0.625rem;')
         ->toContain('--background: oklch(0.13 0 0);')
         ->toContain('--primary: oklch(0.922 0 0);')
+        ->toContain('--auth: oklch(0.62 0.18 293);')
         ->toContain("--font-sans: 'Inter Variable', sans-serif;")
         ->toContain('--radius-sm: calc(var(--radius) - 4px);')
         ->not->toContain('#3498db')
         ->not->toContain('#3a4d73')
         ->not->toContain('#f4f5f7');
+});
+
+test('auth forms use the flat purple auth button variant', function () {
+    $filesystem = app(Filesystem::class);
+    $button = $filesystem->get(resource_path('js/components/ui/button.tsx'));
+
+    expect($button)
+        ->toContain('auth:')
+        ->toContain('bg-auth text-auth-foreground');
+
+    foreach (
+        [
+            'components/auth/login-form.tsx',
+            'components/auth/register-form.tsx',
+            'components/auth/forgot-password-form.tsx',
+            'pages/auth/reset-password.tsx',
+            'pages/auth/confirm-password.tsx',
+            'pages/auth/two-factor-challenge.tsx',
+            'components/site/site-header.tsx',
+        ] as $file
+    ) {
+        expect($filesystem->get(resource_path("js/{$file}")))
+            ->toContain('variant="auth"');
+    }
 });
 
 test('frontend components use semantic colors instead of palette-specific classes', function () {
@@ -89,6 +115,11 @@ test('search favorites settings and resources share the site page container', fu
             ->toContain("import { SitePageContainer } from '@/components/site/site-page-container';")
             ->toContain('<SitePageContainer');
     }
+
+    expect($filesystem->get(resource_path('js/pages/resources/show.tsx')))
+        ->toContain("import { Breadcrumbs } from '@/components/breadcrumbs';")
+        ->toContain('<Breadcrumbs breadcrumbs={breadcrumbs} />')
+        ->toContain("title: 'Resources'");
 });
 
 test('site empty states and download buttons stay neutral', function () {
@@ -100,6 +131,8 @@ test('site empty states and download buttons stay neutral', function () {
 
     expect($filesystem->get(resource_path('js/components/site/resource-detail-styles.ts')))
         ->toContain('downloadButtonClassName')
+        ->toContain('downloadHeroButtonClassName')
+        ->toContain('hover:bg-foreground hover:text-background')
         ->not->toContain('downloadButtonPalettes');
 
     expect($filesystem->get(resource_path('js/components/site/resource-tab-content.tsx')))
@@ -259,13 +292,17 @@ test('button variants use deliberate dark mode surfaces and borders', function (
     expect($button)
         ->toContain('dark:border-foreground/15 dark:bg-surface-raised')
         ->toContain('dark:bg-surface-strong')
-        ->toContain('dark:border-destructive/25 dark:bg-destructive/15');
+        ->toContain('dark:border-destructive/25 dark:bg-destructive/15')
+        ->toContain('bg-auth text-auth-foreground');
 
     expect($resourceStyles)
         ->toContain('downloadButtonClassName')
-        ->toContain('dark:bg-primary/15')
-        ->toContain('bg-info/15')
-        ->toContain('bg-success/15')
+        ->toContain('downloadHeroButtonClassName')
+        ->toContain('bg-muted/60 text-foreground')
+        ->toContain('bg-foreground px-4 text-background')
+        ->toContain('dark:bg-surface-strong dark:text-foreground')
+        ->toContain('dark:hover:bg-surface-raised')
+        ->not->toContain('bg-auth text-auth-foreground')
         ->not->toContain('downloadButtonPalettes');
 
     expect($favoriteButton)

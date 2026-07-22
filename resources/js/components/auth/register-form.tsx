@@ -106,6 +106,7 @@ export default function RegisterForm({
 
                         <Button
                             type="submit"
+                            variant="auth"
                             className="mt-2 w-full"
                             tabIndex={5}
                             data-test="register-user-button"

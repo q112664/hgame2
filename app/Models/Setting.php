@@ -170,6 +170,177 @@ class Setting extends Model
         return $url !== '' ? $url : static::defaultHeroBackgroundUrl();
     }
 
+    /**
+     * @return list<array{label: string, url: string, icon: string|null, open_in_new_tab: bool, match: 'exact'|'prefix'|'none'}>
+     */
+    public static function defaultNavigationMenu(): array
+    {
+        return [
+            [
+                'label' => 'Home',
+                'url' => '/',
+                'icon' => null,
+                'open_in_new_tab' => false,
+                'match' => 'exact',
+            ],
+            [
+                'label' => 'Resources',
+                'url' => '/resources',
+                'icon' => null,
+                'open_in_new_tab' => false,
+                'match' => 'prefix',
+            ],
+            [
+                'label' => 'Docs',
+                'url' => '/docs',
+                'icon' => 'BookOpen',
+                'open_in_new_tab' => false,
+                'match' => 'prefix',
+            ],
+            [
+                'label' => 'Random',
+                'url' => '/resources/random',
+                'icon' => 'Dices',
+                'open_in_new_tab' => false,
+                'match' => 'none',
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function navigationMenuIconOptions(): array
+    {
+        return [
+            'BookOpen' => 'Book open',
+            'Dices' => 'Dices',
+            'ExternalLink' => 'External link',
+            'Home' => 'Home',
+            'Library' => 'Library',
+            'Search' => 'Search',
+            'Sparkles' => 'Sparkles',
+            'Star' => 'Star',
+        ];
+    }
+
+    /**
+     * @return list<array{label: string, url: string, icon: string|null, openInNewTab: bool, match: 'exact'|'prefix'|'none'}>
+     */
+    public static function navigationMenu(): array
+    {
+        $raw = static::get('navigation_menu');
+
+        if (! filled($raw)) {
+            return static::presentNavigationMenu(static::defaultNavigationMenu());
+        }
+
+        try {
+            /** @var mixed $decoded */
+            $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        } catch (Throwable) {
+            return static::presentNavigationMenu(static::defaultNavigationMenu());
+        }
+
+        if (! is_array($decoded)) {
+            return static::presentNavigationMenu(static::defaultNavigationMenu());
+        }
+
+        return static::presentNavigationMenu($decoded);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    public static function setNavigationMenu(array $items): void
+    {
+        $normalized = array_values(array_filter(
+            array_map(fn (mixed $item): ?array => static::normalizeNavigationMenuItem($item), $items),
+        ));
+
+        if ($normalized === []) {
+            $normalized = static::defaultNavigationMenu();
+        }
+
+        static::set('navigation_menu', json_encode($normalized, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @param  list<mixed>  $items
+     * @return list<array{label: string, url: string, icon: string|null, openInNewTab: bool, match: 'exact'|'prefix'|'none'}>
+     */
+    protected static function presentNavigationMenu(array $items): array
+    {
+        $normalized = array_values(array_filter(
+            array_map(fn (mixed $item): ?array => static::normalizeNavigationMenuItem($item), $items),
+        ));
+
+        if ($normalized === []) {
+            $normalized = static::defaultNavigationMenu();
+        }
+
+        return array_map(fn (array $item): array => [
+            'label' => $item['label'],
+            'url' => $item['url'],
+            'icon' => $item['icon'],
+            'openInNewTab' => $item['open_in_new_tab'],
+            'match' => $item['match'],
+        ], $normalized);
+    }
+
+    /**
+     * @return array{label: string, url: string, icon: string|null, open_in_new_tab: bool, match: 'exact'|'prefix'|'none'}|null
+     */
+    protected static function normalizeNavigationMenuItem(mixed $item): ?array
+    {
+        if (! is_array($item)) {
+            return null;
+        }
+
+        $label = trim((string) ($item['label'] ?? ''));
+        $url = trim((string) ($item['url'] ?? ''));
+
+        if ($label === '' || $url === '' || ! static::isValidNavigationMenuUrl($url)) {
+            return null;
+        }
+
+        $icon = $item['icon'] ?? null;
+        $icon = is_string($icon) && $icon !== '' ? $icon : null;
+
+        if ($icon !== null && ! array_key_exists($icon, static::navigationMenuIconOptions())) {
+            $icon = null;
+        }
+
+        $match = $item['match'] ?? 'prefix';
+
+        if (! in_array($match, ['exact', 'prefix', 'none'], true)) {
+            $match = 'prefix';
+        }
+
+        $openInNewTab = filter_var(
+            $item['open_in_new_tab'] ?? $item['openInNewTab'] ?? false,
+            FILTER_VALIDATE_BOOLEAN,
+        );
+
+        return [
+            'label' => mb_substr($label, 0, 80),
+            'url' => mb_substr($url, 0, 2048),
+            'icon' => $icon,
+            'open_in_new_tab' => $openInNewTab,
+            'match' => $match,
+        ];
+    }
+
+    public static function isValidNavigationMenuUrl(string $url): bool
+    {
+        if (str_starts_with($url, '/')) {
+            return ! str_starts_with($url, '//');
+        }
+
+        return (bool) filter_var($url, FILTER_VALIDATE_URL)
+            && in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true);
+    }
+
     public static function applySiteUrlToConfig(?string $url = null): void
     {
         $siteUrl = rtrim($url ?? static::siteUrl(), '/');

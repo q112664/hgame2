@@ -11,6 +11,8 @@ const buttonVariants = cva(
       variant: {
         default:
           "bg-primary text-primary-foreground hover:bg-primary/80 dark:hover:bg-primary/90",
+        auth:
+          "bg-auth text-auth-foreground shadow-none hover:bg-auth/90 dark:hover:bg-auth/85",
         outline:
           "border-border bg-background shadow-none hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-foreground/15 dark:bg-surface-raised dark:hover:border-foreground/25 dark:hover:bg-surface-strong dark:aria-expanded:bg-surface-strong",
         secondary:

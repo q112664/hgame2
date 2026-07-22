@@ -42,6 +42,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => Setting::siteLogoText(),
             'siteLogo' => Setting::siteLogo(),
+            'navigationMenu' => Setting::navigationMenu(),
             'auth' => [
                 'user' => $request->user(),
             ],

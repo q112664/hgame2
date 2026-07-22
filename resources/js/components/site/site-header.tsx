@@ -2,13 +2,17 @@ import { Link, router, usePage } from '@inertiajs/react';
 import {
     BookOpen,
     Dices,
+    ExternalLink,
+    Home,
+    Library,
     Menu,
     Moon,
     Search,
-    Sun
-    
+    Sparkles,
+    Star,
+    Sun,
 } from 'lucide-react';
-import type {LucideIcon} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
 import type { AuthDialogView } from '@/components/auth/auth-dialog';
@@ -36,26 +40,19 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useAppearance } from '@/hooks/use-appearance';
 import { cn } from '@/lib/utils';
 import { home, search } from '@/routes';
-import { index as docsIndex } from '@/routes/docs';
-import {
-    index as resourcesIndex,
-    random as resourcesRandom,
-} from '@/routes/resources';
 import type { User } from '@/types';
+import type { NavigationMenuItem } from '@/types/navigation';
 
-type NavItem = {
-    title: string;
-    href: string;
-    icon?: LucideIcon;
-    external?: boolean;
+const navigationIcons: Record<string, LucideIcon> = {
+    BookOpen,
+    Dices,
+    ExternalLink,
+    Home,
+    Library,
+    Search,
+    Sparkles,
+    Star,
 };
-
-const navItems: NavItem[] = [
-    { title: 'Home', href: home().url },
-    { title: 'Resources', href: resourcesIndex().url },
-    { title: 'Docs', href: docsIndex().url, icon: BookOpen },
-    { title: 'Random', href: resourcesRandom().url, icon: Dices },
-];
 
 const navLinkClassName = cn(
     'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium',
@@ -76,6 +73,59 @@ const iconButtonClassName = cn(
     'focus-visible:ring-2 focus-visible:ring-ring/50',
 );
 
+function menuItemPath(url: string): string {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+        try {
+            return new URL(url).pathname || '/';
+        } catch {
+            return url;
+        }
+    }
+
+    return url.split('?')[0] || '/';
+}
+
+function isExternalMenuUrl(url: string): boolean {
+    return url.startsWith('http://') || url.startsWith('https://');
+}
+
+function isNavigationItemActive(
+    item: NavigationMenuItem,
+    items: NavigationMenuItem[],
+    currentPath: string,
+): boolean {
+    if (item.match === 'none' || isExternalMenuUrl(item.url)) {
+        return false;
+    }
+
+    const targetPath = menuItemPath(item.url);
+
+    if (item.match === 'exact' || targetPath === '/') {
+        return currentPath === targetPath || (targetPath === '/' && currentPath === '');
+    }
+
+    const matches =
+        currentPath === targetPath || currentPath.startsWith(`${targetPath}/`);
+
+    if (!matches) {
+        return false;
+    }
+
+    return !items.some((other) => {
+        if (other === item || isExternalMenuUrl(other.url)) {
+            return false;
+        }
+
+        const otherPath = menuItemPath(other.url);
+
+        return (
+            otherPath.length > targetPath.length &&
+            (currentPath === otherPath ||
+                currentPath.startsWith(`${otherPath}/`))
+        );
+    });
+}
+
 function NavLinks({
     className,
     onNavigate,
@@ -83,47 +133,24 @@ function NavLinks({
     className?: string;
     onNavigate?: () => void;
 }) {
-    const { url } = usePage();
+    const { url, props } = usePage();
     const currentPath = url.split('?')[0] || '/';
-
-    const isActive = (href: string, title: string): boolean => {
-        if (title === 'Random') {
-            return false;
-        }
-
-        const targetPath = href.split('?')[0] || '/';
-
-        if (title === 'Home') {
-            return currentPath === '/' || currentPath === '';
-        }
-
-        if (title === 'Resources') {
-            return (
-                currentPath === '/resources' ||
-                (currentPath.startsWith('/resources/') &&
-                    !currentPath.startsWith('/resources/random'))
-            );
-        }
-
-        if (title === 'Docs') {
-            return currentPath === '/docs' || currentPath.startsWith('/docs/');
-        }
-
-        return (
-            currentPath === targetPath ||
-            currentPath.startsWith(`${targetPath}/`)
-        );
-    };
+    const navItems = props.navigationMenu ?? [];
 
     return (
         <nav className={cn('flex items-center gap-0.5', className)}>
             {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.href, item.title);
+                const Icon = item.icon ? navigationIcons[item.icon] : undefined;
+                const active = isNavigationItemActive(
+                    item,
+                    navItems,
+                    currentPath,
+                );
+                const external = isExternalMenuUrl(item.url) || item.openInNewTab;
                 const content = (
                     <>
                         {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
-                        {item.title}
+                        {item.label}
                     </>
                 );
                 const itemClassName = cn(
@@ -131,13 +158,19 @@ function NavLinks({
                     active && 'bg-foreground/10 text-foreground',
                 );
 
-                if (item.external) {
+                if (external) {
                     return (
                         <a
-                            key={item.title}
-                            href={item.href}
+                            key={`${item.label}-${item.url}`}
+                            href={item.url}
                             className={itemClassName}
                             onClick={onNavigate}
+                            target={item.openInNewTab ? '_blank' : undefined}
+                            rel={
+                                item.openInNewTab
+                                    ? 'noopener noreferrer'
+                                    : undefined
+                            }
                             aria-current={active ? 'page' : undefined}
                         >
                             {content}
@@ -147,13 +180,13 @@ function NavLinks({
 
                 return (
                     <Link
-                        key={item.title}
-                        href={item.href}
+                        key={`${item.label}-${item.url}`}
+                        href={item.url}
                         className={itemClassName}
                         onClick={onNavigate}
                         aria-current={active ? 'page' : undefined}
-                        // Random must not be prefetched or the redirect is sticky.
-                        prefetch={item.href === resourcesRandom().url ? false : undefined}
+                        // One-shot links (match: none) must not be prefetched.
+                        prefetch={item.match === 'none' ? false : undefined}
                     >
                         {content}
                     </Link>
@@ -305,6 +338,7 @@ export function SiteHeader() {
                                             Log in
                                         </Button>
                                         <Button
+                                            variant="auth"
                                             size="sm"
                                             className="w-full"
                                             onClick={() =>
@@ -365,6 +399,7 @@ export function SiteHeader() {
                                 Log in
                             </Button>
                             <Button
+                                variant="auth"
                                 size="sm"
                                 onClick={() => openAuth('register')}
                             >

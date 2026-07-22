@@ -7,6 +7,7 @@ import {
     FilterMenu,
     SortMenu,
     TagFilterDialog,
+    filterControlClassName,
     visitFilters,
 } from '@/components/site/resource-filter-controls';
 import type {
@@ -74,8 +75,8 @@ export default function ResourcesIndex({
                     </p>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="flex flex-col gap-4 rounded-md border border-border/80 bg-card p-4 sm:p-5">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <FilterMenu
                             label="Category"
                             value={filters.category}
@@ -122,7 +123,7 @@ export default function ResourcesIndex({
                         />
 
                         <div className="flex flex-col gap-1.5">
-                            <Label className="text-xs text-muted-foreground">
+                            <Label className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                                 Tags
                             </Label>
                             <TagFilterDialog
@@ -135,18 +136,18 @@ export default function ResourcesIndex({
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3">
+                        <div className="flex flex-wrap items-center gap-1.5">
                             {selectedTagNames.map((tag) => (
                                 <Badge
                                     key={tag.slug}
                                     variant="secondary"
-                                    className="h-7 gap-1 rounded-md pr-1 pl-2.5 text-xs font-medium"
+                                    className="h-7 gap-1 rounded-md border border-border/70 bg-muted/55 pr-1 pl-2.5 text-xs font-medium text-foreground shadow-none"
                                 >
                                     {tag.name}
                                     <button
                                         type="button"
-                                        className="inline-flex size-5 items-center justify-center rounded-sm text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+                                        className="inline-flex size-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
                                         aria-label={`Remove ${tag.name}`}
                                         onClick={() =>
                                             applyFilters({
@@ -167,7 +168,12 @@ export default function ResourcesIndex({
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="h-9 gap-2 border-border bg-card shadow-none"
+                                className={cn(
+                                    'gap-2',
+                                    filterControlClassName,
+                                    !hasActiveFilters &&
+                                        'text-muted-foreground',
+                                )}
                                 disabled={!hasActiveFilters}
                                 onClick={() =>
                                     applyFilters({
@@ -176,7 +182,7 @@ export default function ResourcesIndex({
                                     })
                                 }
                             >
-                                <RotateCcw className="size-4 text-muted-foreground" />
+                                <RotateCcw className="size-4 text-muted-foreground/80" />
                                 Clear
                             </Button>
                             <SortMenu

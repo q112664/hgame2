@@ -1,4 +1,5 @@
 import type { Auth, AuthModalConfig } from '@/types/auth';
+import type { NavigationMenuItem } from '@/types/navigation';
 
 export type SiteLogo = {
     mode: 'text' | 'image' | 'both';
@@ -18,6 +19,7 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             siteLogo: SiteLogo;
+            navigationMenu: NavigationMenuItem[];
             auth: Auth;
             authModal: AuthModalConfig | null;
             sidebarOpen: boolean;

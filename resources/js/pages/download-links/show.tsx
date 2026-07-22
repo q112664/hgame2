@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Download, ExternalLink, ShieldAlert } from 'lucide-react';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
+    downloadHeroButtonClassName,
     platformBadgeClassName,
 } from '@/components/site/resource-detail-styles';
 import { SitePageContainer } from '@/components/site/site-page-container';
@@ -137,7 +138,11 @@ export default function DownloadLinkShow({ resource, release, link }: Props) {
                                 Cancel
                             </Link>
                         </Button>
-                        <Button asChild>
+                        <Button
+                            variant="secondary"
+                            className={downloadHeroButtonClassName}
+                            asChild
+                        >
                             <a
                                 href={link.url}
                                 target="_blank"

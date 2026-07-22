@@ -27,7 +27,7 @@ export function Breadcrumbs({
                                 <Fragment key={index}>
                                     <BreadcrumbItem>
                                         {isLast ? (
-                                            <BreadcrumbPage>
+                                            <BreadcrumbPage className="line-clamp-1 max-w-[min(100%,20rem)] sm:max-w-[28rem]">
                                                 {item.title}
                                             </BreadcrumbPage>
                                         ) : (

@@ -114,6 +114,7 @@ export default function LoginForm({
 
                             <Button
                                 type="submit"
+                                variant="auth"
                                 className="mt-4 w-full"
                                 tabIndex={4}
                                 disabled={processing}

@@ -33,10 +33,10 @@ class ListPublishedGames
     ];
 
     /**
-     * @param  array{category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}  $filters
+     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}  $filters
      * @return array{
      *     resources: LengthAwarePaginator<int, array<string, mixed>>,
-     *     filters: array{category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string},
+     *     filters: array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string},
      *     filterOptions: \Closure(): array{
      *         categories: list<array{name: string, slug: string}>,
      *         platforms: list<array{name: string, slug: string}>,
@@ -61,12 +61,16 @@ class ListPublishedGames
     }
 
     /**
-     * @param  array{category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}  $filters
+     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}  $filters
      * @return Builder<Game>
      */
     private function query(array $filters): Builder
     {
         $query = Game::query()->published();
+
+        if (filled($filters['q'])) {
+            $query->matchingSearch($filters['q']);
+        }
 
         if (filled($filters['category'])) {
             $query->whereHas(

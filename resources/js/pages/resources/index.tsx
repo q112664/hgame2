@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
-import { Library, RotateCcw, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Library, RotateCcw, Search, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { ResourceCard } from '@/components/site/resource-card';
 import {
     DEFAULT_FILTERS,
@@ -20,7 +20,7 @@ import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { SiteLayout } from '@/layouts/site-layout';
 import { cn } from '@/lib/utils';
@@ -37,6 +37,7 @@ export default function ResourcesIndex({
     filterOptions,
 }: Props) {
     const [isPending, setIsPending] = useState(false);
+    const [searchQuery, setSearchQuery] = useState(filters.q);
     const selectedTagNames = useMemo(() => {
         const bySlug = new Map(
             filterOptions.tags.map((tag) => [tag.slug, tag.name]),
@@ -49,6 +50,7 @@ export default function ResourcesIndex({
     }, [filterOptions.tags, filters.tags]);
 
     const hasActiveFilters =
+        filters.q.trim() !== '' ||
         Boolean(filters.category) ||
         Boolean(filters.platform) ||
         Boolean(filters.language) ||
@@ -60,6 +62,28 @@ export default function ResourcesIndex({
             onFinish: () => setIsPending(false),
         });
     };
+
+    useEffect(() => {
+        setSearchQuery(filters.q);
+    }, [filters.q]);
+
+    useEffect(() => {
+        const trimmed = searchQuery.trim();
+        const current = filters.q.trim();
+
+        if (trimmed === current) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            applyFilters({ ...filters, q: trimmed });
+        }, 300);
+
+        return () => window.clearTimeout(timer);
+        // Intentionally depend on searchQuery only; filters are read from closure
+        // when the debounced value differs from the current server filter.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery]);
 
     return (
         <SiteLayout>
@@ -76,6 +100,50 @@ export default function ResourcesIndex({
                 </div>
 
                 <div className="flex flex-col gap-4 rounded-md border border-border/80 bg-card p-4 sm:p-5">
+                    <div className="relative">
+                        <label className="sr-only" htmlFor="resource-search">
+                            Search resources
+                        </label>
+                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            id="resource-search"
+                            value={searchQuery}
+                            onChange={(event) =>
+                                setSearchQuery(event.target.value)
+                            }
+                            onKeyDown={(event) => {
+                                if (
+                                    event.key === 'Escape' &&
+                                    searchQuery !== ''
+                                ) {
+                                    event.preventDefault();
+                                    setSearchQuery('');
+                                }
+                            }}
+                            placeholder="Search titles, tags, developers…"
+                            className={cn(
+                                'h-10 border-border/70 bg-muted/45 pr-10 pl-9 shadow-none',
+                                'placeholder:text-muted-foreground/70',
+                                'focus-visible:bg-background',
+                                'dark:border-foreground/12 dark:bg-surface-raised',
+                            )}
+                            autoComplete="off"
+                            enterKeyHint="search"
+                        />
+                        {searchQuery !== '' ? (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute top-1/2 right-1.5 size-7 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                aria-label="Clear search"
+                                onClick={() => setSearchQuery('')}
+                            >
+                                <X className="size-4" />
+                            </Button>
+                        ) : null}
+                    </div>
+
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <FilterMenu
                             label="Category"
@@ -122,18 +190,13 @@ export default function ResourcesIndex({
                             }
                         />
 
-                        <div className="flex flex-col gap-1.5">
-                            <Label className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                                Tags
-                            </Label>
-                            <TagFilterDialog
-                                options={filterOptions.tags}
-                                selected={filters.tags}
-                                onApply={(tags) =>
-                                    applyFilters({ ...filters, tags })
-                                }
-                            />
-                        </div>
+                        <TagFilterDialog
+                            options={filterOptions.tags}
+                            selected={filters.tags}
+                            onApply={(tags) =>
+                                applyFilters({ ...filters, tags })
+                            }
+                        />
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3">
@@ -175,12 +238,13 @@ export default function ResourcesIndex({
                                         'text-muted-foreground',
                                 )}
                                 disabled={!hasActiveFilters}
-                                onClick={() =>
+                                onClick={() => {
+                                    setSearchQuery('');
                                     applyFilters({
                                         ...DEFAULT_FILTERS,
                                         sort: filters.sort,
-                                    })
-                                }
+                                    });
+                                }}
                             >
                                 <RotateCcw className="size-4 text-muted-foreground/80" />
                                 Clear
@@ -235,7 +299,7 @@ export default function ResourcesIndex({
                         <SiteEmptyState
                             icon={Library}
                             title="No resources match these filters"
-                            description="Clear filters or try a different category, platform, language, or tag."
+                            description="Clear filters or try a different search, category, platform, language, or tag."
                         />
                     </div>
                 )}

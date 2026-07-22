@@ -25,6 +25,7 @@ class ListResourcesRequest extends FormRequest
             'language' => ['nullable', 'string', 'max:20', Rule::exists('languages', 'code')],
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:100', Rule::exists('tags', 'slug')],
+            'q' => ['nullable', 'string', 'max:100'],
             'sort' => ['nullable', 'string', Rule::in(ListPublishedGames::SORTS)],
             'page' => ['nullable', 'integer', 'min:1'],
         ];
@@ -43,6 +44,7 @@ class ListResourcesRequest extends FormRequest
         }
 
         $this->merge([
+            'q' => $this->filled('q') ? $this->string('q')->trim()->toString() : '',
             'category' => $this->filled('category') ? $this->string('category')->toString() : null,
             'platform' => $this->filled('platform') ? $this->string('platform')->toString() : null,
             'language' => $this->filled('language') ? $this->string('language')->toString() : null,
@@ -56,14 +58,15 @@ class ListResourcesRequest extends FormRequest
     }
 
     /**
-     * @return array{category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}
+     * @return array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}
      */
     public function filters(): array
     {
-        /** @var array{category?: string|null, platform?: string|null, language?: string|null, tags?: list<string>, sort?: string} $validated */
+        /** @var array{q?: string, category?: string|null, platform?: string|null, language?: string|null, tags?: list<string>, sort?: string} $validated */
         $validated = $this->validated();
 
         return [
+            'q' => $validated['q'] ?? '',
             'category' => $validated['category'] ?? null,
             'platform' => $validated['platform'] ?? null,
             'language' => $validated['language'] ?? null,

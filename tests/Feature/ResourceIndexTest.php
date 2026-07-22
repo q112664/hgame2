@@ -75,6 +75,7 @@ test('resources index lists published games with filter options', function () {
             ->where('filters.platform', null)
             ->where('filters.language', null)
             ->where('filters.tags', [])
+            ->where('filters.q', '')
             ->where('filters.sort', 'latest')
             ->where('filterOptions.categories.0.slug', $category->slug)
             ->where('filterOptions.platforms.0.slug', $platform->slug)
@@ -127,6 +128,31 @@ test('resources index filters by category platform language and tags', function 
             ->where('filters.platform', 'windows')
             ->where('filters.language', 'zh')
             ->where('filters.tags', ['romance'])
+        );
+});
+
+test('resources index filters by keyword search', function () {
+    $shared = createListedGame([
+        'title' => 'Senren Banka',
+        'slug' => 'senren-banka',
+    ]);
+
+    createListedGame([
+        'title' => 'Other Game',
+        'slug' => 'other-game',
+        'category' => $shared['category'],
+        'platform' => $shared['platform'],
+        'language' => $shared['language'],
+        'tags' => $shared['tags'],
+        'published_at' => now()->subHours(2),
+    ]);
+
+    $this->get(route('resources.index', ['q' => 'Senren']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('resources.data', 1)
+            ->where('resources.data.0.id', $shared['game']->slug)
+            ->where('filters.q', 'Senren')
         );
 });
 

@@ -36,6 +36,7 @@ export type LanguageOption = {
 export type SortOption = 'latest' | 'oldest' | 'title' | 'views';
 
 export type ResourceFilters = {
+    q: string;
     category: string | null;
     platform: string | null;
     language: string | null;
@@ -76,6 +77,7 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
 ];
 
 export const DEFAULT_FILTERS: ResourceFilters = {
+    q: '',
     category: null,
     platform: null,
     language: null,
@@ -104,59 +106,55 @@ export function FilterMenu({
     const isActive = value !== null;
 
     return (
-        <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                {label}
-            </span>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        type="button"
-                        variant="outline"
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    aria-label={label}
+                    className={cn(
+                        'w-full justify-between px-3',
+                        filterControlClassName,
+                        isActive && filterControlActiveClassName,
+                    )}
+                >
+                    <span
                         className={cn(
-                            'w-full justify-between px-3',
-                            filterControlClassName,
-                            isActive && filterControlActiveClassName,
+                            'truncate',
+                            isActive
+                                ? 'text-foreground'
+                                : 'text-muted-foreground',
                         )}
                     >
-                        <span
-                            className={cn(
-                                'truncate',
-                                isActive
-                                    ? 'text-foreground'
-                                    : 'text-muted-foreground',
-                            )}
-                        >
-                            {selectedLabel}
-                        </span>
-                        <ChevronDown className="size-4 shrink-0 text-muted-foreground/80" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                    align="start"
-                    className="max-h-72 w-(--radix-dropdown-menu-trigger-width)"
+                        {selectedLabel}
+                    </span>
+                    <ChevronDown className="size-4 shrink-0 text-muted-foreground/80" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+                align="start"
+                className="max-h-72 w-(--radix-dropdown-menu-trigger-width)"
+            >
+                <DropdownMenuRadioGroup
+                    value={value ?? ALL_VALUE}
+                    onValueChange={(next) =>
+                        onChange(next === ALL_VALUE ? null : next)
+                    }
                 >
-                    <DropdownMenuRadioGroup
-                        value={value ?? ALL_VALUE}
-                        onValueChange={(next) =>
-                            onChange(next === ALL_VALUE ? null : next)
-                        }
-                    >
-                        <DropdownMenuRadioItem value={ALL_VALUE}>
-                            {allLabel}
+                    <DropdownMenuRadioItem value={ALL_VALUE}>
+                        {allLabel}
+                    </DropdownMenuRadioItem>
+                    {options.map((option) => (
+                        <DropdownMenuRadioItem
+                            key={option.value}
+                            value={option.value}
+                        >
+                            {option.label}
                         </DropdownMenuRadioItem>
-                        {options.map((option) => (
-                            <DropdownMenuRadioItem
-                                key={option.value}
-                                value={option.value}
-                            >
-                                {option.label}
-                            </DropdownMenuRadioItem>
-                        ))}
-                    </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
+                    ))}
+                </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }
 
@@ -222,6 +220,10 @@ export function filterQuery(
     page?: number,
 ): Record<string, string | number | string[]> {
     const query: Record<string, string | number | string[]> = {};
+
+    if (filters.q.trim() !== '') {
+        query.q = filters.q.trim();
+    }
 
     if (filters.category) {
         query.category = filters.category;

@@ -157,4 +157,44 @@ class Game extends Model
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now());
     }
+
+    /**
+     * Match title, subtitle, developer, category, tags, platforms, or languages.
+     *
+     * @param  Builder<Game>  $query
+     * @return Builder<Game>
+     */
+    public function scopeMatchingSearch(Builder $query, string $term): Builder
+    {
+        $like = '%'.addcslashes($term, '%_\\').'%';
+
+        return $query->where(function (Builder $builder) use ($like): void {
+            $builder
+                ->where('title', 'like', $like)
+                ->orWhere('subtitle', 'like', $like)
+                ->orWhere('developer', 'like', $like)
+                ->orWhereHas(
+                    'category',
+                    fn (Builder $category): Builder => $category
+                        ->where('name', 'like', $like)
+                        ->orWhere('slug', 'like', $like),
+                )
+                ->orWhereHas(
+                    'tags',
+                    fn (Builder $tags): Builder => $tags->where('name', 'like', $like),
+                )
+                ->orWhereHas(
+                    'releases.platforms',
+                    fn (Builder $platforms): Builder => $platforms
+                        ->where('name', 'like', $like)
+                        ->orWhere('slug', 'like', $like),
+                )
+                ->orWhereHas(
+                    'releases.languages',
+                    fn (Builder $languages): Builder => $languages
+                        ->where('name', 'like', $like)
+                        ->orWhere('code', 'like', $like),
+                );
+        });
+    }
 }

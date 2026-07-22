@@ -87,7 +87,7 @@ export function HomeHero({ backgroundUrl = null }: Props) {
                         </div>
 
                         <div className="flex flex-wrap gap-2.5">
-                            <Button size="lg" asChild>
+                            <Button size="lg" variant="auth" asChild>
                                 <Link href={resourcesIndex()} prefetch>
                                     <Library data-icon="inline-start" />
                                     Browse

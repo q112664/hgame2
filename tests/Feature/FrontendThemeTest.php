@@ -148,7 +148,8 @@ test('site empty states and download buttons stay neutral', function () {
         ->toContain("aria-current={active ? 'page' : undefined}");
 
     expect($filesystem->get(resource_path('js/components/site/home-hero.tsx')))
-        ->toContain('siteLogo.text');
+        ->toContain('siteLogo.text')
+        ->toContain('variant="auth"');
 
     expect($filesystem->get(resource_path('js/components/site/site-footer.tsx')))
         ->toContain('<SiteLogo');

@@ -149,7 +149,8 @@ test('site empty states and download buttons stay neutral', function () {
 
     expect($filesystem->get(resource_path('js/components/site/home-hero.tsx')))
         ->toContain('siteLogo.text')
-        ->toContain('variant="auth"');
+        ->toContain('bg-auth/22')
+        ->toContain('backdrop-blur-sm');
 
     expect($filesystem->get(resource_path('js/components/site/site-footer.tsx')))
         ->toContain('<SiteLogo');
@@ -300,9 +301,10 @@ test('button variants use deliberate dark mode surfaces and borders', function (
         ->toContain('downloadButtonClassName')
         ->toContain('downloadHeroButtonClassName')
         ->toContain('bg-muted/60 text-foreground')
-        ->toContain('bg-foreground px-4 text-background')
-        ->toContain('dark:bg-surface-strong dark:text-foreground')
+        ->toContain('border border-transparent bg-foreground px-4 text-background')
+        ->toContain('dark:border-foreground/20 dark:bg-surface-strong dark:text-foreground')
         ->toContain('dark:hover:bg-surface-raised')
+        ->not->toContain('border-0 bg-foreground')
         ->not->toContain('bg-auth text-auth-foreground')
         ->not->toContain('downloadButtonPalettes');
 

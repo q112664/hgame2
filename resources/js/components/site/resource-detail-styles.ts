@@ -66,9 +66,9 @@ export const downloadButtonClassName = cn(
 
 /** Primary download CTA on resource hero / confirm pages. */
 export const downloadHeroButtonClassName = cn(
-    'border-0 bg-foreground px-4 text-background shadow-none',
+    'border border-transparent bg-foreground px-4 text-background shadow-none',
     'hover:bg-foreground/88',
-    'dark:border dark:border-foreground/20 dark:bg-surface-strong dark:text-foreground',
+    'dark:border-foreground/20 dark:bg-surface-strong dark:text-foreground',
     'dark:hover:border-foreground/35 dark:hover:bg-surface-raised dark:hover:text-foreground',
 );
 

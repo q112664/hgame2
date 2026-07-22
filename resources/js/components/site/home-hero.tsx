@@ -87,7 +87,20 @@ export function HomeHero({ backgroundUrl = null }: Props) {
                         </div>
 
                         <div className="flex flex-wrap gap-2.5">
-                            <Button size="lg" variant="auth" asChild>
+                            <Button
+                                size="lg"
+                                variant="outline"
+                                className={cn(
+                                    'border-auth/45 bg-auth/22',
+                                    'text-auth-foreground shadow-none backdrop-blur-sm',
+                                    'hover:border-auth/60 hover:bg-auth/32',
+                                    'hover:text-auth-foreground',
+                                    'focus-visible:border-auth/65 focus-visible:ring-auth/30',
+                                    'dark:border-auth/35 dark:bg-auth/18',
+                                    'dark:hover:border-auth/50 dark:hover:bg-auth/28',
+                                )}
+                                asChild
+                            >
                                 <Link href={resourcesIndex()} prefetch>
                                     <Library data-icon="inline-start" />
                                     Browse

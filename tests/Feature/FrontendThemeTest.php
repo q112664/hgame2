@@ -1,30 +1,54 @@
 <?php
 
 use Illuminate\Filesystem\Filesystem;
-use Illuminate\Support\Facades\File;
 use Symfony\Component\Finder\SplFileInfo;
 
-test('frontend theme keeps the neutral blue primary with tinted page background', function () {
-    $css = File::get(resource_path('css/app.css'));
+test('the shared theme defines light and dark semantic tokens', function () {
+    $filesystem = app(Filesystem::class);
+    $stylesheet = $filesystem->get(resource_path('css/app.css'));
 
-    expect($css)
-        ->toContain('Neutral Vega (bIkeymG)')
-        ->toContain('--primary: #3498db;')
-        ->toContain('--ring: #3498db;')
-        ->toContain('--brand: #3498db;')
-        ->toContain('--sidebar-primary: #3498db;')
-        ->toContain('--sidebar-ring: #3498db;')
-        ->toContain('--chart-1: #3498db;')
+    expect($stylesheet)
+        ->toContain(':root')
+        ->toContain('.dark')
+        ->toContain('bIkeymG');
+
+    foreach (
+        [
+            'background',
+            'foreground',
+            'primary',
+            'muted',
+            'border',
+            'ring',
+            'brand',
+            'info',
+            'success',
+            'warning',
+            'surface-sunken',
+            'surface-raised',
+            'surface-inverse',
+            'surface-inverse-foreground',
+        ] as $token
+    ) {
+        expect($stylesheet)->toContain("--{$token}:");
+    }
+});
+
+test('neutral preset theme uses oklch tokens and default radius', function () {
+    $stylesheet = app(Filesystem::class)->get(resource_path('css/app.css'));
+
+    expect($stylesheet)
         ->toContain('--background: oklch(0.97 0 0);')
         ->toContain('--card: oklch(1 0 0);')
+        ->toContain('--primary: oklch(0.205 0 0);')
+        ->toContain('--radius: 0.625rem;')
         ->toContain('--background: oklch(0.13 0 0);')
-        ->toContain('--card: oklch(0.205 0 0);')
+        ->toContain('--primary: oklch(0.922 0 0);')
         ->toContain("--font-sans: 'Inter Variable', sans-serif;")
         ->toContain('--radius-sm: calc(var(--radius) - 4px);')
-        ->not->toContain('--primary: oklch(0.205 0 0);')
-        ->not->toContain('--primary: oklch(0.922 0 0);')
-        ->not->toContain('--background: oklch(1 0 0);')
-        ->not->toContain('--background: oklch(0.145 0 0);');
+        ->not->toContain('#3498db')
+        ->not->toContain('#3a4d73')
+        ->not->toContain('#f4f5f7');
 });
 
 test('frontend components use semantic colors instead of palette-specific classes', function () {

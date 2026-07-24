@@ -34,18 +34,21 @@ test('the shared theme defines light and dark semantic tokens', function () {
     }
 });
 
-test('neutral preset theme uses oklch tokens and default radius', function () {
+test('warm red theme uses oklch tokens and default radius', function () {
     $stylesheet = app(Filesystem::class)->get(resource_path('css/app.css'));
 
     expect($stylesheet)
+        ->toContain('Fakku-inspired warm red')
         ->toContain('--background: oklch(0.97 0 0);')
         ->toContain('--card: oklch(1 0 0);')
-        ->toContain('--primary: oklch(0.205 0 0);')
-        ->toContain('--auth: oklch(0.52 0.2 293);')
+        ->toContain('--primary: oklch(0.58 0.19 25);')
+        ->toContain('--auth: oklch(0.58 0.19 25);')
+        ->toContain('--accent: oklch(0.96 0.015 25);')
         ->toContain('--radius: 0.625rem;')
         ->toContain('--background: oklch(0.13 0 0);')
-        ->toContain('--primary: oklch(0.922 0 0);')
-        ->toContain('--auth: oklch(0.62 0.18 293);')
+        ->toContain('--primary: oklch(0.66 0.18 25);')
+        ->toContain('--auth: oklch(0.66 0.18 25);')
+        ->toContain('--accent: oklch(0.28 0.04 25);')
         ->toContain("--font-sans: 'Inter Variable', sans-serif;")
         ->toContain('--radius-sm: calc(var(--radius) - 4px);')
         ->not->toContain('#3498db')
@@ -53,7 +56,7 @@ test('neutral preset theme uses oklch tokens and default radius', function () {
         ->not->toContain('#f4f5f7');
 });
 
-test('auth forms use the flat purple auth button variant', function () {
+test('auth forms use the flat auth button variant', function () {
     $filesystem = app(Filesystem::class);
     $button = $filesystem->get(resource_path('js/components/ui/button.tsx'));
 
@@ -100,7 +103,9 @@ test('search favorites settings and resources share the site page container', fu
 
     expect($container)
         ->toContain('max-w-7xl')
-        ->toContain("density?: 'default' | 'compact'");
+        ->toContain("density?: 'default' | 'compact'")
+        ->toContain('gap-3 pt-4 pb-8 sm:gap-4 sm:pt-5 sm:pb-10')
+        ->not->toContain("'gap-6 py-8 sm:py-10'");
 
     foreach ([
         'search.tsx',
@@ -119,10 +124,17 @@ test('search favorites settings and resources share the site page container', fu
     expect($filesystem->get(resource_path('js/pages/resources/show.tsx')))
         ->toContain("import { Breadcrumbs } from '@/components/breadcrumbs';")
         ->toContain('<Breadcrumbs breadcrumbs={breadcrumbs} />')
-        ->toContain("title: 'Resources'");
+        ->toContain("title: 'Resources'")
+        ->toContain('flex flex-col md:flex-row')
+        ->toContain('md:aspect-auto md:h-[280px] md:w-auto md:max-w-[498px]')
+        ->toContain('text-xs text-muted-foreground')
+        ->toContain('Updates on Favorites')
+        ->toContain('Favorite for update alerts')
+        ->not->toContain('sm:flex-row')
+        ->not->toContain('sm:h-[280px]');
 });
 
-test('site empty states and download buttons stay neutral', function () {
+test('site empty states and download buttons use primary CTAs', function () {
     $filesystem = app(Filesystem::class);
 
     expect($filesystem->get(resource_path('js/components/site/site-empty-state.tsx')))
@@ -132,20 +144,43 @@ test('site empty states and download buttons stay neutral', function () {
     expect($filesystem->get(resource_path('js/components/site/resource-detail-styles.ts')))
         ->toContain('downloadButtonClassName')
         ->toContain('downloadHeroButtonClassName')
-        ->toContain('hover:bg-foreground hover:text-background')
+        ->toContain('hover:bg-primary hover:text-primary-foreground')
+        ->toContain('bg-primary px-4 text-primary-foreground')
+        ->toContain('dark:hover:bg-primary/18 dark:hover:text-primary')
+        ->toContain('dark:border-primary/40 dark:bg-primary/90')
+        ->toContain('hover:bg-primary/10 hover:text-primary')
+        ->not->toContain('hover:bg-foreground hover:text-background')
+        ->not->toContain('bg-foreground px-4 text-background')
         ->not->toContain('downloadButtonPalettes');
 
     expect($filesystem->get(resource_path('js/components/site/resource-tab-content.tsx')))
         ->toContain('downloadButtonClassName')
+        ->toContain('platformBadgeClassName')
+        ->toContain('languageBadgeClassName')
+        ->toContain('fileSizeBadgeClassName')
+        ->toContain('dateBadgeClassName')
         ->toContain('SiteEmptyState')
         ->not->toContain('downloadButtonPalettes');
+
+    expect($filesystem->get(resource_path('js/components/site/route-tabs.tsx')))
+        ->toContain('rounded-sm bg-muted')
+        ->not->toContain('rounded-sm bg-accent')
+        ->not->toContain('motion/react')
+        ->not->toContain('motion.span');
+
+    expect($filesystem->get(resource_path('js/components/site/resource-tab-content.tsx')))
+        ->not->toContain('motion/react')
+        ->not->toContain('motion.div');
 
     expect($filesystem->get(resource_path('js/lib/resource-formatters.ts')))
         ->toContain("Intl.DateTimeFormat('en-US'")
         ->not->toContain('`${year}-${month}-${day}`');
 
     expect($filesystem->get(resource_path('js/components/site/site-header.tsx')))
-        ->toContain("aria-current={active ? 'page' : undefined}");
+        ->toContain("aria-current={active ? 'page' : undefined}")
+        ->toContain('showCloseButton={false}')
+        ->toContain('justify-between gap-3')
+        ->toContain('aria-label="Close menu"');
 
     expect($filesystem->get(resource_path('js/components/site/home-hero.tsx')))
         ->toContain('siteLogo.text')
@@ -301,10 +336,12 @@ test('button variants use deliberate dark mode surfaces and borders', function (
         ->toContain('downloadButtonClassName')
         ->toContain('downloadHeroButtonClassName')
         ->toContain('bg-muted/60 text-foreground')
-        ->toContain('border border-transparent bg-foreground px-4 text-background')
-        ->toContain('dark:border-foreground/20 dark:bg-surface-strong dark:text-foreground')
-        ->toContain('dark:hover:bg-surface-raised')
+        ->toContain('border border-transparent bg-primary px-4 text-primary-foreground')
+        ->toContain('hover:bg-primary hover:text-primary-foreground')
+        ->toContain('dark:hover:bg-primary/18 dark:hover:text-primary')
+        ->toContain('dark:border-primary/40 dark:bg-primary/90')
         ->not->toContain('border-0 bg-foreground')
+        ->not->toContain('bg-foreground px-4 text-background')
         ->not->toContain('bg-auth text-auth-foreground')
         ->not->toContain('downloadButtonPalettes');
 

@@ -1,5 +1,4 @@
 import { Link } from '@inertiajs/react';
-import { motion, useReducedMotion } from 'motion/react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { MutableRefObject, RefObject } from 'react';
 import { cn } from '@/lib/utils';
@@ -39,7 +38,6 @@ export function RouteTabs<Value extends string>({
     onError,
     onCancel,
 }: Props<Value>) {
-    const shouldReduceMotion = useReducedMotion();
     const tabsListRef = useRef<HTMLElement | null>(null);
     const tabRefs = useRef<Partial<Record<Value, HTMLElement | null>>>({});
     const navigationSequence = useRef(0);
@@ -92,20 +90,10 @@ export function RouteTabs<Value extends string>({
             )}
         >
             {pill.ready ? (
-                <motion.span
+                <span
                     aria-hidden
-                    className="absolute top-1 bottom-1 rounded-sm bg-accent"
-                    initial={false}
-                    animate={{ left: pill.left, width: pill.width }}
-                    transition={
-                        shouldReduceMotion
-                            ? { duration: 0 }
-                            : {
-                                  type: 'tween',
-                                  duration: 0.2,
-                                  ease: 'easeInOut',
-                              }
-                    }
+                    className="absolute top-1 bottom-1 rounded-sm bg-muted"
+                    style={{ left: pill.left, width: pill.width }}
                 />
             ) : null}
 
@@ -126,10 +114,9 @@ export function RouteTabs<Value extends string>({
                     }
                     className={cn(
                         'relative z-10 inline-flex h-9 items-center justify-center rounded-md border-transparent px-4 text-sm font-medium shadow-none',
-                        'text-muted-foreground transition-colors',
+                        'text-muted-foreground',
                         'hover:bg-transparent hover:text-foreground/80',
                         'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-                        'hover:text-foreground/80',
                         effectiveDisplayedValue === tab.value
                             ? 'text-foreground'
                             : 'text-muted-foreground',

@@ -16,7 +16,7 @@ export function SitePageContainer({
             className={cn(
                 'mx-auto flex w-full max-w-7xl flex-col px-4 sm:px-6 lg:px-8',
                 density === 'compact'
-                    ? 'gap-6 py-8 sm:py-10'
+                    ? 'gap-3 pt-4 pb-8 sm:gap-4 sm:pt-5 sm:pb-10'
                     : 'py-10 sm:py-12',
                 className,
             )}

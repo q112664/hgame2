@@ -11,6 +11,7 @@ import {
     Sparkles,
     Star,
     Sun,
+    XIcon,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -26,6 +27,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import {
     Sheet,
+    SheetClose,
     SheetContent,
     SheetTitle,
     SheetTrigger,
@@ -299,19 +301,31 @@ export function SiteHeader() {
                     </SheetTrigger>
                     <SheetContent
                         side="left"
+                        showCloseButton={false}
                         className="w-[85vw] max-w-xs gap-0 bg-surface-raised p-0"
                     >
                         <SheetTitle className="sr-only">
                             Navigation menu
                         </SheetTitle>
-                        <div className="flex h-14 shrink-0 items-center border-b border-border/80 px-4">
+                        <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border/80 px-4">
                             <Link
                                 href={home()}
-                                className="transition-opacity hover:opacity-80"
+                                className="min-w-0 transition-opacity hover:opacity-80"
                                 onClick={closeMenu}
                             >
                                 <SiteLogo />
                             </Link>
+                            <SheetClose asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="shrink-0"
+                                    aria-label="Close menu"
+                                >
+                                    <XIcon />
+                                    <span className="sr-only">Close</span>
+                                </Button>
+                            </SheetClose>
                         </div>
 
                         <div className="flex min-h-0 flex-1 flex-col px-3 py-4">

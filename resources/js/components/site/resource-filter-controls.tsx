@@ -61,12 +61,12 @@ export const filterControlClassName = cn(
     'dark:hover:border-foreground/20 dark:hover:bg-surface-strong',
 );
 
-/** Slightly inked surface when a filter has an active value. */
+/** Soft primary tint when a filter has an active value. */
 export const filterControlActiveClassName = cn(
-    'border-foreground/18 bg-foreground/[0.05]',
-    'hover:border-foreground/25 hover:bg-foreground/[0.08]',
-    'dark:border-foreground/25 dark:bg-foreground/10',
-    'dark:hover:border-foreground/35 dark:hover:bg-foreground/14',
+    'border-primary/25 bg-primary/8',
+    'hover:border-primary/35 hover:bg-primary/12',
+    'dark:border-primary/30 dark:bg-primary/12',
+    'dark:hover:border-primary/40 dark:hover:bg-primary/16',
 );
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
@@ -383,7 +383,7 @@ export function TagFilterDialog({
                                             'inline-flex h-7 max-w-full items-center rounded-sm px-2.5 text-xs font-medium transition-colors',
                                             'ring-1 ring-inset focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
                                             checked
-                                                ? 'bg-foreground text-background ring-foreground'
+                                                ? 'bg-primary text-primary-foreground ring-primary'
                                                 : 'bg-card text-muted-foreground ring-border hover:bg-muted hover:text-foreground',
                                         )}
                                     >

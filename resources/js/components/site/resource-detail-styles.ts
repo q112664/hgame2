@@ -18,21 +18,21 @@ export const languageBadgeClassName = cn(
     'bg-warning/15 text-warning',
 );
 
-/** Clickable tags in the details tab — larger, strong primary hover */
+/** Clickable tags in the details tab — quiet surface, light primary hint on hover */
 export const tagBadgeClassName = cn(
     'inline-flex h-7 w-fit shrink-0 items-center justify-center',
     'rounded-md px-3 text-sm font-medium no-underline',
     'bg-muted text-muted-foreground',
     'transition-[color,background-color] duration-150',
-    'hover:bg-primary hover:text-primary-foreground',
-    'active:bg-primary/90 active:text-primary-foreground',
-    'focus-visible:bg-primary focus-visible:text-primary-foreground',
+    'hover:bg-primary/10 hover:text-primary',
+    'active:bg-primary/14 active:text-primary',
+    'focus-visible:bg-primary/10 focus-visible:text-primary',
     'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
 );
 
 const platformBadgeClassNames: Record<string, string> = {
     windows: cn(heroBadgeClassName, 'bg-info/15 text-info'),
-    ios: cn(heroBadgeClassName, 'bg-primary/12 text-primary'),
+    ios: cn(heroBadgeClassName, 'bg-info/15 text-info'),
     android: cn(heroBadgeClassName, 'bg-success/15 text-success'),
 };
 
@@ -54,21 +54,21 @@ export const dateBadgeClassName = cn(
 );
 
 /**
- * Compact download chip for release link rows — quiet surface, ink hover.
- * Stays neutral so host labels are not implied by color.
+ * Compact download chip for release link rows — quiet surface, primary hover.
+ * Dark mode keeps a raised surface and uses a soft primary tint on hover.
  */
 export const downloadButtonClassName = cn(
     'h-8 gap-1.5 border border-border/80 bg-muted/60 text-foreground shadow-none',
-    'hover:border-foreground/20 hover:bg-foreground hover:text-background',
-    'dark:border-foreground/15 dark:bg-surface-raised',
-    'dark:hover:border-transparent dark:hover:bg-foreground dark:hover:text-background',
+    'hover:border-primary/30 hover:bg-primary hover:text-primary-foreground',
+    'dark:border-foreground/15 dark:bg-surface-raised dark:text-foreground',
+    'dark:hover:border-primary/35 dark:hover:bg-primary/18 dark:hover:text-primary',
 );
 
 /** Primary download CTA on resource hero / confirm pages. */
 export const downloadHeroButtonClassName = cn(
-    'border border-transparent bg-foreground px-4 text-background shadow-none',
-    'hover:bg-foreground/88',
-    'dark:border-foreground/20 dark:bg-surface-strong dark:text-foreground',
-    'dark:hover:border-foreground/35 dark:hover:bg-surface-raised dark:hover:text-foreground',
+    'border border-transparent bg-primary px-4 text-primary-foreground shadow-none',
+    'hover:bg-primary/90',
+    'dark:border-primary/40 dark:bg-primary/90',
+    'dark:hover:border-primary/50 dark:hover:bg-primary',
 );
 

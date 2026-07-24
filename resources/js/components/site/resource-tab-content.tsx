@@ -1,6 +1,5 @@
 import { Link } from '@inertiajs/react';
 import { CalendarDays, Download, HardDrive, Images } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
 import { PlatformIcon } from '@/components/site/platform-icon';
@@ -83,25 +82,9 @@ export function ResourceTabContent({
     screenshotSlides,
     onOpenLightbox,
 }: Props) {
-    const shouldReduceMotion = useReducedMotion();
-
     return (
         <div aria-busy={isTabPending || undefined}>
-            <motion.div
-                key={activeTab}
-                initial={shouldReduceMotion ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={
-                    shouldReduceMotion
-                        ? { duration: 0 }
-                        : {
-                              type: 'tween',
-                              duration: 0.14,
-                              ease: 'easeOut',
-                          }
-                }
-            >
-                {activeTab === 'details' ? (
+            {activeTab === 'details' ? (
                     <section className="rounded-md border border-border bg-card p-4 sm:p-5">
                         {resource.tags.length > 0 ? (
                             <div className="mb-4 flex flex-wrap gap-2">
@@ -282,7 +265,6 @@ export function ResourceTabContent({
                         />
                     )
                 ) : null}
-            </motion.div>
         </div>
     );
 }

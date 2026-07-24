@@ -343,8 +343,8 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
 
                 <section className="overflow-hidden rounded-md border border-border bg-card">
-                    <div className="flex flex-col sm:flex-row">
-                        <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted sm:aspect-auto sm:h-[280px] sm:w-auto sm:max-w-[498px]">
+                    <div className="flex flex-col md:flex-row">
+                        <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted md:aspect-auto md:h-[280px] md:w-auto md:max-w-[498px]">
                             {hasCover ? (
                                 <button
                                     type="button"
@@ -372,7 +372,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                             )}
                         </div>
 
-                        <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:p-5">
+                        <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:p-5">
                             <div className="flex flex-wrap gap-1.5">
                                 <Badge
                                     variant="outline"
@@ -407,12 +407,12 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                             </div>
 
                             <div className="space-y-1">
-                                <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                                <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground md:text-2xl">
                                     {resource.title}
                                 </h1>
 
                                 {resource.subtitle ? (
-                                    <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+                                    <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
                                         {resource.subtitle}
                                     </p>
                                 ) : null}
@@ -566,8 +566,8 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                 </div>
                                 <p className="text-xs text-muted-foreground">
                                     {isFavorite
-                                        ? 'Favorited — download updates will show on your Favorites page.'
-                                        : 'Favorite this resource to get download update alerts.'}
+                                        ? 'Updates on Favorites'
+                                        : 'Favorite for update alerts'}
                                 </p>
                             </div>
                         </div>

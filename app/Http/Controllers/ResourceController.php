@@ -135,7 +135,10 @@ class ResourceController extends Controller
             $with['screenshots'] = fn ($query) => $query->orderBy('sort_order');
         }
 
-        return $resource->load($with);
+        return $resource
+            ->load($with)
+            ->loadAvg('ratings as rating_average', 'score')
+            ->loadCount('ratings');
     }
 
     /**
@@ -148,6 +151,8 @@ class ResourceController extends Controller
         bool $includeDescription,
         bool $includeTags,
     ): array {
+        $ratingAverage = $game->getAttribute('rating_average');
+
         return [
             ...GamePresenter::detail(
                 $game,
@@ -161,6 +166,16 @@ class ResourceController extends Controller
                 ?->favoritedGames()
                 ->where('games.id', $game->id)
                 ->exists() ?? false,
+            'ratingAverage' => $ratingAverage !== null
+                ? round((float) $ratingAverage, 1)
+                : null,
+            'ratingCount' => (int) $game->getAttribute('ratings_count'),
+            'userRating' => ($userRating = auth()->user()
+                ?->gameRatings()
+                ->where('game_id', $game->id)
+                ->value('score')) !== null
+                ? (int) $userRating
+                : null,
             'adminEditUrl' => auth()->user()?->is_admin
                 ? GameResource::getUrl('edit', ['record' => $game], panel: 'admin')
                 : null,

@@ -3,6 +3,7 @@
 use App\Http\Controllers\DocController;
 use App\Http\Controllers\DownloadLinkController;
 use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\GameRatingController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\SearchController;
@@ -37,6 +38,10 @@ Route::middleware('auth')->group(function () {
         ->name('resources.favorite');
     Route::delete('/resources/{resource}/favorite', [FavoriteController::class, 'destroy'])
         ->name('resources.favorite.destroy');
+    Route::post('/resources/{resource}/rating', [GameRatingController::class, 'store'])
+        ->name('resources.rating.store');
+    Route::delete('/resources/{resource}/rating', [GameRatingController::class, 'destroy'])
+        ->name('resources.rating.destroy');
     Route::post('/resources/{resource}/downloads/seen', [ResourceController::class, 'markDownloadsSeen'])
         ->name('resources.downloads.seen');
 });

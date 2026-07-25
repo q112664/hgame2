@@ -58,7 +58,7 @@ export const dateBadgeClassName = cn(
  * Dark mode keeps a raised surface and uses a soft primary tint on hover.
  */
 export const downloadButtonClassName = cn(
-    'h-8 gap-1.5 border border-border/80 bg-muted/60 text-foreground shadow-none',
+    'h-7 gap-1 border border-border/80 bg-muted/60 px-2.5 text-xs text-foreground shadow-none',
     'hover:border-primary/30 hover:bg-primary hover:text-primary-foreground',
     'dark:border-foreground/15 dark:bg-surface-raised dark:text-foreground',
     'dark:hover:border-primary/35 dark:hover:bg-primary/18 dark:hover:text-primary',

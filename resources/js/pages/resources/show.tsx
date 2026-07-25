@@ -19,6 +19,10 @@ import {
     languageBadgeClassName,
     platformBadgeClassName,
 } from '@/components/site/resource-detail-styles';
+import {
+    ResourceRatingStars,
+    ResourceRatingSummary,
+} from '@/components/site/resource-rating';
 import { ResourceTabContent } from '@/components/site/resource-tab-content';
 import { RouteTabs } from '@/components/site/route-tabs';
 import { SitePageContainer } from '@/components/site/site-page-container';
@@ -39,6 +43,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useFavorite } from '@/hooks/use-favorite';
+import { useResourceRating } from '@/hooks/use-resource-rating';
 import { SiteLayout } from '@/layouts/site-layout';
 import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
@@ -92,6 +97,18 @@ export default function ResourceShow({ activeTab, resource }: Props) {
     } = useFavorite({
         resourceId: resource.id,
         initialIsFavorited: resource.isFavorited,
+    });
+    const {
+        average: ratingAverage,
+        count: ratingCount,
+        userRating,
+        isSaving: isSavingRating,
+        rate: handleRate,
+    } = useResourceRating({
+        resourceId: resource.id,
+        initialAverage: resource.ratingAverage,
+        initialCount: resource.ratingCount,
+        initialUserRating: resource.userRating,
     });
     const [lightboxSlides, setLightboxSlides] = useState<LightboxSlide[]>([]);
     const [lightboxIndex, setLightboxIndex] = useState(-1);
@@ -452,10 +469,14 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                         resource.views,
                                     )}
                                 </span>
+                                <ResourceRatingSummary
+                                    average={ratingAverage}
+                                    count={ratingCount}
+                                />
                             </div>
 
                             <div className="mt-auto flex flex-col gap-2 pt-1">
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     {resource.hasDownloads ? (
                                         <Button
                                             size="lg"
@@ -535,6 +556,11 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                             Unavailable
                                         </Button>
                                     )}
+                                    <ResourceRatingStars
+                                        value={userRating}
+                                        onRate={handleRate}
+                                        disabled={isSavingRating}
+                                    />
                                     <FavoriteButton
                                         isFavorited={isFavorite}
                                         isToggling={isTogglingFavorite}
@@ -565,6 +591,10 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                     ) : null}
                                 </div>
                                 <p className="text-xs text-muted-foreground">
+                                    {userRating !== null
+                                        ? `Your rating: ${userRating}/5`
+                                        : 'Rate this title'}
+                                    {' · '}
                                     {isFavorite
                                         ? 'Updates on Favorites'
                                         : 'Favorite for update alerts'}

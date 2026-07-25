@@ -311,11 +311,13 @@ test('download release items use the compact responsive layout', function () {
     $source = $filesystem->get(resource_path('js/components/site/resource-tab-content.tsx'));
 
     expect($source)
-        ->toContain('p-3 sm:p-4')
-        ->toContain('flex flex-col gap-2.5 border-b border-border/70')
-        ->toContain('flex flex-wrap gap-2')
+        ->toContain('flex flex-col gap-2.5')
+        ->toContain('flex flex-col gap-1.5 border-b border-border/70 px-3 py-2.5 sm:px-3.5')
+        ->toContain('flex flex-col gap-2 px-3 py-2.5 sm:px-3.5')
+        ->toContain('flex flex-wrap gap-1.5')
         ->toContain('size="sm"')
         ->toContain('downloadButtonClassName')
+        ->not->toContain('p-3 sm:p-4')
         ->not->toContain('border-b border-border bg-muted/50 px-4 py-3.5');
 });
 
@@ -335,7 +337,7 @@ test('button variants use deliberate dark mode surfaces and borders', function (
     expect($resourceStyles)
         ->toContain('downloadButtonClassName')
         ->toContain('downloadHeroButtonClassName')
-        ->toContain('bg-muted/60 text-foreground')
+        ->toContain('bg-muted/60 px-2.5 text-xs text-foreground')
         ->toContain('border border-transparent bg-primary px-4 text-primary-foreground')
         ->toContain('hover:bg-primary hover:text-primary-foreground')
         ->toContain('dark:hover:bg-primary/18 dark:hover:text-primary')

@@ -20,7 +20,8 @@ import {
     platformBadgeClassName,
 } from '@/components/site/resource-detail-styles';
 import {
-    ResourceRatingStars,
+    ResourceRatingButton,
+    ResourceRatingDialog,
     ResourceRatingSummary,
 } from '@/components/site/resource-rating';
 import { ResourceTabContent } from '@/components/site/resource-tab-content';
@@ -82,7 +83,7 @@ const resourceTabs: Array<{
     },
     {
         value: 'screenshots',
-        label: 'Screenshots',
+        label: 'Gallery',
         href: (resource) => resourceScreenshots(resource).url,
     },
 ];
@@ -103,7 +104,10 @@ export default function ResourceShow({ activeTab, resource }: Props) {
         count: ratingCount,
         userRating,
         isSaving: isSavingRating,
+        isAuthenticated,
+        requireAuth,
         rate: handleRate,
+        clear: handleClearRating,
     } = useResourceRating({
         resourceId: resource.id,
         initialAverage: resource.ratingAverage,
@@ -113,8 +117,9 @@ export default function ResourceShow({ activeTab, resource }: Props) {
     const [lightboxSlides, setLightboxSlides] = useState<LightboxSlide[]>([]);
     const [lightboxIndex, setLightboxIndex] = useState(-1);
     const [coverDialogOpen, setCoverDialogOpen] = useState(false);
+    const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
     const page = usePage();
-    const { auth } = page.props;
+    const { auth, ratingsEnabled } = page.props;
     const authUserId = auth.user?.id;
     const { post: postDownloadsSeen } = useHttp<Record<string, never>>();
     const tabsListRef = useRef<HTMLElement | null>(null);
@@ -469,13 +474,29 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                         resource.views,
                                     )}
                                 </span>
-                                <ResourceRatingSummary
-                                    average={ratingAverage}
-                                    count={ratingCount}
-                                />
                             </div>
 
+                            {ratingsEnabled ? (
+                                <ResourceRatingDialog
+                                    open={ratingDialogOpen}
+                                    onOpenChange={setRatingDialogOpen}
+                                    title={resource.title}
+                                    average={ratingAverage}
+                                    count={ratingCount}
+                                    userRating={userRating}
+                                    isSaving={isSavingRating}
+                                    onRate={handleRate}
+                                    onClear={handleClearRating}
+                                />
+                            ) : null}
+
                             <div className="mt-auto flex flex-col gap-2 pt-1">
+                                {ratingsEnabled ? (
+                                    <ResourceRatingSummary
+                                        average={ratingAverage}
+                                        count={ratingCount}
+                                    />
+                                ) : null}
                                 <div className="flex flex-wrap items-center gap-2">
                                     {resource.hasDownloads ? (
                                         <Button
@@ -556,11 +577,24 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                             Unavailable
                                         </Button>
                                     )}
-                                    <ResourceRatingStars
-                                        value={userRating}
-                                        onRate={handleRate}
-                                        disabled={isSavingRating}
-                                    />
+                                    {ratingsEnabled ? (
+                                        <ResourceRatingButton
+                                            average={ratingAverage}
+                                            count={ratingCount}
+                                            userRating={userRating}
+                                            open={ratingDialogOpen}
+                                            onOpen={() => {
+                                                if (
+                                                    !isAuthenticated &&
+                                                    !requireAuth()
+                                                ) {
+                                                    return;
+                                                }
+
+                                                setRatingDialogOpen(true);
+                                            }}
+                                        />
+                                    ) : null}
                                     <FavoriteButton
                                         isFavorited={isFavorite}
                                         isToggling={isTogglingFavorite}
@@ -590,15 +624,6 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                         </Tooltip>
                                     ) : null}
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    {userRating !== null
-                                        ? `Your rating: ${userRating}/5`
-                                        : 'Rate this title'}
-                                    {' · '}
-                                    {isFavorite
-                                        ? 'Updates on Favorites'
-                                        : 'Favorite for update alerts'}
-                                </p>
                             </div>
                         </div>
                     </div>

@@ -1,4 +1,8 @@
 import { Heart } from 'lucide-react';
+import {
+    heroActionIdleClassName,
+    heroFavoriteActiveClassName,
+} from '@/components/site/resource-detail-styles';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -15,12 +19,6 @@ type FavoriteButtonProps = {
     size?: 'icon' | 'icon-lg';
     className?: string;
 };
-
-const heartActiveClassName =
-    'bg-favorite/12 text-favorite hover:bg-favorite/18 dark:border dark:border-favorite/30 dark:bg-favorite/15 dark:hover:bg-favorite/25';
-
-const heartIdleClassName =
-    'bg-muted text-muted-foreground hover:bg-favorite/10 hover:text-favorite dark:border dark:border-foreground/15 dark:bg-surface-raised dark:text-foreground dark:hover:border-favorite/25 dark:hover:bg-favorite/15 dark:hover:text-favorite';
 
 /**
  * Heart-shaped favorite toggle used on resource pages.
@@ -40,15 +38,18 @@ export function FavoriteButton({
             <TooltipTrigger asChild>
                 <Button
                     type="button"
-                    variant="secondary"
+                    variant="outline"
                     size={size}
                     aria-label={label}
                     aria-pressed={isFavorited}
                     disabled={isToggling}
                     onClick={onToggle}
                     className={cn(
-                        'border-0 shadow-none ring-0',
-                        isFavorited ? heartActiveClassName : heartIdleClassName,
+                        isFavorited
+                            ? heroFavoriteActiveClassName
+                            : heroActionIdleClassName,
+                        !isFavorited &&
+                            'hover:border-favorite/30 hover:bg-favorite/10 hover:text-favorite dark:hover:border-favorite/25 dark:hover:bg-favorite/15 dark:hover:text-favorite',
                         className,
                     )}
                 >

@@ -62,8 +62,8 @@ function optimisticAfterClear(snapshot: RatingSnapshot): RatingSnapshot {
 }
 
 /**
- * Optimistic resource rating (1–5 stars) with auth-gated submit.
- * Clicking the current score again clears the rating.
+ * Optimistic resource rating (1–10 scale) with auth-gated submit.
+ * `rate(score)` always sets/updates; `clear()` removes the rating.
  */
 export function useResourceRating({
     resourceId,
@@ -93,37 +93,34 @@ export function useResourceRating({
     }, [serverSnapshot]);
 
     const snapshot = optimistic ?? serverSnapshot;
+    const isAuthenticated = Boolean(page.props.auth.user);
+
+    const requireAuth = useCallback(() => {
+        if (isAuthenticated) {
+            return true;
+        }
+
+        openAuthDialog('login', {
+            redirect: redirectPath ?? page.url,
+        });
+
+        return false;
+    }, [isAuthenticated, openAuthDialog, page.url, redirectPath]);
 
     const rate = useCallback(
         (score: number) => {
-            if (!page.props.auth.user) {
-                openAuthDialog('login', {
-                    redirect: redirectPath ?? page.url,
-                });
-
+            if (!requireAuth()) {
                 return;
             }
 
             const baseline = optimistic ?? serverSnapshot;
-            const shouldClear = baseline.userRating === score;
-            const next = shouldClear
-                ? optimisticAfterClear(baseline)
-                : optimisticAfterScore(baseline, score);
 
-            setOptimistic(next);
-            setIsSaving(true);
-
-            if (shouldClear) {
-                router.delete(clearRating.url(resourceId), {
-                    preserveScroll: true,
-                    preserveState: true,
-                    only,
-                    onError: () => setOptimistic(baseline),
-                    onFinish: () => setIsSaving(false),
-                });
-
+            if (baseline.userRating === score) {
                 return;
             }
+
+            setOptimistic(optimisticAfterScore(baseline, score));
+            setIsSaving(true);
 
             router.post(
                 upsertRating.url(resourceId),
@@ -137,17 +134,31 @@ export function useResourceRating({
                 },
             );
         },
-        [
-            only,
-            openAuthDialog,
-            optimistic,
-            page.props.auth.user,
-            page.url,
-            redirectPath,
-            resourceId,
-            serverSnapshot,
-        ],
+        [only, optimistic, requireAuth, resourceId, serverSnapshot],
     );
+
+    const clear = useCallback(() => {
+        if (!requireAuth()) {
+            return;
+        }
+
+        const baseline = optimistic ?? serverSnapshot;
+
+        if (baseline.userRating === null) {
+            return;
+        }
+
+        setOptimistic(optimisticAfterClear(baseline));
+        setIsSaving(true);
+
+        router.delete(clearRating.url(resourceId), {
+            preserveScroll: true,
+            preserveState: true,
+            only,
+            onError: () => setOptimistic(baseline),
+            onFinish: () => setIsSaving(false),
+        });
+    }, [only, optimistic, requireAuth, resourceId, serverSnapshot]);
 
     return useMemo(
         () => ({
@@ -155,8 +166,20 @@ export function useResourceRating({
             count: snapshot.count,
             userRating: snapshot.userRating,
             isSaving,
+            isAuthenticated,
+            requireAuth,
             rate,
+            clear,
         }),
-        [isSaving, rate, snapshot.average, snapshot.count, snapshot.userRating],
+        [
+            clear,
+            isAuthenticated,
+            isSaving,
+            rate,
+            requireAuth,
+            snapshot.average,
+            snapshot.count,
+            snapshot.userRating,
+        ],
     );
 }

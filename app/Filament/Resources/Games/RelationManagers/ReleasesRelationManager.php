@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Games\RelationManagers;
 
 use App\Filament\Resources\Games\Schemas\GameForm;
+use App\Support\Media;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -10,8 +11,8 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -50,8 +51,10 @@ class ReleasesRelationManager extends RelationManager
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
-                Textarea::make('description')
-                    ->rows(4)
+                RichEditor::make('description')
+                    ->fileAttachmentsDisk(Media::diskName())
+                    ->fileAttachmentsDirectory('games/content')
+                    ->fileAttachmentsVisibility('public')
                     ->columnSpanFull(),
                 Toggle::make('is_active')
                     ->default(true)

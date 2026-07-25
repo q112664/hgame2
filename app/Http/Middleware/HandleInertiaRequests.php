@@ -43,6 +43,7 @@ class HandleInertiaRequests extends Middleware
             'name' => Setting::siteLogoText(),
             'siteLogo' => Setting::siteLogo(),
             'navigationMenu' => Setting::navigationMenu(),
+            'ratingsEnabled' => Setting::ratingsEnabled(),
             'auth' => [
                 'user' => $request->user(),
             ],

@@ -20,6 +20,7 @@ declare module '@inertiajs/core' {
             name: string;
             siteLogo: SiteLogo;
             navigationMenu: NavigationMenuItem[];
+            ratingsEnabled: boolean;
             auth: Auth;
             authModal: AuthModalConfig | null;
             sidebarOpen: boolean;

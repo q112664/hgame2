@@ -107,22 +107,22 @@ export function ResourceTabContent({
                 ) : null}
 
                 {activeTab === 'downloads' ? (
-                    <div className="flex flex-col gap-2.5">
+                    <div className="flex flex-col gap-4">
                         {resource.releases.length > 0 ? (
                             resource.releases.map((release) => (
                                 <article
                                     key={release.id}
-                                    className="overflow-hidden rounded-md border border-border bg-card"
+                                    className="overflow-hidden rounded-lg border border-border bg-card"
                                 >
                                     {/* Header: title + version + description */}
-                                    <div className="flex flex-col gap-1.5 border-b border-border/70 px-3 py-2.5 sm:px-3.5">
-                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                            <h3 className="font-heading text-sm font-semibold text-foreground">
+                                    <div className="flex flex-col gap-2.5 border-b border-border/70 px-4 py-4 sm:px-5">
+                                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                                            <h3 className="font-heading text-base font-semibold tracking-tight text-foreground">
                                                 {release.title ??
                                                     'Download package'}
                                             </h3>
                                             {release.version ? (
-                                                <span className="inline-flex h-5 items-center rounded-sm bg-muted px-1.5 text-[11px] font-medium text-muted-foreground">
+                                                <span className="inline-flex h-6 items-center rounded-md bg-muted px-2 text-xs font-medium text-muted-foreground">
                                                     v{release.version}
                                                 </span>
                                             ) : null}
@@ -131,14 +131,14 @@ export function ResourceTabContent({
                                         {release.description ? (
                                             <RichHtml
                                                 html={release.description}
-                                                className="prose-sm [--tw-prose-body:var(--color-muted-foreground)] prose-p:my-0 [&:has(>p:only-child:empty)]:hidden"
+                                                className="prose-sm max-w-none text-muted-foreground [--tw-prose-body:var(--color-muted-foreground)] prose-p:my-1.5 prose-p:leading-relaxed first:prose-p:mt-0 last:prose-p:mb-0 [&:has(>p:only-child:empty)]:hidden"
                                             />
                                         ) : null}
                                     </div>
 
-                                    {/* Tags + actions */}
-                                    <div className="flex flex-col gap-2 px-3 py-2.5 sm:px-3.5">
-                                        <div className="flex flex-wrap gap-1">
+                                    {/* Tags + actions — stacked on mobile, one row on sm+ */}
+                                    <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2.5 sm:px-5">
+                                        <div className="flex min-w-0 flex-wrap gap-1.5 sm:flex-1">
                                             {release.platforms.map(
                                                 (platform) => (
                                                     <Badge
@@ -201,13 +201,13 @@ export function ResourceTabContent({
                                         </div>
 
                                         {release.downloadLinks.length > 0 ? (
-                                            <div className="flex flex-wrap gap-1.5">
+                                            <div className="flex flex-wrap gap-2 sm:ml-auto sm:justify-end">
                                                 {release.downloadLinks.map(
                                                     (link, index) => (
                                                         <Button
                                                             key={link.id}
                                                             asChild
-                                                            variant="outline"
+                                                            variant="default"
                                                             size="sm"
                                                             className={downloadButtonClassName}
                                                         >
@@ -260,8 +260,8 @@ export function ResourceTabContent({
                     ) : (
                         <SiteEmptyState
                             icon={Images}
-                            title="No screenshots yet"
-                            description="This resource does not have screenshots uploaded."
+                            title="No images yet"
+                            description="This resource does not have gallery images uploaded."
                         />
                     )
                 ) : null}

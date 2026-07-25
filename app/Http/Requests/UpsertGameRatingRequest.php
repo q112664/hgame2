@@ -18,7 +18,7 @@ class UpsertGameRatingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'score' => ['required', 'integer', 'min:1', 'max:5'],
+            'score' => ['required', 'integer', 'min:1', 'max:10'],
         ];
     }
 }

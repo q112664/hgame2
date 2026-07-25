@@ -57,6 +57,22 @@ class Setting extends Model
         return rtrim((string) (static::get('site_url') ?: config('app.url')), '/');
     }
 
+    public static function ratingsEnabled(): bool
+    {
+        $value = static::get('ratings_enabled');
+
+        if ($value === null) {
+            return true;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public static function setRatingsEnabled(bool $enabled): void
+    {
+        static::set('ratings_enabled', $enabled ? '1' : '0');
+    }
+
     public static function coverThumbnailMaxWidth(): int
     {
         $value = (int) (static::get('cover_thumbnail_max_width') ?? self::DEFAULT_COVER_THUMBNAIL_MAX_WIDTH);

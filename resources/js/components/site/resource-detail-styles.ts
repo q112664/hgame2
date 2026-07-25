@@ -54,14 +54,14 @@ export const dateBadgeClassName = cn(
 );
 
 /**
- * Compact download chip for release link rows — quiet surface, primary hover.
- * Dark mode keeps a raised surface and uses a soft primary tint on hover.
+ * Compact download CTA for release link rows — primary fill so it stands out
+ * from the quiet meta badges on the left.
  */
 export const downloadButtonClassName = cn(
-    'h-7 gap-1 border border-border/80 bg-muted/60 px-2.5 text-xs text-foreground shadow-none',
-    'hover:border-primary/30 hover:bg-primary hover:text-primary-foreground',
-    'dark:border-foreground/15 dark:bg-surface-raised dark:text-foreground',
-    'dark:hover:border-primary/35 dark:hover:bg-primary/18 dark:hover:text-primary',
+    'h-9 gap-1.5 border border-transparent bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-none',
+    'hover:bg-primary/90',
+    'dark:border-primary/40 dark:bg-primary/90',
+    'dark:hover:border-primary/50 dark:hover:bg-primary',
 );
 
 /** Primary download CTA on resource hero / confirm pages. */
@@ -70,5 +70,32 @@ export const downloadHeroButtonClassName = cn(
     'hover:bg-primary/90',
     'dark:border-primary/40 dark:bg-primary/90',
     'dark:hover:border-primary/50 dark:hover:bg-primary',
+);
+
+/**
+ * Shared idle shell for hero Rate / Favorite actions.
+ * Same border + surface treatment in light and dark (no border-only-in-dark).
+ */
+export const heroActionIdleClassName = cn(
+    'border border-border bg-muted text-muted-foreground shadow-none ring-0',
+    'hover:bg-muted/80',
+    'dark:border-foreground/15 dark:bg-surface-raised dark:text-foreground',
+    'dark:hover:border-foreground/25 dark:hover:bg-surface-strong',
+);
+
+/** Active favorite state on the hero action shell. */
+export const heroFavoriteActiveClassName = cn(
+    'border border-favorite/30 bg-favorite/12 text-favorite shadow-none ring-0',
+    'hover:border-favorite/40 hover:bg-favorite/18 hover:text-favorite',
+    'dark:border-favorite/30 dark:bg-favorite/15 dark:text-favorite',
+    'dark:hover:border-favorite/40 dark:hover:bg-favorite/25 dark:hover:text-favorite',
+);
+
+/** Active rating state on the hero action shell. */
+export const heroRatingActiveClassName = cn(
+    'border border-warning/30 bg-warning/12 text-warning shadow-none ring-0',
+    'hover:border-warning/40 hover:bg-warning/18 hover:text-warning',
+    'dark:border-warning/30 dark:bg-warning/15 dark:text-warning',
+    'dark:hover:border-warning/40 dark:hover:bg-warning/25 dark:hover:text-warning',
 );
 

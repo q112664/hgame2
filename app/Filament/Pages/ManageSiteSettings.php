@@ -9,6 +9,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
@@ -51,6 +52,7 @@ class ManageSiteSettings extends Page
             'site_logo_text' => Setting::siteLogoText(),
             'site_logo_path' => Setting::siteLogoPath(),
             'hero_background_path' => Setting::heroBackgroundPath(),
+            'ratings_enabled' => Setting::ratingsEnabled(),
         ]);
     }
 
@@ -122,6 +124,14 @@ class ManageSiteSettings extends Page
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                             ->helperText('Recommended wide image (about 16:9). Max 5MB. JPEG, PNG, or WebP.'),
                     ]),
+                Section::make('Features')
+                    ->description('Toggle optional site features for visitors.')
+                    ->schema([
+                        Toggle::make('ratings_enabled')
+                            ->label('Resource ratings')
+                            ->helperText('When disabled, rating controls are hidden and rating APIs reject new submissions.')
+                            ->default(true),
+                    ]),
             ]);
     }
 
@@ -181,6 +191,7 @@ class ManageSiteSettings extends Page
         Setting::set('site_logo_mode', $mode);
         Setting::set('site_logo_text', $logoText);
         Setting::set('hero_background_path', $nextHeroPath);
+        Setting::setRatingsEnabled(filter_var($data['ratings_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN));
 
         if ($mode !== 'text') {
             Setting::set('site_logo_path', $nextLogoPath);

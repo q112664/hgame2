@@ -22,7 +22,7 @@ class GameRatingFactory extends Factory
         return [
             'user_id' => User::factory(),
             'game_id' => Game::factory(),
-            'score' => fake()->numberBetween(1, 5),
+            'score' => fake()->numberBetween(1, 10),
         ];
     }
 }

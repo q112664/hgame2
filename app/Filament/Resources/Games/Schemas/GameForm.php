@@ -153,8 +153,10 @@ class GameForm
                                     ->required()
                                     ->maxLength(255)
                                     ->columnSpanFull(),
-                                Textarea::make('description')
-                                    ->rows(4)
+                                RichEditor::make('description')
+                                    ->fileAttachmentsDisk(Media::diskName())
+                                    ->fileAttachmentsDirectory('games/content')
+                                    ->fileAttachmentsVisibility('public')
                                     ->columnSpanFull(),
                                 Toggle::make('is_active')->default(true)->required(),
                                 Hidden::make('published_at')->default(now()),

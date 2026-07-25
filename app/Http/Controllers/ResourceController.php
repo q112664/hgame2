@@ -8,6 +8,7 @@ use App\Actions\Games\RecordGameView;
 use App\Filament\Resources\Games\GameResource;
 use App\Http\Requests\ListResourcesRequest;
 use App\Models\Game;
+use App\Models\Setting;
 use App\Support\GamePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -135,10 +136,15 @@ class ResourceController extends Controller
             $with['screenshots'] = fn ($query) => $query->orderBy('sort_order');
         }
 
-        return $resource
-            ->load($with)
-            ->loadAvg('ratings as rating_average', 'score')
-            ->loadCount('ratings');
+        $resource->load($with);
+
+        if (Setting::ratingsEnabled()) {
+            $resource
+                ->loadAvg('ratings as rating_average', 'score')
+                ->loadCount('ratings');
+        }
+
+        return $resource;
     }
 
     /**
@@ -151,7 +157,10 @@ class ResourceController extends Controller
         bool $includeDescription,
         bool $includeTags,
     ): array {
-        $ratingAverage = $game->getAttribute('rating_average');
+        $ratingsEnabled = Setting::ratingsEnabled();
+        $ratingAverage = $ratingsEnabled
+            ? $game->getAttribute('rating_average')
+            : null;
 
         return [
             ...GamePresenter::detail(
@@ -169,8 +178,10 @@ class ResourceController extends Controller
             'ratingAverage' => $ratingAverage !== null
                 ? round((float) $ratingAverage, 1)
                 : null,
-            'ratingCount' => (int) $game->getAttribute('ratings_count'),
-            'userRating' => ($userRating = auth()->user()
+            'ratingCount' => $ratingsEnabled
+                ? (int) $game->getAttribute('ratings_count')
+                : 0,
+            'userRating' => $ratingsEnabled && ($userRating = auth()->user()
                 ?->gameRatings()
                 ->where('game_id', $game->id)
                 ->value('score')) !== null

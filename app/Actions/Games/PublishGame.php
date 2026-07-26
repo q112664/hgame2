@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Game;
 use App\Models\Language;
 use App\Models\Platform;
+use App\Support\DescriptionMediaImporter;
 use App\Support\Media;
 use App\Support\MediaThumbnail;
 use App\Support\RemoteMediaDownloader;
@@ -22,6 +23,7 @@ class PublishGame
     public function __construct(
         private TagImporter $tagImporter,
         private RemoteMediaDownloader $mediaDownloader,
+        private DescriptionMediaImporter $descriptionMediaImporter,
     ) {}
 
     /**
@@ -59,6 +61,27 @@ class PublishGame
                 $screenshotPaths[] = $path;
             }
 
+            $descriptionImport = $this->descriptionMediaImporter->import(
+                isset($data['description']) ? (string) $data['description'] : null,
+                'description',
+            );
+            $uploadedPaths = [...$uploadedPaths, ...$descriptionImport['paths']];
+            $description = $descriptionImport['html'];
+
+            /** @var list<array<string, mixed>> $releases */
+            $releases = [];
+
+            foreach (array_values($data['releases'] ?? []) as $sortOrder => $releaseData) {
+                /** @var array<string, mixed> $releaseData */
+                $releaseDescriptionImport = $this->descriptionMediaImporter->import(
+                    isset($releaseData['description']) ? (string) $releaseData['description'] : null,
+                    "releases.{$sortOrder}.description",
+                );
+                $uploadedPaths = [...$uploadedPaths, ...$releaseDescriptionImport['paths']];
+                $releaseData['description'] = $releaseDescriptionImport['html'];
+                $releases[] = $releaseData;
+            }
+
             return DB::transaction(function () use (
                 $data,
                 $categoryId,
@@ -66,13 +89,15 @@ class PublishGame
                 $slug,
                 $coverPath,
                 $screenshotPaths,
+                $description,
+                $releases,
             ): Game {
                 $game = Game::query()->create([
                     'category_id' => $categoryId,
                     'title' => $data['title'],
                     'subtitle' => $data['subtitle'] ?? null,
                     'slug' => $slug,
-                    'description' => $data['description'] ?? null,
+                    'description' => $description,
                     'developer' => $data['developer'] ?? null,
                     'cover_path' => $coverPath,
                     'cover_url' => '',
@@ -98,8 +123,7 @@ class PublishGame
                     ]);
                 }
 
-                foreach (array_values($data['releases'] ?? []) as $sortOrder => $releaseData) {
-                    /** @var array<string, mixed> $releaseData */
+                foreach ($releases as $sortOrder => $releaseData) {
                     $release = $game->releases()->create([
                         'title' => $releaseData['title'],
                         'version' => $releaseData['version'] ?? null,

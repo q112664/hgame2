@@ -35,8 +35,8 @@ php artisan game:token {admin-email-or-id} --name=game-publish
 ## Recommended workflow
 
 1. `GET /api/v1/taxonomies` — load allowed categories, platforms, languages.
-2. Host cover + screenshot images somewhere HTTP-accessible (JPEG/PNG/WebP/GIF, ≤ 20MB each).
-3. `POST /api/v1/games` — create the game in one request.
+2. Host cover, screenshot, and any detail/release body images somewhere HTTP-accessible (JPEG/PNG/WebP/GIF, ≤ 20MB each).
+3. `POST /api/v1/games` — create the game in one request (detail `<img src>` URLs are ingested automatically).
 4. Optional: `GET /api/v1/games/{slug}` — confirm the result.
 5. Open `data.url` in the response for the public details page.
 
@@ -95,7 +95,7 @@ Create a game with optional screenshots and releases.
   "tags": ["Romance", "Slice of Life"],
   "developer": "Yuzu Soft",
   "release_date": "2016-07-29",
-  "description": "<p>Short HTML synopsis is allowed.</p>",
+  "description": "<p>Short HTML synopsis is allowed.</p><p><img src=\"https://cdn.example.com/detail-1.png\" alt=\"Scene\"></p>",
   "cover_url": "https://cdn.example.com/cover.png",
   "status": "published",
   "screenshots": [
@@ -109,7 +109,7 @@ Create a game with optional screenshots and releases.
       "languages": ["Chinese"],
       "version": "1.0",
       "file_size": "5.4 GB",
-      "description": "<p>Optional release notes.</p>",
+      "description": "<p>Optional release notes with <img src=\"https://cdn.example.com/patch-notes.png\"></p>",
       "download_links": [
         "https://example.com/game.zip"
       ]
@@ -130,7 +130,7 @@ Create a game with optional screenshots and releases.
 | `tags` | no | Array of strings; created if missing |
 | `developer` | no | max 255 |
 | `release_date` | no | Date string, e.g. `2016-07-29` |
-| `description` | no | HTML string |
+| `description` | no | HTML string; remote `<img src>` are downloaded (see Images) |
 | `status` | no | `draft` \| `published` \| `unlisted` (default **`published`**) |
 | `published_at` | no | Default `now()` when status is not `draft` |
 | `screenshots` | no | Array of image URLs, max 50 |
@@ -146,7 +146,7 @@ Create a game with optional screenshots and releases.
 | `download_links` | yes | ≥1 absolute URLs |
 | `version` | no | |
 | `file_size` | no | Display string, e.g. `"5.4 GB"` |
-| `description` | no | HTML |
+| `description` | no | HTML; remote `<img src>` are downloaded like game details |
 | `is_active` | no | default `true` |
 | `published_at` | no | default `now()` |
 
@@ -182,9 +182,13 @@ Confirm a created game. Same `data` shape as create.
 
 - **No** `multipart/form-data` file upload in v1.
 - Pass `cover_url` and `screenshots[]` as **HTTPS/HTTP URLs** the server can fetch.
+- **Details / release HTML images:** put remote URLs in `<img src="https://...">` inside `description` (or `releases[].description`). The server downloads each unique remote image into `games/content` and rewrites `src` to a local `/storage/...` path (same as admin RichEditor attachments).
+- Already-local paths (`/storage/games/...` or full site URLs pointing at them) are left unchanged.
+- `data:` URIs are rejected.
+- Max remote images per HTML field: **30**.
 - Allowed types: `image/jpeg`, `image/png`, `image/webp`, `image/gif`.
 - Max size per file: **20MB**.
-- Failed download / wrong type → `422` with `errors.media` (or field validation errors).
+- Failed download / wrong type → `422` with `errors.media`, `errors.description`, or `errors.releases.N.description`.
 
 ## cURL examples
 
@@ -230,7 +234,7 @@ curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
 | `422` `slug` | Slug already taken | Change `slug` or omit it |
 | `422` `category` | Unknown category | Use a name/slug from `/taxonomies` |
 | `422` `releases` | Unknown platform/language | Use values from `/taxonomies` |
-| `422` `cover_url` / `media` | Bad or unreachable image | Fix URL; ensure public access and image MIME |
+| `422` `cover_url` / `media` / `description` | Bad or unreachable image | Fix URL; ensure public access and image MIME |
 | `429` | Rate limited | Wait; max 60/min |
 
 ## Out of scope (do not attempt)
@@ -246,6 +250,7 @@ curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
 - [ ] Called `/taxonomies` and mapped names
 - [ ] Cover image URL is public and ≤ 20MB
 - [ ] Screenshot URLs (if any) are public images
+- [ ] Detail/release `<img src>` (if any) are public image URLs (not data URIs)
 - [ ] Each release has platforms, languages, and ≥1 download link
 - [ ] POST `/games` → expect `201` and `data.url`
 - [ ] Optionally GET `/games/{id}` to verify counts

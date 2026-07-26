@@ -8,6 +8,8 @@ use App\Models\Platform;
 use App\Models\User;
 use App\Support\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -161,4 +163,89 @@ test('administrators can list taxonomies and inspect a published game', function
         ->assertOk()
         ->assertJsonPath('data.id', 'senren-banka')
         ->assertJsonPath('data.screenshots_count', 2);
+});
+
+test('publishing downloads remote images embedded in description html', function () {
+    Sanctum::actingAs($this->admin);
+
+    $this->postJson('/api/v1/games', validGamePayload([
+        'description' => '<p>Intro</p><p><img src="https://example.com/detail-1.png" alt="Scene"></p><p><img src="https://example.com/detail-1.png"></p>',
+        'releases' => [[
+            'title' => 'Windows Chinese package',
+            'platforms' => ['Windows'],
+            'languages' => ['Chinese'],
+            'description' => '<p>Notes <img src="https://example.com/release-note.png"></p>',
+            'download_links' => [
+                'https://example.com/game.zip',
+            ],
+        ]],
+    ]))->assertCreated();
+
+    $game = Game::query()->where('slug', 'senren-banka')->firstOrFail();
+
+    expect($game->description)
+        ->toMatch('#src="/storage/games/content/[^"]+\.png"#')
+        ->not->toContain('https://example.com/detail-1.png')
+        ->and(substr_count((string) $game->description, '/storage/games/content/'))->toBe(2)
+        ->and($game->releases->first()->description)
+        ->toMatch('#src="/storage/games/content/[^"]+\.png"#')
+        ->not->toContain('https://example.com/release-note.png');
+
+    preg_match_all('#/storage/(games/content/[^"]+)#', (string) $game->description, $matches);
+    foreach ($matches[1] as $path) {
+        Storage::disk(Media::diskName())->assertExists($path);
+    }
+
+    preg_match('#/storage/(games/content/[^"]+)#', (string) $game->releases->first()->description, $releaseMatch);
+    Storage::disk(Media::diskName())->assertExists($releaseMatch[1]);
+});
+
+test('publishing leaves already-local description images unchanged', function () {
+    Sanctum::actingAs($this->admin);
+
+    $local = '/storage/games/content/already-there.png';
+
+    $this->postJson('/api/v1/games', validGamePayload([
+        'description' => '<p><img src="'.$local.'"></p>',
+    ]))->assertCreated();
+
+    $game = Game::query()->where('slug', 'senren-banka')->firstOrFail();
+
+    expect($game->description)->toContain('src="'.$local.'"')
+        ->and(Storage::disk(Media::diskName())->allFiles('games/content'))->toBeEmpty();
+});
+
+test('publishing rejects data uri images in description', function () {
+    Sanctum::actingAs($this->admin);
+
+    $this->postJson('/api/v1/games', validGamePayload([
+        'description' => '<p><img src="data:image/png;base64,aaaa"></p>',
+    ]))->assertUnprocessable()
+        ->assertJsonValidationErrors(['description']);
+});
+
+test('publishing rejects unreachable description images and cleans up prior media', function () {
+    Sanctum::actingAs($this->admin);
+
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
+
+    // Replace the beforeEach stubs (Http::fake merges; earlier example.com/* would always win).
+    Http::swap(new Factory);
+    Http::fake(function (Request $request) use ($png) {
+        if (str_contains($request->url(), 'broken-detail')) {
+            return Http::response('nope', 404);
+        }
+
+        return Http::response($png, 200, ['Content-Type' => 'image/png']);
+    });
+
+    $this->postJson('/api/v1/games', validGamePayload([
+        'description' => '<p><img src="https://example.com/broken-detail.png"></p>',
+    ]))->assertUnprocessable()
+        ->assertJsonValidationErrors(['description']);
+
+    expect(Storage::disk(Media::diskName())->allFiles('games/covers'))->toBeEmpty()
+        ->and(Storage::disk(Media::diskName())->allFiles('games/screenshots'))->toBeEmpty()
+        ->and(Storage::disk(Media::diskName())->allFiles('games/content'))->toBeEmpty()
+        ->and(Game::query()->where('slug', 'senren-banka')->exists())->toBeFalse();
 });

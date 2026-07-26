@@ -3,6 +3,7 @@
 namespace App\Actions\Games;
 
 use App\Models\Game;
+use App\Models\GameRelease;
 use App\Models\GameScreenshot;
 use App\Support\Media;
 use App\Support\MediaThumbnail;
@@ -20,10 +21,18 @@ class DeleteGameMedia
      */
     public function pathsFor(Game $game): array
     {
+        $releaseDescriptions = $game->releases()
+            ->whereNotNull('description')
+            ->pluck('description')
+            ->all();
+
         $paths = collect([
             $game->cover_path,
             ...$game->screenshots()->pluck('path')->all(),
             ...$this->pathsFromDescription((string) $game->description),
+            ...collect($releaseDescriptions)
+                ->flatMap(fn (mixed $description): array => $this->pathsFromDescription((string) $description))
+                ->all(),
         ])
             ->filter(fn (mixed $path): bool => is_string($path) && $path !== '')
             ->values();
@@ -70,8 +79,16 @@ class DeleteGameMedia
             return true;
         }
 
-        return Game::query()
+        if (Game::query()
             ->whereKeyNot($game->getKey())
+            ->whereNotNull('description')
+            ->where('description', 'like', '%'.$path.'%')
+            ->exists()) {
+            return true;
+        }
+
+        return GameRelease::query()
+            ->where('game_id', '!=', $game->getKey())
             ->whereNotNull('description')
             ->where('description', 'like', '%'.$path.'%')
             ->exists();

@@ -20,11 +20,13 @@ test('deleting a game removes cover screenshots and content attachments from med
     $cover = 'games/covers/cover.jpg';
     $screenshot = 'games/screenshots/shot.jpg';
     $content = 'games/content/embed.jpg';
+    $releaseContent = 'games/content/release-note.jpg';
 
     Storage::disk('public')->put($cover, 'cover');
     Storage::disk('s3')->put($cover, 'cover');
     Storage::disk('public')->put($screenshot, 'shot');
     Storage::disk('public')->put($content, 'content');
+    Storage::disk('public')->put($releaseContent, 'release');
 
     $game = Game::factory()->create([
         'cover_path' => $cover,
@@ -35,12 +37,21 @@ test('deleting a game removes cover screenshots and content attachments from med
         'path' => $screenshot,
     ]);
 
+    $game->releases()->create([
+        'title' => 'Windows package',
+        'description' => '<p><img src="/storage/games/content/release-note.jpg"></p>',
+        'is_active' => true,
+        'published_at' => now(),
+        'sort_order' => 0,
+    ]);
+
     $game->delete();
 
     expect(Storage::disk('public')->exists($cover))->toBeFalse()
         ->and(Storage::disk('s3')->exists($cover))->toBeFalse()
         ->and(Storage::disk('public')->exists($screenshot))->toBeFalse()
-        ->and(Storage::disk('public')->exists($content))->toBeFalse();
+        ->and(Storage::disk('public')->exists($content))->toBeFalse()
+        ->and(Storage::disk('public')->exists($releaseContent))->toBeFalse();
 });
 
 test('rolling back a game deletion keeps its media files', function () {
@@ -68,6 +79,7 @@ test('failed game publish cleans up uploaded media objects', function () {
     Http::fake([
         'https://example.com/cover.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
         'https://example.com/shot.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        'https://example.com/detail.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
     ]);
 
     Platform::factory()->create([
@@ -80,6 +92,7 @@ test('failed game publish cleans up uploaded media objects', function () {
             'title' => 'Broken Publish',
             'cover_url' => 'https://example.com/cover.png',
             'status' => GameStatus::Published->value,
+            'description' => '<p><img src="https://example.com/detail.png"></p>',
             'screenshots' => [
                 'https://example.com/shot.png',
             ],
@@ -91,11 +104,12 @@ test('failed game publish cleans up uploaded media objects', function () {
             ]],
         ]);
     } catch (ValidationException) {
-        // Expected once screenshots are uploaded and platform resolution fails.
+        // Expected once media is uploaded and platform resolution fails.
     }
 
     expect(Storage::disk('public')->allFiles('games/covers'))->toBeEmpty()
         ->and(Storage::disk('public')->allFiles('games/screenshots'))->toBeEmpty()
+        ->and(Storage::disk('public')->allFiles('games/content'))->toBeEmpty()
         ->and(Game::query()->where('title', 'Broken Publish')->exists())->toBeFalse();
 });
 

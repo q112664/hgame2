@@ -104,12 +104,6 @@ class Game extends Model
             ->withTimestamps();
     }
 
-    /** @return HasMany<GameRating, $this> */
-    public function ratings(): HasMany
-    {
-        return $this->hasMany(GameRating::class);
-    }
-
     /**
      * @param  Builder<Game>  $query
      * @return Builder<Game>

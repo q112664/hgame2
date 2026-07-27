@@ -73,16 +73,6 @@ class Setting extends Model
         static::set($key, $enabled ? '1' : '0');
     }
 
-    public static function ratingsEnabled(): bool
-    {
-        return static::boolean('ratings_enabled', true);
-    }
-
-    public static function setRatingsEnabled(bool $enabled): void
-    {
-        static::setBoolean('ratings_enabled', $enabled);
-    }
-
     public static function coverThumbnailMaxWidth(): int
     {
         $value = (int) (static::get('cover_thumbnail_max_width') ?? self::DEFAULT_COVER_THUMBNAIL_MAX_WIDTH);

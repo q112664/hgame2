@@ -57,7 +57,7 @@ const navigationIcons: Record<string, LucideIcon> = {
 };
 
 const navLinkClassName = cn(
-    'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium',
+    'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium',
     'text-foreground/75 transition-[color,background-color]',
     'hover:bg-primary/10 hover:text-primary',
     'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
@@ -140,7 +140,7 @@ function NavLinks({
     const navItems = props.navigationMenu ?? [];
 
     return (
-        <nav className={cn('flex items-center gap-0.5', className)}>
+        <nav className={cn('flex items-center gap-1.5', className)}>
             {navItems.map((item) => {
                 const Icon = item.icon ? navigationIcons[item.icon] : undefined;
                 const active = isNavigationItemActive(
@@ -369,7 +369,7 @@ export function SiteHeader() {
                     </SheetContent>
                 </Sheet>
 
-                <div className="flex min-w-0 flex-1 items-center gap-6">
+                <div className="flex min-w-0 flex-1 items-center gap-5 md:gap-8">
                     <Link
                         href={home()}
                         className="shrink-0 transition-opacity hover:opacity-80"

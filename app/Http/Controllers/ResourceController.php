@@ -8,7 +8,6 @@ use App\Actions\Games\RecordGameView;
 use App\Filament\Resources\Games\GameResource;
 use App\Http\Requests\ListResourcesRequest;
 use App\Models\Game;
-use App\Models\Setting;
 use App\Support\GamePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -138,12 +137,6 @@ class ResourceController extends Controller
 
         $resource->load($with);
 
-        if (Setting::ratingsEnabled()) {
-            $resource
-                ->loadAvg('ratings as rating_average', 'score')
-                ->loadCount('ratings');
-        }
-
         return $resource;
     }
 
@@ -157,11 +150,6 @@ class ResourceController extends Controller
         bool $includeDescription,
         bool $includeTags,
     ): array {
-        $ratingsEnabled = Setting::ratingsEnabled();
-        $ratingAverage = $ratingsEnabled
-            ? $game->getAttribute('rating_average')
-            : null;
-
         return [
             ...GamePresenter::detail(
                 $game,
@@ -175,18 +163,6 @@ class ResourceController extends Controller
                 ?->favoritedGames()
                 ->where('games.id', $game->id)
                 ->exists() ?? false,
-            'ratingAverage' => $ratingAverage !== null
-                ? round((float) $ratingAverage, 1)
-                : null,
-            'ratingCount' => $ratingsEnabled
-                ? (int) $game->getAttribute('ratings_count')
-                : 0,
-            'userRating' => $ratingsEnabled && ($userRating = auth()->user()
-                ?->gameRatings()
-                ->where('game_id', $game->id)
-                ->value('score')) !== null
-                ? (int) $userRating
-                : null,
             'adminEditUrl' => auth()->user()?->is_admin
                 ? GameResource::getUrl('edit', ['record' => $game], panel: 'admin')
                 : null,

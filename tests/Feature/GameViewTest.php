@@ -1,12 +1,27 @@
 <?php
 
 use App\Actions\Games\RecordGameView;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Game;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
+
+/**
+ * @return array<string, string>
+ */
+function inertiaHeaders(array $extra = []): array
+{
+    $version = app(HandleInertiaRequests::class)->version(Request::create('/')) ?? '';
+
+    return [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => $version,
+        ...$extra,
+    ];
+}
 
 test('visiting a resource page records a view on every full page load', function () {
     $game = Game::factory()->create([
@@ -33,25 +48,37 @@ test('inertia tab switches within the same resource do not record a view', funct
         'views_count' => 3,
     ]);
 
+    $this->withHeaders(inertiaHeaders([
+        RecordGameView::TabNavigationHeader => '1',
+    ]))
+        ->from(route('resources.details', $game->slug))
+        ->get(route('resources.downloads', $game->slug))
+        ->assertOk();
+
+    expect($game->fresh()->views_count)->toBe(3);
+
+    $this->withHeaders(inertiaHeaders([
+        RecordGameView::TabNavigationHeader => '1',
+    ]))
+        ->from(route('resources.downloads', $game->slug))
+        ->get(route('resources.screenshots', $game->slug))
+        ->assertOk();
+
+    expect($game->fresh()->views_count)->toBe(3);
+});
+
+test('inertia tab switches still skip counting when only the referer fallback is present', function () {
+    $game = Game::factory()->create([
+        'slug' => 'referer-tab-game',
+        'views_count' => 3,
+    ]);
+
     $request = Request::create(
         route('resources.downloads', $game->slug),
         'GET',
         server: [
             'HTTP_X_INERTIA' => 'true',
             'HTTP_REFERER' => route('resources.details', $game->slug),
-        ],
-    );
-
-    app(RecordGameView::class)($request, $game);
-
-    expect($game->fresh()->views_count)->toBe(3);
-
-    $request = Request::create(
-        route('resources.screenshots', $game->slug),
-        'GET',
-        server: [
-            'HTTP_X_INERTIA' => 'true',
-            'HTTP_REFERER' => route('resources.downloads', $game->slug),
         ],
     );
 
@@ -66,16 +93,10 @@ test('inertia navigation from another page still records a view', function () {
         'views_count' => 0,
     ]);
 
-    $request = Request::create(
-        route('resources.details', $game->slug),
-        'GET',
-        server: [
-            'HTTP_X_INERTIA' => 'true',
-            'HTTP_REFERER' => route('resources.index'),
-        ],
-    );
-
-    app(RecordGameView::class)($request, $game);
+    $this->withHeaders(inertiaHeaders())
+        ->from(route('resources.index'))
+        ->get(route('resources.details', $game->slug))
+        ->assertOk();
 
     expect($game->fresh()->views_count)->toBe(1);
 });

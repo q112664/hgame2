@@ -67,8 +67,5 @@ export type GameDetail = GameCard & {
     releases: GameRelease[];
     hasDownloads: boolean;
     isFavorited: boolean;
-    ratingAverage: number | null;
-    ratingCount: number;
-    userRating: number | null;
     adminEditUrl: string | null;
 };

@@ -59,7 +59,6 @@ class ManageSiteSettings extends Page
             'site_logo_text' => Setting::siteLogoText(),
             'site_logo_path' => Setting::siteLogoPath(),
             'hero_background_path' => Setting::heroBackgroundPath(),
-            'ratings_enabled' => Setting::ratingsEnabled(),
             'turnstile_site_key' => Setting::get('turnstile_site_key') ?? config('services.turnstile.site_key'),
             'turnstile_secret_key' => Setting::get('turnstile_secret_key') ? '••••••••' : '',
             'turnstile_login_enabled' => Setting::boolean('turnstile_login_enabled', false),
@@ -182,14 +181,6 @@ class ManageSiteSettings extends Page
                             ->maxSize(5120)
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                             ->helperText('Recommended wide image (about 16:9). Max 5MB. JPEG, PNG, or WebP.'),
-                    ]),
-                Section::make('Features')
-                    ->description('Toggle optional site features for visitors.')
-                    ->schema([
-                        Toggle::make('ratings_enabled')
-                            ->label('Resource ratings')
-                            ->helperText('When disabled, rating controls are hidden and rating APIs reject new submissions.')
-                            ->default(true),
                     ]),
                 Section::make('Cloudflare Turnstile')
                     ->description('Bot protection for public forms. Keys can also be set via TURNSTILE_* environment variables when left empty here.')
@@ -315,7 +306,6 @@ class ManageSiteSettings extends Page
         Setting::set('site_logo_mode', $mode);
         Setting::set('site_logo_text', $logoText);
         Setting::set('hero_background_path', $nextHeroPath);
-        Setting::setRatingsEnabled(filter_var($data['ratings_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN));
 
         $siteKey = trim((string) ($data['turnstile_site_key'] ?? ''));
         Setting::set('turnstile_site_key', $siteKey !== '' ? $siteKey : null);

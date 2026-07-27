@@ -46,7 +46,6 @@ class HandleInertiaRequests extends Middleware
             'seo' => Setting::seo(),
             'siteLogo' => Setting::siteLogo(),
             'navigationMenu' => Setting::navigationMenu(),
-            'ratingsEnabled' => Setting::ratingsEnabled(),
             'turnstile' => Turnstile::frontendConfig(),
             'auth' => [
                 'user' => $request->user(),

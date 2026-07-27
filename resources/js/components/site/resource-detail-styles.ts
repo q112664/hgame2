@@ -6,13 +6,17 @@ export const heroBadgeClassName = cn(
     '[&>svg]:size-3.5!',
 );
 
-/** Category — neutral secondary surface */
+/**
+ * Category — soft brand tint so the genre/type reads first among meta chips
+ * (distinct from platform blue, language violet, size green).
+ */
 export const categoryBadgeClassName = cn(
     heroBadgeClassName,
-    'bg-secondary text-secondary-foreground',
+    'bg-primary/12 text-primary',
+    'dark:bg-primary/18 dark:text-primary',
 );
 
-/** Language — violet soft fill (distinct from platform blue / size green / rating amber) */
+/** Language — violet soft fill (distinct from platform blue / size green) */
 export const languageBadgeClassName = cn(
     heroBadgeClassName,
     'bg-language/15 text-language',
@@ -101,12 +105,4 @@ export const heroFavoriteActiveClassName = cn(
     'hover:border-favorite/40 hover:bg-favorite/18 hover:text-favorite',
     'dark:border-favorite/30 dark:bg-favorite/15 dark:text-favorite',
     'dark:hover:border-favorite/40 dark:hover:bg-favorite/25 dark:hover:text-favorite',
-);
-
-/** Active rating state on the hero action shell. */
-export const heroRatingActiveClassName = cn(
-    'border border-warning/30 bg-warning/12 text-warning shadow-none ring-0',
-    'hover:border-warning/40 hover:bg-warning/18 hover:text-warning',
-    'dark:border-warning/30 dark:bg-warning/15 dark:text-warning',
-    'dark:hover:border-warning/40 dark:hover:bg-warning/25 dark:hover:text-warning',
 );

@@ -30,7 +30,6 @@ declare module '@inertiajs/core' {
             seo: SiteSeo;
             siteLogo: SiteLogo;
             navigationMenu: NavigationMenuItem[];
-            ratingsEnabled: boolean;
             turnstile: TurnstileConfig;
             auth: Auth;
             authModal: AuthModalConfig | null;

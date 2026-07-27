@@ -121,6 +121,7 @@ export function RouteTabs<Value extends string>({
                             ? 'text-foreground'
                             : 'text-muted-foreground',
                     )}
+                    headers={{ 'X-Resource-Tab-Nav': '1' }}
                     preserveState
                     preserveScroll
                     onClick={(event) => {

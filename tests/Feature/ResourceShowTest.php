@@ -67,9 +67,6 @@ test('resource tab pages share hero metadata without shipping every tab payload'
             ])
             ->where('resource.languages', ['Chinese'])
             ->where('resource.isFavorited', false)
-            ->where('resource.ratingAverage', null)
-            ->where('resource.ratingCount', 0)
-            ->where('resource.userRating', null)
             ->where('resource.adminEditUrl', null)
             ->where('resource.hasDownloads', true)
         );

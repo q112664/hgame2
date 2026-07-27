@@ -19,11 +19,6 @@ import {
     languageBadgeClassName,
     platformBadgeClassName,
 } from '@/components/site/resource-detail-styles';
-import {
-    ResourceRatingButton,
-    ResourceRatingDialog,
-    ResourceRatingSummary,
-} from '@/components/site/resource-rating';
 import { ResourceTabContent } from '@/components/site/resource-tab-content';
 import { RouteTabs } from '@/components/site/route-tabs';
 import { SitePageContainer } from '@/components/site/site-page-container';
@@ -45,7 +40,6 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useFavorite } from '@/hooks/use-favorite';
-import { useResourceRating } from '@/hooks/use-resource-rating';
 import { SiteLayout } from '@/layouts/site-layout';
 import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
@@ -166,27 +160,11 @@ export default function ResourceShow({ activeTab, resource }: Props) {
         resourceId: resource.id,
         initialIsFavorited: resource.isFavorited,
     });
-    const {
-        average: ratingAverage,
-        count: ratingCount,
-        userRating,
-        isSaving: isSavingRating,
-        isAuthenticated,
-        requireAuth,
-        rate: handleRate,
-        clear: handleClearRating,
-    } = useResourceRating({
-        resourceId: resource.id,
-        initialAverage: resource.ratingAverage,
-        initialCount: resource.ratingCount,
-        initialUserRating: resource.userRating,
-    });
     const [lightboxSlides, setLightboxSlides] = useState<LightboxSlide[]>([]);
     const [lightboxIndex, setLightboxIndex] = useState(-1);
     const [coverDialogOpen, setCoverDialogOpen] = useState(false);
-    const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
     const page = usePage();
-    const { auth, ratingsEnabled } = page.props;
+    const { auth } = page.props;
     const authUserId = auth.user?.id;
     const { post: postDownloadsSeen } = useHttp<Record<string, never>>();
     const tabsListRef = useRef<HTMLElement | null>(null);
@@ -524,27 +502,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                 </span>
                             </div>
 
-                            {ratingsEnabled ? (
-                                <ResourceRatingDialog
-                                    open={ratingDialogOpen}
-                                    onOpenChange={setRatingDialogOpen}
-                                    title={resource.title}
-                                    average={ratingAverage}
-                                    count={ratingCount}
-                                    userRating={userRating}
-                                    isSaving={isSavingRating}
-                                    onRate={handleRate}
-                                    onClear={handleClearRating}
-                                />
-                            ) : null}
-
                             <div className="mt-auto flex flex-col gap-2 pt-1">
-                                {ratingsEnabled ? (
-                                    <ResourceRatingSummary
-                                        average={ratingAverage}
-                                        count={ratingCount}
-                                    />
-                                ) : null}
                                 <div className="flex flex-wrap items-center gap-2">
                                     {resource.hasDownloads ? (
                                         <Button
@@ -561,6 +519,9 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                                         resource.id,
                                                     ).url
                                                 }
+                                                headers={{
+                                                    'X-Resource-Tab-Nav': '1',
+                                                }}
                                                 preserveState
                                                 preserveScroll
                                                 onClick={(event) => {
@@ -627,24 +588,6 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                             Unavailable
                                         </Button>
                                     )}
-                                    {ratingsEnabled ? (
-                                        <ResourceRatingButton
-                                            average={ratingAverage}
-                                            count={ratingCount}
-                                            userRating={userRating}
-                                            open={ratingDialogOpen}
-                                            onOpen={() => {
-                                                if (
-                                                    !isAuthenticated &&
-                                                    !requireAuth()
-                                                ) {
-                                                    return;
-                                                }
-
-                                                setRatingDialogOpen(true);
-                                            }}
-                                        />
-                                    ) : null}
                                     <FavoriteButton
                                         isFavorited={isFavorite}
                                         isToggling={isTogglingFavorite}

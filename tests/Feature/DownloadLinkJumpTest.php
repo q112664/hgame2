@@ -30,12 +30,13 @@ test('published download links open an intermediate jump page', function () {
             ->component('download-links/show')
             ->where('resource.id', 'senren-banka')
             ->where('resource.title', 'Senren Banka')
+            ->missing('resource.cover')
+            ->missing('release')
             ->where('link.id', $link->id)
             ->where('link.label', 'Baidu Netdisk')
             ->where('link.url', 'https://pan.baidu.com/s/example')
             ->where('link.host', 'pan.baidu.com')
             ->where('link.requiresTurnstile', false)
-            ->where('release.version', '1.0')
         );
 });
 

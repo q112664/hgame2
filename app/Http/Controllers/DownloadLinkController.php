@@ -12,11 +12,7 @@ class DownloadLinkController extends Controller
 {
     public function show(GameDownloadLink $downloadLink): Response
     {
-        $downloadLink->load([
-            'release.game.category:id,name',
-            'release.platforms:id,name,slug',
-            'release.languages:id,name,code',
-        ]);
+        $downloadLink->load(['release.game:id,slug,title,status,published_at']);
 
         $release = $downloadLink->release;
         $game = $release?->game;
@@ -37,21 +33,6 @@ class DownloadLinkController extends Controller
             'resource' => [
                 'id' => $game->slug,
                 'title' => $game->title,
-                'subtitle' => $game->subtitle,
-                'category' => $game->category?->name ?? 'Uncategorized',
-            ],
-            'release' => [
-                'id' => $release->id,
-                'title' => $release->title ?: null,
-                'version' => $release->version,
-                'fileSize' => $release->file_size,
-                'platforms' => $release->platforms
-                    ->map(fn ($platform): array => [
-                        'name' => $platform->name,
-                        'slug' => $platform->slug,
-                    ])
-                    ->values()
-                    ->all(),
             ],
             'link' => [
                 'id' => $downloadLink->id,

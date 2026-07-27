@@ -8,6 +8,7 @@ import {
     resourceCardTitleClassName,
     resourceCardUpdateBadgeClassName,
 } from '@/components/site/resource-card-styles';
+import { ResourceOverlayLanguageGroup } from '@/components/site/resource-overlay-language-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -17,7 +18,6 @@ import {
 } from '@/components/ui/tooltip';
 import {
     abbreviateCategory,
-    abbreviateLanguage,
     abbreviateVersion,
     formatDate,
     formatViews,
@@ -116,16 +116,9 @@ export function DetailedResourceCard({
                         ) : (
                             <span />
                         )}
-                        <div className="flex flex-wrap justify-end gap-1">
-                            {resource.languages.map((language) => (
-                                <span
-                                    key={language}
-                                    className={overlayChipClassName}
-                                >
-                                    {abbreviateLanguage(language)}
-                                </span>
-                            ))}
-                        </div>
+                        <ResourceOverlayLanguageGroup
+                            languages={resource.languages}
+                        />
                     </div>
                 </div>
 

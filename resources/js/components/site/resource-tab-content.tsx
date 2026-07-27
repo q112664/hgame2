@@ -128,7 +128,7 @@ export function ResourceTabContent({
                                                     'Download package'}
                                             </h3>
                                             {release.version ? (
-                                                <span className="inline-flex h-6 shrink-0 items-center rounded-md bg-muted px-2 font-mono text-xs font-medium text-muted-foreground">
+                                                <span className="inline-flex h-6 shrink-0 items-center rounded-md bg-muted px-2 text-xs font-medium text-muted-foreground">
                                                     v{release.version}
                                                 </span>
                                             ) : null}
@@ -243,7 +243,8 @@ export function ResourceTabContent({
                                                                     href={downloadLinkShow(
                                                                         link.id,
                                                                     )}
-                                                                    prefetch
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
                                                                 >
                                                                     <Download data-icon="inline-start" />
                                                                     <span className="truncate">

@@ -1,7 +1,12 @@
 import { Link } from '@inertiajs/react';
 import { Eye } from 'lucide-react';
 import { PlatformIcon } from '@/components/site/platform-icon';
-import { overlayChipClassName, resourceCardMetaClassName, resourceCardTitleClassName } from '@/components/site/resource-card-styles';
+import {
+    overlayChipClassName,
+    resourceCardMetaClassName,
+    resourceCardTitleClassName,
+} from '@/components/site/resource-card-styles';
+import { ResourceOverlayLanguageGroup } from '@/components/site/resource-overlay-language-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Tooltip,
@@ -10,7 +15,6 @@ import {
 } from '@/components/ui/tooltip';
 import {
     abbreviateCategory,
-    abbreviateLanguage,
     abbreviateVersion,
     formatDate,
     formatViews,
@@ -92,16 +96,9 @@ export function ResourceCard({
                         ) : (
                             <span />
                         )}
-                        <div className="flex flex-wrap justify-end gap-1">
-                            {resource.languages.map((language) => (
-                                <span
-                                    key={language}
-                                    className={overlayChipClassName}
-                                >
-                                    {abbreviateLanguage(language)}
-                                </span>
-                            ))}
-                        </div>
+                        <ResourceOverlayLanguageGroup
+                            languages={resource.languages}
+                        />
                     </div>
                 </div>
 

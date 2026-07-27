@@ -28,7 +28,11 @@ test('an authenticated user can favorite and unfavorite a published game', funct
     $this->actingAs($user)
         ->from(route('resources.details', $game->slug))
         ->post(route('resources.favorite', $game->slug))
-        ->assertRedirect(route('resources.details', $game->slug));
+        ->assertRedirect(route('resources.details', $game->slug))
+        ->assertInertiaFlash('toast', [
+            'type' => 'success',
+            'message' => __('Added to favorites.'),
+        ]);
 
     expect($user->favoritedGames()->where('games.id', $game->id)->exists())->toBeTrue();
 
@@ -42,7 +46,11 @@ test('an authenticated user can favorite and unfavorite a published game', funct
     $this->actingAs($user)
         ->from(route('resources.details', $game->slug))
         ->post(route('resources.favorite', $game->slug))
-        ->assertRedirect(route('resources.details', $game->slug));
+        ->assertRedirect(route('resources.details', $game->slug))
+        ->assertInertiaFlash('toast', [
+            'type' => 'success',
+            'message' => __('Removed from favorites.'),
+        ]);
 
     expect($user->favoritedGames()->where('games.id', $game->id)->exists())->toBeFalse();
 });
@@ -101,7 +109,11 @@ test('an authenticated user can remove a favorite from the favorites page', func
 
     $this->actingAs($user)
         ->delete(route('resources.favorite.destroy', $game->slug))
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertInertiaFlash('toast', [
+            'type' => 'success',
+            'message' => __('Removed from favorites.'),
+        ]);
 
     expect($user->fresh()->favoritedGames()->where('games.id', $game->id)->exists())
         ->toBeFalse();

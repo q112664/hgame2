@@ -1,8 +1,10 @@
-import { Form } from '@inertiajs/react';
+import { Form, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import PasskeyVerify from '@/components/passkey-verify';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
+import { TurnstileWidget } from '@/components/turnstile-widget';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -32,6 +34,10 @@ export default function LoginForm({
     onRegister,
     onSuccess,
 }: Props) {
+    const { turnstile } = usePage().props;
+    const showTurnstile = Boolean(turnstile.login && turnstile.siteKey);
+    const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+
     return (
         <>
             <PasskeyVerify redirect={redirect} onSuccess={onSuccess} />
@@ -40,6 +46,7 @@ export default function LoginForm({
                 {...store.form()}
                 resetOnSuccess={['password']}
                 onSuccess={onSuccess}
+                onError={() => setTurnstileResetKey((key) => key + 1)}
                 className="flex flex-col gap-6"
             >
                 {({ processing, errors }) => (
@@ -111,6 +118,17 @@ export default function LoginForm({
                                 />
                                 <Label htmlFor="remember">Remember me</Label>
                             </div>
+
+                            {showTurnstile && turnstile.siteKey ? (
+                                <TurnstileWidget
+                                    siteKey={turnstile.siteKey}
+                                    error={
+                                        errors['cf-turnstile-response'] as
+                                            string | undefined
+                                    }
+                                    resetKey={turnstileResetKey}
+                                />
+                            ) : null}
 
                             <Button
                                 type="submit"

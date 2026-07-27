@@ -39,7 +39,21 @@
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx'])
         <x-inertia::head>
-            <title>{{ config('app.name', 'Laravel') }}</title>
+            @php($seo = \App\Models\Setting::seo())
+            <title>{{ \App\Models\Setting::siteTitle() }}</title>
+            @if (filled($seo['description']))
+                <meta name="description" content="{{ $seo['description'] }}">
+            @endif
+            @if (filled($seo['keywords']))
+                <meta name="keywords" content="{{ $seo['keywords'] }}">
+            @endif
+            <meta name="robots" content="{{ $seo['robots'] }}">
+            @if (filled($seo['ogImageUrl']))
+                <meta property="og:image" content="{{ $seo['ogImageUrl'] }}">
+            @endif
+            @if (filled($seo['googleSiteVerification']))
+                <meta name="google-site-verification" content="{{ $seo['googleSiteVerification'] }}">
+            @endif
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">

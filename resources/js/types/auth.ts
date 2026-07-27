@@ -15,10 +15,19 @@ export type Auth = {
     user: User;
 };
 
+export type TurnstileConfig = {
+    siteKey: string | null;
+    login: boolean;
+    register: boolean;
+    forgotPassword: boolean;
+    download: boolean;
+};
+
 export type AuthModalConfig = {
     canRegister: boolean;
     canResetPassword: boolean;
     passwordRules: string;
+    turnstile: TurnstileConfig;
 };
 
 /* @chisel-passkeys */

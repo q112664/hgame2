@@ -6,6 +6,7 @@ use App\DocStatus;
 use App\Models\Doc;
 use App\Support\Media;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -22,7 +23,7 @@ class DocForm
     {
         return $schema
             ->components([
-                Section::make('Document')
+                Section::make('Article')
                     ->schema([
                         TextInput::make('title')
                             ->required()
@@ -49,11 +50,19 @@ class DocForm
                                 ->distinct()
                                 ->pluck('category')
                                 ->all())
-                            ->helperText('Free-form category label, e.g. Guides, Account, FAQ.')
+                            ->helperText('Admin grouping only (not shown as a filter on the site).')
                             ->columnSpan(6),
                         Textarea::make('excerpt')
                             ->rows(3)
                             ->maxLength(1000)
+                            ->columnSpanFull(),
+                        FileUpload::make('cover_path')
+                            ->label('Thumbnail')
+                            ->image()
+                            ->imageEditor()
+                            ->disk(Media::diskName())
+                            ->directory('docs/covers')
+                            ->visibility('public')
                             ->columnSpanFull(),
                         Select::make('status')
                             ->options(DocStatus::class)
@@ -65,18 +74,11 @@ class DocForm
                             ->seconds(false)
                             ->helperText('Auto-filled when first published if left empty.')
                             ->columnSpan(4),
-                        TextInput::make('reading_minutes')
-                            ->label('Reading minutes')
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(120)
-                            ->helperText('Leave empty to estimate from body length.')
-                            ->columnSpan(2),
                         TextInput::make('sort_order')
                             ->numeric()
                             ->default(0)
                             ->minValue(0)
-                            ->columnSpan(2),
+                            ->columnSpan(4),
                         RichEditor::make('body')
                             ->required()
                             ->fileAttachmentsDisk(Media::diskName())

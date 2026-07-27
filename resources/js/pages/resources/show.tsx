@@ -38,6 +38,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Tooltip,
     TooltipContent,
@@ -87,6 +88,72 @@ const resourceTabs: Array<{
         href: (resource) => resourceScreenshots(resource).url,
     },
 ];
+
+type ResourceHeroCoverProps = {
+    src: string;
+    alt: string;
+    clickable: boolean;
+    onOpen?: () => void;
+};
+
+function ResourceHeroCover({
+    src,
+    alt,
+    clickable,
+    onOpen,
+}: ResourceHeroCoverProps) {
+    const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+    const loaded = loadedSrc === src;
+
+    const image = (
+        <img
+            src={src}
+            alt={alt}
+            className={cn(
+                'size-full object-cover transition-opacity duration-200',
+                loaded ? 'opacity-100' : 'opacity-0',
+            )}
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onLoad={() => setLoadedSrc(src)}
+            onError={() => setLoadedSrc(src)}
+        />
+    );
+
+    const placeholder = !loaded ? (
+        <div
+            className="absolute inset-0 flex items-center justify-center bg-muted"
+            aria-hidden
+        >
+            <div className="absolute inset-0 animate-pulse bg-muted-foreground/10" />
+            <Spinner className="relative size-6 text-muted-foreground" />
+        </div>
+    ) : null;
+
+    if (clickable) {
+        return (
+            <button
+                type="button"
+                onClick={onOpen}
+                className={cn(
+                    'relative size-full cursor-zoom-in focus-visible:outline-none',
+                    'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset',
+                )}
+                aria-label={`View full size cover for ${alt}`}
+            >
+                {placeholder}
+                {image}
+            </button>
+        );
+    }
+
+    return (
+        <div className="relative size-full">
+            {placeholder}
+            {image}
+        </div>
+    );
+}
 
 export default function ResourceShow({ activeTab, resource }: Props) {
     const shouldReduceMotion = useReducedMotion();
@@ -304,7 +371,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
 
     return (
         <SiteLayout>
-            <Head title={`${resource.title} - hgame`} />
+            <Head title={resource.title} />
 
             <ImageLightbox
                 slides={lightboxSlides}
@@ -347,7 +414,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                             href={coverSrc}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                            className="block cursor-zoom-in focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
                             aria-label={`Open full size cover for ${resource.title}`}
                         >
                             <img
@@ -367,31 +434,12 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                 <section className="overflow-hidden rounded-md border border-border bg-card">
                     <div className="flex flex-col md:flex-row">
                         <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted md:aspect-auto md:h-[280px] md:w-auto md:max-w-[498px]">
-                            {hasCover ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setCoverDialogOpen(true)}
-                                    className={cn(
-                                        'size-full cursor-zoom-in focus-visible:outline-none',
-                                        'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset',
-                                    )}
-                                    aria-label={`View full size cover for ${resource.title}`}
-                                >
-                                    <img
-                                        src={resource.thumbnail}
-                                        alt={resource.title}
-                                        className="size-full object-cover"
-                                        referrerPolicy="no-referrer"
-                                    />
-                                </button>
-                            ) : (
-                                <img
-                                    src={resource.thumbnail}
-                                    alt={resource.title}
-                                    className="size-full object-cover"
-                                    referrerPolicy="no-referrer"
-                                />
-                            )}
+                            <ResourceHeroCover
+                                src={resource.thumbnail}
+                                alt={resource.title}
+                                clickable={hasCover}
+                                onOpen={() => setCoverDialogOpen(true)}
+                            />
                         </div>
 
                         <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:p-5">
@@ -502,7 +550,9 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                                         <Button
                                             size="lg"
                                             variant="secondary"
-                                            className={downloadHeroButtonClassName}
+                                            className={
+                                                downloadHeroButtonClassName
+                                            }
                                             asChild
                                         >
                                             <Link

@@ -58,8 +58,8 @@ const navigationIcons: Record<string, LucideIcon> = {
 
 const navLinkClassName = cn(
     'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium',
-    'text-foreground transition-colors',
-    'hover:bg-foreground/10',
+    'text-foreground/75 transition-[color,background-color]',
+    'hover:bg-primary/10 hover:text-primary',
     'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
 );
 
@@ -157,7 +157,8 @@ function NavLinks({
                 );
                 const itemClassName = cn(
                     navLinkClassName,
-                    active && 'bg-foreground/10 text-foreground',
+                    active &&
+                        'bg-primary/12 text-primary hover:bg-primary/15 hover:text-primary',
                 );
 
                 if (external) {

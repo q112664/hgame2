@@ -1,4 +1,4 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { HomeHero } from '@/components/site/home-hero';
 import { LatestResources } from '@/components/site/latest-resources';
 import { SiteLayout } from '@/layouts/site-layout';
@@ -10,11 +10,9 @@ type Props = {
 };
 
 export default function Welcome({ heroBackgroundUrl, resources }: Props) {
-    const { name } = usePage().props;
-
     return (
         <SiteLayout>
-            <Head title={`${name} - Galgame Resource Downloads`} />
+            <Head title="Galgame Resource Downloads" />
             <div className="flex flex-col gap-10 bg-background pt-6 pb-12 sm:gap-12 sm:pt-8 sm:pb-16">
                 <HomeHero backgroundUrl={heroBackgroundUrl} />
                 <LatestResources

@@ -127,9 +127,8 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain("title: 'Resources'")
         ->toContain('flex flex-col md:flex-row')
         ->toContain('md:aspect-auto md:h-[280px] md:w-auto md:max-w-[498px]')
-        ->toContain('text-xs text-muted-foreground')
-        ->toContain('Updates on Favorites')
-        ->toContain('Favorite for update alerts')
+        ->toContain('text-sm text-muted-foreground')
+        ->toContain('FavoriteButton')
         ->not->toContain('sm:flex-row')
         ->not->toContain('sm:h-[280px]');
 });
@@ -144,9 +143,10 @@ test('site empty states and download buttons use primary CTAs', function () {
     expect($filesystem->get(resource_path('js/components/site/resource-detail-styles.ts')))
         ->toContain('downloadButtonClassName')
         ->toContain('downloadHeroButtonClassName')
-        ->toContain('hover:bg-primary hover:text-primary-foreground')
+        ->toContain('releaseFooterClassName')
+        ->toContain('releaseFooterInnerClassName')
+        ->toContain('hover:bg-primary/90')
         ->toContain('bg-primary px-4 text-primary-foreground')
-        ->toContain('dark:hover:bg-primary/18 dark:hover:text-primary')
         ->toContain('dark:border-primary/40 dark:bg-primary/90')
         ->toContain('hover:bg-primary/10 hover:text-primary')
         ->not->toContain('hover:bg-foreground hover:text-background')
@@ -155,6 +155,7 @@ test('site empty states and download buttons use primary CTAs', function () {
 
     expect($filesystem->get(resource_path('js/components/site/resource-tab-content.tsx')))
         ->toContain('downloadButtonClassName')
+        ->toContain('releaseFooterClassName')
         ->toContain('platformBadgeClassName')
         ->toContain('languageBadgeClassName')
         ->toContain('fileSizeBadgeClassName')
@@ -309,16 +310,23 @@ test('site pagination supports direct page jumps', function () {
 test('download release items use the compact responsive layout', function () {
     $filesystem = app(Filesystem::class);
     $source = $filesystem->get(resource_path('js/components/site/resource-tab-content.tsx'));
+    $styles = $filesystem->get(resource_path('js/components/site/resource-detail-styles.ts'));
 
     expect($source)
         ->toContain('flex flex-col gap-2.5')
-        ->toContain('flex flex-col gap-1.5 border-b border-border/70 px-3 py-2.5 sm:px-3.5')
-        ->toContain('flex flex-col gap-2 px-3 py-2.5 sm:px-3.5')
-        ->toContain('flex flex-wrap gap-1.5')
+        ->toContain('releaseFooterClassName')
+        ->toContain('releaseFooterInnerClassName')
+        ->toContain('flex min-w-0 flex-wrap items-center gap-1.5')
         ->toContain('size="sm"')
         ->toContain('downloadButtonClassName')
+        ->toContain('aria-label="Download links"')
         ->not->toContain('p-3 sm:p-4')
         ->not->toContain('border-b border-border bg-muted/50 px-4 py-3.5');
+
+    expect($styles)
+        ->toContain('border-t border-border/70 bg-muted/35')
+        ->toContain('sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5')
+        ->toContain("'h-8 min-w-0 gap-1.5");
 });
 
 test('button variants use deliberate dark mode surfaces and borders', function () {
@@ -337,10 +345,9 @@ test('button variants use deliberate dark mode surfaces and borders', function (
     expect($resourceStyles)
         ->toContain('downloadButtonClassName')
         ->toContain('downloadHeroButtonClassName')
-        ->toContain('bg-muted/60 px-2.5 text-xs text-foreground')
+        ->toContain('releaseFooterClassName')
         ->toContain('border border-transparent bg-primary px-4 text-primary-foreground')
-        ->toContain('hover:bg-primary hover:text-primary-foreground')
-        ->toContain('dark:hover:bg-primary/18 dark:hover:text-primary')
+        ->toContain('hover:bg-primary/90')
         ->toContain('dark:border-primary/40 dark:bg-primary/90')
         ->not->toContain('border-0 bg-foreground')
         ->not->toContain('bg-foreground px-4 text-background')
@@ -348,6 +355,10 @@ test('button variants use deliberate dark mode surfaces and borders', function (
         ->not->toContain('downloadButtonPalettes');
 
     expect($favoriteButton)
+        ->toContain('heroFavoriteActiveClassName')
+        ->toContain('heroActionIdleClassName');
+
+    expect($resourceStyles)
         ->toContain('dark:border-favorite/30 dark:bg-favorite/15')
         ->toContain('dark:border-foreground/15 dark:bg-surface-raised');
 

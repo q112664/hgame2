@@ -182,6 +182,108 @@ test('site logo is shared with the frontend', function () {
         );
 });
 
+test('administrators can update the site title used in browser tabs', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'site_title' => 'My Galgame Archive',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    expect(Setting::siteTitle())->toBe('My Galgame Archive')
+        ->and(Setting::get('site_title'))->toBe('My Galgame Archive');
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('siteTitle', 'My Galgame Archive')
+        );
+});
+
+test('site title falls back to logo text when not set', function () {
+    Setting::set('site_logo_text', 'Archive');
+    Setting::set('site_title', null);
+
+    expect(Setting::siteTitle())->toBe('Archive');
+});
+
+test('administrators can update seo settings', function () {
+    Storage::fake(Media::diskName());
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'site_title' => 'hgame',
+            'seo_description' => 'Find galgame packages and updates.',
+            'seo_keywords' => 'galgame, visual novel',
+            'seo_robots' => 'noindex,follow',
+            'seo_og_image_path' => UploadedFile::fake()->image('og.jpg', 1200, 630),
+            'seo_google_site_verification' => 'abc123verification',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    $seo = Setting::seo();
+
+    expect(Setting::get('seo_description'))->toBe('Find galgame packages and updates.')
+        ->and(Setting::seoKeywords())->toBe('galgame, visual novel')
+        ->and(Setting::seoRobots())->toBe('noindex,follow')
+        ->and(Setting::seoGoogleSiteVerification())->toBe('abc123verification')
+        ->and(Setting::seoOgImagePath())->toStartWith('site/seo/')
+        ->and($seo['description'])->toBe('Find galgame packages and updates.')
+        ->and($seo['ogImageUrl'])->toContain('/storage/site/seo/');
+
+    Storage::disk(Media::diskName())->assertExists(Setting::seoOgImagePath());
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('seo.description', 'Find galgame packages and updates.')
+            ->where('seo.keywords', 'galgame, visual novel')
+            ->where('seo.robots', 'noindex,follow')
+            ->where('seo.googleSiteVerification', 'abc123verification')
+            ->where('seo.ogImageUrl', fn ($value): bool => is_string($value) && str_contains($value, '/storage/site/seo/'))
+        );
+});
+
+test('seo description falls back to the default when empty', function () {
+    Setting::set('seo_description', null);
+
+    expect(Setting::seoDescription())->toBe(Setting::defaultSeoDescription());
+});
+
+test('administrators can update turnstile settings', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'turnstile_site_key' => 'site-key-from-admin',
+            'turnstile_secret_key' => 'secret-key-from-admin',
+            'turnstile_login_enabled' => true,
+            'turnstile_register_enabled' => true,
+            'turnstile_forgot_password_enabled' => false,
+            'turnstile_download_enabled' => true,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    expect(Setting::get('turnstile_site_key'))->toBe('site-key-from-admin')
+        ->and(Setting::get('turnstile_secret_key'))->toBe('secret-key-from-admin')
+        ->and(Setting::boolean('turnstile_login_enabled'))->toBeTrue()
+        ->and(Setting::boolean('turnstile_register_enabled'))->toBeTrue()
+        ->and(Setting::boolean('turnstile_forgot_password_enabled'))->toBeFalse()
+        ->and(Setting::boolean('turnstile_download_enabled'))->toBeTrue();
+});
+
 test('avatar urls use the configured site url', function () {
     Storage::fake(Media::diskName());
 

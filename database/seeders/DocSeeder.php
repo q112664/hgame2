@@ -17,7 +17,7 @@ class DocSeeder extends Seeder
                     ...$article,
                     'status' => DocStatus::Published,
                     'sort_order' => $index,
-                    'reading_minutes' => null,
+                    'cover_path' => null,
                 ],
             );
         }

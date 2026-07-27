@@ -23,10 +23,10 @@ class DocFactory extends Factory
             'slug' => str($title)->slug()->append('-', fake()->unique()->numerify('####'))->toString(),
             'category' => fake()->randomElement(['Guides', 'Account', 'Admin', 'FAQ']),
             'excerpt' => fake()->sentence(16),
+            'cover_path' => null,
             'body' => '<p>'.fake()->paragraphs(2, true).'</p><h2>Overview</h2><p>'.fake()->paragraph().'</p>',
             'status' => DocStatus::Published,
             'published_at' => fake()->dateTimeBetween('-6 months'),
-            'reading_minutes' => null,
             'sort_order' => 0,
         ];
     }

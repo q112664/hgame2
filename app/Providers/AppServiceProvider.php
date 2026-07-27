@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\SendPasswordResetLinkRequest;
 use App\Listeners\RecordUserLogin;
 use App\Models\Game;
 use App\Models\PersonalAccessToken;
@@ -14,6 +16,8 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Fortify\Http\Requests\LoginRequest as FortifyLoginRequest;
+use Laravel\Fortify\Http\Requests\SendPasswordResetLinkRequest as FortifySendPasswordResetLinkRequest;
 use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
@@ -23,7 +27,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(FortifyLoginRequest::class, LoginRequest::class);
+        $this->app->bind(FortifySendPasswordResetLinkRequest::class, SendPasswordResetLinkRequest::class);
     }
 
     /**

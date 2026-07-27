@@ -4,10 +4,12 @@ namespace App\Filament\Resources\Docs\Tables;
 
 use App\DocStatus;
 use App\Models\Doc;
+use App\Support\Media;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -19,6 +21,10 @@ class DocsTable
         return $table
             ->defaultSort('sort_order')
             ->columns([
+                ImageColumn::make('cover_path')
+                    ->label('Cover')
+                    ->disk(Media::diskName())
+                    ->square(),
                 TextColumn::make('title')
                     ->searchable()
                     ->sortable()

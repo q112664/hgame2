@@ -23,11 +23,11 @@ class DocResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Content';
 
-    protected static ?string $navigationLabel = 'Docs';
+    protected static ?string $navigationLabel = 'Articles';
 
-    protected static ?string $modelLabel = 'Doc';
+    protected static ?string $modelLabel = 'Article';
 
-    protected static ?string $pluralModelLabel = 'Docs';
+    protected static ?string $pluralModelLabel = 'Articles';
 
     protected static ?int $navigationSort = 2;
 

@@ -57,16 +57,20 @@ const ALL_VALUE = '__all__';
 export const filterControlClassName = cn(
     'h-9 border-border/70 bg-muted/45 font-normal text-foreground shadow-none',
     'hover:border-border hover:bg-muted/70',
+    'focus-visible:border-border/70 focus-visible:ring-0',
     'dark:border-foreground/12 dark:bg-surface-raised',
     'dark:hover:border-foreground/20 dark:hover:bg-surface-strong',
+    'dark:focus-visible:border-foreground/12',
 );
 
 /** Soft primary tint when a filter has an active value. */
 export const filterControlActiveClassName = cn(
     'border-primary/25 bg-primary/8',
     'hover:border-primary/35 hover:bg-primary/12',
+    'focus-visible:border-primary/25',
     'dark:border-primary/30 dark:bg-primary/12',
     'dark:hover:border-primary/40 dark:hover:bg-primary/16',
+    'dark:focus-visible:border-primary/30',
 );
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [

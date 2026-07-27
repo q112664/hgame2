@@ -12,10 +12,10 @@ export const categoryBadgeClassName = cn(
     'bg-secondary text-secondary-foreground',
 );
 
-/** Language — warm soft fill */
+/** Language — violet soft fill (distinct from platform blue / size green / rating amber) */
 export const languageBadgeClassName = cn(
     heroBadgeClassName,
-    'bg-warning/15 text-warning',
+    'bg-language/15 text-language',
 );
 
 /** Clickable tags in the details tab — quiet surface, light primary hint on hover */
@@ -54,14 +54,26 @@ export const dateBadgeClassName = cn(
 );
 
 /**
- * Compact download CTA for release link rows — primary fill so it stands out
- * from the quiet meta badges on the left.
+ * Compact download CTA for release link rows — matches meta badge height rhythm
+ * (h-8) so the footer bar reads as one aligned strip.
  */
 export const downloadButtonClassName = cn(
-    'h-9 gap-1.5 border border-transparent bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-none',
+    'h-8 min-w-0 gap-1.5 border border-transparent bg-primary px-3 text-sm font-medium text-primary-foreground shadow-none',
     'hover:bg-primary/90',
     'dark:border-primary/40 dark:bg-primary/90',
     'dark:hover:border-primary/50 dark:hover:bg-primary',
+);
+
+/** Release card footer strip under the title/description. */
+export const releaseFooterClassName = cn(
+    'border-t border-border/70 bg-muted/35',
+    'dark:bg-muted/20',
+);
+
+/** Meta badge cluster + CTA cluster layout inside the release footer. */
+export const releaseFooterInnerClassName = cn(
+    'flex flex-col gap-3 px-4 py-3',
+    'sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5',
 );
 
 /** Primary download CTA on resource hero / confirm pages. */
@@ -98,4 +110,3 @@ export const heroRatingActiveClassName = cn(
     'dark:border-warning/30 dark:bg-warning/15 dark:text-warning',
     'dark:hover:border-warning/40 dark:hover:bg-warning/25 dark:hover:text-warning',
 );
-

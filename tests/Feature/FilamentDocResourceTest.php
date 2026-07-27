@@ -33,7 +33,6 @@ test('an administrator can create a published doc', function () {
             'status' => DocStatus::Published->value,
             'published_at' => now(),
             'body' => '<p>Welcome</p><h2>Browse resources</h2><p>Find games easily.</p>',
-            'reading_minutes' => 3,
             'sort_order' => 1,
         ])
         ->call('create')
@@ -44,11 +43,7 @@ test('an administrator can create a published doc', function () {
     expect($doc->title)->toBe('Getting started with hgame')
         ->and($doc->category)->toBe('Guides')
         ->and($doc->status)->toBe(DocStatus::Published)
-        ->and($doc->reading_minutes)->toBe(3)
-        ->and($doc->body)->toContain('id="browse-resources"')
-        ->and($doc->headings())->toEqual([
-            ['id' => 'browse-resources', 'title' => 'Browse resources'],
-        ]);
+        ->and($doc->body)->toContain('Browse resources');
 });
 
 test('an administrator can edit a doc', function () {
@@ -78,7 +73,7 @@ test('an administrator can edit a doc', function () {
 
     expect($doc->title)->toBe('Updated title')
         ->and($doc->category)->toBe('Guides')
-        ->and($doc->body)->toContain('id="new-section"');
+        ->and($doc->body)->toContain('New section');
 });
 
 test('non-admin users cannot open the filament docs page', function () {

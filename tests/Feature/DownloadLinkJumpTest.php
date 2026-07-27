@@ -34,6 +34,7 @@ test('published download links open an intermediate jump page', function () {
             ->where('link.label', 'Baidu Netdisk')
             ->where('link.url', 'https://pan.baidu.com/s/example')
             ->where('link.host', 'pan.baidu.com')
+            ->where('link.requiresTurnstile', false)
             ->where('release.version', '1.0')
         );
 });

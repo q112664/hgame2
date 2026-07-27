@@ -49,7 +49,14 @@ class FavoriteController extends Controller
         Game $resource,
         ToggleGameFavorite $toggleGameFavorite,
     ): RedirectResponse {
-        $toggleGameFavorite($request->user(), $resource);
+        $favorited = $toggleGameFavorite($request->user(), $resource);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $favorited
+                ? __('Added to favorites.')
+                : __('Removed from favorites.'),
+        ]);
 
         return back();
     }
@@ -60,6 +67,11 @@ class FavoriteController extends Controller
         RemoveGameFavorite $removeGameFavorite,
     ): RedirectResponse {
         $removeGameFavorite($request->user(), $resource);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Removed from favorites.'),
+        ]);
 
         return back();
     }

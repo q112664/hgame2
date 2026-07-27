@@ -9,6 +9,8 @@ import {
     fileSizeBadgeClassName,
     languageBadgeClassName,
     platformBadgeClassName,
+    releaseFooterClassName,
+    releaseFooterInnerClassName,
     tagBadgeClassName,
 } from '@/components/site/resource-detail-styles';
 import { RichHtml } from '@/components/site/rich-html';
@@ -85,44 +87,48 @@ export function ResourceTabContent({
     return (
         <div aria-busy={isTabPending || undefined}>
             {activeTab === 'details' ? (
-                    <section className="rounded-md border border-border bg-card p-4 sm:p-5">
-                        {resource.tags.length > 0 ? (
-                            <div className="mb-4 flex flex-wrap gap-2">
-                                {resource.tags.map((tag) => (
-                                    <Link
-                                        key={tag.slug}
-                                        href={resourcesIndex.url({
-                                            query: { tags: [tag.slug] },
-                                        })}
-                                        className={tagBadgeClassName}
-                                        prefetch
-                                    >
-                                        {tag.name}
-                                    </Link>
-                                ))}
-                            </div>
-                        ) : null}
-                        <RichHtml html={resource.description} />
-                    </section>
-                ) : null}
+                <section className="rounded-md border border-border bg-card p-4 sm:p-5">
+                    {resource.tags.length > 0 ? (
+                        <div className="mb-4 flex flex-wrap gap-2">
+                            {resource.tags.map((tag) => (
+                                <Link
+                                    key={tag.slug}
+                                    href={resourcesIndex.url({
+                                        query: { tags: [tag.slug] },
+                                    })}
+                                    className={tagBadgeClassName}
+                                    prefetch
+                                >
+                                    {tag.name}
+                                </Link>
+                            ))}
+                        </div>
+                    ) : null}
+                    <RichHtml html={resource.description} />
+                </section>
+            ) : null}
 
-                {activeTab === 'downloads' ? (
-                    <div className="flex flex-col gap-4">
-                        {resource.releases.length > 0 ? (
-                            resource.releases.map((release) => (
+            {activeTab === 'downloads' ? (
+                <div className="flex flex-col gap-3 sm:gap-4">
+                    {resource.releases.length > 0 ? (
+                        resource.releases.map((release) => {
+                            const hasLinks = release.downloadLinks.length > 0;
+                            const multiLinks = release.downloadLinks.length > 1;
+
+                            return (
                                 <article
                                     key={release.id}
                                     className="overflow-hidden rounded-lg border border-border bg-card"
                                 >
                                     {/* Header: title + version + description */}
-                                    <div className="flex flex-col gap-2.5 border-b border-border/70 px-4 py-4 sm:px-5">
+                                    <div className="flex flex-col gap-2.5 px-4 py-4 sm:px-5">
                                         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-                                            <h3 className="font-heading text-base font-semibold tracking-tight text-foreground">
+                                            <h3 className="min-w-0 font-heading text-base font-semibold tracking-tight text-foreground">
                                                 {release.title ??
                                                     'Download package'}
                                             </h3>
                                             {release.version ? (
-                                                <span className="inline-flex h-6 items-center rounded-md bg-muted px-2 text-xs font-medium text-muted-foreground">
+                                                <span className="inline-flex h-6 shrink-0 items-center rounded-md bg-muted px-2 font-mono text-xs font-medium text-muted-foreground">
                                                     v{release.version}
                                                 </span>
                                             ) : null}
@@ -136,135 +142,158 @@ export function ResourceTabContent({
                                         ) : null}
                                     </div>
 
-                                    {/* Tags + actions — stacked on mobile, one row on sm+ */}
-                                    <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2.5 sm:px-5">
-                                        <div className="flex min-w-0 flex-wrap gap-1.5 sm:flex-1">
-                                            {release.platforms.map(
-                                                (platform) => (
+                                    {/* Footer: meta chips (left) + download CTAs (right) */}
+                                    <div className={releaseFooterClassName}>
+                                        <div
+                                            className={
+                                                releaseFooterInnerClassName
+                                            }
+                                        >
+                                            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                                {release.platforms.map(
+                                                    (platform) => (
+                                                        <Badge
+                                                            key={platform.slug}
+                                                            variant="outline"
+                                                            className={platformBadgeClassName(
+                                                                platform.slug,
+                                                            )}
+                                                        >
+                                                            <PlatformIcon
+                                                                slug={
+                                                                    platform.slug
+                                                                }
+                                                                data-icon="inline-start"
+                                                            />
+                                                            {platform.name}
+                                                        </Badge>
+                                                    ),
+                                                )}
+                                                {release.languages.map(
+                                                    (language) => (
+                                                        <Badge
+                                                            key={language}
+                                                            variant="outline"
+                                                            className={
+                                                                languageBadgeClassName
+                                                            }
+                                                        >
+                                                            {language}
+                                                        </Badge>
+                                                    ),
+                                                )}
+                                                {release.fileSize ? (
                                                     <Badge
-                                                        key={platform.slug}
-                                                        variant="outline"
-                                                        className={platformBadgeClassName(
-                                                            platform.slug,
-                                                        )}
-                                                    >
-                                                        <PlatformIcon
-                                                            slug={platform.slug}
-                                                            data-icon="inline-start"
-                                                        />
-                                                        {platform.name}
-                                                    </Badge>
-                                                ),
-                                            )}
-                                            {release.languages.map(
-                                                (language) => (
-                                                    <Badge
-                                                        key={language}
                                                         variant="outline"
                                                         className={
-                                                            languageBadgeClassName
+                                                            fileSizeBadgeClassName
                                                         }
                                                     >
-                                                        {language}
+                                                        <HardDrive data-icon="inline-start" />
+                                                        {release.fileSize}
                                                     </Badge>
-                                                ),
-                                            )}
-                                            {release.fileSize ? (
+                                                ) : null}
                                                 <Badge
                                                     variant="outline"
                                                     className={
-                                                        fileSizeBadgeClassName
+                                                        dateBadgeClassName
                                                     }
                                                 >
-                                                    <HardDrive data-icon="inline-start" />
-                                                    {release.fileSize}
+                                                    <CalendarDays data-icon="inline-start" />
+                                                    <time
+                                                        dateTime={
+                                                            release.publishedAt ??
+                                                            undefined
+                                                        }
+                                                    >
+                                                        {release.publishedAt
+                                                            ? formatDate(
+                                                                  release.publishedAt,
+                                                              )
+                                                            : 'Unscheduled'}
+                                                    </time>
                                                 </Badge>
-                                            ) : null}
-                                            <Badge
-                                                variant="outline"
-                                                className={dateBadgeClassName}
-                                            >
-                                                <CalendarDays data-icon="inline-start" />
-                                                <time
-                                                    dateTime={
-                                                        release.publishedAt ??
-                                                        undefined
-                                                    }
-                                                >
-                                                    {release.publishedAt
-                                                        ? formatDate(
-                                                              release.publishedAt,
-                                                          )
-                                                        : 'Unscheduled'}
-                                                </time>
-                                            </Badge>
-                                        </div>
-
-                                        {release.downloadLinks.length > 0 ? (
-                                            <div className="flex flex-wrap gap-2 sm:ml-auto sm:justify-end">
-                                                {release.downloadLinks.map(
-                                                    (link, index) => (
-                                                        <Button
-                                                            key={link.id}
-                                                            asChild
-                                                            variant="default"
-                                                            size="sm"
-                                                            className={downloadButtonClassName}
-                                                        >
-                                                            <Link
-                                                                href={downloadLinkShow(
-                                                                    link.id,
-                                                                )}
-                                                                prefetch
-                                                            >
-                                                                <Download data-icon="inline-start" />
-                                                                {link.label ||
-                                                                    (release
-                                                                        .downloadLinks
-                                                                        .length >
-                                                                    1
-                                                                        ? `Download ${index + 1}`
-                                                                        : 'Download')}
-                                                            </Link>
-                                                        </Button>
-                                                    ),
-                                                )}
                                             </div>
-                                        ) : null}
+
+                                            {hasLinks ? (
+                                                <div
+                                                    className={cn(
+                                                        'flex w-full shrink-0 flex-wrap gap-2',
+                                                        'sm:w-auto sm:justify-end',
+                                                        multiLinks &&
+                                                            'grid grid-cols-1 min-[380px]:grid-cols-2 sm:flex',
+                                                    )}
+                                                    role="group"
+                                                    aria-label="Download links"
+                                                >
+                                                    {release.downloadLinks.map(
+                                                        (link, index) => (
+                                                            <Button
+                                                                key={link.id}
+                                                                asChild
+                                                                variant="default"
+                                                                size="sm"
+                                                                className={cn(
+                                                                    downloadButtonClassName,
+                                                                    multiLinks &&
+                                                                        'w-full sm:w-auto',
+                                                                )}
+                                                            >
+                                                                <Link
+                                                                    href={downloadLinkShow(
+                                                                        link.id,
+                                                                    )}
+                                                                    prefetch
+                                                                >
+                                                                    <Download data-icon="inline-start" />
+                                                                    <span className="truncate">
+                                                                        {link.label ||
+                                                                            (multiLinks
+                                                                                ? `Download ${index + 1}`
+                                                                                : 'Download')}
+                                                                    </span>
+                                                                </Link>
+                                                            </Button>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            ) : null}
+                                        </div>
                                     </div>
                                 </article>
-                            ))
-                        ) : (
-                            <SiteEmptyState
-                                title="No downloads available yet"
-                                description="Check back later for release packages and download links."
-                            />
-                        )}
-                    </div>
-                ) : null}
-
-                {activeTab === 'screenshots' ? (
-                    resource.screenshots.length > 0 ? (
-                        <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-3">
-                            {resource.screenshots.map((screenshot, index) => (
-                                <ResourceScreenshot
-                                    key={screenshot}
-                                    src={screenshot}
-                                    alt={`${resource.title} screenshot ${index + 1}`}
-                                    onOpen={() =>
-                                        onOpenLightbox(screenshotSlides, index)
-                                    }
-                                />
-                            ))}
-                        </div>
+                            );
+                        })
                     ) : (
                         <SiteEmptyState
-                            icon={Images}
-                            title="No images yet"
-                            description="This resource does not have gallery images uploaded."
+                            title="No downloads available yet"
+                            description="Check back later for release packages and download links."
                         />
-                    )
-                ) : null}
+                    )}
+                </div>
+            ) : null}
+
+            {activeTab === 'screenshots' ? (
+                resource.screenshots.length > 0 ? (
+                    <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-3">
+                        {resource.screenshots.map((screenshot, index) => (
+                            <ResourceScreenshot
+                                key={screenshot}
+                                src={screenshot}
+                                alt={`${resource.title} screenshot ${index + 1}`}
+                                onOpen={() =>
+                                    onOpenLightbox(screenshotSlides, index)
+                                }
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <SiteEmptyState
+                        icon={Images}
+                        title="No images yet"
+                        description="This resource does not have gallery images uploaded."
+                    />
+                )
+            ) : null}
         </div>
     );
 }

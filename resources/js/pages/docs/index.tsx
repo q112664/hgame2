@@ -1,9 +1,7 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { ArrowRight, BookOpen, Clock } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import { BookOpen } from 'lucide-react';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { SitePageContainer } from '@/components/site/site-page-container';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
@@ -14,84 +12,21 @@ import {
 import { SiteLayout } from '@/layouts/site-layout';
 import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
-import { index as docsIndex, show as docsShow } from '@/routes/docs';
+import { show as docsShow } from '@/routes/docs';
 import type { DocListItem } from '@/types/docs';
 
 type Props = {
     docs: DocListItem[];
-    categories: string[];
-    filters: {
-        category: string | null;
-    };
 };
 
-export default function DocsIndex({ docs, categories, filters }: Props) {
-    const applyCategory = (category: string | null) => {
-        router.get(
-            docsIndex.url({
-                query: category ? { category } : {},
-            }),
-            {},
-            {
-                preserveState: true,
-                preserveScroll: true,
-                only: ['docs', 'filters'],
-            },
-        );
-    };
-
+export default function DocsIndex({ docs }: Props) {
     return (
         <SiteLayout>
-            <Head title="Docs" />
+            <Head title="Articles" />
 
-            <SitePageContainer className="gap-8">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="flex flex-col gap-2">
-                        <div className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                            <BookOpen className="size-4" />
-                            Documentation
-                        </div>
-                        <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                            Docs
-                        </h1>
-                        <p className="max-w-2xl text-sm text-muted-foreground">
-                            Guides, account help, and publishing notes for
-                            browsing and managing resources on hgame.
-                        </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                        {docs.length} article{docs.length === 1 ? '' : 's'}
-                    </p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                    <Button
-                        type="button"
-                        size="sm"
-                        variant={filters.category === null ? 'default' : 'outline'}
-                        onClick={() => applyCategory(null)}
-                    >
-                        All
-                    </Button>
-                    {categories.map((category) => (
-                        <Button
-                            key={category}
-                            type="button"
-                            size="sm"
-                            variant={
-                                filters.category === category
-                                    ? 'default'
-                                    : 'outline'
-                            }
-                            onClick={() => applyCategory(category)}
-                        >
-                            {category}
-                        </Button>
-                    ))}
-                </div>
-
+            <SitePageContainer className="gap-6 sm:gap-8">
                 {docs.length > 0 ? (
-                    <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {docs.map((doc) => (
                             <li key={doc.slug}>
                                 <Link
@@ -102,37 +37,47 @@ export default function DocsIndex({ docs, categories, filters }: Props) {
                                     <Card
                                         size="sm"
                                         className={cn(
-                                            'h-full transition-[ring-color] duration-150',
+                                            'h-full gap-0 overflow-hidden py-0 transition-[ring-color] duration-150',
                                             'group-hover:ring-primary/25',
                                             'group-focus-visible:ring-2 group-focus-visible:ring-ring/50',
                                         )}
                                     >
-                                        <CardHeader className="gap-3">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <Badge variant="secondary">
-                                                    {doc.category}
-                                                </Badge>
-                                                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                                                    <Clock className="size-3" />
-                                                    {doc.readingMinutes} min
-                                                </span>
-                                            </div>
-                                            <CardTitle className="text-base leading-snug group-hover:text-primary">
+                                        <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+                                            {doc.thumbnail ? (
+                                                <img
+                                                    src={doc.thumbnail}
+                                                    alt=""
+                                                    className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                                                    loading="lazy"
+                                                    referrerPolicy="no-referrer"
+                                                />
+                                            ) : (
+                                                <div className="flex size-full items-center justify-center text-muted-foreground/50">
+                                                    <BookOpen className="size-10" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <CardHeader className="gap-2 px-4 pt-4 pb-2">
+                                            <CardTitle className="line-clamp-2 text-base leading-snug group-hover:text-primary">
                                                 {doc.title}
                                             </CardTitle>
-                                            <CardDescription className="line-clamp-2 text-sm leading-relaxed">
-                                                {doc.excerpt}
-                                            </CardDescription>
+                                            {doc.excerpt ? (
+                                                <CardDescription className="line-clamp-2 text-sm leading-relaxed">
+                                                    {doc.excerpt}
+                                                </CardDescription>
+                                            ) : null}
                                         </CardHeader>
-                                        <CardContent className="mt-auto flex items-center justify-between gap-3 pt-0 text-xs text-muted-foreground">
-                                            <time dateTime={doc.updatedAt}>
-                                                Updated {formatDate(doc.updatedAt)}
-                                            </time>
-                                            <span className="inline-flex items-center gap-1 text-foreground/80 transition-colors group-hover:text-primary">
-                                                Read
-                                                <ArrowRight className="size-3.5" />
-                                            </span>
-                                        </CardContent>
+                                        {doc.publishedAt ? (
+                                            <CardContent className="px-4 pt-0 pb-4 text-xs text-muted-foreground">
+                                                <time
+                                                    dateTime={doc.publishedAt}
+                                                >
+                                                    {formatDate(
+                                                        doc.publishedAt,
+                                                    )}
+                                                </time>
+                                            </CardContent>
+                                        ) : null}
                                     </Card>
                                 </Link>
                             </li>
@@ -141,8 +86,8 @@ export default function DocsIndex({ docs, categories, filters }: Props) {
                 ) : (
                     <SiteEmptyState
                         icon={BookOpen}
-                        title="No docs in this category yet"
-                        description="Pick another category, or check back after new guides are published."
+                        title="No articles yet"
+                        description="Check back later for new guides and notes."
                     />
                 )}
             </SitePageContainer>

@@ -1,10 +1,18 @@
-import type { Auth, AuthModalConfig } from '@/types/auth';
+import type { Auth, AuthModalConfig, TurnstileConfig } from '@/types/auth';
 import type { NavigationMenuItem } from '@/types/navigation';
 
 export type SiteLogo = {
     mode: 'text' | 'image' | 'both';
     text: string;
     imageUrl: string | null;
+};
+
+export type SiteSeo = {
+    description: string;
+    keywords: string;
+    robots: string;
+    ogImageUrl: string | null;
+    googleSiteVerification: string;
 };
 
 declare module 'react' {
@@ -18,9 +26,12 @@ declare module '@inertiajs/core' {
     export interface InertiaConfig {
         sharedPageProps: {
             name: string;
+            siteTitle: string;
+            seo: SiteSeo;
             siteLogo: SiteLogo;
             navigationMenu: NavigationMenuItem[];
             ratingsEnabled: boolean;
+            turnstile: TurnstileConfig;
             auth: Auth;
             authModal: AuthModalConfig | null;
             sidebarOpen: boolean;

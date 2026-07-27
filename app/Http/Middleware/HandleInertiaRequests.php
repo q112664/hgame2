@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Setting;
+use App\Support\Turnstile;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Middleware;
@@ -41,9 +42,12 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => Setting::siteLogoText(),
+            'siteTitle' => Setting::siteTitle(),
+            'seo' => Setting::seo(),
             'siteLogo' => Setting::siteLogo(),
             'navigationMenu' => Setting::navigationMenu(),
             'ratingsEnabled' => Setting::ratingsEnabled(),
+            'turnstile' => Turnstile::frontendConfig(),
             'auth' => [
                 'user' => $request->user(),
             ],
@@ -51,6 +55,7 @@ class HandleInertiaRequests extends Middleware
                 'canRegister' => Features::enabled(Features::registration()),
                 'canResetPassword' => Features::enabled(Features::resetPasswords()),
                 'passwordRules' => Password::defaults()->toPasswordRulesString(),
+                'turnstile' => Turnstile::frontendConfig(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

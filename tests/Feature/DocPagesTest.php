@@ -6,23 +6,21 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
-test('the docs index lists published articles and categories', function () {
+test('the docs index lists published articles as thumbnail cards', function () {
     Doc::factory()->create([
         'slug' => 'getting-started',
         'title' => 'Getting started',
-        'category' => 'Guides',
+        'cover_path' => 'docs/covers/getting-started.webp',
         'published_at' => now()->subHour(),
         'sort_order' => 1,
     ]);
     Doc::factory()->create([
         'slug' => 'account-basics',
-        'category' => 'Account',
         'published_at' => now()->subDay(),
         'sort_order' => 2,
     ]);
     Doc::factory()->draft()->create([
         'slug' => 'secret-draft',
-        'category' => 'Guides',
     ]);
 
     $this->get(route('docs.index'))
@@ -30,43 +28,27 @@ test('the docs index lists published articles and categories', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('docs/index')
             ->has('docs', 2)
-            ->where('filters.category', null)
             ->where('docs.0.slug', 'getting-started')
+            ->where('docs.0.title', 'Getting started')
+            ->where('docs.0.thumbnail', fn ($value): bool => is_string($value) && str_contains($value, 'docs/covers/getting-started.webp'))
             ->where('docs.1.slug', 'account-basics')
-            ->where('categories', fn ($categories): bool => collect($categories)->contains('Guides')
-                && collect($categories)->contains('Account'))
+            ->where('docs.1.thumbnail', null)
             ->missing('docs.0.body')
+            ->missing('categories')
+            ->missing('filters')
         );
 });
 
-test('the docs index can filter by category', function () {
-    Doc::factory()->create(['category' => 'Guides', 'slug' => 'guide-one']);
-    Doc::factory()->create(['category' => 'FAQ', 'slug' => 'faq-one']);
-
-    $this->get(route('docs.index', ['category' => 'Guides']))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('docs/index')
-            ->has('docs', 1)
-            ->where('filters.category', 'Guides')
-            ->where('docs.0.slug', 'guide-one')
-        );
-});
-
-test('a published doc page renders body headings and related items', function () {
+test('a published doc page renders a simple article without related items', function () {
     $article = Doc::factory()->create([
         'slug' => 'getting-started',
         'title' => 'Getting started',
-        'category' => 'Guides',
+        'excerpt' => 'A short intro.',
         'body' => '<p>Intro</p><h2>Browse resources</h2><p>Details</p>',
     ]);
-    $related = Doc::factory()->create([
-        'slug' => 'filters',
-        'category' => 'Guides',
-    ]);
     Doc::factory()->create([
-        'slug' => 'other-category',
-        'category' => 'FAQ',
+        'slug' => 'filters',
+        'category' => $article->category,
     ]);
 
     $this->get(route('docs.show', $article))
@@ -75,11 +57,10 @@ test('a published doc page renders body headings and related items', function ()
             ->component('docs/show')
             ->where('doc.slug', 'getting-started')
             ->where('doc.title', 'Getting started')
-            ->where('doc.category', 'Guides')
-            ->where('doc.headings.0.id', 'browse-resources')
-            ->where('doc.headings.0.title', 'Browse resources')
-            ->has('related', 1)
-            ->where('related.0.slug', $related->slug)
+            ->where('doc.excerpt', 'A short intro.')
+            ->where('doc.body', fn ($body): bool => is_string($body) && str_contains($body, 'Browse resources'))
+            ->missing('doc.headings')
+            ->missing('related')
         );
 });
 

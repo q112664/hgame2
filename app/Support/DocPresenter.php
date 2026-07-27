@@ -14,10 +14,8 @@ class DocPresenter
             'slug' => $doc->slug,
             'title' => $doc->title,
             'excerpt' => $doc->excerpt ?? '',
-            'category' => $doc->category,
+            'thumbnail' => self::thumbnailUrl($doc),
             'publishedAt' => self::dateString($doc->published_at),
-            'updatedAt' => self::dateString($doc->updated_at),
-            'readingMinutes' => $doc->readingMinutes(),
         ];
     }
 
@@ -27,8 +25,16 @@ class DocPresenter
         return [
             ...self::card($doc),
             'body' => str($doc->body ?? '')->sanitizeHtml()->toString(),
-            'headings' => $doc->headings(),
         ];
+    }
+
+    private static function thumbnailUrl(Doc $doc): ?string
+    {
+        if (blank($doc->cover_path)) {
+            return null;
+        }
+
+        return Media::url($doc->cover_path);
     }
 
     private static function dateString(mixed $date): ?string

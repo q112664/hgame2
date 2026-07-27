@@ -11,12 +11,20 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import AuthModalLayout from '@/layouts/auth-modal-layout';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const fallbackSiteTitle = import.meta.env.VITE_APP_NAME || 'hgame';
 
 declare global {
     interface Window {
         __INERTIA_APP_ROOT__?: Root;
     }
+}
+
+function resolveSiteTitle(page?: { props?: { siteTitle?: unknown } }): string {
+    const shared = page?.props?.siteTitle;
+
+    return typeof shared === 'string' && shared.trim() !== ''
+        ? shared.trim()
+        : fallbackSiteTitle;
 }
 
 function FlashToastListener() {
@@ -38,7 +46,11 @@ function AppShell({ children }: { children: ReactNode }) {
 }
 
 createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
+    title: (title, page) => {
+        const siteTitle = resolveSiteTitle(page);
+
+        return title ? `${title} - ${siteTitle}` : siteTitle;
+    },
     layout: (name) => {
         switch (true) {
             case name === 'welcome':

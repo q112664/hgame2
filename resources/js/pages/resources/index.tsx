@@ -89,16 +89,7 @@ export default function ResourcesIndex({
         <SiteLayout>
             <Head title="Resources" />
 
-            <SitePageContainer className="gap-8">
-                <div className="flex flex-col gap-2">
-                    <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                        Resources
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Browse and filter published visual novel resources
-                    </p>
-                </div>
-
+            <SitePageContainer className="gap-6 sm:gap-8">
                 <div className="flex flex-col gap-4 rounded-md border border-border/80 bg-card p-4 sm:p-5">
                     <div className="relative">
                         <label className="sr-only" htmlFor="resource-search">

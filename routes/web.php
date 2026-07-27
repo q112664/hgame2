@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DocController;
+use App\Http\Controllers\DownloadLinkContinueController;
 use App\Http\Controllers\DownloadLinkController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\GameRatingController;
@@ -18,6 +19,10 @@ Route::get('/docs/{doc}', [DocController::class, 'show'])->name('docs.show');
 Route::get('/go/{downloadLink}', [DownloadLinkController::class, 'show'])
     ->name('download-links.show')
     ->whereNumber('downloadLink');
+Route::post('/go/{downloadLink}', DownloadLinkContinueController::class)
+    ->name('download-links.continue')
+    ->whereNumber('downloadLink')
+    ->middleware('throttle:20,1');
 
 Route::get('/resources', [ResourceController::class, 'index'])
     ->name('resources.index');

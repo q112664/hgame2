@@ -1,7 +1,8 @@
-import { Form } from '@inertiajs/react';
+import { Form, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
+import { TurnstileWidget } from '@/components/turnstile-widget';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +19,12 @@ type Props = {
 };
 
 export default function ForgotPasswordForm({ status, onLogin }: Props) {
+    const { turnstile } = usePage().props;
+    const showTurnstile = Boolean(
+        turnstile.forgotPassword && turnstile.siteKey,
+    );
     const [sent, setSent] = useState(false);
+    const [turnstileResetKey, setTurnstileResetKey] = useState(0);
 
     return (
         <div className="space-y-6">
@@ -36,6 +42,7 @@ export default function ForgotPasswordForm({ status, onLogin }: Props) {
                 {...email.form()}
                 onStart={() => setSent(false)}
                 onSuccess={() => setSent(true)}
+                onError={() => setTurnstileResetKey((key) => key + 1)}
             >
                 {({ processing, errors }) => (
                     <>
@@ -52,6 +59,19 @@ export default function ForgotPasswordForm({ status, onLogin }: Props) {
 
                             <InputError message={errors.email} />
                         </div>
+
+                        {showTurnstile && turnstile.siteKey ? (
+                            <div className="mt-4">
+                                <TurnstileWidget
+                                    siteKey={turnstile.siteKey}
+                                    error={
+                                        errors['cf-turnstile-response'] as
+                                            string | undefined
+                                    }
+                                    resetKey={turnstileResetKey}
+                                />
+                            </div>
+                        ) : null}
 
                         <div className="my-6 flex items-center justify-start">
                             <Button

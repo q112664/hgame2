@@ -1,7 +1,9 @@
-import { Form } from '@inertiajs/react';
+import { Form, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
+import { TurnstileWidget } from '@/components/turnstile-widget';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,12 +27,17 @@ export default function RegisterForm({
     onLogin,
     onSuccess,
 }: Props) {
+    const { turnstile } = usePage().props;
+    const showTurnstile = Boolean(turnstile.register && turnstile.siteKey);
+    const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+
     return (
         <Form
             {...store.form()}
             resetOnSuccess={['password', 'password_confirmation']}
             disableWhileProcessing
             onSuccess={onSuccess}
+            onError={() => setTurnstileResetKey((key) => key + 1)}
             className="flex flex-col gap-6"
         >
             {({ processing, errors }) => (
@@ -103,6 +110,17 @@ export default function RegisterForm({
                                 message={errors.password_confirmation}
                             />
                         </div>
+
+                        {showTurnstile && turnstile.siteKey ? (
+                            <TurnstileWidget
+                                siteKey={turnstile.siteKey}
+                                error={
+                                    errors['cf-turnstile-response'] as
+                                        string | undefined
+                                }
+                                resetKey={turnstileResetKey}
+                            />
+                        ) : null}
 
                         <Button
                             type="submit"

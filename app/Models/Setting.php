@@ -57,20 +57,30 @@ class Setting extends Model
         return rtrim((string) (static::get('site_url') ?: config('app.url')), '/');
     }
 
-    public static function ratingsEnabled(): bool
+    public static function boolean(string $key, bool $default = false): bool
     {
-        $value = static::get('ratings_enabled');
+        $value = static::get($key);
 
         if ($value === null) {
-            return true;
+            return $default;
         }
 
         return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 
+    public static function setBoolean(string $key, bool $enabled): void
+    {
+        static::set($key, $enabled ? '1' : '0');
+    }
+
+    public static function ratingsEnabled(): bool
+    {
+        return static::boolean('ratings_enabled', true);
+    }
+
     public static function setRatingsEnabled(bool $enabled): void
     {
-        static::set('ratings_enabled', $enabled ? '1' : '0');
+        static::setBoolean('ratings_enabled', $enabled);
     }
 
     public static function coverThumbnailMaxWidth(): int
@@ -98,6 +108,100 @@ class Setting extends Model
     public static function defaultSiteLogoText(): string
     {
         return (string) config('app.name', 'hgame');
+    }
+
+    public static function defaultSiteTitle(): string
+    {
+        return static::defaultSiteLogoText();
+    }
+
+    /**
+     * Browser tab title suffix (e.g. "Resources - {siteTitle}").
+     */
+    public static function siteTitle(): string
+    {
+        $title = static::get('site_title');
+
+        if (filled($title)) {
+            return (string) $title;
+        }
+
+        return static::siteLogoText();
+    }
+
+    public static function defaultSeoDescription(): string
+    {
+        return 'Browse, search, and download galgame resources.';
+    }
+
+    public static function seoDescription(): string
+    {
+        $description = static::get('seo_description');
+
+        return filled($description)
+            ? (string) $description
+            : static::defaultSeoDescription();
+    }
+
+    public static function seoKeywords(): string
+    {
+        return (string) (static::get('seo_keywords') ?? '');
+    }
+
+    public static function seoRobots(): string
+    {
+        $robots = static::get('seo_robots', 'index,follow');
+
+        return in_array($robots, ['index,follow', 'noindex,follow', 'noindex,nofollow'], true)
+            ? $robots
+            : 'index,follow';
+    }
+
+    public static function seoOgImagePath(): ?string
+    {
+        $path = static::get('seo_og_image_path');
+
+        return filled($path) ? $path : null;
+    }
+
+    public static function seoOgImageUrl(): ?string
+    {
+        $path = static::seoOgImagePath();
+
+        if ($path === null) {
+            return static::siteLogoImageUrl();
+        }
+
+        $url = Media::url($path);
+
+        return $url !== '' ? $url : static::siteLogoImageUrl();
+    }
+
+    public static function seoGoogleSiteVerification(): string
+    {
+        return (string) (static::get('seo_google_site_verification') ?? '');
+    }
+
+    /**
+     * Site-wide SEO defaults shared with the frontend and Blade fallbacks.
+     *
+     * @return array{
+     *     description: string,
+     *     keywords: string,
+     *     robots: string,
+     *     ogImageUrl: string|null,
+     *     googleSiteVerification: string
+     * }
+     */
+    public static function seo(): array
+    {
+        return [
+            'description' => static::seoDescription(),
+            'keywords' => static::seoKeywords(),
+            'robots' => static::seoRobots(),
+            'ogImageUrl' => static::seoOgImageUrl(),
+            'googleSiteVerification' => static::seoGoogleSiteVerification(),
+        ];
     }
 
     public static function siteLogoText(): string

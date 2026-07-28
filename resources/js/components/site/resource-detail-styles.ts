@@ -89,20 +89,21 @@ export const downloadHeroButtonClassName = cn(
 );
 
 /**
- * Shared idle shell for hero Rate / Favorite actions.
- * Same border + surface treatment in light and dark (no border-only-in-dark).
+ * Shared idle shell for hero action icons (favorite, etc.).
+ * Borderless; dark mode uses a lifted chip so it reads on bg-card.
  */
 export const heroActionIdleClassName = cn(
-    'border border-border bg-muted text-muted-foreground shadow-none ring-0',
-    'hover:bg-muted/80',
-    'dark:border-foreground/15 dark:bg-surface-raised dark:text-foreground',
-    'dark:hover:border-foreground/25 dark:hover:bg-surface-strong',
+    'border-0 bg-muted text-muted-foreground shadow-none ring-0',
+    'hover:bg-muted/80 hover:text-foreground',
+    // card ≈ surface-raised in dark — avoid matching it or the control vanishes
+    'dark:bg-white/10 dark:text-muted-foreground',
+    'dark:hover:bg-white/14 dark:hover:text-foreground',
 );
 
-/** Active favorite state on the hero action shell. */
+/** Active favorite state on the hero action shell (no border). */
 export const heroFavoriteActiveClassName = cn(
-    'border border-favorite/30 bg-favorite/12 text-favorite shadow-none ring-0',
-    'hover:border-favorite/40 hover:bg-favorite/18 hover:text-favorite',
-    'dark:border-favorite/30 dark:bg-favorite/15 dark:text-favorite',
-    'dark:hover:border-favorite/40 dark:hover:bg-favorite/25 dark:hover:text-favorite',
+    'border-0 bg-favorite/12 text-favorite shadow-none ring-0',
+    'hover:bg-favorite/18 hover:text-favorite',
+    'dark:bg-favorite/22 dark:text-favorite',
+    'dark:hover:bg-favorite/30 dark:hover:text-favorite',
 );

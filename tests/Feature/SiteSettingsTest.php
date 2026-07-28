@@ -303,6 +303,54 @@ test('avatar urls use the configured site url', function () {
     expect($user->avatar)->toStartWith('http://hgame.test/storage/avatars/');
 });
 
+test('administrators can save a resource page notice', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'resource_notice_enabled' => true,
+            'resource_notice_content' => '<p>Use a <a href="https://example.com">stable mirror</a>.</p>',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    expect(Setting::resourceNoticeEnabled())->toBeTrue()
+        ->and(Setting::get('resource_notice_content'))->toContain('stable mirror')
+        ->and(Setting::resourceNoticeHtml())->toContain('stable mirror')
+        ->and(Setting::resourceNoticeHtml())->not->toContain('<script>');
+});
+
+test('administrators can save homepage hero content', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'hero_eyebrow' => 'Indie library',
+            'hero_title' => 'Welcome board',
+            'hero_description' => 'Find visual novels quickly.',
+            'hero_browse_label' => 'Catalog',
+            'hero_random_label' => 'Dice roll',
+            'hero_show_browse' => true,
+            'hero_show_random' => false,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    $hero = Setting::homeHero();
+
+    expect($hero['eyebrow'])->toBe('Indie library')
+        ->and($hero['title'])->toBe('Welcome board')
+        ->and($hero['description'])->toBe('Find visual novels quickly.')
+        ->and($hero['browseLabel'])->toBe('Catalog')
+        ->and($hero['randomLabel'])->toBe('Dice roll')
+        ->and($hero['showBrowse'])->toBeTrue()
+        ->and($hero['showRandom'])->toBeFalse();
+});
+
 test('regular users cannot access site settings', function () {
     $this->actingAs(User::factory()->create())
         ->get(ManageSiteSettings::getUrl(panel: 'admin'))

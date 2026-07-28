@@ -92,7 +92,11 @@ export function RouteTabs<Value extends string>({
             {pill.ready ? (
                 <span
                     aria-hidden
-                    className="absolute top-1 bottom-1 rounded-sm bg-muted"
+                    className={cn(
+                        'pointer-events-none absolute top-1 bottom-1 rounded-sm bg-muted',
+                        'transition-[left,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+                        'motion-reduce:transition-none',
+                    )}
                     style={{ left: pill.left, width: pill.width }}
                 />
             ) : null}
@@ -114,9 +118,10 @@ export function RouteTabs<Value extends string>({
                     }
                     className={cn(
                         'relative z-10 inline-flex h-9 items-center justify-center rounded-md border-transparent px-4 text-sm font-medium shadow-none',
-                        'text-muted-foreground',
+                        'text-muted-foreground transition-colors duration-200',
                         'hover:bg-transparent hover:text-foreground/80',
                         'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                        'motion-reduce:transition-none',
                         effectiveDisplayedValue === tab.value
                             ? 'text-foreground'
                             : 'text-muted-foreground',

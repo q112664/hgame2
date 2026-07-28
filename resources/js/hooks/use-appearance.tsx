@@ -10,7 +10,6 @@ export type UseAppearanceReturn = {
 };
 
 const listeners = new Set<() => void>();
-let currentAppearance: Appearance = 'system';
 
 const prefersDark = (): boolean => {
     if (typeof window === 'undefined') {
@@ -34,8 +33,18 @@ const getStoredAppearance = (): Appearance => {
         return 'system';
     }
 
-    return (localStorage.getItem('appearance') as Appearance) || 'system';
+    const stored = localStorage.getItem('appearance');
+
+    if (stored === 'light' || stored === 'dark' || stored === 'system') {
+        return stored;
+    }
+
+    return 'system';
 };
+
+/** Prefer stored preference as soon as this module loads in the browser. */
+let currentAppearance: Appearance =
+    typeof window !== 'undefined' ? getStoredAppearance() : 'system';
 
 const isDarkMode = (appearance: Appearance): boolean => {
     return appearance === 'dark' || (appearance === 'system' && prefersDark());
@@ -68,7 +77,11 @@ const mediaQuery = (): MediaQueryList | null => {
     return window.matchMedia('(prefers-color-scheme: dark)');
 };
 
-const handleSystemThemeChange = (): void => applyTheme(currentAppearance);
+const handleSystemThemeChange = (): void => {
+    applyTheme(currentAppearance);
+    // Re-render consumers so resolvedAppearance / toggle icons stay in sync.
+    notify();
+};
 
 export function initializeTheme(): void {
     if (typeof window === 'undefined') {

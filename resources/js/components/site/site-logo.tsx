@@ -22,13 +22,19 @@ export function SiteLogo({
         !showImage;
 
     return (
-        <span className={cn('inline-flex items-center gap-2', className)}>
+        <span
+            className={cn(
+                'inline-flex h-8 max-h-8 items-center gap-1.5',
+                className,
+            )}
+        >
             {showImage ? (
                 <img
                     src={siteLogo.imageUrl ?? undefined}
                     alt={showText ? '' : siteLogo.text}
                     className={cn(
-                        'h-7 w-auto max-w-40 object-contain',
+                        'h-8 w-auto max-w-36 object-contain',
+                        showText && 'rounded-md',
                         imageClassName,
                     )}
                     referrerPolicy="no-referrer"
@@ -37,7 +43,7 @@ export function SiteLogo({
             {showText ? (
                 <span
                     className={cn(
-                        'font-heading text-lg font-semibold tracking-tight text-foreground',
+                        'font-heading text-xl leading-none font-semibold tracking-tight text-foreground',
                         textClassName,
                     )}
                 >

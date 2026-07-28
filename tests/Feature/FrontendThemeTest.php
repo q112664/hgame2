@@ -165,6 +165,8 @@ test('site empty states and download buttons use primary CTAs', function () {
 
     expect($filesystem->get(resource_path('js/components/site/route-tabs.tsx')))
         ->toContain('rounded-sm bg-muted')
+        ->toContain('transition-[left,width]')
+        ->toContain('motion-reduce:transition-none')
         ->not->toContain('rounded-sm bg-accent')
         ->not->toContain('motion/react')
         ->not->toContain('motion.span');
@@ -184,7 +186,8 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain('aria-label="Close menu"');
 
     expect($filesystem->get(resource_path('js/components/site/home-hero.tsx')))
-        ->toContain('siteLogo.text')
+        ->toContain('hero.title')
+        ->toContain('hero.browseLabel')
         ->toContain('bg-auth/22')
         ->toContain('backdrop-blur-sm');
 
@@ -267,7 +270,7 @@ test('resource and detailed cards share frosted thumbnail overlay chips', functi
         ->toContain('resourceCardTitleClassName')
         ->toContain('resourceCardSubtitleClassName')
         ->toContain('@/components/site/resource-card-styles')
-        ->toContain('abbreviateLanguage')
+        ->toContain('ResourceOverlayLanguageGroup')
         ->not->toContain('font-mono')
         ->not->toContain('bg-background/90 text-xs font-medium text-foreground ring-1 ring-border/80');
 });
@@ -359,8 +362,9 @@ test('button variants use deliberate dark mode surfaces and borders', function (
         ->toContain('heroActionIdleClassName');
 
     expect($resourceStyles)
-        ->toContain('dark:border-favorite/30 dark:bg-favorite/15')
-        ->toContain('dark:border-foreground/15 dark:bg-surface-raised');
+        ->toContain('dark:bg-favorite/22')
+        ->toContain('dark:bg-white/10')
+        ->toContain('border-0');
 
     expect($resourceCard)
         ->toContain('Remove favorite')

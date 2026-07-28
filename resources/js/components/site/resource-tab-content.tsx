@@ -6,6 +6,7 @@ import {
     Download,
     HardDrive,
     Images,
+    Info,
 } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
@@ -179,6 +180,8 @@ type Props = {
     isTabPending: boolean;
     screenshotSlides: LightboxSlide[];
     onOpenLightbox: (slides: LightboxSlide[], index: number) => void;
+    /** Site-wide notice HTML above download packages (empty when disabled). */
+    resourceNotice?: string;
 };
 
 export function ResourceTabContent({
@@ -187,6 +190,7 @@ export function ResourceTabContent({
     isTabPending,
     screenshotSlides,
     onOpenLightbox,
+    resourceNotice = '',
 }: Props) {
     return (
         <div aria-busy={isTabPending || undefined}>
@@ -214,6 +218,30 @@ export function ResourceTabContent({
 
             {activeTab === 'downloads' ? (
                 <div className="flex flex-col gap-3 sm:gap-4">
+                    {resourceNotice !== '' ? (
+                        <div
+                            role="note"
+                            className={cn(
+                                'flex gap-2.5 rounded-md border border-info/20 bg-info/8 px-3 py-2.5 sm:px-4',
+                                'dark:border-info/25 dark:bg-info/12',
+                            )}
+                        >
+                            <Info
+                                className="mt-0.5 size-4 shrink-0 text-info"
+                                aria-hidden
+                            />
+                            <RichHtml
+                                html={resourceNotice}
+                                className={cn(
+                                    'min-w-0 flex-1 text-sm leading-relaxed',
+                                    'prose-p:my-1 prose-p:first:mt-0 prose-p:last:mb-0',
+                                    'prose-ul:my-1 prose-ol:my-1 prose-li:my-0',
+                                    'prose-headings:my-1.5 prose-headings:text-sm',
+                                    'prose-a:font-medium',
+                                )}
+                            />
+                        </div>
+                    ) : null}
                     {resource.releases.length > 0 ? (
                         resource.releases.map((release) => {
                             const hasLinks = release.downloadLinks.length > 0;

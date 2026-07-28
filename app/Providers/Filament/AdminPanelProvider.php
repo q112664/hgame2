@@ -3,8 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Resources\Games\GameResource;
+use App\Http\Middleware\AuthenticateFilamentPanel;
 use App\Models\Setting;
-use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -27,7 +27,8 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            // No Filament login page — admins sign in via the public site (Fortify),
+            // then open /admin from the user menu.
             ->brandName(fn (): string => Setting::siteTitle())
             ->homeUrl(fn (): string => GameResource::getUrl(panel: 'admin'))
             ->colors([
@@ -54,7 +55,7 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
-                Authenticate::class,
+                AuthenticateFilamentPanel::class,
             ])
             ->renderHook(
                 'panels::head.end',

@@ -7,6 +7,7 @@ use App\Support\Media;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -18,6 +19,8 @@ use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -47,6 +50,8 @@ class ManageSiteSettings extends Page
 
     public function mount(): void
     {
+        $hero = Setting::homeHero();
+
         $this->form->fill([
             'site_url' => Setting::siteUrl(),
             'site_title' => Setting::get('site_title') ?? Setting::siteTitle(),
@@ -59,6 +64,15 @@ class ManageSiteSettings extends Page
             'site_logo_text' => Setting::siteLogoText(),
             'site_logo_path' => Setting::siteLogoPath(),
             'hero_background_path' => Setting::heroBackgroundPath(),
+            'hero_eyebrow' => Setting::get('hero_eyebrow') ?? Setting::defaultHeroEyebrow(),
+            'hero_title' => Setting::get('hero_title') ?? '',
+            'hero_description' => Setting::get('hero_description') ?? Setting::defaultHeroDescription(),
+            'hero_browse_label' => Setting::get('hero_browse_label') ?? Setting::defaultHeroBrowseLabel(),
+            'hero_random_label' => Setting::get('hero_random_label') ?? Setting::defaultHeroRandomLabel(),
+            'hero_show_browse' => $hero['showBrowse'],
+            'hero_show_random' => $hero['showRandom'],
+            'resource_notice_enabled' => Setting::resourceNoticeEnabled(),
+            'resource_notice_content' => Setting::get('resource_notice_content') ?? '',
             'turnstile_site_key' => Setting::get('turnstile_site_key') ?? config('services.turnstile.site_key'),
             'turnstile_secret_key' => Setting::get('turnstile_secret_key') ? '••••••••' : '',
             'turnstile_login_enabled' => Setting::boolean('turnstile_login_enabled', false),
@@ -79,142 +93,212 @@ class ManageSiteSettings extends Page
     {
         return $schema
             ->components([
-                Section::make('General')
-                    ->description('Public site configuration. When media storage is Local, this URL is used for media links such as avatars.')
-                    ->schema([
-                        TextInput::make('site_url')
-                            ->label('Site URL')
-                            ->url()
-                            ->required()
-                            ->maxLength(255)
-                            ->placeholder('http://hgame.test')
-                            ->helperText('Example: http://hgame.test or https://example.com'),
+                Tabs::make('Site settings')
+                    ->persistTabInQueryString('settingsTab')
+                    ->contained(false)
+                    ->tabs([
+                        Tab::make('General')
+                            ->icon(Heroicon::OutlinedGlobeAlt)
+                            ->schema([
+                                Section::make('Site identity')
+                                    ->description('Core site URL used for media links, emails, and absolute URLs.')
+                                    ->schema([
+                                        TextInput::make('site_url')
+                                            ->label('Site URL')
+                                            ->url()
+                                            ->required()
+                                            ->maxLength(255)
+                                            ->placeholder('https://example.com')
+                                            ->helperText('Production example: https://eroga.me'),
+                                    ]),
+                                Section::make('Site logo')
+                                    ->description('Header and footer brand mark. Use text, image, or both.')
+                                    ->schema([
+                                        Select::make('site_logo_mode')
+                                            ->label('Display')
+                                            ->options([
+                                                'text' => 'Text only',
+                                                'image' => 'Image only',
+                                                'both' => 'Image and text',
+                                            ])
+                                            ->required()
+                                            ->live()
+                                            ->native(false),
+                                        TextInput::make('site_logo_text')
+                                            ->label('Logo text')
+                                            ->maxLength(80)
+                                            ->placeholder(Setting::defaultSiteLogoText())
+                                            ->required(fn (Get $get): bool => in_array($get('site_logo_mode'), ['text', 'both'], true))
+                                            ->visible(fn (Get $get): bool => in_array($get('site_logo_mode'), ['text', 'both'], true)),
+                                        FileUpload::make('site_logo_path')
+                                            ->label('Logo image')
+                                            ->image()
+                                            ->disk(Media::diskName())
+                                            ->directory('site/logo')
+                                            ->visibility('public')
+                                            ->maxSize(2048)
+                                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
+                                            ->required(fn (Get $get): bool => in_array($get('site_logo_mode'), ['image', 'both'], true))
+                                            ->visible(fn (Get $get): bool => in_array($get('site_logo_mode'), ['image', 'both'], true))
+                                            ->helperText('PNG, WebP, JPEG, or SVG. Max 2MB.'),
+                                    ]),
+                            ]),
+                        Tab::make('Homepage')
+                            ->icon(Heroicon::OutlinedHome)
+                            ->schema([
+                                Section::make('Hero background')
+                                    ->description('Wide artwork behind the homepage hero card. Clear to restore the built-in default.')
+                                    ->schema([
+                                        FileUpload::make('hero_background_path')
+                                            ->label('Background image')
+                                            ->image()
+                                            ->imageEditor()
+                                            ->disk(Media::diskName())
+                                            ->directory('site/hero')
+                                            ->visibility('public')
+                                            ->maxSize(5120)
+                                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                            ->helperText('Recommended about 16:9. Max 5MB.'),
+                                    ]),
+                                Section::make('Hero copy')
+                                    ->description('Eyebrow, title, and description on the homepage hero. Leave title empty to reuse the logo text.')
+                                    ->schema([
+                                        TextInput::make('hero_eyebrow')
+                                            ->label('Eyebrow')
+                                            ->maxLength(120)
+                                            ->placeholder(Setting::defaultHeroEyebrow())
+                                            ->helperText('Small uppercase line above the title.'),
+                                        TextInput::make('hero_title')
+                                            ->label('Title override')
+                                            ->maxLength(120)
+                                            ->placeholder(Setting::siteLogoText())
+                                            ->helperText('Optional. When empty, the logo text is shown as the hero title.'),
+                                        Textarea::make('hero_description')
+                                            ->label('Description')
+                                            ->rows(3)
+                                            ->maxLength(500)
+                                            ->placeholder(Setting::defaultHeroDescription()),
+                                    ]),
+                                Section::make('Hero buttons')
+                                    ->description('Primary calls to action on the hero card.')
+                                    ->schema([
+                                        Toggle::make('hero_show_browse')
+                                            ->label('Show Browse button')
+                                            ->default(true)
+                                            ->inline(false),
+                                        TextInput::make('hero_browse_label')
+                                            ->label('Browse label')
+                                            ->maxLength(40)
+                                            ->placeholder(Setting::defaultHeroBrowseLabel()),
+                                        Toggle::make('hero_show_random')
+                                            ->label('Show Random button')
+                                            ->default(true)
+                                            ->inline(false),
+                                        TextInput::make('hero_random_label')
+                                            ->label('Random label')
+                                            ->maxLength(40)
+                                            ->placeholder(Setting::defaultHeroRandomLabel()),
+                                    ])
+                                    ->columns(2),
+                            ]),
+                        Tab::make('SEO')
+                            ->icon(Heroicon::OutlinedMagnifyingGlass)
+                            ->schema([
+                                Section::make('Search & social')
+                                    ->description('Default metadata for search engines and social previews.')
+                                    ->schema([
+                                        TextInput::make('site_title')
+                                            ->label('Site title')
+                                            ->maxLength(80)
+                                            ->required()
+                                            ->placeholder(Setting::defaultSiteTitle())
+                                            ->helperText('Browser tab title suffix, e.g. “Resources - Your Title”.'),
+                                        Textarea::make('seo_description')
+                                            ->label('Meta description')
+                                            ->rows(3)
+                                            ->maxLength(320)
+                                            ->placeholder(Setting::defaultSeoDescription())
+                                            ->helperText('About 150–160 characters recommended.'),
+                                        TextInput::make('seo_keywords')
+                                            ->label('Meta keywords')
+                                            ->maxLength(255)
+                                            ->placeholder('galgame, visual novel, downloads'),
+                                        Select::make('seo_robots')
+                                            ->label('Robots')
+                                            ->options([
+                                                'index,follow' => 'Index, follow (default)',
+                                                'noindex,follow' => 'No index, follow',
+                                                'noindex,nofollow' => 'No index, no follow',
+                                            ])
+                                            ->required()
+                                            ->native(false),
+                                        FileUpload::make('seo_og_image_path')
+                                            ->label('Social share image')
+                                            ->image()
+                                            ->imageEditor()
+                                            ->disk(Media::diskName())
+                                            ->directory('site/seo')
+                                            ->visibility('public')
+                                            ->maxSize(3072)
+                                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                            ->helperText('Open Graph / Twitter. Recommended 1200×630.'),
+                                        TextInput::make('seo_google_site_verification')
+                                            ->label('Google site verification')
+                                            ->maxLength(255)
+                                            ->helperText('Paste only the content value from Search Console’s meta tag.'),
+                                    ]),
+                            ]),
+                        Tab::make('Resources')
+                            ->icon(Heroicon::OutlinedRectangleStack)
+                            ->schema([
+                                Section::make('Resource page notice')
+                                    ->description('Shown on the Downloads tab above download packages. Disable or clear to hide.')
+                                    ->schema([
+                                        Toggle::make('resource_notice_enabled')
+                                            ->label('Show notice')
+                                            ->default(false),
+                                        RichEditor::make('resource_notice_content')
+                                            ->label('Notice content')
+                                            ->fileAttachmentsDisk(Media::diskName())
+                                            ->fileAttachmentsDirectory('site/notices')
+                                            ->fileAttachmentsVisibility('public')
+                                            ->columnSpanFull()
+                                            ->helperText('Rich text with optional images.'),
+                                    ]),
+                            ]),
+                        Tab::make('Security')
+                            ->icon(Heroicon::OutlinedShieldCheck)
+                            ->schema([
+                                Section::make('Cloudflare Turnstile')
+                                    ->description('Bot protection for public forms. Env TURNSTILE_* is used when keys are left empty here.')
+                                    ->schema([
+                                        TextInput::make('turnstile_site_key')
+                                            ->label('Site key')
+                                            ->maxLength(255)
+                                            ->placeholder(config('services.turnstile.site_key') ?: '0x4AAAA…'),
+                                        TextInput::make('turnstile_secret_key')
+                                            ->label('Secret key')
+                                            ->password()
+                                            ->revealable()
+                                            ->maxLength(255)
+                                            ->dehydrated(fn (?string $state): bool => filled($state) && $state !== '••••••••')
+                                            ->helperText('Leave blank to keep the current secret.'),
+                                        Toggle::make('turnstile_login_enabled')
+                                            ->label('Protect login')
+                                            ->default(false),
+                                        Toggle::make('turnstile_register_enabled')
+                                            ->label('Protect registration')
+                                            ->default(false),
+                                        Toggle::make('turnstile_forgot_password_enabled')
+                                            ->label('Protect forgot password')
+                                            ->default(false),
+                                        Toggle::make('turnstile_download_enabled')
+                                            ->label('Protect download jump page')
+                                            ->default(false),
+                                    ])
+                                    ->columns(2),
+                            ]),
                     ]),
-                Section::make('SEO')
-                    ->description('Default metadata for search engines and social previews. Individual pages can still override the tab title.')
-                    ->schema([
-                        TextInput::make('site_title')
-                            ->label('Site title')
-                            ->maxLength(80)
-                            ->required()
-                            ->placeholder(Setting::defaultSiteTitle())
-                            ->helperText('Browser tab title suffix, e.g. “Resources - Your Title”.'),
-                        Textarea::make('seo_description')
-                            ->label('Meta description')
-                            ->rows(3)
-                            ->maxLength(320)
-                            ->placeholder(Setting::defaultSeoDescription())
-                            ->helperText('Default description for search results and Open Graph previews (about 150–160 characters recommended).'),
-                        TextInput::make('seo_keywords')
-                            ->label('Meta keywords')
-                            ->maxLength(255)
-                            ->placeholder('galgame, visual novel, downloads')
-                            ->helperText('Optional comma-separated keywords. Most search engines ignore this; keep it short if used.'),
-                        Select::make('seo_robots')
-                            ->label('Robots')
-                            ->options([
-                                'index,follow' => 'Index, follow (default)',
-                                'noindex,follow' => 'No index, follow',
-                                'noindex,nofollow' => 'No index, no follow',
-                            ])
-                            ->required()
-                            ->native(false)
-                            ->helperText('Controls the default robots meta tag for the whole site.'),
-                        FileUpload::make('seo_og_image_path')
-                            ->label('Social share image')
-                            ->image()
-                            ->imageEditor()
-                            ->disk(Media::diskName())
-                            ->directory('site/seo')
-                            ->visibility('public')
-                            ->maxSize(3072)
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                            ->helperText('Open Graph / Twitter image. Recommended 1200×630. Falls back to the site logo image when empty.'),
-                        TextInput::make('seo_google_site_verification')
-                            ->label('Google site verification')
-                            ->maxLength(255)
-                            ->placeholder('googleXXXXXXXXXXXXXXXX.html content value')
-                            ->helperText('Paste only the content value from Google Search Console’s meta tag verification.'),
-                    ]),
-                Section::make('Site logo')
-                    ->description('Header brand mark. Use text only, image only, or both together.')
-                    ->schema([
-                        Select::make('site_logo_mode')
-                            ->label('Display')
-                            ->options([
-                                'text' => 'Text only',
-                                'image' => 'Image only',
-                                'both' => 'Image and text',
-                            ])
-                            ->required()
-                            ->live()
-                            ->native(false),
-                        TextInput::make('site_logo_text')
-                            ->label('Logo text')
-                            ->maxLength(80)
-                            ->placeholder(Setting::defaultSiteLogoText())
-                            ->required(fn (Get $get): bool => in_array($get('site_logo_mode'), ['text', 'both'], true))
-                            ->visible(fn (Get $get): bool => in_array($get('site_logo_mode'), ['text', 'both'], true))
-                            ->helperText('Shown in the site header when text is enabled.'),
-                        FileUpload::make('site_logo_path')
-                            ->label('Logo image')
-                            ->image()
-                            ->disk(Media::diskName())
-                            ->directory('site/logo')
-                            ->visibility('public')
-                            ->maxSize(2048)
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
-                            ->required(fn (Get $get): bool => in_array($get('site_logo_mode'), ['image', 'both'], true))
-                            ->visible(fn (Get $get): bool => in_array($get('site_logo_mode'), ['image', 'both'], true))
-                            ->helperText('PNG, WebP, JPEG, or SVG. Max 2MB. Clear to remove.'),
-                    ]),
-                Section::make('Homepage hero')
-                    ->description('Background image for the homepage hero card. Clear the upload to restore the built-in default artwork.')
-                    ->schema([
-                        FileUpload::make('hero_background_path')
-                            ->label('Hero background')
-                            ->image()
-                            ->imageEditor()
-                            ->disk(Media::diskName())
-                            ->directory('site/hero')
-                            ->visibility('public')
-                            ->maxSize(5120)
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                            ->helperText('Recommended wide image (about 16:9). Max 5MB. JPEG, PNG, or WebP.'),
-                    ]),
-                Section::make('Cloudflare Turnstile')
-                    ->description('Bot protection for public forms. Keys can also be set via TURNSTILE_* environment variables when left empty here.')
-                    ->schema([
-                        TextInput::make('turnstile_site_key')
-                            ->label('Site key')
-                            ->maxLength(255)
-                            ->placeholder(config('services.turnstile.site_key') ?: '0x4AAAA…')
-                            ->helperText('Public site key from the Cloudflare Turnstile dashboard.'),
-                        TextInput::make('turnstile_secret_key')
-                            ->label('Secret key')
-                            ->password()
-                            ->revealable()
-                            ->maxLength(255)
-                            ->dehydrated(fn (?string $state): bool => filled($state) && $state !== '••••••••')
-                            ->helperText('Leave blank to keep the current secret. Shown as dots when already saved.'),
-                        Toggle::make('turnstile_login_enabled')
-                            ->label('Protect login')
-                            ->helperText('Require Turnstile on the login form (page and modal).')
-                            ->default(false),
-                        Toggle::make('turnstile_register_enabled')
-                            ->label('Protect registration')
-                            ->helperText('Require Turnstile when creating a new account.')
-                            ->default(false),
-                        Toggle::make('turnstile_forgot_password_enabled')
-                            ->label('Protect forgot password')
-                            ->helperText('Require Turnstile before sending a password reset email.')
-                            ->default(false),
-                        Toggle::make('turnstile_download_enabled')
-                            ->label('Protect download jump page')
-                            ->helperText('Hide the real download URL until Turnstile is verified on the intermediate download page.')
-                            ->default(false),
-                    ])
-                    ->columns(1),
             ]);
     }
 
@@ -306,6 +390,36 @@ class ManageSiteSettings extends Page
         Setting::set('site_logo_mode', $mode);
         Setting::set('site_logo_text', $logoText);
         Setting::set('hero_background_path', $nextHeroPath);
+
+        $heroEyebrow = trim((string) ($data['hero_eyebrow'] ?? ''));
+        $heroTitle = trim((string) ($data['hero_title'] ?? ''));
+        $heroDescription = trim((string) ($data['hero_description'] ?? ''));
+        $heroBrowseLabel = trim((string) ($data['hero_browse_label'] ?? ''));
+        $heroRandomLabel = trim((string) ($data['hero_random_label'] ?? ''));
+
+        Setting::set('hero_eyebrow', $heroEyebrow !== '' ? $heroEyebrow : null);
+        Setting::set('hero_title', $heroTitle !== '' ? $heroTitle : null);
+        Setting::set('hero_description', $heroDescription !== '' ? $heroDescription : null);
+        Setting::set('hero_browse_label', $heroBrowseLabel !== '' ? $heroBrowseLabel : null);
+        Setting::set('hero_random_label', $heroRandomLabel !== '' ? $heroRandomLabel : null);
+        Setting::setBoolean(
+            'hero_show_browse',
+            filter_var($data['hero_show_browse'] ?? true, FILTER_VALIDATE_BOOLEAN),
+        );
+        Setting::setBoolean(
+            'hero_show_random',
+            filter_var($data['hero_show_random'] ?? true, FILTER_VALIDATE_BOOLEAN),
+        );
+
+        Setting::setBoolean(
+            'resource_notice_enabled',
+            filter_var($data['resource_notice_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
+        );
+        $noticeContent = (string) ($data['resource_notice_content'] ?? '');
+        Setting::set(
+            'resource_notice_content',
+            $noticeContent !== '' ? $noticeContent : null,
+        );
 
         $siteKey = trim((string) ($data['turnstile_site_key'] ?? ''));
         Setting::set('turnstile_site_key', $siteKey !== '' ? $siteKey : null);

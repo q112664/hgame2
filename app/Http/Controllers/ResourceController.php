@@ -8,6 +8,7 @@ use App\Actions\Games\RecordGameView;
 use App\Filament\Resources\Games\GameResource;
 use App\Http\Requests\ListResourcesRequest;
 use App\Models\Game;
+use App\Models\Setting;
 use App\Support\GamePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,6 +67,7 @@ class ResourceController extends Controller
 
         return Inertia::render('resources/show', [
             'activeTab' => 'downloads',
+            'resourceNotice' => Setting::resourceNoticeHtml(),
             'resource' => $this->presentResource(
                 $game,
                 includeScreenshots: false,
@@ -104,6 +106,7 @@ class ResourceController extends Controller
 
         return Inertia::render('resources/show', [
             'activeTab' => $activeTab,
+            'resourceNotice' => Setting::resourceNoticeHtml(),
             'resource' => $this->presentResource(
                 $game,
                 includeScreenshots: $activeTab === 'screenshots',

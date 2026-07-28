@@ -57,6 +57,8 @@ import type { GameDetail } from '@/types/resources';
 type Props = {
     activeTab: ResourceTab;
     resource: GameDetail;
+    /** Site-wide notice HTML from admin (empty string when disabled). */
+    resourceNotice?: string;
 };
 
 type ResourceTab = 'details' | 'downloads' | 'screenshots';
@@ -149,7 +151,11 @@ function ResourceHeroCover({
     );
 }
 
-export default function ResourceShow({ activeTab, resource }: Props) {
+export default function ResourceShow({
+    activeTab,
+    resource,
+    resourceNotice = '',
+}: Props) {
     const shouldReduceMotion = useReducedMotion();
     const [pendingTab, setPendingTab] = useState<ResourceTab | null>(null);
     const {
@@ -650,6 +656,7 @@ export default function ResourceShow({ activeTab, resource }: Props) {
                         isTabPending={isTabPending}
                         screenshotSlides={screenshotSlides}
                         onOpenLightbox={openLightbox}
+                        resourceNotice={resourceNotice}
                     />
                 </div>
             </SitePageContainer>

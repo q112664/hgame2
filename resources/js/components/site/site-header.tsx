@@ -57,7 +57,7 @@ const navigationIcons: Record<string, LucideIcon> = {
 };
 
 const navLinkClassName = cn(
-    'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium',
+    'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium',
     'text-foreground/75 transition-[color,background-color]',
     'hover:bg-primary/10 hover:text-primary',
     'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
@@ -68,8 +68,9 @@ const softButtonClassName = cn(
     'aria-expanded:bg-foreground/5 aria-expanded:text-foreground',
 );
 
+/** Match logo / avatar footprint (32px) inside the h-14 bar. */
 const iconButtonClassName = cn(
-    'inline-flex size-9 items-center justify-center rounded-md text-foreground',
+    'inline-flex size-8 items-center justify-center rounded-md text-foreground',
     'transition-colors outline-none select-none',
     'hover:bg-foreground/10',
     'focus-visible:ring-2 focus-visible:ring-ring/50',
@@ -212,11 +213,16 @@ function ThemeToggle() {
                     className={iconButtonClassName}
                     onClick={() => updateAppearance(isDark ? 'light' : 'dark')}
                     aria-label={actionLabel}
+                    aria-pressed={isDark}
                 >
+                    {/*
+                      Show the *current* mode icon (Sun = light, Moon = dark),
+                      matching appearance settings and avoiding inverted affordance.
+                    */}
                     {isDark ? (
-                        <Sun className="size-4" />
+                        <Moon className="size-4 shrink-0" strokeWidth={1.75} />
                     ) : (
-                        <Moon className="size-4" />
+                        <Sun className="size-4 shrink-0" strokeWidth={1.75} />
                     )}
                 </button>
             </TooltipTrigger>
@@ -243,9 +249,9 @@ function UserAvatarMenu({ user }: { user: User }) {
                     <UserAvatar
                         user={user}
                         className="size-8"
-                        fallbackClassName="rounded-full bg-accent text-xs text-accent-foreground"
+                        fallbackClassName="rounded-full bg-accent text-[11px] text-accent-foreground"
                     />
-                    <span className="hidden max-w-32 truncate text-sm font-medium text-foreground md:inline">
+                    <span className="hidden max-w-28 truncate text-sm font-medium leading-none text-foreground md:inline">
                         {user.name}
                     </span>
                 </button>
@@ -297,7 +303,7 @@ export function SiteHeader() {
                             )}
                             aria-label="Open menu"
                         >
-                            <Menu className="size-4" />
+                            <Menu className="size-4 shrink-0" strokeWidth={1.75} />
                         </button>
                     </SheetTrigger>
                     <SheetContent
@@ -311,7 +317,7 @@ export function SiteHeader() {
                         <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border/80 px-4">
                             <Link
                                 href={home()}
-                                className="min-w-0 transition-opacity hover:opacity-80"
+                                className="inline-flex h-8 min-w-0 items-center transition-opacity hover:opacity-80"
                                 onClick={closeMenu}
                             >
                                 <SiteLogo />
@@ -369,10 +375,10 @@ export function SiteHeader() {
                     </SheetContent>
                 </Sheet>
 
-                <div className="flex min-w-0 flex-1 items-center gap-5 md:gap-8">
+                <div className="flex min-w-0 flex-1 items-center gap-4 md:gap-6">
                     <Link
                         href={home()}
-                        className="shrink-0 transition-opacity hover:opacity-80"
+                        className="inline-flex h-8 shrink-0 items-center transition-opacity hover:opacity-80"
                     >
                         <SiteLogo />
                     </Link>
@@ -390,7 +396,10 @@ export function SiteHeader() {
                                     aria-label="Search resources"
                                     prefetch
                                 >
-                                    <Search className="size-4" />
+                                    <Search
+                                        className="size-4 shrink-0"
+                                        strokeWidth={1.75}
+                                    />
                                 </Link>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" sideOffset={4}>
@@ -404,7 +413,7 @@ export function SiteHeader() {
                     {auth.user ? (
                         <UserAvatarMenu user={auth.user} />
                     ) : (
-                        <div className="hidden items-center gap-1.5 md:flex">
+                        <div className="hidden items-center gap-2 md:flex">
                             <Button
                                 variant="ghost"
                                 size="sm"

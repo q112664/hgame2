@@ -16,7 +16,7 @@ export function SiteFooter() {
                         href={home()}
                         className="transition-opacity hover:opacity-80"
                     >
-                        <SiteLogo textClassName="text-base" />
+                        <SiteLogo />
                     </Link>
                     <p className="text-xs text-muted-foreground">
                         Visual novel / galgame resource downloads

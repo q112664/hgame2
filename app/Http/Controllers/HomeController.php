@@ -16,7 +16,7 @@ class HomeController extends Controller
     public function __invoke(): Response
     {
         return Inertia::render('welcome', [
-            'heroBackgroundUrl' => Setting::heroBackgroundUrl(),
+            'hero' => Setting::homeHero(),
             'resources' => $this->presentCards(
                 Game::query()
                     ->published()

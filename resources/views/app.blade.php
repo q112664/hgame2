@@ -4,18 +4,17 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        {{-- Inline script to detect system dark mode preference and apply it immediately --}}
+        {{-- Inline script so first paint matches stored / system preference --}}
         <script>
             (function() {
                 const appearance = '{{ $appearance ?? "system" }}';
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const isDark =
+                    appearance === 'dark' ||
+                    (appearance === 'system' && prefersDark);
 
-                if (appearance === 'system') {
-                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-                    if (prefersDark) {
-                        document.documentElement.classList.add('dark');
-                    }
-                }
+                document.documentElement.classList.toggle('dark', isDark);
+                document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
             })();
         </script>
 

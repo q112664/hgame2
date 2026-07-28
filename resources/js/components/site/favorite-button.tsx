@@ -38,7 +38,7 @@ export function FavoriteButton({
             <TooltipTrigger asChild>
                 <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size={size}
                     aria-label={label}
                     aria-pressed={isFavorited}
@@ -49,12 +49,17 @@ export function FavoriteButton({
                             ? heroFavoriteActiveClassName
                             : heroActionIdleClassName,
                         !isFavorited &&
-                            'hover:border-favorite/30 hover:bg-favorite/10 hover:text-favorite dark:hover:border-favorite/25 dark:hover:bg-favorite/15 dark:hover:text-favorite',
+                            'hover:bg-favorite/10 hover:text-favorite dark:hover:bg-favorite/20 dark:hover:text-favorite',
+                        'disabled:opacity-60 dark:disabled:opacity-50',
                         className,
                     )}
                 >
                     <Heart
-                        className={cn('size-5', isFavorited && 'fill-current')}
+                        className={cn(
+                            'size-5',
+                            isFavorited && 'fill-current',
+                            !isFavorited && 'dark:opacity-90',
+                        )}
                     />
                 </Button>
             </TooltipTrigger>

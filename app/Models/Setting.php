@@ -280,6 +280,95 @@ class Setting extends Model
         return $url !== '' ? $url : static::defaultHeroBackgroundUrl();
     }
 
+    public static function defaultHeroEyebrow(): string
+    {
+        return 'Visual novel / galgame library';
+    }
+
+    public static function defaultHeroDescription(): string
+    {
+        return 'Browse, search, and download galgame packages.';
+    }
+
+    public static function defaultHeroBrowseLabel(): string
+    {
+        return 'Browse';
+    }
+
+    public static function defaultHeroRandomLabel(): string
+    {
+        return 'Random';
+    }
+
+    /**
+     * Homepage hero copy and controls for the public welcome page.
+     *
+     * @return array{
+     *     backgroundUrl: string,
+     *     eyebrow: string,
+     *     title: string,
+     *     description: string,
+     *     browseLabel: string,
+     *     randomLabel: string,
+     *     showBrowse: bool,
+     *     showRandom: bool
+     * }
+     */
+    public static function homeHero(): array
+    {
+        $title = trim((string) (static::get('hero_title') ?? ''));
+
+        if ($title === '') {
+            $title = static::siteLogoText();
+        }
+
+        $eyebrow = trim((string) (static::get('hero_eyebrow') ?? ''));
+        $description = trim((string) (static::get('hero_description') ?? ''));
+        $browseLabel = trim((string) (static::get('hero_browse_label') ?? ''));
+        $randomLabel = trim((string) (static::get('hero_random_label') ?? ''));
+
+        return [
+            'backgroundUrl' => static::heroBackgroundUrl(),
+            'eyebrow' => $eyebrow !== '' ? $eyebrow : static::defaultHeroEyebrow(),
+            'title' => $title,
+            'description' => $description !== '' ? $description : static::defaultHeroDescription(),
+            'browseLabel' => $browseLabel !== '' ? $browseLabel : static::defaultHeroBrowseLabel(),
+            'randomLabel' => $randomLabel !== '' ? $randomLabel : static::defaultHeroRandomLabel(),
+            'showBrowse' => static::boolean('hero_show_browse', true),
+            'showRandom' => static::boolean('hero_show_random', true),
+        ];
+    }
+
+    public static function resourceNoticeEnabled(): bool
+    {
+        return static::boolean('resource_notice_enabled', false);
+    }
+
+    /**
+     * Sanitized HTML for the resource-page notice above the download CTA.
+     * Empty when disabled or when the editor has no meaningful content.
+     */
+    public static function resourceNoticeHtml(): string
+    {
+        if (! static::resourceNoticeEnabled()) {
+            return '';
+        }
+
+        $raw = (string) (static::get('resource_notice_content') ?? '');
+
+        if ($raw === '') {
+            return '';
+        }
+
+        $sanitized = str($raw)->sanitizeHtml()->toString();
+
+        if (trim(strip_tags($sanitized, '<img>')) === '' && ! str_contains($sanitized, '<img')) {
+            return '';
+        }
+
+        return $sanitized;
+    }
+
     /**
      * @return list<array{label: string, url: string, icon: string|null, open_in_new_tab: bool, match: 'exact'|'prefix'|'none'}>
      */

@@ -45,6 +45,9 @@ function AppShell({ children }: { children: ReactNode }) {
     );
 }
 
+// Apply stored theme before the first React paint so toggle icons match.
+initializeTheme();
+
 createInertiaApp({
     title: (title, page) => {
         const siteTitle = resolveSiteTitle(page);
@@ -98,6 +101,3 @@ createInertiaApp({
         color: '#4B5563',
     },
 });
-
-// This will set light / dark mode on load...
-initializeTheme();

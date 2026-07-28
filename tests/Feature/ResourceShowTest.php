@@ -69,12 +69,45 @@ test('resource tab pages share hero metadata without shipping every tab payload'
             ->where('resource.isFavorited', false)
             ->where('resource.adminEditUrl', null)
             ->where('resource.hasDownloads', true)
+            ->where('resourceNotice', '')
         );
 })->with([
     'details' => ['resources.details', 'details'],
     'downloads' => ['resources.downloads', 'downloads'],
     'screenshots' => ['resources.screenshots', 'screenshots'],
 ]);
+
+test('resource pages expose a sanitized site notice above downloads when enabled', function () {
+    Setting::setBoolean('resource_notice_enabled', true);
+    Setting::set(
+        'resource_notice_content',
+        '<p>Please use <strong>official mirrors</strong><script>alert(1)</script>.</p>',
+    );
+
+    $this->get(route('resources.details', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('resources/show')
+            ->where(
+                'resourceNotice',
+                fn (string $html): bool => str_contains($html, 'official mirrors')
+                    && str_contains($html, '<strong>')
+                    && ! str_contains($html, '<script>'),
+            )
+        );
+});
+
+test('resource pages hide the site notice when it is disabled', function () {
+    Setting::setBoolean('resource_notice_enabled', false);
+    Setting::set('resource_notice_content', '<p>Hidden notice</p>');
+
+    $this->get(route('resources.details', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('resources/show')
+            ->where('resourceNotice', '')
+        );
+});
 
 test('resource tab endpoints keep the active tab contract for direct navigation', function () {
     foreach ([
@@ -205,7 +238,9 @@ test('home receives only published games', function () {
             ])
             ->where('resources.0.languages', ['Chinese'])
             ->where('resources.0.version', '1.2 demo')
-            ->where('heroBackgroundUrl', Setting::defaultHeroBackgroundUrl())
+            ->where('hero.backgroundUrl', Setting::defaultHeroBackgroundUrl())
+            ->where('hero.eyebrow', Setting::defaultHeroEyebrow())
+            ->where('hero.description', Setting::defaultHeroDescription())
         );
 });
 
@@ -216,7 +251,29 @@ test('home uses the configured hero background image', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('welcome')
-            ->where('heroBackgroundUrl', Media::url('site/hero/custom.jpg'))
+            ->where('hero.backgroundUrl', Media::url('site/hero/custom.jpg'))
+        );
+});
+
+test('home uses configured hero copy from site settings', function () {
+    Setting::set('hero_eyebrow', 'Custom eyebrow');
+    Setting::set('hero_title', 'Custom title');
+    Setting::set('hero_description', 'Custom description line.');
+    Setting::set('hero_browse_label', 'Explore');
+    Setting::set('hero_random_label', 'Surprise');
+    Setting::setBoolean('hero_show_random', false);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('welcome')
+            ->where('hero.eyebrow', 'Custom eyebrow')
+            ->where('hero.title', 'Custom title')
+            ->where('hero.description', 'Custom description line.')
+            ->where('hero.browseLabel', 'Explore')
+            ->where('hero.randomLabel', 'Surprise')
+            ->where('hero.showBrowse', true)
+            ->where('hero.showRandom', false)
         );
 });
 

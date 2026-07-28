@@ -1,6 +1,13 @@
 import { Link } from '@inertiajs/react';
-import { CalendarDays, Download, HardDrive, Images } from 'lucide-react';
-import { useState } from 'react';
+import {
+    CalendarDays,
+    ChevronDown,
+    ChevronUp,
+    Download,
+    HardDrive,
+    Images,
+} from 'lucide-react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
@@ -25,6 +32,103 @@ import { index as resourcesIndex } from '@/routes/resources';
 import type { GameDetail } from '@/types/resources';
 
 type ResourceTab = 'details' | 'downloads' | 'screenshots';
+
+/** Collapsed height ≈ three prose-sm lines before “Show more”. */
+const RELEASE_DESCRIPTION_COLLAPSED_MAX_PX = 72;
+
+const releaseDescriptionClassName = cn(
+    'prose-sm max-w-none text-muted-foreground',
+    '[--tw-prose-body:var(--color-muted-foreground)]',
+    'prose-p:my-1.5 prose-p:leading-relaxed',
+    'first:prose-p:mt-0 last:prose-p:mb-0',
+    '[&:has(>p:only-child:empty)]:hidden',
+);
+
+type CollapsibleReleaseDescriptionProps = {
+    html: string;
+};
+
+function CollapsibleReleaseDescription({
+    html,
+}: CollapsibleReleaseDescriptionProps) {
+    const contentRef = useRef<HTMLDivElement>(null);
+    const [expanded, setExpanded] = useState(false);
+    const [overflows, setOverflows] = useState(false);
+
+    useLayoutEffect(() => {
+        const el = contentRef.current;
+
+        if (!el) {
+            return;
+        }
+
+        const measure = () => {
+            setOverflows(
+                el.scrollHeight > RELEASE_DESCRIPTION_COLLAPSED_MAX_PX + 1,
+            );
+        };
+
+        measure();
+
+        const observer = new ResizeObserver(measure);
+        observer.observe(el);
+
+        return () => observer.disconnect();
+    }, [html]);
+
+    return (
+        <div className="flex flex-col">
+            <div className="relative">
+                <div
+                    ref={contentRef}
+                    className={cn(!expanded && overflows && 'overflow-hidden')}
+                    style={
+                        !expanded && overflows
+                            ? {
+                                  maxHeight:
+                                      RELEASE_DESCRIPTION_COLLAPSED_MAX_PX,
+                              }
+                            : undefined
+                    }
+                >
+                    <RichHtml
+                        html={html}
+                        className={releaseDescriptionClassName}
+                    />
+                </div>
+                {!expanded && overflows ? (
+                    <div
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-7 bg-gradient-to-t from-card to-transparent"
+                        aria-hidden
+                    />
+                ) : null}
+            </div>
+            {overflows ? (
+                <button
+                    type="button"
+                    className={cn(
+                        'mt-1.5 flex w-full items-center gap-2 text-[11px] tracking-wide text-muted-foreground uppercase',
+                        'transition-colors hover:text-foreground',
+                        'focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                    )}
+                    aria-expanded={expanded}
+                    onClick={() => setExpanded((value) => !value)}
+                >
+                    <span className="h-px min-w-0 flex-1 bg-border" />
+                    <span className="inline-flex shrink-0 items-center gap-0.5">
+                        {expanded ? 'Less' : 'More'}
+                        {expanded ? (
+                            <ChevronUp className="size-3 opacity-70" />
+                        ) : (
+                            <ChevronDown className="size-3 opacity-70" />
+                        )}
+                    </span>
+                    <span className="h-px min-w-0 flex-1 bg-border" />
+                </button>
+            ) : null}
+        </div>
+    );
+}
 
 type ResourceScreenshotProps = {
     src: string;
@@ -135,9 +239,8 @@ export function ResourceTabContent({
                                         </div>
 
                                         {release.description ? (
-                                            <RichHtml
+                                            <CollapsibleReleaseDescription
                                                 html={release.description}
-                                                className="prose-sm max-w-none text-muted-foreground [--tw-prose-body:var(--color-muted-foreground)] prose-p:my-1.5 prose-p:leading-relaxed first:prose-p:mt-0 last:prose-p:mb-0 [&:has(>p:only-child:empty)]:hidden"
                                             />
                                         ) : null}
                                     </div>

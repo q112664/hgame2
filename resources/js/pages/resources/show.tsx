@@ -80,7 +80,7 @@ const resourceTabs: Array<{
     },
     {
         value: 'screenshots',
-        label: 'Gallery',
+        label: 'Screenshots',
         href: (resource) => resourceScreenshots(resource).url,
     },
 ];

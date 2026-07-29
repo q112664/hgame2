@@ -13,7 +13,7 @@ class RecordGameView
      * Record a view on every full page visit / refresh.
      *
      * Inertia navigations between tabs of the same resource never count
-     * (Details ↔ Downloads ↔ Gallery), including the hero Download button.
+     * (Details ↔ Downloads ↔ Screenshots), including the hero Download button.
      */
     public function __invoke(Request $request, Game $game): void
     {

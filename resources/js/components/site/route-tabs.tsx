@@ -24,6 +24,10 @@ type Props<Value extends string> = {
     onCancel?: (value: Value, navigationId: number | null) => void;
 };
 
+/**
+ * Route-backed section tabs: horizontal scroll + underline indicator.
+ * Scales past three items without a fixed grid.
+ */
 export function RouteTabs<Value extends string>({
     tabs,
     activeValue,
@@ -43,32 +47,20 @@ export function RouteTabs<Value extends string>({
     const navigationSequence = useRef(0);
     const navigationIds = useRef(new Map<Value, number>());
     const [optimisticValue, setOptimisticValue] = useState<Value | null>(null);
-    const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
     const effectiveDisplayedValue = optimisticValue ?? displayedValue;
 
     useLayoutEffect(() => {
-        const updatePill = () => {
-            const list = tabsListRef.current;
-            const activeTrigger = tabRefs.current[effectiveDisplayedValue];
+        const activeTrigger = tabRefs.current[effectiveDisplayedValue];
 
-            if (!list || !activeTrigger) {
-                return;
-            }
+        if (!activeTrigger) {
+            return;
+        }
 
-            const listRect = list.getBoundingClientRect();
-            const triggerRect = activeTrigger.getBoundingClientRect();
-
-            setPill({
-                left: triggerRect.left - listRect.left,
-                width: triggerRect.width,
-                ready: true,
-            });
-        };
-
-        updatePill();
-        window.addEventListener('resize', updatePill);
-
-        return () => window.removeEventListener('resize', updatePill);
+        activeTrigger.scrollIntoView({
+            inline: 'nearest',
+            block: 'nearest',
+            behavior: 'smooth',
+        });
     }, [effectiveDisplayedValue]);
 
     const navigationIdFor = (value: Value): number | null =>
@@ -85,80 +77,92 @@ export function RouteTabs<Value extends string>({
             }}
             aria-label={ariaLabel}
             className={cn(
-                'relative grid h-auto w-full scroll-mt-20 grid-cols-3 gap-0.5 rounded-md border border-border bg-card p-1 sm:inline-grid sm:w-auto',
+                'w-full scroll-mt-20 border-b border-border',
                 className,
             )}
         >
-            {pill.ready ? (
-                <span
-                    aria-hidden
-                    className={cn(
-                        'pointer-events-none absolute top-1 bottom-1 rounded-sm bg-muted',
-                        'transition-[left,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-                        'motion-reduce:transition-none',
-                    )}
-                    style={{ left: pill.left, width: pill.width }}
-                />
-            ) : null}
+            <div
+                className={cn(
+                    'flex w-full items-stretch gap-0 overflow-x-auto overscroll-x-contain',
+                    '[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
+                )}
+            >
+                {tabs.map((tab) => {
+                    const isActive = effectiveDisplayedValue === tab.value;
 
-            {tabs.map((tab) => (
-                <Link
-                    key={tab.value}
-                    ref={(node) => {
-                        tabRefs.current[tab.value] = node as HTMLElement | null;
+                    return (
+                        <Link
+                            key={tab.value}
+                            ref={(node) => {
+                                tabRefs.current[tab.value] =
+                                    node as HTMLElement | null;
 
-                        if (externalTabRefs) {
-                            externalTabRefs.current[tab.value] =
-                                node as HTMLElement | null;
-                        }
-                    }}
-                    href={tab.href}
-                    aria-current={
-                        activeValue === tab.value ? 'page' : undefined
-                    }
-                    className={cn(
-                        'relative z-10 inline-flex h-9 items-center justify-center rounded-md border-transparent px-4 text-sm font-medium shadow-none',
-                        'text-muted-foreground transition-colors duration-200',
-                        'hover:bg-transparent hover:text-foreground/80',
-                        'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-                        'motion-reduce:transition-none',
-                        effectiveDisplayedValue === tab.value
-                            ? 'text-foreground'
-                            : 'text-muted-foreground',
-                    )}
-                    headers={{ 'X-Resource-Tab-Nav': '1' }}
-                    preserveState
-                    preserveScroll
-                    onClick={(event) => {
-                        if (activeValue === tab.value) {
-                            event.preventDefault();
-                        }
+                                if (externalTabRefs) {
+                                    externalTabRefs.current[tab.value] =
+                                        node as HTMLElement | null;
+                                }
+                            }}
+                            href={tab.href}
+                            aria-current={
+                                activeValue === tab.value ? 'page' : undefined
+                            }
+                            className={cn(
+                                'relative inline-flex shrink-0 items-center justify-center border-b-2 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap',
+                                'transition-[color,border-color] duration-200',
+                                'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                                'motion-reduce:transition-none',
+                                isActive
+                                    ? 'border-primary text-foreground'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground/85',
+                            )}
+                            headers={{ 'X-Resource-Tab-Nav': '1' }}
+                            preserveState
+                            preserveScroll
+                            onClick={(event) => {
+                                if (activeValue === tab.value) {
+                                    event.preventDefault();
+                                }
 
-                        onClick?.(event, tab.value);
-                    }}
-                    onStart={() => {
-                        const navigationId = navigationSequence.current + 1;
-                        navigationSequence.current = navigationId;
-                        navigationIds.current.set(tab.value, navigationId);
-                        setOptimisticValue(tab.value);
-                        onStart?.(tab.value, navigationId);
-                    }}
-                    onSuccess={() => {
-                        setOptimisticValue(null);
-                        onSuccess?.(tab.value, navigationIdFor(tab.value));
-                    }}
-                    onError={() => {
-                        setOptimisticValue(null);
-                        onError?.(tab.value, navigationIdFor(tab.value));
-                    }}
-                    onCancel={() => {
-                        setOptimisticValue(null);
-                        onCancel?.(tab.value, navigationIdFor(tab.value));
-                    }}
-                >
-                    {tab.label}
-                </Link>
-            ))}
+                                onClick?.(event, tab.value);
+                            }}
+                            onStart={() => {
+                                const navigationId =
+                                    navigationSequence.current + 1;
+                                navigationSequence.current = navigationId;
+                                navigationIds.current.set(
+                                    tab.value,
+                                    navigationId,
+                                );
+                                setOptimisticValue(tab.value);
+                                onStart?.(tab.value, navigationId);
+                            }}
+                            onSuccess={() => {
+                                setOptimisticValue(null);
+                                onSuccess?.(
+                                    tab.value,
+                                    navigationIdFor(tab.value),
+                                );
+                            }}
+                            onError={() => {
+                                setOptimisticValue(null);
+                                onError?.(
+                                    tab.value,
+                                    navigationIdFor(tab.value),
+                                );
+                            }}
+                            onCancel={() => {
+                                setOptimisticValue(null);
+                                onCancel?.(
+                                    tab.value,
+                                    navigationIdFor(tab.value),
+                                );
+                            }}
+                        >
+                            {tab.label}
+                        </Link>
+                    );
+                })}
+            </div>
         </nav>
     );
 }

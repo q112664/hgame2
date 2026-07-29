@@ -422,7 +422,7 @@ export function ResourceTabContent({
                     <SiteEmptyState
                         icon={Images}
                         title="No images yet"
-                        description="This resource does not have gallery images uploaded."
+                        description="This resource does not have screenshots uploaded."
                     />
                 )
             ) : null}

@@ -1,6 +1,7 @@
 import type { Auth, AuthModalConfig, TurnstileConfig } from '@/types/auth';
 import type { NavigationMenuItem } from '@/types/navigation';
 import type { NotificationsShared } from '@/types/notifications';
+import type { FlashToast } from '@/types/ui';
 
 export type SiteLogo = {
     mode: 'text' | 'image' | 'both';
@@ -25,6 +26,11 @@ declare module 'react' {
 
 declare module '@inertiajs/core' {
     export interface InertiaConfig {
+        flashDataType: {
+            toast?: FlashToast;
+            createdCommentId?: number;
+            [key: string]: unknown;
+        };
         sharedPageProps: {
             name: string;
             siteTitle: string;

@@ -218,23 +218,30 @@ class ResourceController extends Controller
         $user = auth()->user();
 
         $comments = $game->comments()
+            ->select([
+                'id',
+                'user_id',
+                'parent_id',
+                'reply_to_user_id',
+                'body',
+                'created_at',
+                'updated_at',
+            ])
             ->with(['user:id,name,avatar', 'replyToUser:id,name'])
             ->orderBy('created_at')
-            ->limit(300)
+            ->orderBy('id')
             ->get();
 
         /** @var Collection<int, GameComment> $roots */
-        $roots = $comments->whereNull('parent_id')->sortByDesc('created_at')->values();
+        $roots = $comments->whereNull('parent_id')->reverse()->values();
         $repliesByParent = $comments->whereNotNull('parent_id')->groupBy('parent_id');
 
-        return $roots
-            ->take(80)
+        return array_values($roots
             ->map(function (GameComment $root) use ($user, $repliesByParent): array {
-                $replies = ($repliesByParent->get($root->id) ?? collect())
-                    ->sortBy('created_at')
+                $replies = array_values(($repliesByParent->get($root->id) ?? collect())
                     ->values()
                     ->map(fn (GameComment $reply): array => $this->presentCommentNode($reply, $user))
-                    ->all();
+                    ->all());
 
                 return [
                     ...$this->presentCommentNode($root, $user),
@@ -242,7 +249,7 @@ class ResourceController extends Controller
                 ];
             })
             ->values()
-            ->all();
+            ->all());
     }
 
     /**

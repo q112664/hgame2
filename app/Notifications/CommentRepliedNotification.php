@@ -52,7 +52,8 @@ class CommentRepliedNotification extends Notification
                 'name' => $actorName,
             ]),
             'body' => Str::limit($this->comment->body, 140),
-            'url' => route('resources.comments', $game->slug, absolute: false),
+            'url' => route('resources.comments', $game->slug, absolute: false)
+                .'#comment-'.$this->comment->id,
             'actor' => [
                 'id' => (int) ($actor?->id ?? 0),
                 'name' => $actorName,

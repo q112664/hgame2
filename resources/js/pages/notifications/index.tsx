@@ -1,5 +1,12 @@
 import { Head, router } from '@inertiajs/react';
-import { Bell, CheckCheck, Download, MessageSquare, Trash2 } from 'lucide-react';
+import {
+    Bell,
+    CheckCheck,
+    Download,
+    Megaphone,
+    MessageSquare,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 import { RouteTabs } from '@/components/site/route-tabs';
 import type { RouteTab } from '@/components/site/route-tabs';
@@ -10,14 +17,11 @@ import type { PaginatedData } from '@/components/site/site-pagination';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/user-avatar';
 import { SiteLayout } from '@/layouts/site-layout';
-import {
-    formatAbsoluteDateTime,
-    formatRelativeTime,
-} from '@/lib/datetime';
+import { formatAbsoluteDateTime, formatRelativeTime } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
 import type { AppNotificationItem } from '@/types/notifications';
 
-type NotificationTabValue = 'all' | 'comments' | 'favorites';
+type NotificationTabValue = 'all' | 'comments' | 'favorites' | 'system';
 
 type NotificationTabItem = RouteTab<NotificationTabValue> & {
     count: number;
@@ -39,13 +43,18 @@ function NotificationTypeIcon({ type }: { type: string }) {
         );
     }
 
-    if (
-        type === 'favorite.downloads_updated' ||
-        type.startsWith('favorite.')
-    ) {
+    if (type === 'favorite.downloads_updated' || type.startsWith('favorite.')) {
         return (
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-info/12 text-info ring-1 ring-info/20">
                 <Download className="size-4" aria-hidden />
+            </span>
+        );
+    }
+
+    if (type === 'system.broadcast' || type.startsWith('system.')) {
+        return (
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning ring-1 ring-warning/25">
+                <Megaphone className="size-4" aria-hidden />
             </span>
         );
     }
@@ -182,7 +191,9 @@ export default function NotificationsIndex({
                             variant="outline"
                             size="sm"
                             className="text-muted-foreground hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-                            disabled={countInTab === 0 || clearing || markingAll}
+                            disabled={
+                                countInTab === 0 || clearing || markingAll
+                            }
                             onClick={clearAll}
                         >
                             <Trash2 className="size-3.5" />
@@ -199,25 +210,61 @@ export default function NotificationsIndex({
 
                 <div id="notification-results" className="scroll-mt-20">
                     {notifications.data.length > 0 ? (
-                        <ul className="overflow-hidden rounded-lg border border-border bg-card divide-y divide-border/70">
+                        <ul className="divide-y divide-border/70 overflow-hidden rounded-lg border border-border bg-card">
                             {notifications.data.map((notification) => {
                                 const unread = !notification.readAt;
                                 const isOpening = openingId === notification.id;
 
+                                const handleRowActivate = () => {
+                                    if (isOpening) {
+                                        return;
+                                    }
+
+                                    // Allow drag-select / copy without navigating.
+                                    if (
+                                        window.getSelection()?.toString().trim()
+                                    ) {
+                                        return;
+                                    }
+
+                                    openNotification(notification);
+                                };
+
                                 return (
-                                    <li key={notification.id}>
-                                        <button
-                                            type="button"
-                                            disabled={isOpening}
-                                            onClick={() =>
-                                                openNotification(notification)
+                                    <li
+                                        key={notification.id}
+                                        className={cn(
+                                            'transition-colors select-text',
+                                            'hover:bg-muted/50',
+                                            isOpening && 'opacity-70',
+                                            unread && 'bg-primary/4',
+                                        )}
+                                    >
+                                        <div
+                                            role="button"
+                                            tabIndex={isOpening ? -1 : 0}
+                                            aria-disabled={
+                                                isOpening || undefined
+                                            }
+                                            aria-label={
+                                                notification.url
+                                                    ? `Open notification: ${notification.title}`
+                                                    : `Mark notification as read: ${notification.title}`
                                             }
                                             className={cn(
-                                                'flex w-full gap-3 px-4 py-3.5 text-left transition-colors sm:gap-3.5 sm:px-5 sm:py-4',
-                                                'hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none',
-                                                'disabled:opacity-70',
-                                                unread && 'bg-primary/4',
+                                                'flex w-full cursor-pointer gap-3 px-4 py-3.5 text-left sm:gap-3.5 sm:px-5 sm:py-4',
+                                                'focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none focus-visible:ring-inset',
                                             )}
+                                            onClick={handleRowActivate}
+                                            onKeyDown={(event) => {
+                                                if (
+                                                    event.key === 'Enter' ||
+                                                    event.key === ' '
+                                                ) {
+                                                    event.preventDefault();
+                                                    handleRowActivate();
+                                                }
+                                            }}
                                         >
                                             {notification.actor ? (
                                                 <UserAvatar
@@ -251,7 +298,7 @@ export default function NotificationsIndex({
                                                 </div>
 
                                                 {notification.body ? (
-                                                    <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                                    <p className="mt-1 text-sm leading-relaxed break-words text-muted-foreground">
                                                         {notification.body}
                                                     </p>
                                                 ) : null}
@@ -285,7 +332,7 @@ export default function NotificationsIndex({
                                                     ) : null}
                                                 </div>
                                             </div>
-                                        </button>
+                                        </div>
                                     </li>
                                 );
                             })}

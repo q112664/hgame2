@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
+import { Breadcrumbs } from '@/components/breadcrumbs';
 import { FavoriteButton } from '@/components/site/favorite-button';
 import { ImageLightbox } from '@/components/site/image-lightbox';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
@@ -23,7 +24,6 @@ import {
 import { ResourceTabContent } from '@/components/site/resource-tab-content';
 import { RouteTabs } from '@/components/site/route-tabs';
 import { SitePageContainer } from '@/components/site/site-page-container';
-import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,6 +49,7 @@ import {
     details as resourceDetails,
     downloads as resourceDownloads,
     index as resourcesIndex,
+    comments as resourceComments,
     screenshots as resourceScreenshots,
 } from '@/routes/resources';
 import { seen as markDownloadsSeen } from '@/routes/resources/downloads';
@@ -89,7 +90,7 @@ const resourceTabs: Array<{
     {
         value: 'comments',
         label: 'Comments',
-        href: (resource) => `/resources/${resource}/comments`,
+        href: (resource) => resourceComments(resource).url,
     },
 ];
 

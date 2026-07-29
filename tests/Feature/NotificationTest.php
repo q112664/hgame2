@@ -43,7 +43,9 @@ test('replying to a comment notifies the parent author', function () {
 
             return $data['game_slug'] === $game->slug
                 && $data['actor']['id'] === $bob->id
-                && str_contains($data['body'], 'Nice take');
+                && str_contains($data['body'], 'Nice take')
+                && str_contains((string) $data['url'], '#comment-')
+                && str_contains((string) $data['url'], '/comments');
         },
     );
 });
@@ -86,10 +88,11 @@ test('authenticated users can view the notifications page with tabs', function (
         ->assertInertia(fn (Assert $page) => $page
             ->component('notifications/index')
             ->where('activeTab', 'all')
-            ->has('tabs', 3)
+            ->has('tabs', 4)
             ->where('tabs.0.value', 'all')
             ->where('tabs.1.value', 'comments')
             ->where('tabs.2.value', 'favorites')
+            ->where('tabs.3.value', 'system')
             ->has('notifications.data', 1)
             ->where('notifications.data.0.type', 'comment.replied')
             ->where('notifications.data.0.actor.name', 'Bob')
@@ -123,7 +126,9 @@ test('users can mark a notification as read and open its target', function () {
     $this->actingAs($alice)
         ->from(route('notifications.index'))
         ->post(route('notifications.read', $notificationId), ['open' => 1])
-        ->assertRedirect(route('resources.comments', 'demo-game'));
+        ->assertRedirect(
+            route('resources.comments', 'demo-game').'#comment-'.$reply->id,
+        );
 
     expect($alice->fresh()->unreadNotifications()->count())->toBe(0);
 });

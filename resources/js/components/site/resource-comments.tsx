@@ -1,17 +1,25 @@
 import { router, usePage } from '@inertiajs/react';
-import { CornerDownRight, MessageSquare, Pencil, Trash2, X } from 'lucide-react';
+import {
+    CornerDownRight,
+    MessageSquare,
+    Pencil,
+    Trash2,
+    X,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import {
+    destroy as destroyComment,
+    store as storeComment,
+    update as updateComment,
+} from '@/actions/App/Http/Controllers/GameCommentController';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { UserAvatar } from '@/components/user-avatar';
-import {
-    formatAbsoluteDateTime,
-    formatRelativeTime,
-} from '@/lib/datetime';
+import { formatAbsoluteDateTime, formatRelativeTime } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
 
 export type ResourceCommentUser = {
@@ -50,8 +58,30 @@ type ReplyTarget = {
     userName: string;
 };
 
-function mentionPrefix(name: string): string {
-    return `@${name} `;
+type PendingScroll = number;
+
+export function commentDomId(id: number): string {
+    return `comment-${id}`;
+}
+
+/** Drop a legacy leading @Name prefix so reply bodies stay plain text. */
+function stripLeadingMention(body: string): string {
+    return body.replace(/^@[^\s@]+(?:\s+[^\s@]+){0,3}\s+/, '').trimStart();
+}
+
+function scrollToCommentElement(
+    id: number,
+    behavior: ScrollBehavior = 'smooth',
+): boolean {
+    const el = document.getElementById(commentDomId(id));
+
+    if (!el) {
+        return false;
+    }
+
+    el.scrollIntoView({ behavior, block: 'center' });
+
+    return true;
 }
 
 function CommentBody({
@@ -61,22 +91,16 @@ function CommentBody({
     body: string;
     nested?: boolean;
 }) {
-    const match = body.match(/^@([^\s@]+(?:\s+[^\s@]+){0,3})\s([\s\S]*)$/);
-    const textClass = cn(
-        'mt-1 whitespace-pre-wrap leading-relaxed text-foreground/90',
-        nested ? 'text-[13px] sm:text-sm' : 'text-sm',
-    );
-
-    if (!match) {
-        return <p className={textClass}>{body}</p>;
-    }
+    const text = stripLeadingMention(body);
 
     return (
-        <p className={textClass}>
-            <span className="rounded-sm bg-primary/10 px-1 py-0.5 font-medium text-primary dark:bg-primary/15">
-                @{match[1]}
-            </span>
-            {match[2] !== '' ? ` ${match[2]}` : null}
+        <p
+            className={cn(
+                'mt-1 leading-relaxed whitespace-pre-wrap text-foreground/90',
+                nested ? 'text-[13px] sm:text-sm' : 'text-sm',
+            )}
+        >
+            {text}
         </p>
     );
 }
@@ -98,7 +122,7 @@ function CommentActionButton({
             disabled={disabled}
             onClick={onClick}
             className={cn(
-                'inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-xs font-medium transition-colors',
+                'inline-flex h-8 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium transition-colors sm:h-7 sm:text-xs',
                 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 'disabled:pointer-events-none disabled:opacity-50',
                 'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
@@ -124,9 +148,10 @@ export function ResourceComments({ resourceId, comments }: Props) {
     const [error, setError] = useState<string | null>(null);
     const [editError, setEditError] = useState<string | null>(null);
     const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
-    const listTopRef = useRef<HTMLDivElement>(null);
+    const [highlightedId, setHighlightedId] = useState<number | null>(null);
     const composerRef = useRef<HTMLTextAreaElement>(null);
-    const shouldScrollToTop = useRef(false);
+    const pendingScrollRef = useRef<PendingScroll | null>(null);
+    const highlightTimerRef = useRef<number | null>(null);
 
     const totalCount = useMemo(() => {
         return comments.reduce(
@@ -135,17 +160,77 @@ export function ResourceComments({ resourceId, comments }: Props) {
         );
     }, [comments]);
 
+    const flashHighlight = (id: number) => {
+        setHighlightedId(id);
+
+        if (highlightTimerRef.current !== null) {
+            window.clearTimeout(highlightTimerRef.current);
+        }
+
+        highlightTimerRef.current = window.setTimeout(() => {
+            setHighlightedId((current) => (current === id ? null : current));
+            highlightTimerRef.current = null;
+        }, 2400);
+    };
+
+    const focusComment = (id: number, behavior: ScrollBehavior = 'smooth') => {
+        if (!scrollToCommentElement(id, behavior)) {
+            return false;
+        }
+
+        flashHighlight(id);
+
+        return true;
+    };
+
     useEffect(() => {
-        if (!shouldScrollToTop.current) {
+        const pendingId = pendingScrollRef.current;
+
+        if (pendingId === null) {
             return;
         }
 
-        shouldScrollToTop.current = false;
-        listTopRef.current?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
+        let retryTimer: number | null = null;
+
+        const run = (behavior: ScrollBehavior = 'smooth') => {
+            if (focusComment(pendingId, behavior)) {
+                pendingScrollRef.current = null;
+
+                return true;
+            }
+
+            return false;
+        };
+
+        // Wait a frame so the comments list is painted after Inertia updates.
+        const frame = window.requestAnimationFrame(() => {
+            if (run('smooth')) {
+                return;
+            }
+
+            // New comments can land before the list is fully laid out.
+            retryTimer = window.setTimeout(() => {
+                run('auto');
+            }, 120);
         });
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+
+            if (retryTimer !== null) {
+                window.clearTimeout(retryTimer);
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when comments change
     }, [comments]);
+
+    useEffect(() => {
+        return () => {
+            if (highlightTimerRef.current !== null) {
+                window.clearTimeout(highlightTimerRef.current);
+            }
+        };
+    }, []);
 
     const requireAuth = (): boolean => {
         if (isAuthenticated) {
@@ -166,18 +251,12 @@ export function ResourceComments({ resourceId, comments }: Props) {
             commentId: comment.id,
             userName: comment.user.name,
         });
-        setBody(mentionPrefix(comment.user.name));
+        setBody('');
         setError(null);
         setEditingId(null);
 
         requestAnimationFrame(() => {
             composerRef.current?.focus();
-            const el = composerRef.current;
-
-            if (el) {
-                const len = el.value.length;
-                el.setSelectionRange(len, len);
-            }
         });
     };
 
@@ -194,7 +273,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
             return;
         }
 
-        const trimmed = body.trim();
+        const trimmed = stripLeadingMention(body.trim());
 
         if (trimmed === '') {
             setError('Please write a comment.');
@@ -205,15 +284,13 @@ export function ResourceComments({ resourceId, comments }: Props) {
         setError(null);
         setIsSubmitting(true);
 
-        if (!replyTarget) {
-            shouldScrollToTop.current = true;
-        }
+        const parentId = replyTarget?.commentId ?? null;
 
         router.post(
-            `/resources/${resourceId}/comments`,
+            storeComment(resourceId).url,
             {
                 body: trimmed,
-                parent_id: replyTarget?.commentId ?? null,
+                parent_id: parentId,
             },
             {
                 preserveScroll: true,
@@ -222,8 +299,19 @@ export function ResourceComments({ resourceId, comments }: Props) {
                     setBody('');
                     setReplyTarget(null);
                 },
+                onFlash: (flash) => {
+                    const createdCommentId = flash.createdCommentId;
+
+                    if (
+                        typeof createdCommentId === 'number' &&
+                        Number.isInteger(createdCommentId) &&
+                        createdCommentId > 0
+                    ) {
+                        pendingScrollRef.current = createdCommentId;
+                    }
+                },
                 onError: (errors) => {
-                    shouldScrollToTop.current = false;
+                    pendingScrollRef.current = null;
                     setError(
                         typeof errors.body === 'string'
                             ? errors.body
@@ -255,7 +343,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
             return;
         }
 
-        const trimmed = editBody.trim();
+        const trimmed = stripLeadingMention(editBody.trim());
 
         if (trimmed === '') {
             setEditError('Comment cannot be empty.');
@@ -267,7 +355,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
         setIsSavingEdit(true);
 
         router.patch(
-            `/resources/${resourceId}/comments/${commentId}`,
+            updateComment({ resource: resourceId, comment: commentId }).url,
             { body: trimmed },
             {
                 preserveScroll: true,
@@ -300,11 +388,14 @@ export function ResourceComments({ resourceId, comments }: Props) {
 
         setDeletingId(commentId);
 
-        router.delete(`/resources/${resourceId}/comments/${commentId}`, {
-            preserveScroll: true,
-            only: ['comments', 'commentsCount'],
-            onFinish: () => setDeletingId(null),
-        });
+        router.delete(
+            destroyComment({ resource: resourceId, comment: commentId }).url,
+            {
+                preserveScroll: true,
+                only: ['comments', 'commentsCount'],
+                onFinish: () => setDeletingId(null),
+            },
+        );
     };
 
     const remaining = MAX_LENGTH - body.length;
@@ -317,24 +408,31 @@ export function ResourceComments({ resourceId, comments }: Props) {
         const isEditing = editingId === comment.id;
         const nested = options.nested ?? false;
 
+        const isHighlighted = highlightedId === comment.id;
+
         return (
             <article
                 key={comment.id}
+                id={commentDomId(comment.id)}
+                data-comment-id={comment.id}
                 className={cn(
-                    'group/comment flex gap-2.5 sm:gap-3',
+                    'group/comment flex scroll-mt-24 gap-2.5 rounded-md sm:gap-3',
                     nested && 'min-w-0',
+                    'target:bg-primary/6 target:ring-2 target:ring-primary/25 target:ring-offset-1 target:ring-offset-card',
+                    isHighlighted &&
+                        'bg-primary/6 ring-2 ring-primary/25 ring-offset-1 ring-offset-card',
                 )}
             >
                 <UserAvatar
                     user={comment.user}
                     className={cn(
                         'mt-0.5 shrink-0 ring-1 ring-border/60',
-                        nested ? 'size-7 sm:size-8' : 'size-9',
+                        nested ? 'size-7 sm:size-8' : 'size-8 sm:size-9',
                     )}
                     fallbackClassName="rounded-full bg-muted text-[10px] text-muted-foreground sm:text-xs"
                 />
                 <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span
                             className={cn(
                                 'font-medium text-foreground',
@@ -346,23 +444,28 @@ export function ResourceComments({ resourceId, comments }: Props) {
                         {comment.isMine ? (
                             <Badge
                                 variant="secondary"
-                                className="h-5 px-1.5 text-[10px] font-medium leading-none"
+                                className="h-5 px-1.5 text-[10px] leading-none font-medium"
                             >
                                 You
                             </Badge>
                         ) : null}
                         {comment.replyTo ? (
-                            <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground sm:text-xs">
-                                <CornerDownRight className="size-2.5 opacity-70" />
-                                <span className="font-medium text-foreground/70">
-                                    @{comment.replyTo.name}
+                            <span
+                                className={cn(
+                                    'inline-flex max-w-full items-center gap-0.5 rounded',
+                                    'bg-muted/70 px-1 py-px text-[10px] text-muted-foreground sm:text-[11px]',
+                                )}
+                            >
+                                <CornerDownRight className="size-2.5 shrink-0 opacity-70" />
+                                <span className="truncate font-medium text-foreground/75">
+                                    {comment.replyTo.name}
                                 </span>
                             </span>
                         ) : null}
                         {comment.createdAt ? (
                             <>
                                 <span
-                                    className="text-[11px] text-muted-foreground/50 sm:text-xs"
+                                    className="text-xs text-muted-foreground/50"
                                     aria-hidden
                                 >
                                     ·
@@ -372,21 +475,21 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                     title={formatAbsoluteDateTime(
                                         comment.createdAt,
                                     )}
-                                    className="text-[11px] text-muted-foreground tabular-nums sm:text-xs"
+                                    className="text-xs text-muted-foreground tabular-nums"
                                 >
                                     {formatRelativeTime(comment.createdAt)}
                                 </time>
                             </>
                         ) : null}
                         {comment.isEdited ? (
-                            <span className="text-[11px] text-muted-foreground/70 sm:text-xs">
+                            <span className="text-xs text-muted-foreground/70">
                                 · edited
                             </span>
                         ) : null}
                     </div>
 
                     {isEditing ? (
-                        <div className="mt-2 flex flex-col gap-2">
+                        <div className="mt-1.5 flex flex-col gap-1.5">
                             <Textarea
                                 value={editBody}
                                 onChange={(event) => {
@@ -412,10 +515,10 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                         saveEdit(comment.id);
                                     }
                                 }}
-                                rows={3}
+                                rows={2}
                                 maxLength={MAX_LENGTH}
                                 disabled={isSavingEdit}
-                                className="min-h-[4.5rem] resize-y bg-background text-sm"
+                                className="min-h-[3.5rem] resize-y bg-background text-sm"
                                 autoFocus
                             />
                             {editError ? (
@@ -431,7 +534,9 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                     type="button"
                                     size="sm"
                                     disabled={
-                                        isSavingEdit || editBody.trim() === ''
+                                        isSavingEdit ||
+                                        stripLeadingMention(editBody.trim()) ===
+                                            ''
                                     }
                                     onClick={() => saveEdit(comment.id)}
                                 >
@@ -446,9 +551,6 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                 >
                                     Cancel
                                 </Button>
-                                <span className="text-[11px] text-muted-foreground">
-                                    Esc to cancel · Ctrl/⌘+Enter to save
-                                </span>
                             </div>
                         </div>
                     ) : (
@@ -456,21 +558,21 @@ export function ResourceComments({ resourceId, comments }: Props) {
                             <CommentBody body={comment.body} nested={nested} />
                             <div
                                 className={cn(
-                                    'mt-1 flex flex-wrap items-center gap-0.5',
+                                    'mt-0.5 flex flex-wrap items-center gap-0.5',
                                     'opacity-80 transition-opacity group-hover/comment:opacity-100 sm:opacity-70',
                                 )}
                             >
                                 <CommentActionButton
                                     onClick={() => beginReply(comment)}
                                 >
-                                    <CornerDownRight className="size-3.5" />
+                                    <CornerDownRight className="size-3" />
                                     Reply
                                 </CommentActionButton>
                                 {comment.canEdit ? (
                                     <CommentActionButton
                                         onClick={() => startEdit(comment)}
                                     >
-                                        <Pencil className="size-3.5" />
+                                        <Pencil className="size-3" />
                                         Edit
                                     </CommentActionButton>
                                 ) : null}
@@ -480,7 +582,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                         disabled={deletingId === comment.id}
                                         onClick={() => remove(comment.id)}
                                     >
-                                        <Trash2 className="size-3.5" />
+                                        <Trash2 className="size-3" />
                                         {deletingId === comment.id
                                             ? 'Deleting…'
                                             : 'Delete'}
@@ -499,16 +601,16 @@ export function ResourceComments({ resourceId, comments }: Props) {
             aria-label="Comments"
             className="overflow-hidden rounded-lg border border-border bg-card"
         >
-            <header className="flex items-center justify-between gap-3 border-b border-border/80 bg-muted/30 px-4 py-3 sm:px-5 dark:bg-muted/20">
-                <div className="flex items-center gap-2">
-                    <span className="flex size-7 items-center justify-center rounded-md bg-background text-muted-foreground shadow-sm ring-1 ring-border/60">
+            <header className="flex items-center justify-between gap-2 border-b border-border/80 bg-muted/30 px-3 py-2 sm:px-4 dark:bg-muted/20">
+                <div className="flex items-center gap-1.5">
+                    <span className="flex size-6 items-center justify-center rounded-md bg-background text-muted-foreground ring-1 ring-border/60">
                         <MessageSquare className="size-3.5" aria-hidden />
                     </span>
-                    <h2 className="font-heading text-sm font-semibold tracking-tight text-foreground">
+                    <h2 className="font-heading text-[13px] font-semibold tracking-tight text-foreground sm:text-sm">
                         Comments
                     </h2>
                     {totalCount > 0 ? (
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+                        <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground tabular-nums">
                             {totalCount}
                         </span>
                     ) : null}
@@ -517,17 +619,17 @@ export function ResourceComments({ resourceId, comments }: Props) {
 
             <div className="flex flex-col gap-0">
                 {/* Composer */}
-                <div className="border-b border-border/70 px-4 py-4 sm:px-5">
+                <div className="border-b border-border/70 px-3 py-3 sm:px-4">
                     {!isAuthenticated ? (
                         <div
                             role="region"
                             aria-label="Sign in to comment"
                             className={cn(
-                                'flex min-h-[5.5rem] flex-col items-center justify-center gap-2.5 rounded-md border border-dashed border-border/90',
-                                'bg-muted/20 px-4 py-4 text-center dark:bg-muted/10',
+                                'flex min-h-[4.5rem] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border/90',
+                                'bg-muted/20 px-3 py-3 text-center dark:bg-muted/10',
                             )}
                         >
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-[13px] text-muted-foreground sm:text-sm">
                                 Log in to leave a comment
                             </p>
                             <div className="flex items-center gap-2">
@@ -558,16 +660,16 @@ export function ResourceComments({ resourceId, comments }: Props) {
                         </div>
                     ) : (
                         <form onSubmit={submit}>
-                            <div className="flex gap-2.5 sm:gap-3">
+                            <div className="flex gap-2">
                                 {authUser ? (
                                     <UserAvatar
                                         user={authUser}
-                                        className="mt-0.5 size-9 shrink-0 ring-1 ring-border/60"
-                                        fallbackClassName="rounded-full bg-muted text-xs text-muted-foreground"
+                                        className="mt-0.5 size-7 shrink-0 ring-1 ring-border/60 sm:size-8"
+                                        fallbackClassName="rounded-full bg-muted text-[10px] text-muted-foreground sm:text-xs"
                                     />
                                 ) : null}
 
-                                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                                     {replyTarget ? (
                                         <div className="flex items-center justify-between gap-2 rounded-md border border-primary/20 bg-primary/8 px-2.5 py-1.5 text-xs dark:bg-primary/12">
                                             <span className="inline-flex min-w-0 items-center gap-1.5 text-foreground">
@@ -575,7 +677,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                                 <span className="truncate">
                                                     Replying to{' '}
                                                     <span className="font-semibold text-primary">
-                                                        @{replyTarget.userName}
+                                                        {replyTarget.userName}
                                                     </span>
                                                 </span>
                                             </span>
@@ -619,14 +721,14 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                         }}
                                         placeholder={
                                             replyTarget
-                                                ? `Reply to @${replyTarget.userName}…`
+                                                ? `Reply to ${replyTarget.userName}…`
                                                 : 'Share your thoughts…'
                                         }
-                                        rows={3}
+                                        rows={2}
                                         maxLength={MAX_LENGTH}
                                         disabled={isSubmitting}
                                         className={cn(
-                                            'min-h-[4.75rem] resize-y bg-muted/25 text-sm shadow-none dark:bg-muted/15',
+                                            'min-h-[3.25rem] resize-y bg-muted/25 text-[13px] shadow-none sm:text-sm dark:bg-muted/15',
                                             'focus-visible:bg-background',
                                             error &&
                                                 'border-destructive focus-visible:border-destructive',
@@ -640,8 +742,8 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                             {error}
                                         </p>
                                     ) : null}
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                        <p className="text-[11px] text-muted-foreground sm:text-xs">
+                                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                        <p className="text-[11px] text-muted-foreground">
                                             <span
                                                 className={cn(
                                                     'tabular-nums',
@@ -651,9 +753,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                                         'text-destructive',
                                                 )}
                                             >
-                                                {body.length > 0
-                                                    ? `${body.length}/${MAX_LENGTH}`
-                                                    : 'Ctrl/⌘ + Enter to post'}
+                                                {body.length}/{MAX_LENGTH}
                                             </span>
                                         </p>
                                         <div className="flex items-center gap-1.5">
@@ -690,37 +790,34 @@ export function ResourceComments({ resourceId, comments }: Props) {
                     )}
                 </div>
 
-                <div ref={listTopRef} />
-
                 {comments.length === 0 ? (
                     <SiteEmptyState
                         icon={MessageSquare}
                         title="No comments yet"
-                        description="Be the first to share thoughts — reply and @mention others."
-                        className="min-h-0 rounded-none border-0 bg-transparent py-10"
+                        className="min-h-0 rounded-none border-0 bg-transparent py-6"
                     />
                 ) : (
                     <ul className="divide-y divide-border/60">
                         {comments.map((comment) => (
                             <li
                                 key={comment.id}
-                                className="flex flex-col gap-3 px-4 py-4 sm:gap-3.5 sm:px-5 sm:py-5"
+                                className="flex flex-col gap-2 px-3 py-2.5 sm:gap-2.5 sm:px-4 sm:py-3"
                             >
                                 {renderComment(comment)}
                                 {comment.replies &&
                                 comment.replies.length > 0 ? (
                                     <div className="flex gap-2.5 sm:gap-3">
                                         <div
-                                            className="w-9 shrink-0"
+                                            className="w-8 shrink-0 sm:w-9"
                                             aria-hidden
                                         />
                                         <div className="relative min-w-0 flex-1">
                                             <span
                                                 aria-hidden
-                                                className="pointer-events-none absolute bottom-1 left-0 top-0.5 w-px rounded-full bg-border/80 sm:w-0.5 dark:bg-border/60"
+                                                className="pointer-events-none absolute top-0.5 bottom-1 left-0 w-px rounded-full bg-border/80 dark:bg-border/60"
                                             />
                                             <ul
-                                                className="flex flex-col gap-3 pl-3 sm:gap-3.5 sm:pl-3.5"
+                                                className="flex flex-col gap-2.5 pl-3 sm:gap-3 sm:pl-3.5"
                                                 aria-label="Replies"
                                             >
                                                 {comment.replies.map(

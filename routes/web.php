@@ -57,14 +57,16 @@ Route::middleware('auth')->group(function () {
     Route::patch('/resources/{resource}/comments/{comment}', [GameCommentController::class, 'update'])
         ->name('resources.comments.update')
         ->whereNumber('comment')
+        ->scopeBindings()
         ->middleware('throttle:30,1');
     Route::delete('/resources/{resource}/comments/{comment}', [GameCommentController::class, 'destroy'])
         ->name('resources.comments.destroy')
-        ->whereNumber('comment');
+        ->whereNumber('comment')
+        ->scopeBindings();
 
     Route::get('/notifications/{tab?}', [NotificationController::class, 'index'])
         ->name('notifications.index')
-        ->whereIn('tab', ['all', 'comments', 'favorites']);
+        ->whereIn('tab', ['all', 'comments', 'favorites', 'system']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])
         ->name('notifications.read-all');
     Route::post('/notifications/clear', [NotificationController::class, 'clear'])

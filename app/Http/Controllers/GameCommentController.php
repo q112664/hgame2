@@ -47,11 +47,14 @@ class GameCommentController extends Controller
             $recipient?->notify(new CommentRepliedNotification($comment));
         }
 
-        Inertia::flash('toast', [
-            'type' => 'success',
-            'message' => $resolvedParentId !== null
-                ? __('Reply posted.')
-                : __('Comment posted.'),
+        Inertia::flash([
+            'toast' => [
+                'type' => 'success',
+                'message' => $resolvedParentId !== null
+                    ? __('Reply posted.')
+                    : __('Comment posted.'),
+            ],
+            'createdCommentId' => $comment->id,
         ]);
 
         return back();

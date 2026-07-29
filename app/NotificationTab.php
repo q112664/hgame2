@@ -7,6 +7,7 @@ enum NotificationTab: string
     case All = 'all';
     case Comments = 'comments';
     case Favorites = 'favorites';
+    case System = 'system';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum NotificationTab: string
             self::All => __('All'),
             self::Comments => __('Comments'),
             self::Favorites => __('Favorites'),
+            self::System => __('System'),
         };
     }
 
@@ -29,6 +31,7 @@ enum NotificationTab: string
             self::All => null,
             self::Comments => ['comment.replied'],
             self::Favorites => ['favorite.downloads_updated'],
+            self::System => ['system.broadcast'],
         };
     }
 

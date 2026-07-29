@@ -3,6 +3,7 @@
 use App\Models\Game;
 use App\Models\GameComment;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -25,7 +26,7 @@ test('guests cannot post comments', function () {
 test('authenticated users can post a comment', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user)
+    $response = $this->actingAs($user)
         ->from(route('resources.details', $this->game->slug))
         ->post(route('resources.comments.store', $this->game->slug), [
             'body' => '  Great game!  ',
@@ -33,6 +34,8 @@ test('authenticated users can post a comment', function () {
         ->assertRedirect(route('resources.details', $this->game->slug));
 
     $comment = GameComment::query()->first();
+
+    $response->assertInertiaFlash('createdCommentId', $comment->id);
 
     expect($comment)->not->toBeNull()
         ->and($comment->body)->toBe('Great game!')
@@ -90,6 +93,31 @@ test('comments tab lists comments newest first with ownership flags', function (
             ->where('comments.1.user.name', 'Alice')
             ->where('comments.1.canEdit', false)
             ->where('comments.1.canDelete', false)
+        );
+});
+
+test('comments tab returns every comment in stable newest-first order', function () {
+    $user = User::factory()->create();
+    $createdAt = now()->startOfSecond();
+
+    GameComment::factory()
+        ->count(301)
+        ->for($this->game)
+        ->for($user)
+        ->sequence(fn (Sequence $sequence): array => [
+            'body' => "Comment {$sequence->index}",
+            'created_at' => $createdAt,
+            'updated_at' => $createdAt,
+        ])
+        ->create();
+
+    $this->get(route('resources.comments', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('commentsCount', 301)
+            ->has('comments', 301)
+            ->where('comments.0.body', 'Comment 300')
+            ->where('comments.300.body', 'Comment 0')
         );
 });
 
@@ -210,6 +238,33 @@ test('replies must target a comment on the same resource', function () {
         ->assertSessionHasErrors('parent_id');
 });
 
+test('comments tab returns every reply in its thread', function () {
+    $author = User::factory()->create();
+    $replyAuthor = User::factory()->create();
+    $root = GameComment::factory()->for($this->game)->for($author)->create();
+
+    GameComment::factory()
+        ->count(301)
+        ->for($this->game)
+        ->for($replyAuthor)
+        ->sequence(fn (Sequence $sequence): array => [
+            'parent_id' => $root->id,
+            'reply_to_user_id' => $author->id,
+            'body' => "Reply {$sequence->index}",
+        ])
+        ->create();
+
+    $this->get(route('resources.comments', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('commentsCount', 302)
+            ->has('comments', 1)
+            ->has('comments.0.replies', 301)
+            ->where('comments.0.replies.0.body', 'Reply 0')
+            ->where('comments.0.replies.300.body', 'Reply 300')
+        );
+});
+
 test('authors can delete their own comments', function () {
     $user = User::factory()->create();
     $comment = GameComment::factory()->for($this->game)->for($user)->create();
@@ -223,6 +278,26 @@ test('authors can delete their own comments', function () {
         ->assertRedirect(route('resources.details', $this->game->slug));
 
     expect(GameComment::query()->whereKey($comment->id)->exists())->toBeFalse();
+});
+
+test('deleting a root comment also deletes its replies', function () {
+    $author = User::factory()->create();
+    $replyAuthor = User::factory()->create();
+    $comment = GameComment::factory()->for($this->game)->for($author)->create();
+    $reply = GameComment::factory()->for($this->game)->for($replyAuthor)->create([
+        'parent_id' => $comment->id,
+        'reply_to_user_id' => $author->id,
+    ]);
+
+    $this->actingAs($author)
+        ->delete(route('resources.comments.destroy', [
+            'resource' => $this->game->slug,
+            'comment' => $comment->id,
+        ]))
+        ->assertRedirect();
+
+    expect(GameComment::query()->whereKey($comment->id)->exists())->toBeFalse()
+        ->and(GameComment::query()->whereKey($reply->id)->exists())->toBeFalse();
 });
 
 test('admins can delete any comment', function () {
@@ -253,4 +328,28 @@ test('users cannot delete other peoples comments', function () {
         ->assertForbidden();
 
     expect(GameComment::query()->whereKey($comment->id)->exists())->toBeTrue();
+});
+
+test('comment updates and deletes are scoped to the resource', function () {
+    $otherGame = Game::factory()->create();
+    $author = User::factory()->create();
+    $comment = GameComment::factory()->for($otherGame)->for($author)->create();
+
+    $this->actingAs($author)
+        ->patch(route('resources.comments.update', [
+            'resource' => $this->game->slug,
+            'comment' => $comment->id,
+        ]), [
+            'body' => 'Should not update',
+        ])
+        ->assertNotFound();
+
+    $this->actingAs($author)
+        ->delete(route('resources.comments.destroy', [
+            'resource' => $this->game->slug,
+            'comment' => $comment->id,
+        ]))
+        ->assertNotFound();
+
+    expect($comment->fresh()->body)->not->toBe('Should not update');
 });

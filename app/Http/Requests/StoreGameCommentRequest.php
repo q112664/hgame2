@@ -41,7 +41,7 @@ class StoreGameCommentRequest extends FormRequest
                 return;
             }
 
-            $parent = GameComment::query()->find($parentId);
+            $parent = GameComment::query()->whereKey($parentId)->first();
 
             if ($parent === null || $parent->game_id !== $resource->id) {
                 $validator->errors()->add('parent_id', 'The reply target is invalid.');

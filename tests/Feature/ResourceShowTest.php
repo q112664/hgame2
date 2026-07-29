@@ -114,6 +114,7 @@ test('resource tab endpoints keep the active tab contract for direct navigation'
         'details' => 'resources.details',
         'downloads' => 'resources.downloads',
         'screenshots' => 'resources.screenshots',
+        'comments' => 'resources.comments',
     ] as $activeTab => $routeName) {
         $this->get(route($routeName, $this->game->slug))
             ->assertOk()

@@ -1,5 +1,6 @@
 import type { Auth, AuthModalConfig, TurnstileConfig } from '@/types/auth';
 import type { NavigationMenuItem } from '@/types/navigation';
+import type { NotificationsShared } from '@/types/notifications';
 
 export type SiteLogo = {
     mode: 'text' | 'image' | 'both';
@@ -33,6 +34,7 @@ declare module '@inertiajs/core' {
             turnstile: TurnstileConfig;
             auth: Auth;
             authModal: AuthModalConfig | null;
+            notifications: NotificationsShared;
             sidebarOpen: boolean;
             [key: string]: unknown;
         };

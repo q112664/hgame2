@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Actions\Games\DeleteGameMedia;
 use App\GameStatus;
+use App\Notifications\FavoriteDownloadsUpdatedNotification;
 use App\Support\MediaThumbnail;
 use Database\Factories\GameFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 #[Fillable([
     'category_id', 'title', 'subtitle', 'slug', 'description', 'developer', 'cover_url', 'cover_path',
@@ -104,6 +106,12 @@ class Game extends Model
             ->withTimestamps();
     }
 
+    /** @return HasMany<GameComment, $this> */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(GameComment::class);
+    }
+
     /**
      * @param  Builder<Game>  $query
      * @return Builder<Game>
@@ -122,6 +130,35 @@ class Game extends Model
         $this->forceFill([
             'downloads_updated_at' => now(),
         ])->saveQuietly();
+
+        $this->notifyFavoritersOfDownloadUpdate();
+    }
+
+    /**
+     * Push a coalesced "downloads updated" notification to every user who favorited this game.
+     */
+    public function notifyFavoritersOfDownloadUpdate(): void
+    {
+        $favoriters = $this->favoritedBy()->get();
+
+        if ($favoriters->isEmpty()) {
+            return;
+        }
+
+        $gameId = $this->id;
+
+        foreach ($favoriters as $user) {
+            $user->notifications()
+                ->where('type', 'favorite.downloads_updated')
+                ->whereNull('read_at')
+                ->where('data->game_id', $gameId)
+                ->delete();
+        }
+
+        Notification::send(
+            $favoriters,
+            new FavoriteDownloadsUpdatedNotification($this),
+        );
     }
 
     public function hasUnreadDownloadUpdate(): bool

@@ -13,6 +13,7 @@ import { FavoriteButton } from '@/components/site/favorite-button';
 import { ImageLightbox } from '@/components/site/image-lightbox';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
 import { PlatformIcon } from '@/components/site/platform-icon';
+import type { ResourceComment } from '@/components/site/resource-comments';
 import {
     categoryBadgeClassName,
     downloadHeroButtonClassName,
@@ -59,9 +60,11 @@ type Props = {
     resource: GameDetail;
     /** Site-wide notice HTML from admin (empty string when disabled). */
     resourceNotice?: string;
+    comments?: ResourceComment[];
+    commentsCount?: number;
 };
 
-type ResourceTab = 'details' | 'downloads' | 'screenshots';
+type ResourceTab = 'details' | 'downloads' | 'screenshots' | 'comments';
 
 const resourceTabs: Array<{
     value: ResourceTab;
@@ -82,6 +85,11 @@ const resourceTabs: Array<{
         value: 'screenshots',
         label: 'Screenshots',
         href: (resource) => resourceScreenshots(resource).url,
+    },
+    {
+        value: 'comments',
+        label: 'Comments',
+        href: (resource) => `/resources/${resource}/comments`,
     },
 ];
 
@@ -155,6 +163,8 @@ export default function ResourceShow({
     activeTab,
     resource,
     resourceNotice = '',
+    comments = [],
+    commentsCount = 0,
 }: Props) {
     const shouldReduceMotion = useReducedMotion();
     const [pendingTab, setPendingTab] = useState<ResourceTab | null>(null);
@@ -322,7 +332,10 @@ export default function ResourceShow({
 
     const resourceTabLinks = resourceTabs.map((tab) => ({
         value: tab.value,
-        label: tab.label,
+        label:
+            tab.value === 'comments' && commentsCount > 0
+                ? `${tab.label} (${commentsCount})`
+                : tab.label,
         href: tab.href(resource.id),
     }));
 
@@ -657,6 +670,8 @@ export default function ResourceShow({
                         screenshotSlides={screenshotSlides}
                         onOpenLightbox={openLightbox}
                         resourceNotice={resourceNotice}
+                        comments={comments}
+                        resourceId={resource.id}
                     />
                 </div>
             </SitePageContainer>

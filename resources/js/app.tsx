@@ -59,6 +59,7 @@ createInertiaApp({
             case name === 'welcome':
             case name === 'search':
             case name === 'favorites':
+            case name.startsWith('notifications/'):
             case name.startsWith('resources/'):
             case name.startsWith('docs/'):
             case name.startsWith('download-links/'):

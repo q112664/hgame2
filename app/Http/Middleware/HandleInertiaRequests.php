@@ -56,6 +56,11 @@ class HandleInertiaRequests extends Middleware
                 'passwordRules' => Password::defaults()->toPasswordRulesString(),
                 'turnstile' => Turnstile::frontendConfig(),
             ],
+            'notifications' => [
+                'unreadCount' => $request->user()
+                    ? $request->user()->unreadNotifications()->count()
+                    : 0,
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

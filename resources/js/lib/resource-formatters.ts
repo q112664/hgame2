@@ -1,3 +1,5 @@
+import { SITE_LOCALE } from '@/lib/datetime';
+
 const languageAbbreviations: Record<string, string> = {
     Chinese: 'CN',
     Japanese: 'JP',
@@ -26,11 +28,11 @@ export function abbreviateVersion(version: string): string {
 }
 
 export function formatViews(views: number): string {
-    return new Intl.NumberFormat('en-US').format(views);
+    return new Intl.NumberFormat(SITE_LOCALE).format(views);
 }
 
 export function formatDate(date: string): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat(SITE_LOCALE, {
         year: 'numeric',
         month: 'short',
         day: 'numeric',

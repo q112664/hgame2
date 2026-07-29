@@ -21,6 +21,8 @@ import {
     releaseFooterInnerClassName,
     tagBadgeClassName,
 } from '@/components/site/resource-detail-styles';
+import type { ResourceComment } from '@/components/site/resource-comments';
+import { ResourceComments } from '@/components/site/resource-comments';
 import { RichHtml } from '@/components/site/rich-html';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +34,7 @@ import { show as downloadLinkShow } from '@/routes/download-links';
 import { index as resourcesIndex } from '@/routes/resources';
 import type { GameDetail } from '@/types/resources';
 
-type ResourceTab = 'details' | 'downloads' | 'screenshots';
+type ResourceTab = 'details' | 'downloads' | 'screenshots' | 'comments';
 
 /** Collapsed height ≈ three prose-sm lines before “Show more”. */
 const RELEASE_DESCRIPTION_COLLAPSED_MAX_PX = 72;
@@ -182,6 +184,8 @@ type Props = {
     onOpenLightbox: (slides: LightboxSlide[], index: number) => void;
     /** Site-wide notice HTML above download packages (empty when disabled). */
     resourceNotice?: string;
+    resourceId?: string;
+    comments?: ResourceComment[];
 };
 
 export function ResourceTabContent({
@@ -191,6 +195,8 @@ export function ResourceTabContent({
     screenshotSlides,
     onOpenLightbox,
     resourceNotice = '',
+    resourceId,
+    comments = [],
 }: Props) {
     return (
         <div aria-busy={isTabPending || undefined}>
@@ -425,6 +431,13 @@ export function ResourceTabContent({
                         description="This resource does not have screenshots uploaded."
                     />
                 )
+            ) : null}
+
+            {activeTab === 'comments' && resourceId ? (
+                <ResourceComments
+                    resourceId={resourceId}
+                    comments={comments}
+                />
             ) : null}
         </div>
     );

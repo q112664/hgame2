@@ -17,6 +17,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
 import type { AuthDialogView } from '@/components/auth/auth-dialog';
+import { NotificationBell } from '@/components/site/notification-bell';
 import { SiteLogo } from '@/components/site/site-logo';
 import { Button } from '@/components/ui/button';
 import {
@@ -386,8 +387,8 @@ export function SiteHeader() {
                     <NavLinks className="hidden md:flex" />
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2 sm:gap-2.5">
+                    <div className="flex items-center gap-0.5 sm:gap-1">
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Link
@@ -408,6 +409,8 @@ export function SiteHeader() {
                         </Tooltip>
 
                         <ThemeToggle />
+
+                        {auth.user ? <NotificationBell /> : null}
                     </div>
 
                     {auth.user ? (

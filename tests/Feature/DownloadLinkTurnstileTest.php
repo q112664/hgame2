@@ -79,6 +79,25 @@ test('download continue redirects away after verified turnstile', function () {
     ])->assertRedirect('https://cdn.example.com/game.zip');
 });
 
+test('download continue forces a full page redirect for inertia requests', function () {
+    Setting::set('turnstile_site_key', 'test-site-key');
+    Setting::set('turnstile_secret_key', 'test-secret-key');
+    Setting::setBoolean('turnstile_download_enabled', true);
+
+    Http::fake([
+        'challenges.cloudflare.com/*' => Http::response(['success' => true]),
+    ]);
+
+    $link = makeActiveDownloadLink();
+
+    $this->withHeaders([
+        'X-Inertia' => 'true',
+    ])->post(route('download-links.continue', $link), [
+        Turnstile::FIELD => 'valid-token',
+    ])->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', 'https://cdn.example.com/game.zip');
+});
+
 test('download continue works without turnstile when disabled', function () {
     $link = makeActiveDownloadLink();
 

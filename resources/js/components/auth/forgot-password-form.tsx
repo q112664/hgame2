@@ -41,7 +41,10 @@ export default function ForgotPasswordForm({ status, onLogin }: Props) {
             <Form
                 {...email.form()}
                 onStart={() => setSent(false)}
-                onSuccess={() => setSent(true)}
+                onSuccess={() => {
+                    setSent(true);
+                    setTurnstileResetKey((key) => key + 1);
+                }}
                 onError={() => setTurnstileResetKey((key) => key + 1)}
             >
                 {({ processing, errors }) => (

@@ -20,6 +20,7 @@ declare global {
                     callback?: (token: string) => void;
                     'expired-callback'?: () => void;
                     'error-callback'?: () => void;
+                    'timeout-callback'?: () => void;
                     theme?: 'auto' | 'light' | 'dark';
                 },
             ) => string;
@@ -92,6 +93,12 @@ export function TurnstileWidget({
 
     useEffect(() => {
         let cancelled = false;
+        const tokenInput = tokenInputRef.current;
+
+        // Tokens are single-use, so never carry one into a fresh widget.
+        if (tokenInput) {
+            tokenInput.value = '';
+        }
 
         const mount = async () => {
             await loadTurnstileScript();
@@ -113,18 +120,23 @@ export function TurnstileWidget({
                     sitekey: siteKey,
                     theme: 'auto',
                     callback: (token) => {
-                        if (tokenInputRef.current) {
-                            tokenInputRef.current.value = token;
+                        if (tokenInput) {
+                            tokenInput.value = token;
                         }
                     },
                     'expired-callback': () => {
-                        if (tokenInputRef.current) {
-                            tokenInputRef.current.value = '';
+                        if (tokenInput) {
+                            tokenInput.value = '';
                         }
                     },
                     'error-callback': () => {
-                        if (tokenInputRef.current) {
-                            tokenInputRef.current.value = '';
+                        if (tokenInput) {
+                            tokenInput.value = '';
+                        }
+                    },
+                    'timeout-callback': () => {
+                        if (tokenInput) {
+                            tokenInput.value = '';
                         }
                     },
                 },
@@ -135,6 +147,10 @@ export function TurnstileWidget({
 
         return () => {
             cancelled = true;
+
+            if (tokenInput) {
+                tokenInput.value = '';
+            }
 
             if (widgetIdRef.current && window.turnstile) {
                 window.turnstile.remove(widgetIdRef.current);

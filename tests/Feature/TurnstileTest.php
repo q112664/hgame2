@@ -107,8 +107,8 @@ test('registration succeeds with a verified turnstile token when enabled', funct
     $this->post(route('register.store'), [
         'name' => 'New User',
         'email' => 'new@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
+        'password' => 'password1',
+        'password_confirmation' => 'password1',
         Turnstile::FIELD => 'valid-token',
     ])->assertRedirect();
 

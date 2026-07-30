@@ -6,7 +6,7 @@ import {
     Trash2,
     X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
     destroy as destroyComment,
@@ -15,17 +15,21 @@ import {
 } from '@/actions/App/Http/Controllers/GameCommentController';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
+import { SitePagination } from '@/components/site/site-pagination';
+import type { PaginatedData } from '@/components/site/site-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { UserAvatar } from '@/components/user-avatar';
 import { formatAbsoluteDateTime, formatRelativeTime } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
+import { comments as resourceCommentsRoute } from '@/routes/resources';
 
 export type ResourceCommentUser = {
     id: number;
     name: string;
     avatar: string | null;
+    isAdmin: boolean;
 };
 
 export type ResourceCommentReply = {
@@ -47,7 +51,8 @@ export type ResourceComment = ResourceCommentReply & {
 
 type Props = {
     resourceId: string;
-    comments: ResourceComment[];
+    comments: PaginatedData<ResourceComment>;
+    commentsCount: number;
 };
 
 const MAX_LENGTH = 2000;
@@ -58,15 +63,26 @@ type ReplyTarget = {
     userName: string;
 };
 
-type PendingScroll = number;
-
 export function commentDomId(id: number): string {
     return `comment-${id}`;
 }
 
-/** Drop a legacy leading @Name prefix so reply bodies stay plain text. */
-function stripLeadingMention(body: string): string {
-    return body.replace(/^@[^\s@]+(?:\s+[^\s@]+){0,3}\s+/, '').trimStart();
+/**
+ * Strip only the exact legacy reply prefix. Root comments are never changed.
+ */
+function normalizeCommentBody(
+    body: string,
+    replyToName: string | null = null,
+): string {
+    if (replyToName === null) {
+        return body;
+    }
+
+    const prefix = `@${replyToName}`;
+
+    return body.startsWith(`${prefix} `)
+        ? body.slice(prefix.length).trimStart()
+        : body;
 }
 
 function scrollToCommentElement(
@@ -84,14 +100,74 @@ function scrollToCommentElement(
     return true;
 }
 
+/** Retry until the new comment node is painted (and after Inertia scroll restore). */
+function scheduleScrollToComment(id: number, onFound: () => void): () => void {
+    let cancelled = false;
+    const timers: number[] = [];
+    // preserveScroll restores the old offset after the visit; keep retrying a bit longer.
+    const delaysMs = [0, 16, 50, 100, 180, 320, 500, 800, 1200];
+
+    const tryScroll = (attempt: number) => {
+        if (cancelled) {
+            return;
+        }
+
+        const behavior: ScrollBehavior = attempt < 2 ? 'smooth' : 'auto';
+
+        if (scrollToCommentElement(id, behavior)) {
+            onFound();
+
+            return;
+        }
+
+        const next = attempt + 1;
+
+        if (next >= delaysMs.length) {
+            return;
+        }
+
+        const wait = delaysMs[next]! - delaysMs[attempt]!;
+        timers.push(
+            window.setTimeout(
+                () => {
+                    tryScroll(next);
+                },
+                Math.max(wait, 0),
+            ),
+        );
+    };
+
+    timers.push(
+        window.setTimeout(() => {
+            // Double rAF: wait for React commit + browser paint.
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    tryScroll(0);
+                });
+            });
+        }, 0),
+    );
+
+    return () => {
+        cancelled = true;
+        timers.forEach((timer) => window.clearTimeout(timer));
+    };
+}
+
 function CommentBody({
     body,
     nested = false,
+    replyToName = null,
+    showReplyToName = false,
 }: {
     body: string;
     nested?: boolean;
+    /** Used to remove a legacy prefix from the stored reply body. */
+    replyToName?: string | null;
+    /** Whether to show the reply target in the rendered text. */
+    showReplyToName?: boolean;
 }) {
-    const text = stripLeadingMention(body);
+    const text = normalizeCommentBody(body, replyToName);
 
     return (
         <p
@@ -100,6 +176,13 @@ function CommentBody({
                 nested ? 'text-[13px] sm:text-sm' : 'text-sm',
             )}
         >
+            {showReplyToName && replyToName ? (
+                <>
+                    <span className="font-medium text-primary">
+                        @{replyToName}
+                    </span>{' '}
+                </>
+            ) : null}
             {text}
         </p>
     );
@@ -134,7 +217,11 @@ function CommentActionButton({
     );
 }
 
-export function ResourceComments({ resourceId, comments }: Props) {
+export function ResourceComments({
+    resourceId,
+    comments,
+    commentsCount,
+}: Props) {
     const page = usePage();
     const { openAuthDialog } = useAuthDialog();
     const authUser = page.props.auth.user;
@@ -148,17 +235,20 @@ export function ResourceComments({ resourceId, comments }: Props) {
     const [error, setError] = useState<string | null>(null);
     const [editError, setEditError] = useState<string | null>(null);
     const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
+    const [replyBody, setReplyBody] = useState('');
+    const [replyError, setReplyError] = useState<string | null>(null);
+    const [isSubmittingReply, setIsSubmittingReply] = useState(false);
     const [highlightedId, setHighlightedId] = useState<number | null>(null);
+    /** Drives scroll retries after post — state so effects re-run when the id arrives. */
+    const [pendingScrollId, setPendingScrollId] = useState<number | null>(null);
     const composerRef = useRef<HTMLTextAreaElement>(null);
-    const pendingScrollRef = useRef<PendingScroll | null>(null);
+    const inlineReplyRef = useRef<HTMLTextAreaElement>(null);
     const highlightTimerRef = useRef<number | null>(null);
+    const pendingScrollIdRef = useRef<number | null>(null);
+    const cancelPendingScrollRef = useRef<(() => void) | null>(null);
 
-    const totalCount = useMemo(() => {
-        return comments.reduce(
-            (sum, comment) => sum + 1 + (comment.replies?.length ?? 0),
-            0,
-        );
-    }, [comments]);
+    const totalCount = commentsCount;
+    const commentItems = comments.data;
 
     const flashHighlight = (id: number) => {
         setHighlightedId(id);
@@ -173,62 +263,46 @@ export function ResourceComments({ resourceId, comments }: Props) {
         }, 2400);
     };
 
-    const focusComment = (id: number, behavior: ScrollBehavior = 'smooth') => {
-        if (!scrollToCommentElement(id, behavior)) {
-            return false;
-        }
+    const clearPendingScroll = () => {
+        pendingScrollIdRef.current = null;
+        setPendingScrollId(null);
+        cancelPendingScrollRef.current?.();
+        cancelPendingScrollRef.current = null;
+    };
 
-        flashHighlight(id);
-
-        return true;
+    const queueScrollToComment = (id: number) => {
+        pendingScrollIdRef.current = id;
+        setPendingScrollId(id);
     };
 
     useEffect(() => {
-        const pendingId = pendingScrollRef.current;
-
-        if (pendingId === null) {
+        if (pendingScrollId === null) {
             return;
         }
 
-        let retryTimer: number | null = null;
-
-        const run = (behavior: ScrollBehavior = 'smooth') => {
-            if (focusComment(pendingId, behavior)) {
-                pendingScrollRef.current = null;
-
-                return true;
-            }
-
-            return false;
-        };
-
-        // Wait a frame so the comments list is painted after Inertia updates.
-        const frame = window.requestAnimationFrame(() => {
-            if (run('smooth')) {
-                return;
-            }
-
-            // New comments can land before the list is fully laid out.
-            retryTimer = window.setTimeout(() => {
-                run('auto');
-            }, 120);
-        });
+        cancelPendingScrollRef.current?.();
+        cancelPendingScrollRef.current = scheduleScrollToComment(
+            pendingScrollId,
+            () => {
+                flashHighlight(pendingScrollId);
+                clearPendingScroll();
+            },
+        );
 
         return () => {
-            window.cancelAnimationFrame(frame);
-
-            if (retryTimer !== null) {
-                window.clearTimeout(retryTimer);
-            }
+            cancelPendingScrollRef.current?.();
+            cancelPendingScrollRef.current = null;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when comments change
-    }, [comments]);
+        // Re-run when the list updates so late DOM nodes are still found.
+    }, [pendingScrollId, comments]);
 
     useEffect(() => {
         return () => {
             if (highlightTimerRef.current !== null) {
                 window.clearTimeout(highlightTimerRef.current);
             }
+
+            cancelPendingScrollRef.current?.();
         };
     }, []);
 
@@ -242,49 +316,60 @@ export function ResourceComments({ resourceId, comments }: Props) {
         return false;
     };
 
+    const cancelReply = () => {
+        setReplyTarget(null);
+        setReplyBody('');
+        setReplyError(null);
+    };
+
     const beginReply = (comment: ResourceCommentReply) => {
         if (!requireAuth()) {
             return;
         }
 
+        setEditingId(null);
+        setEditBody('');
+        setEditError(null);
+        setReplyError(null);
+        setReplyBody('');
         setReplyTarget({
             commentId: comment.id,
             userName: comment.user.name,
         });
-        setBody('');
-        setError(null);
-        setEditingId(null);
 
         requestAnimationFrame(() => {
-            composerRef.current?.focus();
+            inlineReplyRef.current?.focus();
         });
     };
 
-    const cancelReply = () => {
-        setReplyTarget(null);
-        setBody('');
-        setError(null);
-    };
-
-    const submit = (event: React.FormEvent) => {
-        event.preventDefault();
-
-        if (!requireAuth()) {
-            return;
-        }
-
-        const trimmed = stripLeadingMention(body.trim());
+    const postComment = ({
+        content,
+        parentId,
+        onStart,
+        onDone,
+        onFail,
+        onPosted,
+    }: {
+        content: string;
+        parentId: number | null;
+        onStart: () => void;
+        onDone: () => void;
+        onFail: (message: string) => void;
+        onPosted: () => void;
+    }) => {
+        const trimmed = content.trim();
 
         if (trimmed === '') {
-            setError('Please write a comment.');
+            onFail(
+                parentId === null
+                    ? 'Please write a comment.'
+                    : 'Please write a reply.',
+            );
 
             return;
         }
 
-        setError(null);
-        setIsSubmitting(true);
-
-        const parentId = replyTarget?.commentId ?? null;
+        onStart();
 
         router.post(
             storeComment(resourceId).url,
@@ -296,8 +381,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
                 preserveScroll: true,
                 only: ['comments', 'commentsCount'],
                 onSuccess: () => {
-                    setBody('');
-                    setReplyTarget(null);
+                    onPosted();
                 },
                 onFlash: (flash) => {
                     const createdCommentId = flash.createdCommentId;
@@ -307,29 +391,86 @@ export function ResourceComments({ resourceId, comments }: Props) {
                         Number.isInteger(createdCommentId) &&
                         createdCommentId > 0
                     ) {
-                        pendingScrollRef.current = createdCommentId;
+                        // Queue immediately so retries start even if the list
+                        // paints before / after Inertia restores scroll.
+                        queueScrollToComment(createdCommentId);
                     }
                 },
                 onError: (errors) => {
-                    pendingScrollRef.current = null;
-                    setError(
+                    clearPendingScroll();
+                    onFail(
                         typeof errors.body === 'string'
                             ? errors.body
                             : typeof errors.parent_id === 'string'
                               ? errors.parent_id
-                              : 'Could not post comment.',
+                              : parentId === null
+                                ? 'Could not post comment.'
+                                : 'Could not post reply.',
                     );
                 },
-                onFinish: () => setIsSubmitting(false),
+                onFinish: () => {
+                    onDone();
+                    // Restart retries after Inertia finishes (incl. preserveScroll restore).
+                    const id = pendingScrollIdRef.current;
+
+                    if (id !== null) {
+                        queueScrollToComment(id);
+                    }
+                },
             },
         );
     };
 
+    const submit = (event: React.FormEvent) => {
+        event.preventDefault();
+
+        if (!requireAuth()) {
+            return;
+        }
+
+        // Top composer is always a root comment — replies use the inline form.
+        setError(null);
+
+        postComment({
+            content: body,
+            parentId: null,
+            onStart: () => setIsSubmitting(true),
+            onDone: () => setIsSubmitting(false),
+            onFail: (message) => setError(message),
+            onPosted: () => {
+                setBody('');
+            },
+        });
+    };
+
+    const submitInlineReply = (event: React.FormEvent) => {
+        event.preventDefault();
+
+        if (!requireAuth() || replyTarget === null) {
+            return;
+        }
+
+        setReplyError(null);
+
+        postComment({
+            content: replyBody,
+            parentId: replyTarget.commentId,
+            onStart: () => setIsSubmittingReply(true),
+            onDone: () => setIsSubmittingReply(false),
+            onFail: (message) => setReplyError(message),
+            onPosted: () => {
+                cancelReply();
+            },
+        });
+    };
+
     const startEdit = (comment: ResourceCommentReply) => {
         setEditingId(comment.id);
-        setEditBody(comment.body);
+        setEditBody(
+            normalizeCommentBody(comment.body, comment.replyTo?.name ?? null),
+        );
         setEditError(null);
-        setReplyTarget(null);
+        cancelReply();
     };
 
     const cancelEdit = () => {
@@ -343,7 +484,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
             return;
         }
 
-        const trimmed = stripLeadingMention(editBody.trim());
+        const trimmed = editBody.trim();
 
         if (trimmed === '') {
             setEditError('Comment cannot be empty.');
@@ -410,13 +551,14 @@ export function ResourceComments({ resourceId, comments }: Props) {
         const rootAuthorId = options.rootAuthorId;
 
         const isHighlighted = highlightedId === comment.id;
+        const replyTo = nested ? comment.replyTo : null;
+        const replyToName = replyTo?.name ?? null;
 
         // Indent + reply rail already show this is a reply. Only label when
         // answering someone other than the thread root author.
         const showReplyTo =
-            nested &&
-            comment.replyTo !== null &&
-            (rootAuthorId === undefined || comment.replyTo.id !== rootAuthorId);
+            replyTo !== null &&
+            (rootAuthorId === undefined || replyTo.id !== rootAuthorId);
 
         return (
             <article
@@ -449,6 +591,18 @@ export function ResourceComments({ resourceId, comments }: Props) {
                         >
                             {comment.user.name}
                         </span>
+                        {comment.user.isAdmin ? (
+                            <Badge
+                                variant="outline"
+                                className={cn(
+                                    'h-5 border-0 px-1.5 text-[10px] leading-none font-medium shadow-none',
+                                    'bg-primary/12 text-primary',
+                                    'dark:bg-primary/18 dark:text-primary',
+                                )}
+                            >
+                                Admin
+                            </Badge>
+                        ) : null}
                         {comment.isMine ? (
                             <Badge
                                 variant="secondary"
@@ -456,16 +610,6 @@ export function ResourceComments({ resourceId, comments }: Props) {
                             >
                                 You
                             </Badge>
-                        ) : null}
-                        {showReplyTo && comment.replyTo ? (
-                            <span className="min-w-0 text-[11px] leading-none text-muted-foreground sm:text-xs">
-                                <span className="text-muted-foreground/60">
-                                    →
-                                </span>{' '}
-                                <span className="truncate font-normal text-muted-foreground">
-                                    {comment.replyTo.name}
-                                </span>
-                            </span>
                         ) : null}
                         {comment.createdAt ? (
                             <>
@@ -539,9 +683,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                     type="button"
                                     size="sm"
                                     disabled={
-                                        isSavingEdit ||
-                                        stripLeadingMention(editBody.trim()) ===
-                                            ''
+                                        isSavingEdit || editBody.trim() === ''
                                     }
                                     onClick={() => saveEdit(comment.id)}
                                 >
@@ -560,7 +702,12 @@ export function ResourceComments({ resourceId, comments }: Props) {
                         </div>
                     ) : (
                         <>
-                            <CommentBody body={comment.body} nested={nested} />
+                            <CommentBody
+                                body={comment.body}
+                                nested={nested}
+                                replyToName={replyToName}
+                                showReplyToName={showReplyTo}
+                            />
                             <div
                                 className={cn(
                                     'mt-0.5 flex flex-wrap items-center gap-0.5',
@@ -594,6 +741,103 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                     </CommentActionButton>
                                 ) : null}
                             </div>
+                            {replyTarget?.commentId === comment.id ? (
+                                <form
+                                    className="mt-2 flex flex-col gap-1.5 rounded-md border border-border/80 bg-muted/20 p-2 sm:p-2.5 dark:bg-muted/10"
+                                    onSubmit={submitInlineReply}
+                                >
+                                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                                        <span className="min-w-0 truncate">
+                                            Reply to{' '}
+                                            <span className="font-medium text-primary">
+                                                @{replyTarget.userName}
+                                            </span>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground"
+                                            aria-label="Cancel reply"
+                                            disabled={isSubmittingReply}
+                                            onClick={cancelReply}
+                                        >
+                                            <X className="size-3.5" />
+                                        </button>
+                                    </div>
+                                    <Textarea
+                                        ref={inlineReplyRef}
+                                        value={replyBody}
+                                        onChange={(event) => {
+                                            setReplyBody(event.target.value);
+
+                                            if (replyError) {
+                                                setReplyError(null);
+                                            }
+                                        }}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Escape') {
+                                                event.preventDefault();
+                                                cancelReply();
+
+                                                return;
+                                            }
+
+                                            if (
+                                                (event.metaKey ||
+                                                    event.ctrlKey) &&
+                                                event.key === 'Enter'
+                                            ) {
+                                                event.preventDefault();
+                                                event.currentTarget.form?.requestSubmit();
+                                            }
+                                        }}
+                                        placeholder={`Reply to @${replyTarget.userName}…`}
+                                        rows={2}
+                                        maxLength={MAX_LENGTH}
+                                        disabled={isSubmittingReply}
+                                        className={cn(
+                                            'min-h-[3rem] resize-y bg-background text-[13px] shadow-none sm:text-sm',
+                                            replyError &&
+                                                'border-destructive focus-visible:border-destructive',
+                                        )}
+                                    />
+                                    {replyError ? (
+                                        <p
+                                            className="text-xs text-destructive"
+                                            role="alert"
+                                        >
+                                            {replyError}
+                                        </p>
+                                    ) : null}
+                                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                        <p className="text-[11px] text-muted-foreground tabular-nums">
+                                            {replyBody.length}/{MAX_LENGTH}
+                                        </p>
+                                        <div className="flex items-center gap-1.5">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                disabled={isSubmittingReply}
+                                                onClick={cancelReply}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                type="submit"
+                                                size="sm"
+                                                disabled={
+                                                    isSubmittingReply ||
+                                                    replyBody.trim() === ''
+                                                }
+                                            >
+                                                {isSubmittingReply
+                                                    ? 'Posting…'
+                                                    : 'Post reply'}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </form>
+                            ) : null}
                         </>
                     )}
                 </div>
@@ -603,6 +847,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
 
     return (
         <section
+            id="resource-comments"
             aria-label="Comments"
             className="overflow-hidden rounded-lg border border-border bg-card"
         >
@@ -675,28 +920,6 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                 ) : null}
 
                                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                                    {replyTarget ? (
-                                        <div className="flex items-center justify-between gap-2 rounded-md border border-primary/20 bg-primary/8 px-2.5 py-1.5 text-xs dark:bg-primary/12">
-                                            <span className="inline-flex min-w-0 items-center gap-1.5 text-foreground">
-                                                <CornerDownRight className="size-3.5 shrink-0 text-primary" />
-                                                <span className="truncate">
-                                                    Replying to{' '}
-                                                    <span className="font-semibold text-primary">
-                                                        {replyTarget.userName}
-                                                    </span>
-                                                </span>
-                                            </span>
-                                            <button
-                                                type="button"
-                                                className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground"
-                                                aria-label="Cancel reply"
-                                                onClick={cancelReply}
-                                            >
-                                                <X className="size-3.5" />
-                                            </button>
-                                        </div>
-                                    ) : null}
-
                                     <label
                                         className="sr-only"
                                         htmlFor="resource-comment-body"
@@ -724,11 +947,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                                 event.currentTarget.form?.requestSubmit();
                                             }
                                         }}
-                                        placeholder={
-                                            replyTarget
-                                                ? `Reply to ${replyTarget.userName}…`
-                                                : 'Share your thoughts…'
-                                        }
+                                        placeholder="Share your thoughts…"
                                         rows={2}
                                         maxLength={MAX_LENGTH}
                                         disabled={isSubmitting}
@@ -753,7 +972,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                                 className={cn(
                                                     'tabular-nums',
                                                     nearLimit &&
-                                                        'font-medium text-amber-600 dark:text-amber-400',
+                                                        'font-medium text-warning',
                                                     remaining <= 0 &&
                                                         'text-destructive',
                                                 )}
@@ -761,33 +980,16 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                                 {body.length}/{MAX_LENGTH}
                                             </span>
                                         </p>
-                                        <div className="flex items-center gap-1.5">
-                                            {replyTarget ? (
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    disabled={isSubmitting}
-                                                    onClick={cancelReply}
-                                                >
-                                                    Cancel
-                                                </Button>
-                                            ) : null}
-                                            <Button
-                                                type="submit"
-                                                size="sm"
-                                                disabled={
-                                                    isSubmitting ||
-                                                    body.trim() === ''
-                                                }
-                                            >
-                                                {isSubmitting
-                                                    ? 'Posting…'
-                                                    : replyTarget
-                                                      ? 'Post reply'
-                                                      : 'Post'}
-                                            </Button>
-                                        </div>
+                                        <Button
+                                            type="submit"
+                                            size="sm"
+                                            disabled={
+                                                isSubmitting ||
+                                                body.trim() === ''
+                                            }
+                                        >
+                                            {isSubmitting ? 'Posting…' : 'Post'}
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
@@ -795,7 +997,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
                     )}
                 </div>
 
-                {comments.length === 0 ? (
+                {commentItems.length === 0 ? (
                     <SiteEmptyState
                         icon={MessageSquare}
                         title="No comments yet"
@@ -803,7 +1005,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
                     />
                 ) : (
                     <ul className="divide-y divide-border/60">
-                        {comments.map((comment) => (
+                        {commentItems.map((comment) => (
                             <li
                                 key={comment.id}
                                 className="flex flex-col gap-2 px-3 py-2.5 sm:gap-2.5 sm:px-4 sm:py-3"
@@ -849,6 +1051,28 @@ export function ResourceComments({ resourceId, comments }: Props) {
                         ))}
                     </ul>
                 )}
+
+                <div className="border-t border-border/60 px-3 py-3 sm:px-4">
+                    <SitePagination
+                        pagination={comments}
+                        pageUrl={(page) =>
+                            resourceCommentsRoute(resourceId, {
+                                query: { page },
+                            }).url
+                        }
+                        ariaLabel="Comments pagination"
+                        itemLabel="comments"
+                        only={['comments', 'commentsCount', 'activeTab']}
+                        onSuccess={() => {
+                            document
+                                .getElementById('resource-comments')
+                                ?.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'start',
+                                });
+                        }}
+                    />
+                </div>
             </div>
         </section>
     );

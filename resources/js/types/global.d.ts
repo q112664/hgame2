@@ -40,7 +40,7 @@ declare module '@inertiajs/core' {
             turnstile: TurnstileConfig;
             auth: Auth;
             authModal: AuthModalConfig | null;
-            notifications: NotificationsShared;
+            notificationSummary: NotificationsShared;
             sidebarOpen: boolean;
             [key: string]: unknown;
         };

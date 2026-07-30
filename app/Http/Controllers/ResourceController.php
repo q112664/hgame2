@@ -14,12 +14,15 @@ use App\Support\GamePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ResourceController extends Controller
 {
+    private const COMMENTS_PER_PAGE = 20;
+
     public function __construct(
         private RecordGameView $recordGameView,
     ) {}
@@ -117,8 +120,8 @@ class ResourceController extends Controller
             'activeTab' => $activeTab,
             'resourceNotice' => Setting::resourceNoticeHtml(),
             'comments' => $activeTab === 'comments'
-                ? $this->presentComments($game)
-                : [],
+                ? $this->presentComments($game, $request)
+                : null,
             'commentsCount' => $game->comments()->count(),
             'resource' => $this->presentResource(
                 $game,
@@ -186,86 +189,120 @@ class ResourceController extends Controller
     }
 
     /**
-     * Nested threads: top-level comments (newest first) with one-level replies (oldest first).
+     * Nested threads: paginated top-level comments (newest first) with replies (oldest first).
      *
-     * @return list<array{
-     *     id: int,
-     *     body: string,
-     *     createdAt: string|null,
-     *     updatedAt: string|null,
-     *     isEdited: bool,
-     *     isMine: bool,
-     *     canEdit: bool,
-     *     canDelete: bool,
-     *     replyTo: array{id: int, name: string}|null,
-     *     user: array{id: int, name: string, avatar: string|null},
-     *     replies: list<array{
-     *         id: int,
-     *         body: string,
-     *         createdAt: string|null,
-     *         updatedAt: string|null,
-     *         isEdited: bool,
-     *         isMine: bool,
-     *         canEdit: bool,
-     *         canDelete: bool,
-     *         replyTo: array{id: int, name: string}|null,
-     *         user: array{id: int, name: string, avatar: string|null}
-     *     }>
-     * }>
+     * @return LengthAwarePaginator<int, non-empty-array<string, mixed>>
      */
-    private function presentComments(Game $game): array
+    private function presentComments(Game $game, Request $request): LengthAwarePaginator
     {
         $user = auth()->user();
+        $commentColumns = [
+            'id',
+            'user_id',
+            'parent_id',
+            'reply_to_user_id',
+            'body',
+            'created_at',
+            'updated_at',
+        ];
 
-        $comments = $game->comments()
-            ->select([
-                'id',
-                'user_id',
-                'parent_id',
-                'reply_to_user_id',
-                'body',
-                'created_at',
-                'updated_at',
-            ])
-            ->with(['user:id,name,avatar', 'replyToUser:id,name'])
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->get();
+        $focusId = $request->integer('focus');
+        $focusRootId = null;
 
-        /** @var Collection<int, GameComment> $roots */
-        $roots = $comments->whereNull('parent_id')->reverse()->values();
-        $repliesByParent = $comments->whereNotNull('parent_id')->groupBy('parent_id');
+        if ($focusId > 0) {
+            $focusComment = $game->comments()
+                ->whereKey($focusId)
+                ->first(['id', 'parent_id']);
 
-        return array_values($roots
-            ->map(function (GameComment $root) use ($user, $repliesByParent): array {
-                $replies = array_values(($repliesByParent->get($root->id) ?? collect())
-                    ->values()
-                    ->map(fn (GameComment $reply): array => $this->presentCommentNode($reply, $user))
-                    ->all());
+            $focusRootId = $focusComment === null
+                ? null
+                : (int) ($focusComment->parent_id ?? $focusComment->id);
+        }
 
-                return [
-                    ...$this->presentCommentNode($root, $user),
-                    'replies' => $replies,
-                ];
-            })
-            ->values()
-            ->all());
+        $rootQuery = $game->comments()
+            ->whereNull('parent_id')
+            ->select($commentColumns)
+            ->with(['user:id,name,avatar,is_admin', 'replyToUser:id,name'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        $page = $this->commentPageForRoot($game, $focusRootId);
+        $roots = $rootQuery
+            ->paginate(self::COMMENTS_PER_PAGE, ['*'], 'page', $page);
+
+        if ($roots->currentPage() > $roots->lastPage()) {
+            $roots = $rootQuery->paginate(
+                self::COMMENTS_PER_PAGE,
+                ['*'],
+                'page',
+                $roots->lastPage(),
+            );
+        }
+
+        $roots->appends($request->except('focus'));
+
+        $rootIds = $roots->getCollection()->pluck('id');
+        /** @var Collection<int, Collection<int, GameComment>> $repliesByParent */
+        $repliesByParent = collect();
+
+        if ($rootIds->isNotEmpty()) {
+            $repliesByParent = $game->comments()
+                ->whereIn('parent_id', $rootIds->all())
+                ->select($commentColumns)
+                ->with(['user:id,name,avatar,is_admin', 'replyToUser:id,name'])
+                ->orderBy('created_at')
+                ->orderBy('id')
+                ->get()
+                ->groupBy('parent_id');
+        }
+
+        $transformedRoots = $roots->through(function (GameComment $root) use ($user, $repliesByParent): array {
+            $replies = ($repliesByParent->get($root->id) ?? collect())
+                ->map(fn (GameComment $reply): array => $this->presentCommentNode($reply, $user))
+                ->values()
+                ->all();
+
+            return [
+                ...$this->presentCommentNode($root, $user),
+                'replies' => $replies,
+            ];
+        });
+
+        return $transformedRoots;
     }
 
-    /**
-     * @return array{
-     *     id: int,
-     *     body: string,
-     *     createdAt: string|null,
-     *     updatedAt: string|null,
-     *     isEdited: bool,
-     *     isMine: bool,
-     *     canEdit: bool,
-     *     canDelete: bool,
-     *     replyTo: array{id: int, name: string}|null,
-     *     user: array{id: int, name: string, avatar: string|null}
-     * }
-     */
+    private function commentPageForRoot(Game $game, ?int $rootId): ?int
+    {
+        if ($rootId === null) {
+            return null;
+        }
+
+        $root = $game->comments()
+            ->whereNull('parent_id')
+            ->whereKey($rootId)
+            ->first(['id', 'created_at']);
+
+        if ($root === null) {
+            return null;
+        }
+
+        $newerRootCount = $game->comments()
+            ->whereNull('parent_id')
+            ->where(function ($query) use ($root): void {
+                $query
+                    ->where('created_at', '>', $root->created_at)
+                    ->orWhere(function ($query) use ($root): void {
+                        $query
+                            ->where('created_at', $root->created_at)
+                            ->where('id', '>', $root->id);
+                    });
+            })
+            ->count();
+
+        return intdiv($newerRootCount, self::COMMENTS_PER_PAGE) + 1;
+    }
+
+    /** @return array<string, mixed> */
     private function presentCommentNode(GameComment $comment, mixed $user): array
     {
         $isMine = $user !== null && $user->id === $comment->user_id;
@@ -296,6 +333,7 @@ class ResourceController extends Controller
                 'id' => $comment->user->id,
                 'name' => $comment->user->name,
                 'avatar' => $comment->user->avatar,
+                'isAdmin' => (bool) $comment->user->is_admin,
             ],
         ];
     }

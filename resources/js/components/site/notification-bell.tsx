@@ -16,7 +16,7 @@ const iconButtonClassName = cn(
 
 export function NotificationBell() {
     const page = usePage();
-    const unreadCount = page.props.notifications?.unreadCount ?? 0;
+    const unreadCount = page.props.notificationSummary?.unreadCount ?? 0;
     const badgeLabel =
         unreadCount > 99 ? '99+' : unreadCount > 0 ? String(unreadCount) : null;
 
@@ -35,7 +35,7 @@ export function NotificationBell() {
                 >
                     <Bell className="size-4 shrink-0" strokeWidth={1.75} />
                     {badgeLabel ? (
-                        <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground shadow-sm">
+                        <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] leading-none font-semibold text-primary-foreground shadow-sm">
                             {badgeLabel}
                         </span>
                     ) : null}

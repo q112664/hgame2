@@ -3,6 +3,7 @@
 use App\Models\Game;
 use App\Models\GameComment;
 use App\Models\User;
+use App\Notifications\CommentRepliedNotification;
 use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -84,15 +85,43 @@ test('comments tab lists comments newest first with ownership flags', function (
             ->component('resources/show')
             ->where('activeTab', 'comments')
             ->where('commentsCount', 2)
-            ->has('comments', 2)
-            ->where('comments.0.body', 'Newer comment')
-            ->where('comments.0.isMine', true)
-            ->where('comments.0.canEdit', true)
-            ->where('comments.0.canDelete', true)
-            ->where('comments.1.body', 'Older comment')
-            ->where('comments.1.user.name', 'Alice')
-            ->where('comments.1.canEdit', false)
-            ->where('comments.1.canDelete', false)
+            ->has('comments.data', 2)
+            ->where('comments.data.0.body', 'Newer comment')
+            ->where('comments.data.0.isMine', true)
+            ->where('comments.data.0.canEdit', true)
+            ->where('comments.data.0.canDelete', true)
+            ->where('comments.data.0.user.isAdmin', false)
+            ->where('comments.data.1.body', 'Older comment')
+            ->where('comments.data.1.user.name', 'Alice')
+            ->where('comments.data.1.user.isAdmin', false)
+            ->where('comments.data.1.canEdit', false)
+            ->where('comments.data.1.canDelete', false)
+        );
+});
+
+test('comments mark admin authors with an admin title flag', function () {
+    $admin = User::factory()->admin()->create(['name' => 'Site Admin']);
+    $member = User::factory()->create(['name' => 'Regular Member']);
+
+    GameComment::factory()->for($this->game)->for($admin)->create([
+        'body' => 'Official reply',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    GameComment::factory()->for($this->game)->for($member)->create([
+        'body' => 'Member comment',
+        'created_at' => now()->subMinute(),
+        'updated_at' => now()->subMinute(),
+    ]);
+
+    $this->get(route('resources.comments', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('resources/show')
+            ->where('comments.data.0.user.name', 'Site Admin')
+            ->where('comments.data.0.user.isAdmin', true)
+            ->where('comments.data.1.user.name', 'Regular Member')
+            ->where('comments.data.1.user.isAdmin', false)
         );
 });
 
@@ -115,9 +144,21 @@ test('comments tab returns every comment in stable newest-first order', function
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('commentsCount', 301)
-            ->has('comments', 301)
-            ->where('comments.0.body', 'Comment 300')
-            ->where('comments.300.body', 'Comment 0')
+            ->where('comments.current_page', 1)
+            ->where('comments.last_page', 16)
+            ->has('comments.data', 20)
+            ->where('comments.data.0.body', 'Comment 300')
+        );
+
+    $this->get(route('resources.comments', [
+        'resource' => $this->game->slug,
+        'page' => 16,
+    ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('comments.current_page', 16)
+            ->has('comments.data', 1)
+            ->where('comments.data.0.body', 'Comment 0')
         );
 });
 
@@ -130,7 +171,7 @@ test('other resource tabs expose comments count without the full list', function
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
             ->where('activeTab', 'details')
-            ->where('comments', [])
+            ->where('comments', null)
             ->where('commentsCount', 2)
         );
 });
@@ -184,7 +225,7 @@ test('users can reply to a comment with nested threading', function () {
 
     $this->actingAs($bob)
         ->post(route('resources.comments.store', $this->game->slug), [
-            'body' => '@Alice Agreed!',
+            'body' => 'Agreed!',
             'parent_id' => $root->id,
         ])
         ->assertRedirect();
@@ -194,12 +235,12 @@ test('users can reply to a comment with nested threading', function () {
     expect($reply)->not->toBeNull()
         ->and($reply->user_id)->toBe($bob->id)
         ->and($reply->reply_to_user_id)->toBe($alice->id)
-        ->and($reply->body)->toBe('@Alice Agreed!');
+        ->and($reply->body)->toBe('Agreed!');
 
-    // Reply to a reply still nests under the root, @ the intermediate author.
+    // Reply to a reply still nests under the root; replyTo points at the intermediate author.
     $this->actingAs($carol)
         ->post(route('resources.comments.store', $this->game->slug), [
-            'body' => '@Bob Nice point',
+            'body' => 'Nice point',
             'parent_id' => $reply->id,
         ])
         ->assertRedirect();
@@ -215,11 +256,11 @@ test('users can reply to a comment with nested threading', function () {
     $this->get(route('resources.comments', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('comments', 1)
-            ->where('comments.0.body', 'Root comment')
-            ->has('comments.0.replies', 2)
-            ->where('comments.0.replies.0.replyTo.name', 'Alice')
-            ->where('comments.0.replies.1.replyTo.name', 'Bob')
+            ->has('comments.data', 1)
+            ->where('comments.data.0.body', 'Root comment')
+            ->has('comments.data.0.replies', 2)
+            ->where('comments.data.0.replies.0.replyTo.name', 'Alice')
+            ->where('comments.data.0.replies.1.replyTo.name', 'Bob')
             ->where('commentsCount', 3)
         );
 });
@@ -258,10 +299,44 @@ test('comments tab returns every reply in its thread', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('commentsCount', 302)
-            ->has('comments', 1)
-            ->has('comments.0.replies', 301)
-            ->where('comments.0.replies.0.body', 'Reply 0')
-            ->where('comments.0.replies.300.body', 'Reply 300')
+            ->has('comments.data', 1)
+            ->has('comments.data.0.replies', 301)
+            ->where('comments.data.0.replies.0.body', 'Reply 0')
+            ->where('comments.data.0.replies.300.body', 'Reply 300')
+        );
+});
+
+test('focus loads the page containing a reply thread', function () {
+    $user = User::factory()->create();
+    $createdAt = now()->startOfSecond();
+
+    $roots = GameComment::factory()
+        ->count(41)
+        ->for($this->game)
+        ->for($user)
+        ->sequence(fn (Sequence $sequence): array => [
+            'body' => "Root {$sequence->index}",
+            'created_at' => $createdAt->copy()->addSeconds($sequence->index),
+            'updated_at' => $createdAt->copy()->addSeconds($sequence->index),
+        ])
+        ->create();
+    $oldestRoot = $roots->first();
+    $reply = GameComment::factory()->for($this->game)->for($user)->create([
+        'parent_id' => $oldestRoot->id,
+        'reply_to_user_id' => $user->id,
+        'body' => 'Focused reply',
+    ]);
+
+    $this->get(route('resources.comments', [
+        'resource' => $this->game->slug,
+        'focus' => $reply->id,
+    ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('comments.current_page', 3)
+            ->has('comments.data', 1)
+            ->where('comments.data.0.id', $oldestRoot->id)
+            ->where('comments.data.0.replies.0.id', $reply->id)
         );
 });
 
@@ -298,6 +373,64 @@ test('deleting a root comment also deletes its replies', function () {
 
     expect(GameComment::query()->whereKey($comment->id)->exists())->toBeFalse()
         ->and(GameComment::query()->whereKey($reply->id)->exists())->toBeFalse();
+});
+
+test('comments pagination clamps after deleting the last item on a page', function () {
+    $user = User::factory()->create();
+
+    $roots = GameComment::factory()
+        ->count(21)
+        ->for($this->game)
+        ->for($user)
+        ->sequence(fn (Sequence $sequence): array => [
+            'body' => "Root {$sequence->index}",
+            'created_at' => now()->addSeconds($sequence->index),
+            'updated_at' => now()->addSeconds($sequence->index),
+        ])
+        ->create();
+    $lastRoot = $roots->first();
+    $pageTwoUrl = route('resources.comments', [
+        'resource' => $this->game->slug,
+        'page' => 2,
+    ]);
+
+    $this->actingAs($user)
+        ->from($pageTwoUrl)
+        ->delete(route('resources.comments.destroy', [
+            'resource' => $this->game->slug,
+            'comment' => $lastRoot->id,
+        ]))
+        ->assertRedirect($pageTwoUrl);
+
+    $this->get($pageTwoUrl)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('comments.current_page', 1)
+            ->has('comments.data', 20)
+        );
+});
+
+test('deleting a comment removes notifications for its descendants', function () {
+    $author = User::factory()->create();
+    $replyAuthor = User::factory()->create();
+    $comment = GameComment::factory()->for($this->game)->for($author)->create();
+    $reply = GameComment::factory()->for($this->game)->for($replyAuthor)->create([
+        'parent_id' => $comment->id,
+        'reply_to_user_id' => $author->id,
+    ]);
+
+    $author->notify(new CommentRepliedNotification($reply));
+
+    expect($author->notifications()->count())->toBe(1);
+
+    $this->actingAs($author)
+        ->delete(route('resources.comments.destroy', [
+            'resource' => $this->game->slug,
+            'comment' => $comment->id,
+        ]))
+        ->assertRedirect();
+
+    expect($author->fresh()->notifications()->count())->toBe(0);
 });
 
 test('admins can delete any comment', function () {

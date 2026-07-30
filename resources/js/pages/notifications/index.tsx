@@ -126,7 +126,7 @@ export default function NotificationsIndex({
             { tab: activeTab },
             {
                 preserveScroll: true,
-                only: ['notifications', 'tabs'],
+                only: ['notifications', 'tabs', 'notificationSummary'],
                 onFinish: () => setMarkingAll(false),
             },
         );
@@ -153,7 +153,7 @@ export default function NotificationsIndex({
             { tab: activeTab },
             {
                 preserveScroll: true,
-                only: ['notifications', 'tabs'],
+                only: ['notifications', 'tabs', 'notificationSummary'],
                 onFinish: () => setClearing(false),
             },
         );
@@ -373,7 +373,12 @@ export default function NotificationsIndex({
                             pageUrl={(page) => tabHref(activeTab, page)}
                             ariaLabel="Notifications pagination"
                             itemLabel="notifications"
-                            only={['notifications', 'tabs', 'activeTab']}
+                            only={[
+                                'notifications',
+                                'tabs',
+                                'activeTab',
+                                'notificationSummary',
+                            ]}
                             onSuccess={() => {
                                 document
                                     .getElementById('notification-results')

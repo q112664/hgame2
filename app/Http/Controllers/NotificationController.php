@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Games\MarkFavoriteDownloadsSeen;
+use App\Models\GameComment;
 use App\NotificationTab;
 use App\Support\AppNotification;
 use Illuminate\Http\RedirectResponse;
@@ -85,6 +86,16 @@ class NotificationController extends Controller
             : null;
 
         if ($request->boolean('open') && filled($url)) {
+            if ($record->type === 'comment.replied'
+                && ! GameComment::query()->whereKey((int) ($record->data['comment_id'] ?? 0))->exists()) {
+                Inertia::flash('toast', [
+                    'type' => 'info',
+                    'message' => __('This comment is no longer available.'),
+                ]);
+
+                return back();
+            }
+
             return redirect()->to($url);
         }
 

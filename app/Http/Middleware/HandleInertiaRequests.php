@@ -56,7 +56,7 @@ class HandleInertiaRequests extends Middleware
                 'passwordRules' => Password::defaults()->toPasswordRulesString(),
                 'turnstile' => Turnstile::frontendConfig(),
             ],
-            'notifications' => [
+            'notificationSummary' => [
                 'unreadCount' => $request->user()
                     ? $request->user()->unreadNotifications()->count()
                     : 0,

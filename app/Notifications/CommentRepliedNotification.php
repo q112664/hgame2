@@ -45,7 +45,7 @@ class CommentRepliedNotification extends Notification
 
         $actor = $this->comment->user;
         $game = $this->comment->game;
-        $actorName = $actor?->name ?? __('Someone');
+        $actorName = $actor->name;
 
         return [
             'title' => __(':name replied to your comment', [
@@ -53,11 +53,12 @@ class CommentRepliedNotification extends Notification
             ]),
             'body' => Str::limit($this->comment->body, 140),
             'url' => route('resources.comments', $game->slug, absolute: false)
+                .'?focus='.$this->comment->id
                 .'#comment-'.$this->comment->id,
             'actor' => [
-                'id' => (int) ($actor?->id ?? 0),
+                'id' => $actor->id,
                 'name' => $actorName,
-                'avatar' => $actor?->avatar,
+                'avatar' => $actor->avatar,
             ],
             'comment_id' => $this->comment->id,
             'game_id' => $game->id,

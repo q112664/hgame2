@@ -1,3 +1,4 @@
+import type { Page } from '@inertiajs/core';
 import { createInertiaApp } from '@inertiajs/react';
 import { StrictMode } from 'react';
 import type { ReactNode } from 'react';
@@ -19,7 +20,7 @@ declare global {
     }
 }
 
-function resolveSiteTitle(page?: { props?: { siteTitle?: unknown } }): string {
+function resolveSiteTitle(page?: Page): string {
     const shared = page?.props?.siteTitle;
 
     return typeof shared === 'string' && shared.trim() !== ''

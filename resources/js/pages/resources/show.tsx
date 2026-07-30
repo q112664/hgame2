@@ -24,6 +24,7 @@ import {
 import { ResourceTabContent } from '@/components/site/resource-tab-content';
 import { RouteTabs } from '@/components/site/route-tabs';
 import { SitePageContainer } from '@/components/site/site-page-container';
+import type { PaginatedData } from '@/components/site/site-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,7 +62,7 @@ type Props = {
     resource: GameDetail;
     /** Site-wide notice HTML from admin (empty string when disabled). */
     resourceNotice?: string;
-    comments?: ResourceComment[];
+    comments?: PaginatedData<ResourceComment>;
     commentsCount?: number;
 };
 
@@ -164,7 +165,7 @@ export default function ResourceShow({
     activeTab,
     resource,
     resourceNotice = '',
-    comments = [],
+    comments,
     commentsCount = 0,
 }: Props) {
     const shouldReduceMotion = useReducedMotion();
@@ -672,6 +673,7 @@ export default function ResourceShow({
                         onOpenLightbox={openLightbox}
                         resourceNotice={resourceNotice}
                         comments={comments}
+                        commentsCount={commentsCount}
                         resourceId={resource.id}
                     />
                 </div>

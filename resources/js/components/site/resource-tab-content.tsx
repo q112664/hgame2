@@ -11,6 +11,8 @@ import {
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
 import { PlatformIcon } from '@/components/site/platform-icon';
+import type { ResourceComment } from '@/components/site/resource-comments';
+import { ResourceComments } from '@/components/site/resource-comments';
 import {
     dateBadgeClassName,
     downloadButtonClassName,
@@ -21,10 +23,9 @@ import {
     releaseFooterInnerClassName,
     tagBadgeClassName,
 } from '@/components/site/resource-detail-styles';
-import type { ResourceComment } from '@/components/site/resource-comments';
-import { ResourceComments } from '@/components/site/resource-comments';
 import { RichHtml } from '@/components/site/rich-html';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
+import type { PaginatedData } from '@/components/site/site-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -185,7 +186,19 @@ type Props = {
     /** Site-wide notice HTML above download packages (empty when disabled). */
     resourceNotice?: string;
     resourceId?: string;
-    comments?: ResourceComment[];
+    comments?: PaginatedData<ResourceComment>;
+    commentsCount?: number;
+};
+
+const EMPTY_COMMENTS: PaginatedData<ResourceComment> = {
+    data: [],
+    current_page: 1,
+    last_page: 1,
+    per_page: 20,
+    total: 0,
+    from: null,
+    to: null,
+    links: [],
 };
 
 export function ResourceTabContent({
@@ -196,7 +209,8 @@ export function ResourceTabContent({
     onOpenLightbox,
     resourceNotice = '',
     resourceId,
-    comments = [],
+    comments = EMPTY_COMMENTS,
+    commentsCount = 0,
 }: Props) {
     return (
         <div aria-busy={isTabPending || undefined}>
@@ -241,7 +255,7 @@ export function ResourceTabContent({
                                 className={cn(
                                     'min-w-0 flex-1 text-sm leading-relaxed',
                                     'prose-p:my-1 prose-p:first:mt-0 prose-p:last:mb-0',
-                                    'prose-ul:my-1 prose-ol:my-1 prose-li:my-0',
+                                    'prose-ol:my-1 prose-ul:my-1 prose-li:my-0',
                                     'prose-headings:my-1.5 prose-headings:text-sm',
                                     'prose-a:font-medium',
                                 )}
@@ -437,6 +451,7 @@ export function ResourceTabContent({
                 <ResourceComments
                     resourceId={resourceId}
                     comments={comments}
+                    commentsCount={commentsCount}
                 />
             ) : null}
         </div>

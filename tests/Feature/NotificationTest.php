@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Notifications\CommentRepliedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -96,6 +97,7 @@ test('authenticated users can view the notifications page with tabs', function (
             ->has('notifications.data', 1)
             ->where('notifications.data.0.type', 'comment.replied')
             ->where('notifications.data.0.actor.name', 'Bob')
+            ->where('notificationSummary.unreadCount', 1)
         );
 
     $this->actingAs($alice)
@@ -127,8 +129,33 @@ test('users can mark a notification as read and open its target', function () {
         ->from(route('notifications.index'))
         ->post(route('notifications.read', $notificationId), ['open' => 1])
         ->assertRedirect(
-            route('resources.comments', 'demo-game').'#comment-'.$reply->id,
+            route('resources.comments', 'demo-game').'?focus='.$reply->id.'#comment-'.$reply->id,
         );
+
+    expect($alice->fresh()->unreadNotifications()->count())->toBe(0);
+});
+
+test('opening a stale comment notification returns with an info toast', function () {
+    $game = Game::factory()->create(['slug' => 'stale-comment-game']);
+    $alice = User::factory()->create();
+    $notification = $alice->notifications()->create([
+        'id' => (string) Str::uuid(),
+        'type' => 'comment.replied',
+        'data' => [
+            'url' => route('resources.comments', $game->slug, absolute: false)
+                .'?focus=999#comment-999',
+            'comment_id' => 999,
+        ],
+    ]);
+
+    $this->actingAs($alice)
+        ->from(route('notifications.index'))
+        ->post(route('notifications.read', $notification->id), ['open' => 1])
+        ->assertRedirect(route('notifications.index'))
+        ->assertInertiaFlash('toast', [
+            'type' => 'info',
+            'message' => __('This comment is no longer available.'),
+        ]);
 
     expect($alice->fresh()->unreadNotifications()->count())->toBe(0);
 });
@@ -211,7 +238,7 @@ test('shared inertia props include unread notification count', function () {
         ->get(route('home'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('notifications.unreadCount', 1)
+            ->where('notificationSummary.unreadCount', 1)
         );
 });
 

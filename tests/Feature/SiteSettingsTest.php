@@ -52,6 +52,30 @@ test('https site url forces https scheme', function () {
         ->and(config('app.url'))->toBe('https://acg.example.com');
 });
 
+test('administrators can upload a custom favicon', function () {
+    Storage::fake(Media::diskName());
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'site_favicon_path' => UploadedFile::fake()->image('favicon.png', 64, 64),
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    $path = Setting::faviconPath();
+
+    expect($path)->not->toBeNull()
+        ->and($path)->toStartWith('site/favicon/')
+        ->and(Setting::faviconUrl())->toContain('/storage/'.$path)
+        ->and(Setting::seo()['faviconUrl'])->toBe(Setting::faviconUrl());
+
+    Storage::disk(Media::diskName())->assertExists($path);
+});
+
 test('administrators can upload a custom hero background image', function () {
     Storage::fake(Media::diskName());
 

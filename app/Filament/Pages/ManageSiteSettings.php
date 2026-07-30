@@ -60,6 +60,7 @@ class ManageSiteSettings extends Page
             'seo_robots' => Setting::seoRobots(),
             'seo_og_image_path' => Setting::seoOgImagePath(),
             'seo_google_site_verification' => Setting::seoGoogleSiteVerification(),
+            'site_favicon_path' => Setting::faviconPath(),
             'site_logo_mode' => Setting::siteLogoMode(),
             'site_logo_text' => Setting::siteLogoText(),
             'site_logo_path' => Setting::siteLogoPath(),
@@ -110,6 +111,26 @@ class ManageSiteSettings extends Page
                                             ->maxLength(255)
                                             ->placeholder('https://example.com')
                                             ->helperText('Production example: https://eroga.me'),
+                                    ]),
+                                Section::make('Favicon')
+                                    ->description('Browser tab icon for the public site.')
+                                    ->schema([
+                                        FileUpload::make('site_favicon_path')
+                                            ->label('Favicon')
+                                            ->image()
+                                            ->disk(Media::diskName())
+                                            ->directory('site/favicon')
+                                            ->visibility('public')
+                                            ->maxSize(1024)
+                                            ->acceptedFileTypes([
+                                                'image/x-icon',
+                                                'image/vnd.microsoft.icon',
+                                                'image/png',
+                                                'image/jpeg',
+                                                'image/webp',
+                                                'image/svg+xml',
+                                            ])
+                                            ->helperText('PNG, SVG, WebP, JPEG, or ICO. Square 32×32 or 180×180 works well. Leave empty for the default.'),
                                     ]),
                                 Section::make('Site logo')
                                     ->description('Header and footer brand mark. Use text, image, or both.')
@@ -337,6 +358,8 @@ class ManageSiteSettings extends Page
         $nextHeroPath = $this->normalizeUploadPath($data['hero_background_path'] ?? null);
         $previousLogoPath = Setting::siteLogoPath();
         $nextLogoPath = $this->normalizeUploadPath($data['site_logo_path'] ?? null);
+        $previousFaviconPath = Setting::faviconPath();
+        $nextFaviconPath = $this->normalizeUploadPath($data['site_favicon_path'] ?? null);
         $mode = (string) ($data['site_logo_mode'] ?? 'text');
 
         if (! in_array($mode, ['text', 'image', 'both'], true)) {
@@ -382,6 +405,7 @@ class ManageSiteSettings extends Page
             'seo_google_site_verification',
             $seoGoogleVerification !== '' ? $seoGoogleVerification : null,
         );
+        Setting::set('site_favicon_path', $nextFaviconPath);
         Setting::set('site_logo_mode', $mode);
         Setting::set('site_logo_text', $logoText);
         Setting::set('hero_background_path', $nextHeroPath);
@@ -465,6 +489,13 @@ class ManageSiteSettings extends Page
             && $previousOgImagePath !== $nextOgImagePath
         ) {
             Media::delete($previousOgImagePath);
+        }
+
+        if (
+            filled($previousFaviconPath)
+            && $previousFaviconPath !== $nextFaviconPath
+        ) {
+            Media::delete($previousFaviconPath);
         }
 
         Notification::make()

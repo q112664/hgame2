@@ -89,6 +89,27 @@ test('administrators can restore the default navigation menu', function () {
     );
 });
 
+test('default navigation menu includes icons for home and resources', function () {
+    $menu = Setting::defaultNavigationMenu();
+
+    expect(collect($menu)->firstWhere('url', '/')['icon'])->toBe('Home')
+        ->and(collect($menu)->firstWhere('url', '/resources')['icon'])->toBe('Library');
+});
+
+test('resources menu item without an icon receives a library icon', function () {
+    Setting::setNavigationMenu([
+        [
+            'label' => 'Resources',
+            'url' => '/resources',
+            'icon' => null,
+            'open_in_new_tab' => false,
+            'match' => 'prefix',
+        ],
+    ]);
+
+    expect(Setting::navigationMenu()[0]['icon'])->toBe('Library');
+});
+
 test('navigation menu is shared with the frontend', function () {
     Setting::setNavigationMenu([
         [

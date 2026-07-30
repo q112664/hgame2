@@ -154,6 +154,26 @@ class Setting extends Model
         return filled($path) ? $path : null;
     }
 
+    public static function faviconPath(): ?string
+    {
+        $path = static::get('site_favicon_path');
+
+        return filled($path) ? $path : null;
+    }
+
+    public static function faviconUrl(): ?string
+    {
+        $path = static::faviconPath();
+
+        if ($path === null) {
+            return null;
+        }
+
+        $url = Media::url($path);
+
+        return $url !== '' ? $url : null;
+    }
+
     public static function seoOgImageUrl(): ?string
     {
         $path = static::seoOgImagePath();
@@ -180,6 +200,7 @@ class Setting extends Model
      *     keywords: string,
      *     robots: string,
      *     ogImageUrl: string|null,
+     *     faviconUrl: string|null,
      *     googleSiteVerification: string
      * }
      */
@@ -190,6 +211,7 @@ class Setting extends Model
             'keywords' => static::seoKeywords(),
             'robots' => static::seoRobots(),
             'ogImageUrl' => static::seoOgImageUrl(),
+            'faviconUrl' => static::faviconUrl(),
             'googleSiteVerification' => static::seoGoogleSiteVerification(),
         ];
     }
@@ -370,14 +392,14 @@ class Setting extends Model
             [
                 'label' => 'Home',
                 'url' => '/',
-                'icon' => null,
+                'icon' => 'Home',
                 'open_in_new_tab' => false,
                 'match' => 'exact',
             ],
             [
                 'label' => 'Resources',
                 'url' => '/resources',
-                'icon' => null,
+                'icon' => 'Library',
                 'open_in_new_tab' => false,
                 'match' => 'prefix',
             ],
@@ -502,6 +524,11 @@ class Setting extends Model
             $icon = null;
         }
 
+        // Sensible defaults for built-in routes when no icon is set.
+        if ($icon === null) {
+            $icon = static::defaultNavigationIconForUrl($url);
+        }
+
         $match = $item['match'] ?? 'prefix';
 
         if (! in_array($match, ['exact', 'prefix', 'none'], true)) {
@@ -520,6 +547,47 @@ class Setting extends Model
             'open_in_new_tab' => $openInNewTab,
             'match' => $match,
         ];
+    }
+
+    public static function defaultNavigationIconForUrl(string $url): ?string
+    {
+        $path = $url;
+
+        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+            try {
+                $path = parse_url($url, PHP_URL_PATH) ?: '/';
+            } catch (Throwable) {
+                return null;
+            }
+        }
+
+        $path = '/'.ltrim($path, '/');
+
+        if ($path === '/') {
+            return 'Home';
+        }
+
+        if ($path === '/resources/random' || str_starts_with($path, '/resources/random/')) {
+            return 'Dices';
+        }
+
+        if ($path === '/resources' || str_starts_with($path, '/resources/')) {
+            return 'Library';
+        }
+
+        if ($path === '/docs' || str_starts_with($path, '/docs/')) {
+            return 'BookOpen';
+        }
+
+        if ($path === '/search' || str_starts_with($path, '/search/')) {
+            return 'Search';
+        }
+
+        if ($path === '/favorites' || str_starts_with($path, '/favorites/')) {
+            return 'Star';
+        }
+
+        return null;
     }
 
     public static function isValidNavigationMenuUrl(string $url): bool

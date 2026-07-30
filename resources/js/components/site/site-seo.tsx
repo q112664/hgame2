@@ -9,10 +9,14 @@ export function SiteSeo() {
     const description = seo.description.trim();
     const keywords = seo.keywords.trim();
     const ogImageUrl = seo.ogImageUrl?.trim() || null;
+    const faviconUrl = seo.faviconUrl?.trim() || null;
     const googleVerification = seo.googleSiteVerification.trim();
 
     return (
         <Head>
+            {faviconUrl ? (
+                <link head-key="favicon" rel="icon" href={faviconUrl} />
+            ) : null}
             {description !== '' ? (
                 <meta
                     head-key="description"

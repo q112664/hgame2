@@ -94,6 +94,9 @@ Create a game with optional screenshots and releases.
   "category": "Visual Novel",
   "tags": ["Romance", "Slice of Life"],
   "developer": "Yuzu Soft",
+  "source_name": "DLsite",
+  "source_id": "RJ01123456",
+  "source_url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01123456.html",
   "release_date": "2016-07-29",
   "description": "<p>Short HTML synopsis is allowed.</p><p><img src=\"https://cdn.example.com/detail-1.png\" alt=\"Scene\"></p>",
   "cover_url": "https://cdn.example.com/cover.png",
@@ -129,6 +132,9 @@ Create a game with optional screenshots and releases.
 | `category` | no | Must already exist (name or slug) |
 | `tags` | no | Array of strings; created if missing |
 | `developer` | no | max 255 |
+| `source_name` | no | Storefront label in hero, e.g. `DLsite` |
+| `source_id` | no | Work ID, e.g. `RJ01123456` |
+| `source_url` | no | Absolute product page URL (also used for favicon host) |
 | `release_date` | no | Date string, e.g. `2016-07-29` |
 | `description` | no | HTML string; remote `<img src>` are downloaded (see Images) |
 | `status` | no | `draft` \| `published` \| `unlisted` (default **`published`**) |

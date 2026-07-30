@@ -99,6 +99,25 @@ class GameForm
                             ->columnSpan(6),
                         TextInput::make('developer')->maxLength(255)->columnSpan(6),
                         DatePicker::make('release_date')->columnSpan(6),
+                        TextInput::make('source_name')
+                            ->label('Source')
+                            ->placeholder('DLsite')
+                            ->maxLength(255)
+                            ->helperText('Storefront name shown in the resource hero.')
+                            ->columnSpan(4),
+                        TextInput::make('source_id')
+                            ->label('Source ID')
+                            ->placeholder('RJ01123456')
+                            ->maxLength(255)
+                            ->helperText('Work ID such as an RJ number.')
+                            ->columnSpan(4),
+                        TextInput::make('source_url')
+                            ->label('Source URL')
+                            ->url()
+                            ->maxLength(2048)
+                            ->placeholder('https://www.dlsite.com/…')
+                            ->helperText('Optional link to the original product page.')
+                            ->columnSpan(4),
                         FileUpload::make('cover_path')
                             ->label('Thumbnail')
                             ->image()

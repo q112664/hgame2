@@ -1,8 +1,4 @@
-import {
-    overlayChipGroupClassName,
-    overlayChipGroupDividerClassName,
-    overlayChipGroupItemClassName,
-} from '@/components/site/resource-card-styles';
+import { overlayChipClassName } from '@/components/site/resource-card-styles';
 import { abbreviateLanguage } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
 
@@ -11,8 +7,7 @@ type Props = {
 };
 
 /**
- * Fused language chip group for resource card thumbnails.
- * Multiple languages share one frosted pill with light dividers.
+ * Separate language chips on resource card thumbnails (same style as platform badges).
  */
 export function ResourceOverlayLanguageGroup({ languages }: Props) {
     if (languages.length === 0) {
@@ -21,17 +16,15 @@ export function ResourceOverlayLanguageGroup({ languages }: Props) {
 
     return (
         <div
-            className={overlayChipGroupClassName}
+            className="flex flex-wrap justify-end gap-1"
             role="group"
             aria-label={languages.join(', ')}
         >
-            {languages.map((language, index) => (
+            {languages.map((language) => (
                 <span
                     key={language}
-                    className={cn(
-                        overlayChipGroupItemClassName,
-                        index > 0 && overlayChipGroupDividerClassName,
-                    )}
+                    className={cn(overlayChipClassName)}
+                    title={language}
                 >
                     {abbreviateLanguage(language)}
                 </span>

@@ -20,7 +20,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 #[Fillable([
-    'category_id', 'title', 'subtitle', 'slug', 'description', 'developer', 'cover_url', 'cover_path',
+    'category_id', 'title', 'subtitle', 'slug', 'description', 'developer',
+    'source_name', 'source_id', 'source_url',
+    'cover_url', 'cover_path',
     'release_date', 'status', 'published_at', 'views_count', 'downloads_count', 'downloads_updated_at',
 ])]
 class Game extends Model

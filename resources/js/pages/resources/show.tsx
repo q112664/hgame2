@@ -21,6 +21,7 @@ import {
     languageBadgeClassName,
     platformBadgeClassName,
 } from '@/components/site/resource-detail-styles';
+import { ResourceSourceMeta } from '@/components/site/resource-source-meta';
 import { ResourceTabContent } from '@/components/site/resource-tab-content';
 import { RouteTabs } from '@/components/site/route-tabs';
 import { SitePageContainer } from '@/components/site/site-page-container';
@@ -497,6 +498,9 @@ export default function ResourceShow({
                                         {resource.developer}
                                     </span>
                                 </span>
+                                {resource.source ? (
+                                    <ResourceSourceMeta source={resource.source} />
+                                ) : null}
                                 <span className="inline-flex items-center gap-1.5">
                                     <CalendarDays
                                         className="size-3.5 shrink-0"

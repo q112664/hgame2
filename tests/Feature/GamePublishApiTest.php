@@ -49,6 +49,9 @@ function validGamePayload(array $overrides = []): array
         'category' => 'Visual Novel',
         'tags' => ['Romance', 'Slice of Life'],
         'developer' => 'Yuzu Soft',
+        'source_name' => 'DLsite',
+        'source_id' => 'RJ01123456',
+        'source_url' => 'https://www.dlsite.com/maniax/work/=/product_id/RJ01123456.html',
         'release_date' => '2016-07-29',
         'description' => '<p>A published visual novel.</p>',
         'cover_url' => 'https://example.com/cover.png',
@@ -99,6 +102,9 @@ test('an administrator can publish a complete game via the api', function () {
 
     expect($game->category?->name)->toBe('Visual Novel')
         ->and($game->developer)->toBe('Yuzu Soft')
+        ->and($game->source_name)->toBe('DLsite')
+        ->and($game->source_id)->toBe('RJ01123456')
+        ->and($game->source_url)->toContain('RJ01123456')
         ->and($game->tags()->pluck('name')->all())->toEqualCanonicalizing(['Romance', 'Slice of Life'])
         ->and($game->screenshots)->toHaveCount(2)
         ->and($game->releases)->toHaveCount(1)
@@ -111,7 +117,12 @@ test('an administrator can publish a complete game via the api', function () {
     Storage::disk(Media::diskName())->assertExists($game->screenshots->first()->path);
 
     $this->get(route('resources.details', $game->slug))
-        ->assertOk();
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('resource.source.name', 'DLsite')
+            ->where('resource.source.id', 'RJ01123456')
+            ->where('resource.source.faviconUrl', '/images/sources/dlsite.ico')
+        );
 });
 
 test('publishing rejects unknown categories and platforms', function () {

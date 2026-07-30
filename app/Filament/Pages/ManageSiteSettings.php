@@ -182,18 +182,19 @@ class ManageSiteSettings extends Page
                                             ->helperText('Recommended about 16:9. Max 5MB.'),
                                     ]),
                                 Section::make('Hero copy')
-                                    ->description('Title and description on the homepage hero. Leave title empty to reuse the logo text.')
+                                    ->description('Main heading and text on the homepage hero. Also used for the browser tab title when it differs from the site title (SEO tab).')
                                     ->schema([
                                         TextInput::make('hero_title')
-                                            ->label('Title override')
+                                            ->label('Hero title')
                                             ->maxLength(120)
                                             ->placeholder(Setting::siteLogoText())
-                                            ->helperText('Optional. When empty, the logo text is shown as the hero title.'),
+                                            ->helperText('Large heading on the homepage. Leave empty to use logo text. When set, the browser tab shows “Hero title - Site title”.'),
                                         Textarea::make('hero_description')
-                                            ->label('Description')
+                                            ->label('Hero description')
                                             ->rows(3)
                                             ->maxLength(500)
-                                            ->placeholder(Setting::defaultHeroDescription()),
+                                            ->placeholder(Setting::defaultHeroDescription())
+                                            ->helperText('Subtitle under the hero title.'),
                                     ]),
                                 Section::make('Hero buttons')
                                     ->description('Primary calls to action on the hero card.')
@@ -228,7 +229,7 @@ class ManageSiteSettings extends Page
                                             ->maxLength(80)
                                             ->required()
                                             ->placeholder(Setting::defaultSiteTitle())
-                                            ->helperText('Browser tab title suffix, e.g. “Resources - Your Title”.'),
+                                            ->helperText('Used as the browser tab title on the homepage, and as the suffix on other pages (e.g. “Resources - Your Title”).'),
                                         Textarea::make('seo_description')
                                             ->label('Meta description')
                                             ->rows(3)

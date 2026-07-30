@@ -8,6 +8,13 @@ export type GameTag = {
     slug: string;
 };
 
+export type GameSource = {
+    name: string | null;
+    id: string | null;
+    url: string | null;
+    faviconUrl: string | null;
+};
+
 export type GameCard = {
     id: string;
     title: string;
@@ -15,6 +22,7 @@ export type GameCard = {
     thumbnail: string;
     category: string;
     developer: string;
+    source: GameSource | null;
     platforms: GamePlatform[];
     languages: string[];
     version: string | null;

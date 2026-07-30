@@ -20,6 +20,11 @@ class GamePresenter
             'thumbnail' => self::cardThumbnailUrl($game),
             'category' => filled($categoryName) ? $categoryName : 'Uncategorized',
             'developer' => $game->developer ?? 'Unknown',
+            'source' => GameSource::present(
+                $game->source_name,
+                $game->source_id,
+                $game->source_url,
+            ),
             'platforms' => $game->releases
                 ->flatMap->platforms
                 ->unique('slug')
@@ -103,6 +108,11 @@ class GamePresenter
                 ? str($game->description ?? '')->sanitizeHtml()->toString()
                 : '',
             'developer' => $game->developer ?? 'Unknown',
+            'source' => GameSource::present(
+                $game->source_name,
+                $game->source_id,
+                $game->source_url,
+            ),
             'releaseDate' => self::dateString($game->release_date),
             'downloads' => $game->downloads_count,
             'screenshots' => $includeScreenshots

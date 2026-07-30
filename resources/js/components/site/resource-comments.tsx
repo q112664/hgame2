@@ -403,12 +403,20 @@ export function ResourceComments({ resourceId, comments }: Props) {
 
     const renderComment = (
         comment: ResourceCommentReply,
-        options: { nested?: boolean } = {},
+        options: { nested?: boolean; rootAuthorId?: number } = {},
     ) => {
         const isEditing = editingId === comment.id;
         const nested = options.nested ?? false;
+        const rootAuthorId = options.rootAuthorId;
 
         const isHighlighted = highlightedId === comment.id;
+
+        // Indent + reply rail already show this is a reply. Only label when
+        // answering someone other than the thread root author.
+        const showReplyTo =
+            nested &&
+            comment.replyTo !== null &&
+            (rootAuthorId === undefined || comment.replyTo.id !== rootAuthorId);
 
         return (
             <article
@@ -432,7 +440,7 @@ export function ResourceComments({ resourceId, comments }: Props) {
                     fallbackClassName="rounded-full bg-muted text-[10px] text-muted-foreground sm:text-xs"
                 />
                 <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                         <span
                             className={cn(
                                 'font-medium text-foreground',
@@ -449,15 +457,12 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                 You
                             </Badge>
                         ) : null}
-                        {comment.replyTo ? (
-                            <span
-                                className={cn(
-                                    'inline-flex max-w-full items-center gap-0.5 rounded',
-                                    'bg-muted/70 px-1 py-px text-[10px] text-muted-foreground sm:text-[11px]',
-                                )}
-                            >
-                                <CornerDownRight className="size-2.5 shrink-0 opacity-70" />
-                                <span className="truncate font-medium text-foreground/75">
+                        {showReplyTo && comment.replyTo ? (
+                            <span className="min-w-0 text-[11px] leading-none text-muted-foreground sm:text-xs">
+                                <span className="text-muted-foreground/60">
+                                    →
+                                </span>{' '}
+                                <span className="truncate font-normal text-muted-foreground">
                                     {comment.replyTo.name}
                                 </span>
                             </span>
@@ -827,6 +832,10 @@ export function ResourceComments({ resourceId, comments }: Props) {
                                                                 reply,
                                                                 {
                                                                     nested: true,
+                                                                    rootAuthorId:
+                                                                        comment
+                                                                            .user
+                                                                            .id,
                                                                 },
                                                             )}
                                                         </li>

@@ -192,7 +192,8 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain('backdrop-blur-sm');
 
     expect($filesystem->get(resource_path('js/components/site/site-footer.tsx')))
-        ->toContain('<SiteLogo');
+        ->toContain('All rights reserved')
+        ->not->toContain('<SiteLogo');
 });
 
 test('docs pages use the public site shell instead of the starter kit app layout', function () {

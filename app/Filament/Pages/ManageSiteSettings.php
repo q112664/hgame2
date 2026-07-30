@@ -64,7 +64,7 @@ class ManageSiteSettings extends Page
             'site_logo_text' => Setting::siteLogoText(),
             'site_logo_path' => Setting::siteLogoPath(),
             'hero_background_path' => Setting::heroBackgroundPath(),
-            'hero_eyebrow' => Setting::get('hero_eyebrow') ?? Setting::defaultHeroEyebrow(),
+
             'hero_title' => Setting::get('hero_title') ?? '',
             'hero_description' => Setting::get('hero_description') ?? Setting::defaultHeroDescription(),
             'hero_browse_label' => Setting::get('hero_browse_label') ?? Setting::defaultHeroBrowseLabel(),
@@ -161,13 +161,8 @@ class ManageSiteSettings extends Page
                                             ->helperText('Recommended about 16:9. Max 5MB.'),
                                     ]),
                                 Section::make('Hero copy')
-                                    ->description('Eyebrow, title, and description on the homepage hero. Leave title empty to reuse the logo text.')
+                                    ->description('Title and description on the homepage hero. Leave title empty to reuse the logo text.')
                                     ->schema([
-                                        TextInput::make('hero_eyebrow')
-                                            ->label('Eyebrow')
-                                            ->maxLength(120)
-                                            ->placeholder(Setting::defaultHeroEyebrow())
-                                            ->helperText('Small uppercase line above the title.'),
                                         TextInput::make('hero_title')
                                             ->label('Title override')
                                             ->maxLength(120)
@@ -391,13 +386,11 @@ class ManageSiteSettings extends Page
         Setting::set('site_logo_text', $logoText);
         Setting::set('hero_background_path', $nextHeroPath);
 
-        $heroEyebrow = trim((string) ($data['hero_eyebrow'] ?? ''));
         $heroTitle = trim((string) ($data['hero_title'] ?? ''));
         $heroDescription = trim((string) ($data['hero_description'] ?? ''));
         $heroBrowseLabel = trim((string) ($data['hero_browse_label'] ?? ''));
         $heroRandomLabel = trim((string) ($data['hero_random_label'] ?? ''));
 
-        Setting::set('hero_eyebrow', $heroEyebrow !== '' ? $heroEyebrow : null);
         Setting::set('hero_title', $heroTitle !== '' ? $heroTitle : null);
         Setting::set('hero_description', $heroDescription !== '' ? $heroDescription : null);
         Setting::set('hero_browse_label', $heroBrowseLabel !== '' ? $heroBrowseLabel : null);

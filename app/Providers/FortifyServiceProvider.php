@@ -55,6 +55,7 @@ class FortifyServiceProvider extends ServiceProvider
             return Inertia::render('auth/login', [
                 'canRegister' => Features::enabled(Features::registration()),
                 'canResetPassword' => Features::enabled(Features::resetPasswords()),
+                'canUsePasskeys' => Features::canManagePasskeys(),
                 'status' => $request->session()->get('status'),
             ]);
         });
@@ -83,7 +84,9 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
 
-        Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password'));
+        Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password', [
+            'canUsePasskeys' => Features::canManagePasskeys(),
+        ]));
     }
 
     /**

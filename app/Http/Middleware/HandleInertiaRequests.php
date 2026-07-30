@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
             'authModal' => $request->user() ? null : [
                 'canRegister' => Features::enabled(Features::registration()),
                 'canResetPassword' => Features::enabled(Features::resetPasswords()),
+                'canUsePasskeys' => Features::canManagePasskeys(),
                 'passwordRules' => Password::defaults()->toPasswordRulesString(),
                 'turnstile' => Turnstile::frontendConfig(),
             ],

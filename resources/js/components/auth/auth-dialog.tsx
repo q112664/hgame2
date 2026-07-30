@@ -175,6 +175,7 @@ function AuthDialog({
                         <LoginForm
                             canRegister={authModal.canRegister}
                             canResetPassword={authModal.canResetPassword}
+                            canUsePasskeys={authModal.canUsePasskeys}
                             onForgotPassword={
                                 authModal.canResetPassword
                                     ? () => switchView('forgot-password')

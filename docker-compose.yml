@@ -16,9 +16,13 @@ services:
       DB_DATABASE: "${DB_DATABASE:-hgame}"
       DB_USERNAME: "${DB_USERNAME:-hgame}"
       DB_PASSWORD: "${DB_PASSWORD:-secret}"
-      SESSION_DRIVER: database
-      QUEUE_CONNECTION: database
-      CACHE_STORE: database
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      CACHE_STORE: redis
       SSL_MODE: "off"
       AUTORUN_ENABLED: "true"
       AUTORUN_LARAVEL_MIGRATION: "true"
@@ -29,6 +33,8 @@ services:
       - app_storage:/var/www/html/storage
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
 
@@ -47,15 +53,22 @@ services:
       DB_DATABASE: "${DB_DATABASE:-hgame}"
       DB_USERNAME: "${DB_USERNAME:-hgame}"
       DB_PASSWORD: "${DB_PASSWORD:-secret}"
-      QUEUE_CONNECTION: database
-      CACHE_STORE: database
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      CACHE_STORE: redis
       AUTORUN_ENABLED: "false"
     entrypoint: ["php", "/var/www/html/artisan"]
-    command: ["queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    command: ["queue:work", "redis", "--sleep=3", "--tries=3", "--max-time=3600"]
     volumes:
       - app_storage:/var/www/html/storage
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       app:
         condition: service_started
@@ -79,6 +92,23 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    # Production: do not publish ports publicly. Uncomment only for local debug.
+    # ports:
+    #   - "${FORWARD_REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
 volumes:
   app_storage:
   postgres_data:
+  redis_data:

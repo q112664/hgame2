@@ -280,11 +280,6 @@ class Setting extends Model
         return $url !== '' ? $url : static::defaultHeroBackgroundUrl();
     }
 
-    public static function defaultHeroEyebrow(): string
-    {
-        return 'Visual novel / galgame library';
-    }
-
     public static function defaultHeroDescription(): string
     {
         return 'Browse, search, and download galgame packages.';
@@ -305,7 +300,6 @@ class Setting extends Model
      *
      * @return array{
      *     backgroundUrl: string,
-     *     eyebrow: string,
      *     title: string,
      *     description: string,
      *     browseLabel: string,
@@ -322,14 +316,12 @@ class Setting extends Model
             $title = static::siteLogoText();
         }
 
-        $eyebrow = trim((string) (static::get('hero_eyebrow') ?? ''));
         $description = trim((string) (static::get('hero_description') ?? ''));
         $browseLabel = trim((string) (static::get('hero_browse_label') ?? ''));
         $randomLabel = trim((string) (static::get('hero_random_label') ?? ''));
 
         return [
             'backgroundUrl' => static::heroBackgroundUrl(),
-            'eyebrow' => $eyebrow !== '' ? $eyebrow : static::defaultHeroEyebrow(),
             'title' => $title,
             'description' => $description !== '' ? $description : static::defaultHeroDescription(),
             'browseLabel' => $browseLabel !== '' ? $browseLabel : static::defaultHeroBrowseLabel(),

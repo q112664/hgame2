@@ -20,6 +20,7 @@ const inlineButtonClassName =
 type Props = {
     canRegister?: boolean;
     canResetPassword: boolean;
+    canUsePasskeys?: boolean;
     redirect?: string;
     onForgotPassword?: () => void;
     onRegister?: () => void;
@@ -29,18 +30,24 @@ type Props = {
 export default function LoginForm({
     canRegister = true,
     canResetPassword,
+    canUsePasskeys,
     redirect,
     onForgotPassword,
     onRegister,
     onSuccess,
 }: Props) {
-    const { turnstile } = usePage().props;
+    const page = usePage();
+    const { turnstile } = page.props;
     const showTurnstile = Boolean(turnstile.login && turnstile.siteKey);
     const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+    const passkeysEnabled =
+        canUsePasskeys ?? page.props.authModal?.canUsePasskeys ?? false;
 
     return (
         <>
-            <PasskeyVerify redirect={redirect} onSuccess={onSuccess} />
+            {passkeysEnabled ? (
+                <PasskeyVerify redirect={redirect} onSuccess={onSuccess} />
+            ) : null}
 
             <Form
                 {...store.form()}

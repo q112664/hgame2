@@ -28,9 +28,11 @@ const setCookie = (name: string, value: string, days = 365): void => {
     document.cookie = `${name}=${value};path=/;max-age=${maxAge};SameSite=Lax`;
 };
 
+const DEFAULT_APPEARANCE: Appearance = 'dark';
+
 const getStoredAppearance = (): Appearance => {
     if (typeof window === 'undefined') {
-        return 'system';
+        return DEFAULT_APPEARANCE;
     }
 
     const stored = localStorage.getItem('appearance');
@@ -39,12 +41,12 @@ const getStoredAppearance = (): Appearance => {
         return stored;
     }
 
-    return 'system';
+    return DEFAULT_APPEARANCE;
 };
 
 /** Prefer stored preference as soon as this module loads in the browser. */
 let currentAppearance: Appearance =
-    typeof window !== 'undefined' ? getStoredAppearance() : 'system';
+    typeof window !== 'undefined' ? getStoredAppearance() : DEFAULT_APPEARANCE;
 
 const isDarkMode = (appearance: Appearance): boolean => {
     return appearance === 'dark' || (appearance === 'system' && prefersDark());
@@ -89,14 +91,14 @@ export function initializeTheme(): void {
     }
 
     if (!localStorage.getItem('appearance')) {
-        localStorage.setItem('appearance', 'system');
-        setCookie('appearance', 'system');
+        localStorage.setItem('appearance', DEFAULT_APPEARANCE);
+        setCookie('appearance', DEFAULT_APPEARANCE);
     }
 
     currentAppearance = getStoredAppearance();
     applyTheme(currentAppearance);
 
-    // Set up system theme change listener
+    // Set up system theme change listener (only affects users on "system")
     mediaQuery()?.addEventListener('change', handleSystemThemeChange);
 }
 
@@ -104,7 +106,7 @@ export function useAppearance(): UseAppearanceReturn {
     const appearance: Appearance = useSyncExternalStore(
         subscribe,
         () => currentAppearance,
-        () => 'system',
+        () => DEFAULT_APPEARANCE,
     );
 
     const resolvedAppearance: ResolvedAppearance = isDarkMode(appearance)

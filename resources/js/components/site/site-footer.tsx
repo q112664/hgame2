@@ -11,20 +11,17 @@ export function SiteFooter() {
         <footer className="mt-auto">
             <Separator />
             <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-10 sm:px-6 lg:px-8">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2">
                     <Link
                         href={home()}
-                        className="transition-opacity hover:opacity-80"
+                        className="w-fit transition-opacity hover:opacity-80"
                     >
                         <SiteLogo />
                     </Link>
                     <p className="text-xs text-muted-foreground">
-                        Visual novel / galgame resource downloads
+                        © {year} {siteLogo.text}. All rights reserved.
                     </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                    © {year} {siteLogo.text}. All rights reserved.
-                </p>
             </div>
         </footer>
     );

@@ -328,7 +328,6 @@ test('administrators can save homepage hero content', function () {
     Livewire::test(ManageSiteSettings::class)
         ->fillForm([
             'site_url' => Setting::siteUrl(),
-            'hero_eyebrow' => 'Indie library',
             'hero_title' => 'Welcome board',
             'hero_description' => 'Find visual novels quickly.',
             'hero_browse_label' => 'Catalog',
@@ -342,7 +341,7 @@ test('administrators can save homepage hero content', function () {
 
     $hero = Setting::homeHero();
 
-    expect($hero['eyebrow'])->toBe('Indie library')
+    expect($hero)->not->toHaveKey('eyebrow')
         ->and($hero['title'])->toBe('Welcome board')
         ->and($hero['description'])->toBe('Find visual novels quickly.')
         ->and($hero['browseLabel'])->toBe('Catalog')

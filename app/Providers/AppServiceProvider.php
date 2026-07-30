@@ -68,14 +68,10 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
+        // Keep registration simple for Western-facing signups: letters + numbers.
+        Password::defaults(fn (): Password => Password::min(8)
+            ->letters()
+            ->numbers(),
         );
     }
 }

@@ -1,6 +1,6 @@
 # 在 1Panel 中部署 hgame
 
-本文说明如何用 **1Panel + Docker Compose** 部署本项目。项目自带 `Dockerfile` 与 `docker-compose.yml`，默认数据库为 **PostgreSQL 16**，应用容器内为 PHP 8.4 + Nginx（监听 `8080`），并附带 queue worker。
+本文说明如何用 **1Panel + Docker Compose** 部署本项目。项目自带 `Dockerfile` 与 `docker-compose.yml`，默认数据库为 **PostgreSQL 16**，缓存 / 队列 / Session 使用 **Redis 7**，应用容器内为 PHP 8.4 + Nginx（监听 `8080`），并附带 queue worker。
 
 > 官方编排文档：[1Panel 编排](https://1panel.cn/docs/v2/user_manual/containers/compose/)  
 > 官方反向代理网站：[创建网站](https://1panel.cn/docs/v2/user_manual/websites/website_create/)
@@ -87,11 +87,47 @@ DB_DATABASE=hgame
 DB_USERNAME=hgame
 DB_PASSWORD=请改成强密码
 
-SESSION_DRIVER=database
-QUEUE_CONNECTION=database
-CACHE_STORE=database
+# Docker Compose 会覆盖为 redis（见下方「Redis」）
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+
+REDIS_CLIENT=phpredis
+REDIS_HOST=redis
+REDIS_PASSWORD=null
+REDIS_PORT=6379
 
 MEDIA_DISK=public
+```
+
+### Redis 配置说明
+
+Compose 内置 `redis:7-alpine` 服务，应用与 worker 通过容器名 `redis` 访问。
+
+| 变量 | Compose 内建议值 | 说明 |
+|------|------------------|------|
+| `REDIS_CLIENT` | `phpredis` | 镜像已装 `ext-redis` |
+| `REDIS_HOST` | `redis` | 服务名（不是 `127.0.0.1`） |
+| `REDIS_PORT` | `6379` | Redis 端口 |
+| `REDIS_PASSWORD` | `null` 或强密码 | 内网默认无密码；若改密码需同步改 `redis` 服务启动参数 |
+| `CACHE_STORE` | `redis` | 缓存 |
+| `QUEUE_CONNECTION` | `redis` | 队列（`worker` 执行 `queue:work redis`） |
+| `SESSION_DRIVER` | `redis` | 登录会话 |
+
+**注意：**
+
+- `docker-compose.yml` 的 `environment` 会**强制** `REDIS_HOST=redis` 以及 `CACHE_STORE` / `QUEUE_CONNECTION` / `SESSION_DRIVER=redis`，即便 `.env` 写了 `database` 也会在容器内被覆盖。
+- 生产默认**不映射** Redis 到宿主机端口，只允许容器网访问。
+- 本地开发若不用 Docker Redis：可在本机装 Redis，`.env` 设 `REDIS_HOST=127.0.0.1`，并安装 PHP `redis` 扩展；或继续用 `database` 驱动。
+- 改 Redis 相关配置后需重启：`docker compose up -d`（或重启 `app` / `worker`）。
+
+验证 Redis（容器起来后）：
+
+```bash
+docker compose exec redis redis-cli ping
+# 期望：PONG
+
+docker compose exec app php artisan tinker --execute "echo Illuminate\Support\Facades\Redis::connection()->ping();"
 ```
 
 生成 `APP_KEY`（宿主机有 PHP 时可本地生成后粘贴；没有则等容器起来后在容器内生成再写入 `.env` 并重启）：
@@ -132,6 +168,7 @@ docker run --rm php:8.4-cli php -r "echo 'base64:'.base64_encode(random_bytes(32
 | `APP_PORT` | `8080` | 宿主机访问应用的端口 |
 | `FORWARD_DB_PORT` | `5432` | Postgres 宿主机端口（建议生产不映射） |
 | `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` | `hgame` / `hgame` / `secret` | 数据库 |
+| `REDIS_PASSWORD` | `null` | Redis 密码（Compose 注入；默认无密码） |
 
 ---
 
@@ -224,7 +261,7 @@ docker compose up -d --build
 说明：
 
 - `--build` 会重新编译前端资源与 PHP 依赖，更新代码后务必带上。
-- 数据在 Docker volume：`postgres_data`、`app_storage`，一般不会因重建镜像丢失。
+- 数据在 Docker volume：`postgres_data`、`redis_data`、`app_storage`，一般不会因重建镜像丢失。
 - 迁移会在 `app` 启动时自动执行；也可手动：
 
 ```bash
@@ -235,6 +272,75 @@ docker compose exec app php artisan migrate --force
 
 - Postgres 数据卷 / 定期 `pg_dump`
 - `app_storage` 卷（上传文件、日志等）
+
+---
+
+## 9.1 已部署环境升级：加上 Redis
+
+若服务器上**已经跑着旧版 Compose**（只有 `app` / `worker` / `postgres`，没有 Redis），按下面最短路径升级即可，**不必重装整站**。
+
+### 步骤
+
+```bash
+cd /opt/apps/hgame   # 改成你的实际目录
+
+# 1. 拉含 Redis 编排的代码
+git pull
+
+# 2. 编辑 .env，建议补上（Compose 也会强制覆盖一部分，写清楚便于排查）
+# REDIS_CLIENT=phpredis
+# REDIS_HOST=redis
+# REDIS_PORT=6379
+# REDIS_PASSWORD=
+# CACHE_STORE=redis
+# QUEUE_CONNECTION=redis
+# SESSION_DRIVER=redis
+
+# 3. 重建镜像并启动（必须 --build：旧镜像没有 ext-redis）
+docker compose up -d --build
+
+# 4. 确认四个服务都在
+docker compose ps
+```
+
+### 验证
+
+```bash
+docker compose exec redis redis-cli ping
+# 期望：PONG
+
+docker compose exec app php artisan tinker --execute "echo Illuminate\Support\Facades\Redis::connection()->ping();"
+
+docker compose logs worker --tail=50
+```
+
+### 升级注意
+
+| 点 | 说明 |
+|----|------|
+| 必须 `--build` | 旧镜像未装 `phpredis`，只 `up -d` 不够 |
+| Session 改 redis | 用户可能需重新登录（正常） |
+| 数据 | Postgres / 上传文件 volume 不受影响 |
+| 队列 | 之后任务走 Redis，由 `worker` 消费 |
+| 网络 | 默认 Redis **不映射公网端口**，仅容器网访问 |
+
+### 最短命令汇总
+
+```bash
+cd /你的项目目录
+git pull
+# 编辑 .env 加上 Redis 几行（见上）
+docker compose up -d --build
+docker compose exec redis redis-cli ping
+```
+
+若 `up --build` 或 `ping` 失败，看日志：
+
+```bash
+docker compose logs redis --tail=50
+docker compose logs app --tail=100
+docker compose logs worker --tail=100
+```
 
 ---
 
@@ -277,6 +383,41 @@ docker compose exec app php artisan storage:link
 
 默认文档路径仍推荐使用仓库自带的 `postgres` 服务，配置最简单。
 
+### 想用 1Panel 自带的 Redis 而不是 Compose 内的
+
+1. 在 1Panel 安装 Redis，记下容器名 / 密码 / 端口  
+2. `app` / `worker` 加入同一 Docker 网络（如 `1panel-network`）  
+3. `.env` 与 compose `environment` 中设置：
+
+```env
+REDIS_HOST=1Panel里的Redis容器名
+REDIS_PORT=6379
+REDIS_PASSWORD=你的密码
+CACHE_STORE=redis
+QUEUE_CONNECTION=redis
+SESSION_DRIVER=redis
+```
+
+4. 从 `docker-compose.yml` 移除内置 `redis` 服务，并删掉对它的 `depends_on`  
+5. `docker compose up -d --build`
+
+仍推荐默认使用仓库自带的 `redis` 服务，配置最简单。
+
+### Redis 连不上 / 队列不消费
+
+```bash
+docker compose ps
+docker compose logs redis --tail=50
+docker compose exec redis redis-cli ping
+docker compose logs worker --tail=100
+```
+
+确认：
+
+- `REDIS_HOST=redis`（Compose 内置服务）
+- `worker` 在跑：`queue:work redis`
+- 镜像已重建（含 `ext-redis`）：`docker compose up -d --build`
+
 ---
 
 ## 11. 结构速览
@@ -286,14 +427,15 @@ docker compose exec app php artisan storage:link
   → 1Panel 网站（Nginx，443）
     → http://127.0.0.1:8080
       → app（PHP-FPM + Nginx，Laravel）
-      → worker（queue:work）
+      → worker（queue:work redis）
       → postgres:16（仅容器网内）
+      → redis:7（缓存 / 队列 / Session）
 ```
 
 相关文件：
 
 - `docker-compose.yml` — 编排
-- `Dockerfile` — 构建与运行镜像
+- `Dockerfile` — 构建与运行镜像（含 `phpredis`）
 - `docker/ensure-storage.sh` — 确保存储目录存在
 - `.env` — 生产密钥与站点 URL（勿提交）
 
@@ -347,7 +489,9 @@ docker compose up -d --build
 
 - [ ] 代码已放到服务器，含 Dockerfile
 - [ ] `.env` 已配置 `APP_KEY` / `APP_URL` / 强数据库密码 / `APP_DEBUG=false`
-- [ ] 生产已取消 Postgres 公网端口映射
-- [ ] `docker compose up -d --build` 成功，`/up` 可访问
+- [ ] Redis：`REDIS_HOST=redis`，缓存/队列/Session 走 redis
+- [ ] 生产已取消 Postgres 公网端口映射；Redis 未对公网暴露
+- [ ] `docker compose up -d --build` 成功，`/up` 可访问，`redis-cli ping` 为 PONG
+- [ ] `worker` 容器在运行（队列）
 - [ ] 1Panel 反向代理 + HTTPS 正常
 - [ ] 已创建管理员并可打开 `/admin`

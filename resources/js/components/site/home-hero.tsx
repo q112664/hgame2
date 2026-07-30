@@ -9,7 +9,6 @@ import {
 
 export type HomeHeroContent = {
     backgroundUrl: string;
-    eyebrow: string;
     title: string;
     description: string;
     browseLabel: string;
@@ -61,11 +60,6 @@ export function HomeHero({ hero }: Props) {
 
                     <div className="relative flex min-h-[220px] flex-col justify-center gap-5 p-6 sm:min-h-[260px] sm:p-8 lg:max-w-xl lg:p-10">
                         <div className="flex flex-col gap-2.5">
-                            {hero.eyebrow !== '' ? (
-                                <p className="text-[11px] font-medium tracking-wide text-surface-inverse-foreground/70 uppercase">
-                                    {hero.eyebrow}
-                                </p>
-                            ) : null}
                             <h1 className="font-heading text-3xl font-semibold tracking-tight text-surface-inverse-foreground sm:text-4xl">
                                 {hero.title}
                             </h1>

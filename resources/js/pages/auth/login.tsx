@@ -5,12 +5,14 @@ type Props = {
     status?: string;
     canRegister?: boolean;
     canResetPassword: boolean;
+    canUsePasskeys?: boolean;
 };
 
 export default function Login({
     status,
     canRegister = true,
     canResetPassword,
+    canUsePasskeys = false,
 }: Props) {
     return (
         <>
@@ -19,6 +21,7 @@ export default function Login({
             <LoginForm
                 canRegister={canRegister}
                 canResetPassword={canResetPassword}
+                canUsePasskeys={canUsePasskeys}
             />
 
             {status && (

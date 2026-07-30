@@ -26,6 +26,7 @@ export type TurnstileConfig = {
 export type AuthModalConfig = {
     canRegister: boolean;
     canResetPassword: boolean;
+    canUsePasskeys: boolean;
     passwordRules: string;
     turnstile: TurnstileConfig;
 };

@@ -240,8 +240,8 @@ test('home receives only published games', function () {
             ->where('resources.0.languages', ['Chinese'])
             ->where('resources.0.version', '1.2 demo')
             ->where('hero.backgroundUrl', Setting::defaultHeroBackgroundUrl())
-            ->where('hero.eyebrow', Setting::defaultHeroEyebrow())
             ->where('hero.description', Setting::defaultHeroDescription())
+            ->missing('hero.eyebrow')
         );
 });
 
@@ -257,7 +257,6 @@ test('home uses the configured hero background image', function () {
 });
 
 test('home uses configured hero copy from site settings', function () {
-    Setting::set('hero_eyebrow', 'Custom eyebrow');
     Setting::set('hero_title', 'Custom title');
     Setting::set('hero_description', 'Custom description line.');
     Setting::set('hero_browse_label', 'Explore');
@@ -268,13 +267,13 @@ test('home uses configured hero copy from site settings', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('welcome')
-            ->where('hero.eyebrow', 'Custom eyebrow')
             ->where('hero.title', 'Custom title')
             ->where('hero.description', 'Custom description line.')
             ->where('hero.browseLabel', 'Explore')
             ->where('hero.randomLabel', 'Surprise')
             ->where('hero.showBrowse', true)
             ->where('hero.showRandom', false)
+            ->missing('hero.eyebrow')
         );
 });
 

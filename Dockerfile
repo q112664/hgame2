@@ -7,7 +7,7 @@ FROM serversideup/php:8.4-cli AS build
 
 USER root
 
-RUN install-php-extensions gd intl zip exif bcmath pcntl pgsql \
+RUN install-php-extensions gd intl zip exif bcmath pcntl pgsql redis \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && apt-get clean \
@@ -47,8 +47,8 @@ FROM serversideup/php:8.4-fpm-nginx AS app
 
 USER root
 
-# GD/intl/zip for Filament media; pgsql for Docker PostgreSQL
-RUN install-php-extensions gd intl zip exif bcmath pcntl pgsql
+# GD/intl/zip for Filament media; pgsql for Docker PostgreSQL; redis for cache/queue/session
+RUN install-php-extensions gd intl zip exif bcmath pcntl pgsql redis
 
 WORKDIR /var/www/html
 

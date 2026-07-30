@@ -12,9 +12,6 @@ test('settings page includes security settings', function () {
         'confirm' => true,
         'confirmPassword' => true,
     ]);
-    Features::passkeys([
-        'confirmPassword' => true,
-    ]);
 
     $user = User::factory()->create();
 
@@ -24,7 +21,7 @@ test('settings page includes security settings', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('settings/index')
             ->where('activeTab', 'security')
-            ->where('canManagePasskeys', true)
+            ->where('canManagePasskeys', false)
             ->where('passkeys', [])
             ->where('canManageTwoFactor', true)
             ->where('twoFactorEnabled', false),
@@ -105,8 +102,8 @@ test('password can be updated', function () {
         ->from(route('security.edit'))
         ->put(route('user-password.update'), [
             'current_password' => 'password',
-            'password' => 'new-password',
-            'password_confirmation' => 'new-password',
+            'password' => 'new-password1',
+            'password_confirmation' => 'new-password1',
         ]);
 
     $response
@@ -117,7 +114,7 @@ test('password can be updated', function () {
             'message' => __('Password updated.'),
         ]);
 
-    expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
+    expect(Hash::check('new-password1', $user->refresh()->password))->toBeTrue();
 });
 
 test('correct password must be provided to update password', function () {
@@ -128,8 +125,8 @@ test('correct password must be provided to update password', function () {
         ->from(route('security.edit'))
         ->put(route('user-password.update'), [
             'current_password' => 'wrong-password',
-            'password' => 'new-password',
-            'password_confirmation' => 'new-password',
+            'password' => 'new-password1',
+            'password_confirmation' => 'new-password1',
         ]);
 
     $response

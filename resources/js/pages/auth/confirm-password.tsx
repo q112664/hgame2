@@ -11,20 +11,26 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { store } from '@/routes/password/confirm';
 
-export default function ConfirmPassword() {
+type Props = {
+    canUsePasskeys?: boolean;
+};
+
+export default function ConfirmPassword({ canUsePasskeys = false }: Props) {
     return (
         <>
             <Head title="Confirm password" />
 
-            <PasskeyVerify
-                routes={{
-                    options: confirmOptions(),
-                    submit: confirmStore(),
-                }}
-                label="Confirm with passkey"
-                loadingLabel="Confirming..."
-                separator="Or confirm with password"
-            />
+            {canUsePasskeys ? (
+                <PasskeyVerify
+                    routes={{
+                        options: confirmOptions(),
+                        submit: confirmStore(),
+                    }}
+                    label="Confirm with passkey"
+                    loadingLabel="Confirming..."
+                    separator="Or confirm with password"
+                />
+            ) : null}
 
             <Form {...store.form()} resetOnSuccess={['password']}>
                 {({ processing, errors }) => (

@@ -36,9 +36,36 @@ RUN cp .env.example .env \
     && php artisan package:discover --ansi \
     && php artisan filament:upgrade \
     && php artisan wayfinder:generate --with-form --no-interaction \
-    && npm run build \
+    && npm run build:ssr \
     && rm -f .env \
     && rm -rf node_modules /root/.npm /var/www/.composer/cache
+
+# -----------------------------------------------------------------------------
+# Runtime: Inertia SSR (internal port 13714)
+# -----------------------------------------------------------------------------
+FROM node:22-bookworm-slim AS ssr
+
+WORKDIR /var/www/html
+
+ENV NODE_ENV=production
+
+COPY --chown=node:node package.json package-lock.json ./
+
+# The SSR bundle keeps external imports, so production dependencies are needed.
+RUN npm install --omit=dev --no-audit --no-fund \
+    && npm cache clean --force
+
+COPY --from=build --chown=node:node \
+    /var/www/html/bootstrap/ssr ./bootstrap/ssr
+
+USER node
+
+EXPOSE 13714
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD node -e "fetch('http://127.0.0.1:13714/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "bootstrap/ssr/app.js"]
 
 # -----------------------------------------------------------------------------
 # Runtime: PHP-FPM + Nginx (port 8080)

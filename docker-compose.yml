@@ -10,6 +10,9 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: "${APP_DEBUG:-false}"
+      INERTIA_SSR_ENABLED: "${INERTIA_SSR_ENABLED:-true}"
+      INERTIA_SSR_URL: "${INERTIA_SSR_URL:-http://ssr:13714}"
+      INERTIA_SSR_THROW_ON_ERROR: "${INERTIA_SSR_THROW_ON_ERROR:-false}"
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
@@ -63,6 +66,8 @@ services:
       AUTORUN_ENABLED: "false"
     entrypoint: ["php", "/var/www/html/artisan"]
     command: ["queue:work", "redis", "--sleep=3", "--tries=3", "--max-time=3600"]
+    healthcheck:
+      disable: true
     volumes:
       - app_storage:/var/www/html/storage
     depends_on:
@@ -74,14 +79,25 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  ssr:
+    build:
+      context: .
+      target: ssr
+    environment:
+      NODE_ENV: production
+    expose:
+      - "13714"
+    init: true
+    restart: unless-stopped
+
   postgres:
     image: postgres:16
     environment:
       POSTGRES_DB: "${DB_DATABASE:-hgame}"
       POSTGRES_USER: "${DB_USERNAME:-hgame}"
       POSTGRES_PASSWORD: "${DB_PASSWORD:-secret}"
-    ports:
-      - "${FORWARD_DB_PORT:-5432}:5432"
+    #ports:
+      #- "${FORWARD_DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

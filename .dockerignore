@@ -10,6 +10,8 @@
 .claude
 .codex
 .junie
+.deploy-backups
+.ssr-deploy-staging
 
 node_modules
 vendor

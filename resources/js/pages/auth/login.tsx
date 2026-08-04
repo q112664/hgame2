@@ -1,11 +1,13 @@
-import { Head } from '@inertiajs/react';
 import LoginForm from '@/components/auth/login-form';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 
 type Props = {
     status?: string;
     canRegister?: boolean;
     canResetPassword: boolean;
     canUsePasskeys?: boolean;
+    pageSeo?: PageSeoData | null;
 };
 
 export default function Login({
@@ -13,10 +15,11 @@ export default function Login({
     canRegister = true,
     canResetPassword,
     canUsePasskeys = false,
+    pageSeo,
 }: Props) {
     return (
         <>
-            <Head title="Log in" />
+            <PageSeo seo={pageSeo} title="Log in" />
 
             <LoginForm
                 canRegister={canRegister}
@@ -32,8 +35,3 @@ export default function Login({
         </>
     );
 }
-
-Login.layout = {
-    title: 'Log in to your account',
-    description: 'Enter your email and password below to log in',
-};

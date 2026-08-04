@@ -28,5 +28,6 @@ test('regular users do not appear as administrators in shared auth props', funct
 test('administrators can open the admin panel from the site session', function () {
     $this->actingAs(User::factory()->admin()->create())
         ->get('/admin')
-        ->assertRedirect('/admin/games');
+        ->assertOk()
+        ->assertSee('Dashboard');
 });

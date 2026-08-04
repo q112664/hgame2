@@ -30,7 +30,7 @@ test('published download links open an intermediate jump page', function () {
             ->component('download-links/show')
             ->where('resource.id', 'senren-banka')
             ->where('resource.title', 'Senren Banka')
-            ->missing('resource.cover')
+            ->has('resource.thumbnail')
             ->missing('release')
             ->where('link.id', $link->id)
             ->where('link.label', 'Baidu Netdisk')

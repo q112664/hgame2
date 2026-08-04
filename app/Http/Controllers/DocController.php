@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DocStatus;
 use App\Models\Doc;
 use App\Support\DocPresenter;
+use App\Support\PageSeo;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,6 +24,7 @@ class DocController extends Controller
 
         return Inertia::render('docs/index', [
             'docs' => $docs,
+            'pageSeo' => PageSeo::docsIndex(),
         ]);
     }
 
@@ -37,6 +39,7 @@ class DocController extends Controller
 
         return Inertia::render('docs/show', [
             'doc' => DocPresenter::detail($doc),
+            'pageSeo' => PageSeo::forDoc($doc),
         ]);
     }
 }

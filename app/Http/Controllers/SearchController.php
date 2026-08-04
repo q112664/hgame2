@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Games\SearchGames;
+use App\Support\PageSeo;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,6 +21,7 @@ class SearchController extends Controller
         return Inertia::render('search', [
             'query' => $query,
             'resources' => $searchGames($query),
+            'pageSeo' => PageSeo::search(),
         ]);
     }
 }

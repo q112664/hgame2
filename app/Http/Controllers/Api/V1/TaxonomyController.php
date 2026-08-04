@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Language;
 use App\Models\Platform;
+use App\Support\GameSource;
 use Illuminate\Http\JsonResponse;
 
 class TaxonomyController extends Controller
@@ -41,6 +42,7 @@ class TaxonomyController extends Controller
                     ])
                     ->values()
                     ->all(),
+                'sources' => GameSource::known(),
             ],
         ]);
     }

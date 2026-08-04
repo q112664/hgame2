@@ -1,15 +1,23 @@
 // Components
-import { Form, Head } from '@inertiajs/react';
+import { Form } from '@inertiajs/react';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { logout } from '@/routes';
 import { send } from '@/routes/verification';
 
-export default function VerifyEmail({ status }: { status?: string }) {
+export default function VerifyEmail({
+    status,
+    pageSeo,
+}: {
+    status?: string;
+    pageSeo?: PageSeoData | null;
+}) {
     return (
         <>
-            <Head title="Email verification" />
+            <PageSeo seo={pageSeo} title="Email verification" />
 
             {status === 'verification-link-sent' && (
                 <div className="mb-4 text-center text-sm font-medium text-success">

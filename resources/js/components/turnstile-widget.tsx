@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 import { cn } from '@/lib/utils';
 
@@ -8,6 +8,11 @@ type Props = {
     className?: string;
     /** Reset the widget when this value changes (e.g. after a failed submit). */
     resetKey?: string | number;
+    /**
+     * Notifies the parent whenever a usable token is issued or cleared.
+     * Use this to disable submit until verification succeeds.
+     */
+    onTokenChange?: (token: string | null) => void;
 };
 
 declare global {
@@ -22,6 +27,7 @@ declare global {
                     'error-callback'?: () => void;
                     'timeout-callback'?: () => void;
                     theme?: 'auto' | 'light' | 'dark';
+                    size?: 'normal' | 'flexible' | 'compact';
                 },
             ) => string;
             reset: (widgetId?: string) => void;
@@ -79,26 +85,44 @@ function loadTurnstileScript(): Promise<void> {
 /**
  * Cloudflare Turnstile widget that writes a hidden form field
  * `cf-turnstile-response` for Inertia / classic form posts.
+ *
+ * Parents should gate submit on `onTokenChange` so users cannot click through
+ * before a token is ready (or after it expires).
  */
 export function TurnstileWidget({
     siteKey,
     error,
     className,
     resetKey,
+    onTokenChange,
 }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
     const tokenInputId = useId();
     const tokenInputRef = useRef<HTMLInputElement>(null);
+    const onTokenChangeRef = useRef(onTokenChange);
+    const [verified, setVerified] = useState(false);
+
+    onTokenChangeRef.current = onTokenChange;
 
     useEffect(() => {
         let cancelled = false;
         const tokenInput = tokenInputRef.current;
 
+        const clearToken = () => {
+            if (tokenInput) {
+                tokenInput.value = '';
+            }
+
+            if (!cancelled) {
+                setVerified(false);
+            }
+
+            onTokenChangeRef.current?.(null);
+        };
+
         // Tokens are single-use, so never carry one into a fresh widget.
-        if (tokenInput) {
-            tokenInput.value = '';
-        }
+        clearToken();
 
         const mount = async () => {
             await loadTurnstileScript();
@@ -119,25 +143,23 @@ export function TurnstileWidget({
                 {
                     sitekey: siteKey,
                     theme: 'auto',
+                    size: 'flexible',
                     callback: (token) => {
                         if (tokenInput) {
                             tokenInput.value = token;
                         }
+
+                        setVerified(true);
+                        onTokenChangeRef.current?.(token);
                     },
                     'expired-callback': () => {
-                        if (tokenInput) {
-                            tokenInput.value = '';
-                        }
+                        clearToken();
                     },
                     'error-callback': () => {
-                        if (tokenInput) {
-                            tokenInput.value = '';
-                        }
+                        clearToken();
                     },
                     'timeout-callback': () => {
-                        if (tokenInput) {
-                            tokenInput.value = '';
-                        }
+                        clearToken();
                     },
                 },
             );
@@ -147,10 +169,7 @@ export function TurnstileWidget({
 
         return () => {
             cancelled = true;
-
-            if (tokenInput) {
-                tokenInput.value = '';
-            }
+            clearToken();
 
             if (widgetIdRef.current && window.turnstile) {
                 window.turnstile.remove(widgetIdRef.current);
@@ -168,8 +187,13 @@ export function TurnstileWidget({
                 name="cf-turnstile-response"
                 defaultValue=""
             />
-            <div ref={containerRef} className="min-h-[65px]" />
+            <div ref={containerRef} className="min-h-[65px] w-full" />
             <InputError message={error} />
+            {!error && !verified ? (
+                <p className="text-xs text-muted-foreground" role="status">
+                    Complete the security check to continue.
+                </p>
+            ) : null}
         </div>
     );
 }

@@ -5,6 +5,7 @@ import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { buildPaginationRange } from '@/lib/pagination-range';
 import { cn } from '@/lib/utils';
 
 export type PaginationLink = {
@@ -31,6 +32,8 @@ type Props<T> = {
     itemLabel?: string;
     only?: InertiaLinkProps['only'];
     onSuccess?: InertiaLinkProps['onSuccess'];
+    /** Pages on each side of the current page (default 1). */
+    siblingCount?: number;
 };
 
 type PageJumpProps = {
@@ -135,16 +138,17 @@ export function SitePagination<T>({
     itemLabel = 'results',
     only,
     onSuccess,
+    siblingCount = 1,
 }: Props<T>) {
     if (pagination.last_page <= 1) {
         return null;
     }
 
-    const pageLinks = pagination.links.filter((link) => {
-        const label = link.label.toLowerCase();
-
-        return !label.includes('previous') && !label.includes('next');
-    });
+    const pageItems = buildPaginationRange(
+        pagination.current_page,
+        pagination.last_page,
+        siblingCount,
+    );
 
     const paginationLinkProps = {
         preserveState: true,
@@ -196,42 +200,39 @@ export function SitePagination<T>({
                         </Button>
                     )}
 
-                    {pageLinks.map((link, index) => {
-                        const label = link.label
-                            .replace(/&laquo;|&raquo;/g, '')
-                            .trim();
-                        const page = Number(label);
-
-                        if (link.url === null || !Number.isFinite(page)) {
+                    {pageItems.map((item, index) => {
+                        if (item === 'ellipsis') {
                             return (
                                 <span
                                     key={`ellipsis-${index}`}
                                     className="inline-flex size-8 items-center justify-center text-sm text-muted-foreground"
+                                    aria-hidden="true"
                                 >
                                     …
                                 </span>
                             );
                         }
 
+                        const active = item === pagination.current_page;
+
                         return (
                             <Button
-                                key={`${label}-${index}`}
-                                variant={link.active ? 'default' : 'outline'}
+                                key={item}
+                                variant={active ? 'default' : 'outline'}
                                 size="sm"
                                 className={cn(
                                     'size-8 p-0 shadow-none',
-                                    !link.active && 'border-border bg-card',
+                                    !active && 'border-border bg-card',
                                 )}
                                 asChild
                             >
                                 <Link
-                                    href={pageUrl(page)}
+                                    href={pageUrl(item)}
                                     {...paginationLinkProps}
-                                    aria-current={
-                                        link.active ? 'page' : undefined
-                                    }
+                                    aria-current={active ? 'page' : undefined}
+                                    aria-label={`Page ${item}`}
                                 >
-                                    {label}
+                                    {item}
                                 </Link>
                             </Button>
                         );

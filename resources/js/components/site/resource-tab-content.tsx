@@ -3,7 +3,7 @@ import {
     CalendarDays,
     ChevronDown,
     ChevronUp,
-    Download,
+    CloudDownload,
     HardDrive,
     Images,
     Info,
@@ -23,6 +23,7 @@ import {
     releaseFooterInnerClassName,
     tagBadgeClassName,
 } from '@/components/site/resource-detail-styles';
+import { RelatedResources } from '@/components/site/related-resources';
 import { RichHtml } from '@/components/site/rich-html';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import type { PaginatedData } from '@/components/site/site-pagination';
@@ -33,7 +34,7 @@ import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
 import { show as downloadLinkShow } from '@/routes/download-links';
 import { index as resourcesIndex } from '@/routes/resources';
-import type { GameDetail } from '@/types/resources';
+import type { GameCard, GameDetail } from '@/types/resources';
 
 type ResourceTab = 'details' | 'downloads' | 'screenshots' | 'comments';
 
@@ -188,6 +189,7 @@ type Props = {
     resourceId?: string;
     comments?: PaginatedData<ResourceComment>;
     commentsCount?: number;
+    related?: GameCard[];
 };
 
 const EMPTY_COMMENTS: PaginatedData<ResourceComment> = {
@@ -211,29 +213,34 @@ export function ResourceTabContent({
     resourceId,
     comments = EMPTY_COMMENTS,
     commentsCount = 0,
+    related = [],
 }: Props) {
     return (
         <div aria-busy={isTabPending || undefined}>
             {activeTab === 'details' ? (
-                <section className="rounded-md border border-border bg-card p-4 sm:p-5">
-                    {resource.tags.length > 0 ? (
-                        <div className="mb-4 flex flex-wrap gap-2">
-                            {resource.tags.map((tag) => (
-                                <Link
-                                    key={tag.slug}
-                                    href={resourcesIndex.url({
-                                        query: { tags: [tag.slug] },
-                                    })}
-                                    className={tagBadgeClassName}
-                                    prefetch
-                                >
-                                    {tag.name}
-                                </Link>
-                            ))}
-                        </div>
-                    ) : null}
-                    <RichHtml html={resource.description} />
-                </section>
+                <div className="flex flex-col gap-4 sm:gap-5">
+                    <section className="rounded-md border border-border bg-card p-4 sm:p-5">
+                        {resource.tags.length > 0 ? (
+                            <div className="mb-4 flex flex-wrap gap-2">
+                                {resource.tags.map((tag) => (
+                                    <Link
+                                        key={tag.slug}
+                                        href={resourcesIndex.url({
+                                            query: { tags: [tag.slug] },
+                                        })}
+                                        className={tagBadgeClassName}
+                                        prefetch
+                                    >
+                                        {tag.name}
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : null}
+                        <RichHtml html={resource.description} />
+                    </section>
+
+                    <RelatedResources resources={related} />
+                </div>
             ) : null}
 
             {activeTab === 'downloads' ? (
@@ -396,13 +403,19 @@ export function ResourceTabContent({
                                                                     )}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
+                                                                    aria-label={
+                                                                        multiLinks
+                                                                            ? `Download ${index + 1}`
+                                                                            : 'Download'
+                                                                    }
                                                                 >
-                                                                    <Download data-icon="inline-start" />
+                                                                    <CloudDownload
+                                                                        data-icon="inline-start"
+                                                                        className="size-4"
+                                                                        strokeWidth={2.25}
+                                                                    />
                                                                     <span className="truncate">
-                                                                        {link.label ||
-                                                                            (multiLinks
-                                                                                ? `Download ${index + 1}`
-                                                                                : 'Download')}
+                                                                        Download
                                                                     </span>
                                                                 </Link>
                                                             </Button>

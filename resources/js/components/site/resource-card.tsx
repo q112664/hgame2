@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { Eye } from 'lucide-react';
+import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
     overlayChipClassName,
@@ -27,11 +28,14 @@ type Props = {
     resource: GameCard;
     /** Which date to show in the card footer. Defaults to site publish time. */
     dateField?: 'publishedAt' | 'releaseDate';
+    /** Eager-load for above-the-fold cards (e.g. first grid row). */
+    priority?: boolean;
 };
 
 export function ResourceCard({
     resource,
     dateField = 'publishedAt',
+    priority = false,
 }: Props) {
     const displayDate =
         dateField === 'releaseDate'
@@ -49,12 +53,10 @@ export function ResourceCard({
                 prefetch
             >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-t-md bg-muted">
-                    <img
+                    <LazyThumbnail
                         src={resource.thumbnail}
                         alt={resource.title}
-                        className="size-full object-cover"
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
+                        priority={priority}
                     />
 
                     <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-1.5">

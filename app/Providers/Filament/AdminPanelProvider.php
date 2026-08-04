@@ -2,7 +2,7 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Resources\Games\GameResource;
+use App\Filament\Pages\Dashboard;
 use App\Http\Middleware\AuthenticateFilamentPanel;
 use App\Models\Setting;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -30,7 +30,7 @@ class AdminPanelProvider extends PanelProvider
             // No Filament login page — admins sign in via the public site (Fortify),
             // then open /admin from the user menu.
             ->brandName(fn (): string => Setting::siteTitle())
-            ->homeUrl(fn (): string => GameResource::getUrl(panel: 'admin'))
+            ->homeUrl(fn (): string => Dashboard::getUrl(panel: 'admin'))
             ->colors([
                 'primary' => Color::Amber,
             ])

@@ -6,6 +6,7 @@ use App\Actions\Games\MarkFavoriteDownloadsSeen;
 use App\Models\GameComment;
 use App\NotificationTab;
 use App\Support\AppNotification;
+use App\Support\PageSeo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
@@ -62,6 +63,7 @@ class NotificationController extends Controller
             'activeTab' => $activeTab->value,
             'tabs' => $tabs,
             'notifications' => $notifications,
+            'pageSeo' => PageSeo::noindex('Notifications'),
         ]);
     }
 

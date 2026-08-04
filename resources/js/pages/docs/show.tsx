@@ -1,5 +1,7 @@
-import { Head, Link } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 import { RichHtml } from '@/components/site/rich-html';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { Button } from '@/components/ui/button';
@@ -11,14 +13,15 @@ import type { DocArticle } from '@/types/docs';
 
 type Props = {
     doc: DocArticle;
+    pageSeo?: PageSeoData | null;
 };
 
-export default function DocsShow({ doc }: Props) {
+export default function DocsShow({ doc, pageSeo }: Props) {
     const hasThumbnail = Boolean(doc.thumbnail);
 
     return (
         <SiteLayout>
-            <Head title={doc.title} />
+            <PageSeo seo={pageSeo} title={doc.title} />
 
             <SitePageContainer className="gap-6 sm:gap-8">
                 <Button

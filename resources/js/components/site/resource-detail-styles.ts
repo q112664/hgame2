@@ -60,9 +60,10 @@ export const dateBadgeClassName = cn(
 /**
  * Compact download CTA for release link rows — matches meta badge height rhythm
  * (h-8) so the footer bar reads as one aligned strip.
+ * Icon + fixed “Download” label (no host/netdisk name on the button).
  */
 export const downloadButtonClassName = cn(
-    'h-8 min-w-0 gap-1.5 border border-transparent bg-primary px-3 text-sm font-medium text-primary-foreground shadow-none',
+    'h-8 min-w-0 gap-1.5 border border-transparent bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-none',
     'hover:bg-primary/90',
     'dark:border-primary/40 dark:bg-primary/90',
     'dark:hover:border-primary/50 dark:hover:bg-primary',

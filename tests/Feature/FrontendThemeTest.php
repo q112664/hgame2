@@ -311,6 +311,111 @@ test('site pagination supports direct page jumps', function () {
         ->toContain('onFinish: () => setIsJumping(false)');
 });
 
+test('homepage popular section uses a ranked landscape strip', function () {
+    $filesystem = app(Filesystem::class);
+    $popular = $filesystem->get(resource_path('js/components/site/popular-resources.tsx'));
+    $welcome = $filesystem->get(resource_path('js/pages/welcome.tsx'));
+
+    expect($popular)
+        ->toContain('export function PopularResources')
+        ->toContain('overflow-x-auto')
+        ->toContain('scrollBy')
+        ->toContain('aspect-[16/10]')
+        ->toContain('from-black/85')
+        ->toContain('Rank')
+        ->toContain('formatViews')
+        ->not->toContain('useDragScroll')
+        ->not->toContain('cursor-grab')
+        ->not->toContain('fit="contain"')
+        ->not->toContain('grid grid-cols-2')
+        ->not->toContain('divide-y');
+
+    expect($welcome)
+        ->toContain('<PopularResources')
+        ->toContain('<LatestResources');
+});
+
+test('page seo component renders canonical robots og and json-ld overrides', function () {
+    $filesystem = app(Filesystem::class);
+    $source = $filesystem->get(resource_path('js/components/site/page-seo.tsx'));
+
+    expect($source)
+        ->toContain('export function PageSeo')
+        ->toContain('head-key="canonical"')
+        ->toContain('head-key="robots"')
+        ->toContain('head-key="og:image"')
+        ->toContain('application/ld+json')
+        ->toContain('dangerouslySetInnerHTML');
+});
+
+test('turnstile forms stay locked until the widget reports a token', function () {
+    $filesystem = app(Filesystem::class);
+
+    expect($filesystem->get(resource_path('js/components/turnstile-widget.tsx')))
+        ->toContain('onTokenChange')
+        ->toContain("'expired-callback'")
+        ->toContain("'error-callback'")
+        ->toContain("'timeout-callback'")
+        ->toContain('Complete the security check to continue.');
+
+    expect($filesystem->get(resource_path('js/hooks/use-turnstile-gate.ts')))
+        ->toContain('export function useTurnstileGate')
+        ->toContain('submitDisabled')
+        ->toContain('onBefore');
+
+    foreach (
+        [
+            'components/auth/login-form.tsx',
+            'components/auth/register-form.tsx',
+            'components/auth/forgot-password-form.tsx',
+            'pages/download-links/show.tsx',
+        ] as $file
+    ) {
+        $source = $filesystem->get(resource_path("js/{$file}"));
+
+        expect($source)
+            ->toContain('useTurnstileGate')
+            ->toContain('turnstileGate.submitDisabled')
+            ->toContain('onTokenChange={')
+            ->toContain('onBefore={turnstileGate.onBefore}');
+    }
+});
+
+test('resource card thumbnails fade in with lazy loading', function () {
+    $filesystem = app(Filesystem::class);
+    $thumbnail = $filesystem->get(resource_path('js/components/site/lazy-thumbnail.tsx'));
+    $card = $filesystem->get(resource_path('js/components/site/resource-card.tsx'));
+
+    expect($thumbnail)
+        ->toContain('export function LazyThumbnail')
+        ->toContain("loading={priority ? 'eager' : 'lazy'}")
+        ->toContain("decoding={priority ? 'sync' : 'async'}")
+        ->toContain('animate-pulse bg-muted')
+        ->toContain("loaded ? 'opacity-100' : 'opacity-0'")
+        ->toContain('onLoad={() => setLoaded(true)}');
+
+    expect($card)
+        ->toContain('LazyThumbnail')
+        ->toContain('priority={priority}');
+});
+
+test('site pagination uses a compact page window instead of listing every page', function () {
+    $filesystem = app(Filesystem::class);
+    $pagination = $filesystem->get(resource_path('js/components/site/site-pagination.tsx'));
+    $range = $filesystem->get(resource_path('js/lib/pagination-range.ts'));
+
+    expect($pagination)
+        ->toContain("import { buildPaginationRange } from '@/lib/pagination-range'")
+        ->toContain('buildPaginationRange(')
+        ->not->toContain('pagination.links.filter');
+
+    expect($range)
+        ->toContain('export function buildPaginationRange')
+        ->toContain('showLeftEllipsis')
+        ->toContain('showRightEllipsis')
+        ->toContain("'ellipsis'");
+});
+
 test('download release items use the compact responsive layout', function () {
     $filesystem = app(Filesystem::class);
     $source = $filesystem->get(resource_path('js/components/site/resource-tab-content.tsx'));
@@ -324,13 +429,19 @@ test('download release items use the compact responsive layout', function () {
         ->toContain('size="sm"')
         ->toContain('downloadButtonClassName')
         ->toContain('aria-label="Download links"')
+        ->toContain('CloudDownload')
+        ->toContain('Download')
+        ->not->toContain('link.label')
         ->not->toContain('p-3 sm:p-4')
         ->not->toContain('border-b border-border bg-muted/50 px-4 py-3.5');
 
     expect($styles)
         ->toContain('border-t border-border/70 bg-muted/35')
         ->toContain('sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5')
-        ->toContain("'h-8 min-w-0 gap-1.5");
+        ->toContain("'h-8 min-w-0 gap-1.5")
+        ->toContain('bg-primary')
+        ->toContain('hover:bg-primary/90')
+        ->not->toContain('animate-heartbeat');
 });
 
 test('button variants use deliberate dark mode surfaces and borders', function () {

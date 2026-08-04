@@ -1,15 +1,21 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { store } from '@/routes/password/confirm';
 
-export default function ConfirmPassword() {
+export default function ConfirmPassword({
+    pageSeo,
+}: {
+    pageSeo?: PageSeoData | null;
+}) {
     return (
         <>
-            <Head title="Confirm password" />
+            <PageSeo seo={pageSeo} title="Confirm password" />
 
             <Form {...store.form()} resetOnSuccess={['password']}>
                 {({ processing, errors }) => (

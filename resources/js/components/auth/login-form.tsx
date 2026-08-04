@@ -1,5 +1,4 @@
 import { Form, usePage } from '@inertiajs/react';
-import { useState } from 'react';
 import InputError from '@/components/input-error';
 import PasskeyVerify from '@/components/passkey-verify';
 import PasswordInput from '@/components/password-input';
@@ -10,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useTurnstileGate } from '@/hooks/use-turnstile-gate';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
@@ -39,7 +39,7 @@ export default function LoginForm({
     const page = usePage();
     const { turnstile } = page.props;
     const showTurnstile = Boolean(turnstile.login && turnstile.siteKey);
-    const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+    const turnstileGate = useTurnstileGate(showTurnstile);
     const passkeysEnabled =
         canUsePasskeys ?? page.props.authModal?.canUsePasskeys ?? false;
 
@@ -53,7 +53,8 @@ export default function LoginForm({
                 {...store.form()}
                 resetOnSuccess={['password']}
                 onSuccess={onSuccess}
-                onError={() => setTurnstileResetKey((key) => key + 1)}
+                onBefore={turnstileGate.onBefore}
+                onError={turnstileGate.reset}
                 className="flex flex-col gap-6"
             >
                 {({ processing, errors }) => (
@@ -131,9 +132,11 @@ export default function LoginForm({
                                     siteKey={turnstile.siteKey}
                                     error={
                                         errors['cf-turnstile-response'] as
-                                            string | undefined
+                                            | string
+                                            | undefined
                                     }
-                                    resetKey={turnstileResetKey}
+                                    resetKey={turnstileGate.resetKey}
+                                    onTokenChange={turnstileGate.onTokenChange}
                                 />
                             ) : null}
 
@@ -142,7 +145,10 @@ export default function LoginForm({
                                 variant="auth"
                                 className="mt-4 w-full"
                                 tabIndex={4}
-                                disabled={processing}
+                                disabled={
+                                    processing || turnstileGate.submitDisabled
+                                }
+                                title={turnstileGate.submitTitle}
                                 data-test="login-button"
                             >
                                 {processing && <Spinner />}

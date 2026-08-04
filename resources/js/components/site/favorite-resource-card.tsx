@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { Download, Eye, X } from 'lucide-react';
 import type { DetailedResource } from '@/components/site/detailed-resource-card';
+import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
     overlayChipClassName,
@@ -31,6 +32,7 @@ type Props = {
     isRemoving?: boolean;
     disableRemove?: boolean;
     onRemove?: () => void;
+    priority?: boolean;
 };
 
 const metaChipClassName = cn(
@@ -44,6 +46,7 @@ export function FavoriteResourceCard({
     isRemoving = false,
     disableRemove = false,
     onRemove,
+    priority = false,
 }: Props) {
     return (
         <Card
@@ -61,12 +64,10 @@ export function FavoriteResourceCard({
                 prefetch
             >
                 <div className="relative aspect-[16/10] w-[42%] max-w-44 shrink-0 overflow-hidden bg-muted">
-                    <img
+                    <LazyThumbnail
                         src={resource.thumbnail}
                         alt={resource.title}
-                        className="size-full object-cover"
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
+                        priority={priority}
                     />
                     <span
                         className={cn(

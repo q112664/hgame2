@@ -10,9 +10,18 @@ Route::prefix('v1')
         Route::get('taxonomies', [TaxonomyController::class, 'index'])
             ->name('api.v1.taxonomies');
 
+        Route::get('games', [GameController::class, 'index'])
+            ->name('api.v1.games.index');
+
         Route::post('games', [GameController::class, 'store'])
             ->name('api.v1.games.store');
 
         Route::get('games/{game:slug}', [GameController::class, 'show'])
             ->name('api.v1.games.show');
+
+        Route::match(['put', 'patch'], 'games/{game:slug}', [GameController::class, 'update'])
+            ->name('api.v1.games.update');
+
+        Route::delete('games/{game:slug}', [GameController::class, 'destroy'])
+            ->name('api.v1.games.destroy');
     });

@@ -1,5 +1,4 @@
 import { Form, usePage } from '@inertiajs/react';
-import { useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
@@ -8,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useTurnstileGate } from '@/hooks/use-turnstile-gate';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 
@@ -29,7 +29,7 @@ export default function RegisterForm({
 }: Props) {
     const { turnstile } = usePage().props;
     const showTurnstile = Boolean(turnstile.register && turnstile.siteKey);
-    const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+    const turnstileGate = useTurnstileGate(showTurnstile);
 
     return (
         <Form
@@ -37,7 +37,8 @@ export default function RegisterForm({
             resetOnSuccess={['password', 'password_confirmation']}
             disableWhileProcessing
             onSuccess={onSuccess}
-            onError={() => setTurnstileResetKey((key) => key + 1)}
+            onBefore={turnstileGate.onBefore}
+            onError={turnstileGate.reset}
             className="flex flex-col gap-6"
         >
             {({ processing, errors }) => (
@@ -116,9 +117,11 @@ export default function RegisterForm({
                                 siteKey={turnstile.siteKey}
                                 error={
                                     errors['cf-turnstile-response'] as
-                                        string | undefined
+                                        | string
+                                        | undefined
                                 }
-                                resetKey={turnstileResetKey}
+                                resetKey={turnstileGate.resetKey}
+                                onTokenChange={turnstileGate.onTokenChange}
                             />
                         ) : null}
 
@@ -127,6 +130,10 @@ export default function RegisterForm({
                             variant="auth"
                             className="mt-2 w-full"
                             tabIndex={5}
+                            disabled={
+                                processing || turnstileGate.submitDisabled
+                            }
+                            title={turnstileGate.submitTitle}
                             data-test="register-user-button"
                         >
                             {processing && <Spinner />}

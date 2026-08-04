@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useTurnstileGate } from '@/hooks/use-turnstile-gate';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
 
@@ -23,8 +24,8 @@ export default function ForgotPasswordForm({ status, onLogin }: Props) {
     const showTurnstile = Boolean(
         turnstile.forgotPassword && turnstile.siteKey,
     );
+    const turnstileGate = useTurnstileGate(showTurnstile);
     const [sent, setSent] = useState(false);
-    const [turnstileResetKey, setTurnstileResetKey] = useState(0);
 
     return (
         <div className="space-y-6">
@@ -40,12 +41,13 @@ export default function ForgotPasswordForm({ status, onLogin }: Props) {
 
             <Form
                 {...email.form()}
+                onBefore={turnstileGate.onBefore}
                 onStart={() => setSent(false)}
                 onSuccess={() => {
                     setSent(true);
-                    setTurnstileResetKey((key) => key + 1);
+                    turnstileGate.reset();
                 }}
-                onError={() => setTurnstileResetKey((key) => key + 1)}
+                onError={turnstileGate.reset}
             >
                 {({ processing, errors }) => (
                     <>
@@ -69,18 +71,26 @@ export default function ForgotPasswordForm({ status, onLogin }: Props) {
                                     siteKey={turnstile.siteKey}
                                     error={
                                         errors['cf-turnstile-response'] as
-                                            string | undefined
+                                            | string
+                                            | undefined
                                     }
-                                    resetKey={turnstileResetKey}
+                                    resetKey={turnstileGate.resetKey}
+                                    onTokenChange={
+                                        turnstileGate.onTokenChange
+                                    }
                                 />
                             </div>
                         ) : null}
 
                         <div className="my-6 flex items-center justify-start">
                             <Button
+                                type="submit"
                                 variant="auth"
                                 className="w-full"
-                                disabled={processing}
+                                disabled={
+                                    processing || turnstileGate.submitDisabled
+                                }
+                                title={turnstileGate.submitTitle}
                                 data-test="email-password-reset-link-button"
                             >
                                 {processing && <Spinner />}

@@ -6,6 +6,7 @@ use App\Actions\Settings\GetSecuritySettings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\TwoFactorAuthenticationRequest;
 use App\Models\User;
+use App\Support\PageSeo;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\RedirectResponse;
@@ -71,6 +72,7 @@ class SettingsController extends Controller
             'activeTab' => $activeTab,
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            'pageSeo' => PageSeo::noindex('Settings'),
             ...$props,
         ]);
     }

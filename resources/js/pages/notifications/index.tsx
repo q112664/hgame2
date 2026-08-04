@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import {
     Bell,
     CheckCheck,
@@ -8,6 +8,8 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 import { RouteTabs } from '@/components/site/route-tabs';
 import type { RouteTab } from '@/components/site/route-tabs';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
@@ -32,6 +34,7 @@ type Props = {
     activeTab: NotificationTabValue;
     tabs: NotificationTabItem[];
     notifications: PaginatedData<AppNotificationItem>;
+    pageSeo?: PageSeoData | null;
 };
 
 function NotificationTypeIcon({ type }: { type: string }) {
@@ -80,6 +83,7 @@ export default function NotificationsIndex({
     activeTab,
     tabs,
     notifications,
+    pageSeo,
 }: Props) {
     const [openingId, setOpeningId] = useState<string | null>(null);
     const [markingAll, setMarkingAll] = useState(false);
@@ -161,7 +165,7 @@ export default function NotificationsIndex({
 
     return (
         <SiteLayout>
-            <Head title="Notifications" />
+            <PageSeo seo={pageSeo} title="Notifications" />
 
             <SitePageContainer className="gap-6 sm:gap-8">
                 <div className="flex flex-wrap items-start justify-between gap-3">

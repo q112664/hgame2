@@ -1,18 +1,19 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { Download, ExternalLink } from 'lucide-react';
-import { useState } from 'react';
-import { downloadHeroButtonClassName } from '@/components/site/resource-detail-styles';
+import { Form, Link, usePage } from '@inertiajs/react';
+import { ArrowLeft, Download, ExternalLink, ShieldCheck } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
+import {
+    downloadHeroButtonClassName,
+    releaseFooterClassName,
+} from '@/components/site/resource-detail-styles';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { TurnstileWidget } from '@/components/turnstile-widget';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { useTurnstileGate } from '@/hooks/use-turnstile-gate';
 import { SiteLayout } from '@/layouts/site-layout';
+import { cn } from '@/lib/utils';
 import { continueMethod } from '@/routes/download-links';
 import { downloads as resourceDownloads } from '@/routes/resources';
 
@@ -20,6 +21,7 @@ type Props = {
     resource: {
         id: string;
         title: string;
+        thumbnail: string;
     };
     link: {
         id: number;
@@ -28,123 +30,252 @@ type Props = {
         host: string | null;
         requiresTurnstile: boolean;
     };
+    pageSeo?: PageSeoData | null;
 };
 
-export default function DownloadLinkShow({ resource, link }: Props) {
+function ActionFooter({
+    resourceId,
+    primary,
+}: {
+    resourceId: string;
+    primary: ReactNode;
+}) {
+    return (
+        <div
+            className={cn(
+                releaseFooterClassName,
+                'flex flex-col-reverse gap-2.5 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5',
+            )}
+        >
+            <Button
+                variant="ghost"
+                size="sm"
+                className="h-10 w-full justify-center text-muted-foreground sm:w-auto sm:justify-start"
+                asChild
+            >
+                <Link href={resourceDownloads(resourceId)} prefetch>
+                    <ArrowLeft data-icon="inline-start" />
+                    Back
+                </Link>
+            </Button>
+            {primary}
+        </div>
+    );
+}
+
+function ContinueButton({
+    processing = false,
+    disabled = false,
+    title,
+    asChild = false,
+    children,
+}: {
+    processing?: boolean;
+    disabled?: boolean;
+    title?: string;
+    asChild?: boolean;
+    children?: ReactNode;
+}) {
+    return (
+        <Button
+            type={asChild ? undefined : 'submit'}
+            variant="secondary"
+            className={cn(
+                downloadHeroButtonClassName,
+                'h-10 w-full sm:w-auto sm:min-w-36',
+            )}
+            disabled={disabled || processing}
+            title={title}
+            asChild={asChild}
+        >
+            {children ?? (
+                <>
+                    <Download data-icon="inline-start" />
+                    {processing ? 'Opening…' : 'Continue'}
+                </>
+            )}
+        </Button>
+    );
+}
+
+export default function DownloadLinkShow({ resource, link, pageSeo }: Props) {
     const { turnstile } = usePage().props;
     const showTurnstile = link.requiresTurnstile && Boolean(turnstile.siteKey);
-    const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+    const turnstileGate = useTurnstileGate(showTurnstile);
+    const hasThumbnail = resource.thumbnail.trim() !== '';
+
+    const identity = (
+        <div className="flex items-center gap-3.5 p-4 sm:gap-4 sm:p-5">
+            {hasThumbnail ? (
+                <div
+                    className={cn(
+                        'relative aspect-[16/10] w-20 shrink-0 overflow-hidden',
+                        'rounded-lg bg-muted ring-1 ring-border/50 sm:w-[5.5rem]',
+                    )}
+                >
+                    <LazyThumbnail
+                        src={resource.thumbnail}
+                        alt={resource.title}
+                        priority
+                    />
+                </div>
+            ) : (
+                <div
+                    className={cn(
+                        'flex aspect-[16/10] w-20 shrink-0 items-center justify-center',
+                        'rounded-lg bg-muted text-muted-foreground ring-1 ring-border/50 sm:w-[5.5rem]',
+                    )}
+                    aria-hidden
+                >
+                    <Download className="size-5 opacity-50" />
+                </div>
+            )}
+
+            <div className="min-w-0 flex-1 space-y-1">
+                <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                    External download
+                </p>
+                <h1 className="line-clamp-2 font-heading text-[0.95rem] leading-snug font-semibold tracking-tight text-foreground sm:text-base">
+                    {resource.title}
+                </h1>
+            </div>
+        </div>
+    );
+
+    const destination = (
+        <div className="space-y-1.5">
+            <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                Destination
+            </p>
+            <p className="text-base font-semibold tracking-tight text-foreground">
+                {link.label}
+            </p>
+            {link.host ? (
+                <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+                    <ExternalLink
+                        className="size-3.5 shrink-0 opacity-60"
+                        aria-hidden
+                    />
+                    <span className="truncate">{link.host}</span>
+                </p>
+            ) : null}
+        </div>
+    );
+
+    const notice = (
+        <p className="flex gap-2 text-xs leading-relaxed text-muted-foreground">
+            <ShieldCheck
+                className="mt-0.5 size-3.5 shrink-0 opacity-70"
+                aria-hidden
+            />
+            <span>
+                You are leaving this site to open a third-party host. Continue
+                only if you trust the destination.
+            </span>
+        </p>
+    );
 
     return (
         <SiteLayout>
-            <Head title={`Download — ${resource.title}`} />
+            <PageSeo
+                seo={pageSeo}
+                title={`Download — ${resource.title}`}
+            />
 
-            <SitePageContainer className="max-w-lg gap-4 py-8 sm:py-10">
-                <Card size="sm" className="gap-0 overflow-hidden py-0">
-                    <CardHeader className="gap-1 border-b border-border/80 py-4">
-                        <p className="text-xs font-medium text-muted-foreground">
-                            External download
-                        </p>
-                        <CardTitle className="text-base leading-snug sm:text-lg">
-                            {resource.title}
-                        </CardTitle>
-                    </CardHeader>
-
-                    <CardContent className="py-4">
-                        <p className="text-base font-semibold text-foreground">
-                            {link.label}
-                        </p>
-                        {link.host ? (
-                            <p className="mt-1.5 inline-flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-                                <ExternalLink
-                                    className="size-3.5 shrink-0"
-                                    aria-hidden
-                                />
-                                <span className="truncate">{link.host}</span>
-                            </p>
-                        ) : null}
-                    </CardContent>
+            <SitePageContainer className="max-w-md gap-0 py-8 sm:py-12">
+                <div
+                    className={cn(
+                        'overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm',
+                        'dark:border-border/50',
+                    )}
+                >
+                    {identity}
 
                     {showTurnstile && turnstile.siteKey ? (
                         <Form
                             action={continueMethod.url(link.id)}
                             method="post"
-                            onError={() =>
-                                setTurnstileResetKey((key) => key + 1)
-                            }
+                            onBefore={turnstileGate.onBefore}
+                            onError={turnstileGate.reset}
                         >
                             {({ processing, errors }) => (
                                 <>
-                                    <div className="border-t border-border/80 px-4 py-4 sm:px-6">
-                                        <TurnstileWidget
-                                            siteKey={turnstile.siteKey!}
-                                            error={
-                                                errors[
-                                                    'cf-turnstile-response'
-                                                ] as string | undefined
-                                            }
-                                            resetKey={turnstileResetKey}
-                                        />
+                                    <div className="space-y-4 border-t border-border/60 px-4 py-4 sm:px-5 sm:py-5">
+                                        {destination}
+                                        {notice}
+                                        <div className="space-y-2">
+                                            <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                                                Security check
+                                            </p>
+                                            <TurnstileWidget
+                                                siteKey={turnstile.siteKey!}
+                                                error={
+                                                    errors[
+                                                        'cf-turnstile-response'
+                                                    ] as string | undefined
+                                                }
+                                                resetKey={
+                                                    turnstileGate.resetKey
+                                                }
+                                                onTokenChange={
+                                                    turnstileGate.onTokenChange
+                                                }
+                                            />
+                                        </div>
                                     </div>
-                                    <CardFooter className="flex flex-col gap-2 border-t border-border/80 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-                                        <Button
-                                            variant="outline"
-                                            className="w-full sm:w-auto"
-                                            asChild
-                                        >
-                                            <Link
-                                                href={resourceDownloads(
-                                                    resource.id,
-                                                )}
-                                                prefetch
-                                            >
-                                                Cancel
-                                            </Link>
-                                        </Button>
-                                        <Button
-                                            type="submit"
-                                            variant="secondary"
-                                            className={`${downloadHeroButtonClassName} w-full sm:w-auto`}
-                                            disabled={processing}
-                                        >
-                                            <Download data-icon="inline-start" />
-                                            {processing
-                                                ? 'Opening…'
-                                                : 'Open download'}
-                                        </Button>
-                                    </CardFooter>
+
+                                    <ActionFooter
+                                        resourceId={resource.id}
+                                        primary={
+                                            <ContinueButton
+                                                processing={processing}
+                                                disabled={
+                                                    turnstileGate.submitDisabled
+                                                }
+                                                title={
+                                                    turnstileGate.submitTitle
+                                                }
+                                            />
+                                        }
+                                    />
                                 </>
                             )}
                         </Form>
                     ) : (
-                        <CardFooter className="flex flex-col gap-2 border-t border-border/80 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-                            <Button
-                                variant="outline"
-                                className="w-full sm:w-auto"
-                                asChild
-                            >
-                                <Link
-                                    href={resourceDownloads(resource.id)}
-                                    prefetch
-                                >
-                                    Cancel
-                                </Link>
-                            </Button>
-                            {link.url ? (
-                                <Button
-                                    variant="secondary"
-                                    className={`${downloadHeroButtonClassName} w-full sm:w-auto`}
-                                    asChild
-                                >
-                                    <a href={link.url}>
-                                        <Download data-icon="inline-start" />
-                                        Open download
-                                    </a>
-                                </Button>
-                            ) : null}
-                        </CardFooter>
+                        <>
+                            <div className="space-y-4 border-t border-border/60 px-4 py-4 sm:px-5 sm:py-5">
+                                {destination}
+                                {notice}
+                            </div>
+
+                            <ActionFooter
+                                resourceId={resource.id}
+                                primary={
+                                    link.url ? (
+                                        <ContinueButton asChild>
+                                            <a
+                                                href={link.url}
+                                                rel="noopener noreferrer"
+                                            >
+                                                <Download data-icon="inline-start" />
+                                                Continue
+                                            </a>
+                                        </ContinueButton>
+                                    ) : (
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            className="h-10 w-full sm:w-auto sm:min-w-36"
+                                            disabled
+                                        >
+                                            Unavailable
+                                        </Button>
+                                    )
+                                }
+                            />
+                        </>
                     )}
-                </Card>
+                </div>
             </SitePageContainer>
         </SiteLayout>
     );

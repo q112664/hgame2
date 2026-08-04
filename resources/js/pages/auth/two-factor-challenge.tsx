@@ -1,7 +1,9 @@
-import { Form, Head, setLayoutProps } from '@inertiajs/react';
+import { Form, setLayoutProps } from '@inertiajs/react';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,7 +14,11 @@ import {
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
 import { store } from '@/routes/two-factor/login';
 
-export default function TwoFactorChallenge() {
+export default function TwoFactorChallenge({
+    pageSeo,
+}: {
+    pageSeo?: PageSeoData | null;
+}) {
     const [showRecoveryInput, setShowRecoveryInput] = useState<boolean>(false);
     const [code, setCode] = useState<string>('');
 
@@ -51,7 +57,7 @@ export default function TwoFactorChallenge() {
 
     return (
         <>
-            <Head title="Two-factor authentication" />
+            <PageSeo seo={pageSeo} title="Two-factor authentication" />
 
             <div className="space-y-6">
                 <Form

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Games\Schemas;
 
 use App\Filament\Forms\Components\ScreenshotsFileUpload;
 use App\GameStatus;
+use App\Support\GameSource;
 use App\Support\Media;
 use App\Support\TagImporter;
 use Filament\Forms\Components\DatePicker;
@@ -19,6 +20,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -99,23 +101,42 @@ class GameForm
                             ->columnSpan(6),
                         TextInput::make('developer')->maxLength(255)->columnSpan(6),
                         DatePicker::make('release_date')->columnSpan(6),
-                        TextInput::make('source_name')
+                        Select::make('source_name')
                             ->label('Source')
-                            ->placeholder('DLsite')
-                            ->maxLength(255)
-                            ->helperText('Storefront name shown in the resource hero.')
+                            ->options(function (Get $get, ?Model $record): array {
+                                $options = GameSource::options();
+                                $current = $get('source_name') ?? $record?->getAttribute('source_name');
+
+                                if (filled($current) && ! array_key_exists((string) $current, $options)) {
+                                    $options[(string) $current] = (string) $current;
+                                }
+
+                                return $options;
+                            })
+                            ->getOptionLabelUsing(fn (?string $value): ?string => $value)
+                            ->native(false)
+                            ->searchable()
+                            ->nullable()
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->label('Custom source')
+                                    ->required()
+                                    ->maxLength(255),
+                            ])
+                            ->createOptionUsing(fn (array $data): string => trim((string) $data['name']))
+                            ->helperText('Prefer DLsite or Steam for built-in icons. Existing custom storefront names remain editable.')
                             ->columnSpan(4),
                         TextInput::make('source_id')
                             ->label('Source ID')
-                            ->placeholder('RJ01123456')
+                            ->placeholder('RJ01123456 or Steam App ID')
                             ->maxLength(255)
-                            ->helperText('Work ID such as an RJ number.')
+                            ->helperText('DLsite RJ number, Steam App ID, or similar.')
                             ->columnSpan(4),
                         TextInput::make('source_url')
                             ->label('Source URL')
                             ->url()
                             ->maxLength(2048)
-                            ->placeholder('https://www.dlsite.com/…')
+                            ->placeholder('https://www.dlsite.com/… or store.steampowered.com/app/…')
                             ->helperText('Optional link to the original product page.')
                             ->columnSpan(4),
                         FileUpload::make('cover_path')

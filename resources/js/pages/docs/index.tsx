@@ -1,4 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 import { BookOpen } from 'lucide-react';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { SitePageContainer } from '@/components/site/site-page-container';
@@ -17,12 +19,13 @@ import type { DocListItem } from '@/types/docs';
 
 type Props = {
     docs: DocListItem[];
+    pageSeo?: PageSeoData | null;
 };
 
-export default function DocsIndex({ docs }: Props) {
+export default function DocsIndex({ docs, pageSeo }: Props) {
     return (
         <SiteLayout>
-            <Head title="Articles" />
+            <PageSeo seo={pageSeo} title="Articles" />
 
             <SitePageContainer className="gap-6 sm:gap-8">
                 {docs.length > 0 ? (

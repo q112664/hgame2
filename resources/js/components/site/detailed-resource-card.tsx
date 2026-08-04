@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { Download, Eye, X } from 'lucide-react';
+import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
     overlayChipClassName,
@@ -36,6 +37,7 @@ type Props = {
     isRemoving?: boolean;
     disableRemove?: boolean;
     onRemove?: () => void;
+    priority?: boolean;
 };
 
 export function DetailedResourceCard({
@@ -45,6 +47,7 @@ export function DetailedResourceCard({
     isRemoving = false,
     disableRemove = false,
     onRemove,
+    priority = false,
 }: Props) {
     return (
         <Card
@@ -64,12 +67,10 @@ export function DetailedResourceCard({
                 tabIndex={isPending ? -1 : undefined}
             >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-t-md bg-muted">
-                    <img
+                    <LazyThumbnail
                         src={resource.thumbnail}
                         alt={resource.title}
-                        className="size-full object-cover"
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
+                        priority={priority}
                     />
 
                     <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-1.5">

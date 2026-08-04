@@ -1,9 +1,11 @@
-import { Head, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { Heart } from 'lucide-react';
 import { useState } from 'react';
 import { FavoriteResourceCard } from '@/components/site/favorite-resource-card';
 import { FavoritesPagination } from '@/components/site/favorites-pagination';
 import type { PaginatedFavorites } from '@/components/site/favorites-pagination';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { SiteLayout } from '@/layouts/site-layout';
@@ -21,9 +23,14 @@ type FavoriteResource = GameCard & {
 type Props = {
     resources: PaginatedFavorites<FavoriteResource>;
     downloadUpdateCount: number;
+    pageSeo?: PageSeoData | null;
 };
 
-export default function Favorites({ resources, downloadUpdateCount }: Props) {
+export default function Favorites({
+    resources,
+    downloadUpdateCount,
+    pageSeo,
+}: Props) {
     const [removingId, setRemovingId] = useState<string | null>(null);
 
     const removeFavorite = (resourceId: string) => {
@@ -43,7 +50,7 @@ export default function Favorites({ resources, downloadUpdateCount }: Props) {
 
     return (
         <SiteLayout>
-            <Head title="Favorites" />
+            <PageSeo seo={pageSeo} title="Favorites" />
 
             <SitePageContainer className="gap-8">
                 <div className="flex items-baseline justify-between gap-3">
@@ -68,7 +75,7 @@ export default function Favorites({ resources, downloadUpdateCount }: Props) {
                 <div id="favorite-results" className="scroll-mt-20">
                     {resources.data.length > 0 ? (
                         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-                            {resources.data.map((resource) => (
+                            {resources.data.map((resource, index) => (
                                 <li key={resource.id} className="h-full">
                                     <FavoriteResourceCard
                                         resource={resource}
@@ -84,6 +91,7 @@ export default function Favorites({ resources, downloadUpdateCount }: Props) {
                                         onRemove={() =>
                                             removeFavorite(resource.id)
                                         }
+                                        priority={index < 2}
                                     />
                                 </li>
                             ))}

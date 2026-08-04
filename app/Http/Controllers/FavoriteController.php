@@ -6,6 +6,7 @@ use App\Actions\Games\RemoveGameFavorite;
 use App\Actions\Games\ToggleGameFavorite;
 use App\Models\Game;
 use App\Support\GamePresenter;
+use App\Support\PageSeo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -41,6 +42,7 @@ class FavoriteController extends Controller
         return Inertia::render('favorites', [
             'resources' => $resources,
             'downloadUpdateCount' => $downloadUpdateCount,
+            'pageSeo' => PageSeo::noindex('Favorites', route('favorites.index')),
         ]);
     }
 

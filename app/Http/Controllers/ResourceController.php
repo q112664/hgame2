@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Games\ListPublishedGames;
+use App\Actions\Games\ListRelatedGames;
 use App\Actions\Games\MarkFavoriteDownloadsSeen;
 use App\Actions\Games\RecordGameView;
 use App\Filament\Resources\Games\GameResource;
@@ -11,6 +12,7 @@ use App\Models\Game;
 use App\Models\GameComment;
 use App\Models\Setting;
 use App\Support\GamePresenter;
+use App\Support\PageSeo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -25,11 +27,16 @@ class ResourceController extends Controller
 
     public function __construct(
         private RecordGameView $recordGameView,
+        private ListRelatedGames $listRelatedGames,
     ) {}
 
     public function index(ListResourcesRequest $request, ListPublishedGames $listPublishedGames): Response
     {
-        return Inertia::render('resources/index', $listPublishedGames($request->filters()));
+        return Inertia::render('resources/index', [
+            ...$listPublishedGames($request->filters()),
+            // Always canonical to the clean catalog URL (ignore filter query noise).
+            'pageSeo' => PageSeo::resourcesIndex(),
+        ]);
     }
 
     public function random(): RedirectResponse
@@ -75,6 +82,8 @@ class ResourceController extends Controller
             'resourceNotice' => Setting::resourceNoticeHtml(),
             'comments' => [],
             'commentsCount' => $game->comments()->count(),
+            'related' => [],
+            'pageSeo' => PageSeo::forGame($game, 'downloads'),
             'resource' => $this->presentResource(
                 $game,
                 includeScreenshots: false,
@@ -123,6 +132,10 @@ class ResourceController extends Controller
                 ? $this->presentComments($game, $request)
                 : null,
             'commentsCount' => $game->comments()->count(),
+            'related' => $includeDetails
+                ? ($this->listRelatedGames)($game)
+                : [],
+            'pageSeo' => PageSeo::forGame($game, $activeTab),
             'resource' => $this->presentResource(
                 $game,
                 includeScreenshots: $activeTab === 'screenshots',

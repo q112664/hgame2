@@ -1,4 +1,6 @@
-import { Head, Link, router, useHttp, usePage } from '@inertiajs/react';
+import { Link, router, useHttp, usePage } from '@inertiajs/react';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 import {
     Building2,
     CalendarDays,
@@ -56,7 +58,7 @@ import {
 } from '@/routes/resources';
 import { seen as markDownloadsSeen } from '@/routes/resources/downloads';
 import type { BreadcrumbItem } from '@/types';
-import type { GameDetail } from '@/types/resources';
+import type { GameCard, GameDetail } from '@/types/resources';
 
 type Props = {
     activeTab: ResourceTab;
@@ -65,6 +67,8 @@ type Props = {
     resourceNotice?: string;
     comments?: PaginatedData<ResourceComment>;
     commentsCount?: number;
+    related?: GameCard[];
+    pageSeo?: PageSeoData | null;
 };
 
 type ResourceTab = 'details' | 'downloads' | 'screenshots' | 'comments';
@@ -168,6 +172,8 @@ export default function ResourceShow({
     resourceNotice = '',
     comments,
     commentsCount = 0,
+    related = [],
+    pageSeo,
 }: Props) {
     const shouldReduceMotion = useReducedMotion();
     const [pendingTab, setPendingTab] = useState<ResourceTab | null>(null);
@@ -371,7 +377,7 @@ export default function ResourceShow({
 
     return (
         <SiteLayout>
-            <Head title={resource.title} />
+            <PageSeo seo={pageSeo} title={resource.title} />
 
             <ImageLightbox
                 slides={lightboxSlides}
@@ -679,6 +685,7 @@ export default function ResourceShow({
                         comments={comments}
                         commentsCount={commentsCount}
                         resourceId={resource.id}
+                        related={related}
                     />
                 </div>
             </SitePageContainer>

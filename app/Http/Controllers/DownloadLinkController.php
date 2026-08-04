@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\GameStatus;
 use App\Models\GameDownloadLink;
+use App\Support\Media;
+use App\Support\MediaThumbnail;
+use App\Support\PageSeo;
 use App\Support\Turnstile;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -12,7 +15,7 @@ class DownloadLinkController extends Controller
 {
     public function show(GameDownloadLink $downloadLink): Response
     {
-        $downloadLink->load(['release.game:id,slug,title,status,published_at']);
+        $downloadLink->load(['release.game:id,slug,title,status,published_at,cover_path,cover_url']);
 
         $release = $downloadLink->release;
         $game = $release?->game;
@@ -33,6 +36,7 @@ class DownloadLinkController extends Controller
             'resource' => [
                 'id' => $game->slug,
                 'title' => $game->title,
+                'thumbnail' => $this->thumbnailUrl($game->cover_path, $game->cover_url),
             ],
             'link' => [
                 'id' => $downloadLink->id,
@@ -42,6 +46,19 @@ class DownloadLinkController extends Controller
                 'host' => is_string($host) && $host !== '' ? $host : null,
                 'requiresTurnstile' => $requiresTurnstile,
             ],
+            'pageSeo' => PageSeo::noindex(
+                'Download — '.$game->title,
+                route('download-links.show', $downloadLink),
+            ),
         ]);
+    }
+
+    private function thumbnailUrl(?string $coverPath, ?string $coverUrl): string
+    {
+        if (filled($coverPath)) {
+            return MediaThumbnail::url((string) $coverPath);
+        }
+
+        return Media::url($coverUrl);
     }
 }

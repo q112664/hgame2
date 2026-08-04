@@ -30,8 +30,10 @@ export function HomeHero({ hero }: Props) {
                 <div
                     className={cn(
                         'relative overflow-hidden rounded-md',
-                        'ring-1 ring-border/80 shadow-sm',
-                        'min-h-[220px] sm:min-h-[260px]',
+                        // Soft edge in light; no bright rim in dark mode.
+                        'ring-1 ring-black/5 shadow-sm',
+                        'dark:ring-0 dark:shadow-none',
+                        'min-h-[168px] sm:min-h-[188px]',
                     )}
                 >
                     <img
@@ -58,26 +60,26 @@ export function HomeHero({ hero }: Props) {
                         aria-hidden
                     />
 
-                    <div className="relative flex min-h-[220px] flex-col justify-center gap-5 p-6 sm:min-h-[260px] sm:p-8 lg:max-w-xl lg:p-10">
-                        <div className="flex flex-col gap-2.5">
-                            <h1 className="font-heading text-3xl font-semibold tracking-tight text-surface-inverse-foreground sm:text-4xl">
+                    <div className="relative flex min-h-[168px] flex-col justify-center gap-3.5 p-4 sm:min-h-[188px] sm:gap-4 sm:p-5 lg:max-w-xl lg:p-6">
+                        <div className="flex flex-col gap-1.5 sm:gap-2">
+                            <h1 className="font-heading text-2xl font-semibold tracking-tight text-surface-inverse-foreground sm:text-3xl">
                                 {hero.title}
                             </h1>
                             {hero.description !== '' ? (
-                                <p className="max-w-md text-sm leading-relaxed text-surface-inverse-foreground/80">
+                                <p className="max-w-md text-sm leading-snug text-surface-inverse-foreground/80 sm:leading-relaxed">
                                     {hero.description}
                                 </p>
                             ) : null}
                         </div>
 
                         {showButtons ? (
-                            <div className="flex flex-wrap gap-2.5">
+                            <div className="flex flex-wrap gap-2">
                                 {hero.showBrowse ? (
                                     <Button
-                                        size="lg"
+                                        size="default"
                                         variant="outline"
                                         className={cn(
-                                            'border-auth/45 bg-auth/22',
+                                            'h-9 border-auth/45 bg-auth/22',
                                             'text-auth-foreground shadow-none backdrop-blur-sm',
                                             'hover:border-auth/60 hover:bg-auth/32',
                                             'hover:text-auth-foreground',
@@ -95,10 +97,10 @@ export function HomeHero({ hero }: Props) {
                                 ) : null}
                                 {hero.showRandom ? (
                                     <Button
-                                        size="lg"
+                                        size="default"
                                         variant="outline"
                                         className={cn(
-                                            'border-surface-inverse-foreground/25 bg-surface-inverse-foreground/10',
+                                            'h-9 border-surface-inverse-foreground/25 bg-surface-inverse-foreground/10',
                                             'text-surface-inverse-foreground shadow-none backdrop-blur-sm',
                                             'hover:border-surface-inverse-foreground/40 hover:bg-surface-inverse-foreground/18',
                                             'hover:text-surface-inverse-foreground',

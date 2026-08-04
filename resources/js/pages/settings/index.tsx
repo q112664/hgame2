@@ -1,4 +1,4 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Link, usePage } from '@inertiajs/react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import SettingsController from '@/actions/App/Http/Controllers/Settings/SettingsController';
@@ -12,6 +12,8 @@ import type { Props as ManageTwoFactorProps } from '@/components/manage-two-fact
 import ManageTwoFactor from '@/components/manage-two-factor';
 import PasswordInput from '@/components/password-input';
 import { ProfileAvatarForm } from '@/components/profile-avatar-form';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 import { RouteTabs } from '@/components/site/route-tabs';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { Button } from '@/components/ui/button';
@@ -36,6 +38,7 @@ type Props = {
     passwordRules?: string;
     requiresPasswordConfirmation: boolean;
     status?: string;
+    pageSeo?: PageSeoData | null;
 } & ManagePasskeysProps &
     ManageTwoFactorProps;
 
@@ -55,7 +58,7 @@ export default function Settings(props: Props) {
 
     return (
         <SiteLayout>
-            <Head title="Settings" />
+            <PageSeo seo={props.pageSeo} title="Settings" />
 
             <SitePageContainer className="gap-6">
                 <header className="space-y-1">

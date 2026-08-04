@@ -1,6 +1,9 @@
-# Game Publish API — Agent Guide
+# Game Resource API — Agent Guide
 
-Use this document to publish game resources to **hgame** via JSON API.
+Use this document to **create, list, inspect, update, and delete** game resources on **hgame** via JSON API.
+
+On this site, public “resources” are games. There is no separate resource type in the API yet.
+
 No multipart uploads: send publicly reachable image URLs; the server downloads them.
 
 ## Base URL
@@ -37,8 +40,10 @@ php artisan game:token {admin-email-or-id} --name=game-publish
 1. `GET /api/v1/taxonomies` — load allowed categories, platforms, languages.
 2. Host cover, screenshot, and any detail/release body images somewhere HTTP-accessible (JPEG/PNG/WebP/GIF, ≤ 20MB each).
 3. `POST /api/v1/games` — create the game in one request (detail `<img src>` URLs are ingested automatically).
-4. Optional: `GET /api/v1/games/{slug}` — confirm the result.
-5. Open `data.url` in the response for the public details page.
+4. `GET /api/v1/games` or `GET /api/v1/games/{slug}` — list or inspect.
+5. `PATCH /api/v1/games/{slug}` — partial edit (only send fields that change).
+6. `DELETE /api/v1/games/{slug}` — remove when needed.
+7. Open `data.url` in responses for the public details page.
 
 ## Endpoints
 
@@ -53,19 +58,70 @@ Returns existing taxonomies. **Do not invent** category / platform / language na
   "data": {
     "categories": [{ "name": "Visual Novel", "slug": "visual-novel" }],
     "platforms": [{ "name": "Windows", "slug": "windows" }],
-    "languages": [{ "name": "Chinese", "code": "zh" }]
+    "languages": [{ "name": "Chinese", "code": "zh" }],
+    "sources": [
+      { "name": "DLsite", "slug": "dlsite", "favicon_url": "/images/sources/dlsite.ico" },
+      { "name": "Steam", "slug": "steam", "favicon_url": "/images/sources/steam.ico" }
+    ]
   }
 }
 ```
 
-Resolution rules when publishing:
+Resolution rules when saving:
 
 | Field | Match against |
 |-------|----------------|
 | `category` | category `name` or `slug` (case-insensitive name) |
 | `releases[].platforms[]` | platform `name` or `slug` |
 | `releases[].languages[]` | language `name` or `code` |
+| `source_name` | Prefer a `sources[].name` from taxonomies (`DLsite` or `Steam`) for the local storefront icon |
 | `tags[]` | created if missing (multi-word tags OK as one array item) |
+
+---
+
+### GET `/api/v1/games`
+
+List games (all statuses; admin catalog, not only public published ones).
+
+**Query parameters:**
+
+| Param | Notes |
+|-------|--------|
+| `q` | Search title, subtitle, developer, category, tags, platforms, languages |
+| `status` | `draft` \| `published` \| `unlisted` |
+| `category` | Category name or slug |
+| `page` | Page number (default 1) |
+| `per_page` | 1–100 (default 20) |
+
+**Response `200`:**
+
+```json
+{
+  "data": [
+    {
+      "id": "senren-banka",
+      "title": "Senren Banka",
+      "subtitle": "A spring tale",
+      "status": "published",
+      "category": "Visual Novel",
+      "developer": "Yuzu Soft",
+      "url": "http://hgame.test/resources/senren-banka/details",
+      "cover_url": "http://hgame.test/storage/games/covers/....png",
+      "published_at": "2026-07-29T12:00:00+00:00",
+      "screenshots_count": 2,
+      "releases_count": 1
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "last_page": 1,
+    "per_page": 20,
+    "total": 1
+  }
+}
+```
+
+---
 
 ### POST `/api/v1/games`
 
@@ -121,7 +177,7 @@ Create a game with optional screenshots and releases.
 }
 ```
 
-#### Field reference
+#### Field reference (create)
 
 | Field | Required | Notes |
 |-------|----------|--------|
@@ -132,9 +188,9 @@ Create a game with optional screenshots and releases.
 | `category` | no | Must already exist (name or slug) |
 | `tags` | no | Array of strings; created if missing |
 | `developer` | no | max 255 |
-| `source_name` | no | Storefront label in hero, e.g. `DLsite` |
-| `source_id` | no | Work ID, e.g. `RJ01123456` |
-| `source_url` | no | Absolute product page URL (also used for favicon host) |
+| `source_name` | no | Prefer **`DLsite`** or **`Steam`** (see `/taxonomies` → `sources`). Local favicon icons are used for both. |
+| `source_id` | no | Work ID, e.g. DLsite `RJ01123456` or Steam App ID `1234560` |
+| `source_url` | no | Absolute product page URL (e.g. DLsite work page or `https://store.steampowered.com/app/…`) |
 | `release_date` | no | Date string, e.g. `2016-07-29` |
 | `description` | no | HTML string; remote `<img src>` are downloaded (see Images) |
 | `status` | no | `draft` \| `published` \| `unlisted` (default **`published`**) |
@@ -158,7 +214,7 @@ Create a game with optional screenshots and releases.
 
 Download link labels are derived from the URL host automatically.
 
-#### Success response `201`
+#### Success response `201` / detail shape
 
 ```json
 {
@@ -167,22 +223,102 @@ Download link labels are derived from the URL host automatically.
     "title": "Senren Banka",
     "subtitle": "A spring tale",
     "status": "published",
+    "category": "Visual Novel",
+    "tags": ["Romance", "Slice of Life"],
+    "developer": "Yuzu Soft",
+    "source_name": "DLsite",
+    "source_id": "RJ01123456",
+    "source_url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01123456.html",
+    "source": {
+      "name": "DLsite",
+      "id": "RJ01123456",
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01123456.html",
+      "faviconUrl": "/images/sources/dlsite.ico"
+    },
+    "release_date": "2016-07-29",
+    "description": "<p>Short HTML synopsis is allowed.</p>...",
+    "cover_url": "http://hgame.test/storage/games/covers/....png",
+    "published_at": "2026-07-29T12:00:00+00:00",
     "url": "http://hgame.test/resources/senren-banka/details",
+    "screenshots": [
+      "http://hgame.test/storage/games/screenshots/....png"
+    ],
+    "releases": [
+      {
+        "title": "Windows Chinese package",
+        "platforms": ["Windows"],
+        "languages": ["Chinese"],
+        "version": "1.0",
+        "file_size": "5.4 GB",
+        "description": null,
+        "is_active": true,
+        "published_at": "2026-07-29T12:00:00+00:00",
+        "download_links": ["https://example.com/game.zip"]
+      }
+    ],
     "screenshots_count": 2,
     "releases_count": 1
   }
 }
 ```
 
-- `id` is the **slug** (use it for follow-up `GET`).
+- `id` is the **slug** (use it for list/show/update/delete).
 - Public page shows the game when `status=published` and `published_at <= now`.
 - Releases appear on the site only if `is_active=true` and they have at least one download link.
 
+---
+
 ### GET `/api/v1/games/{slug}`
 
-Confirm a created game. Same `data` shape as create.
+Full detail for one game (same `data` shape as create/update).
 
 **Response `200`** / **`404`** if slug missing.
+
+---
+
+### PUT / PATCH `/api/v1/games/{slug}`
+
+Partial update. **Only fields present in the JSON body are changed.**
+
+Examples:
+
+- Metadata only: `{ "title": "New title", "status": "draft" }`
+- Replace cover: `{ "cover_url": "https://cdn.example.com/new-cover.png" }`
+- Replace all tags: `{ "tags": ["Romance"] }` (empty array clears tags)
+- Replace all screenshots: `{ "screenshots": ["https://..."] }` (empty array clears)
+- Replace **all** releases: `{ "releases": [ ... ] }` (empty array clears)
+
+When `releases` is sent, existing releases are deleted and recreated from the payload (full replace).
+
+**Success:** `200` with full detail payload.  
+**Validation:** `422`. **Not found:** `404`.
+
+Field rules match create, except:
+
+| Field | Notes |
+|-------|--------|
+| All fields | optional (`sometimes`) — omit to leave unchanged |
+| `cover_url` | if sent, must be a valid URL (downloads new cover, drops old) |
+| `slug` | if sent, must stay unique |
+
+---
+
+### DELETE `/api/v1/games/{slug}`
+
+Permanently deletes the game, related releases/links/screenshots, and unreferenced media files.
+
+**Response `200`:**
+
+```json
+{
+  "data": {
+    "id": "senren-banka",
+    "deleted": true
+  }
+}
+```
+
+**Not found:** `404`.
 
 ## Images (important)
 
@@ -206,7 +342,7 @@ BASE="http://hgame.test/api/v1"
 curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
   "$BASE/taxonomies"
 
-# 2) Publish
+# 2) Create
 curl -sS -X POST "$BASE/games" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Accept: application/json" \
@@ -226,9 +362,25 @@ curl -sS -X POST "$BASE/games" \
     }]
   }'
 
-# 3) Confirm
+# 3) List
+curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  "$BASE/games?q=senren&status=published"
+
+# 4) Show
 curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
   "$BASE/games/senren-banka"
+
+# 5) Partial update
+curl -sS -X PATCH "$BASE/games/senren-banka" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Senren Banka (Updated)","status":"unlisted"}'
+
+# 6) Delete
+curl -sS -X DELETE "$BASE/games/senren-banka" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json"
 ```
 
 ## Common errors
@@ -237,6 +389,7 @@ curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
 |--------|---------|------------|
 | `401` | Bad/missing token | Re-mint with `php artisan game:token ...` |
 | `403` | User not admin | Use an admin account |
+| `404` | Unknown slug | List games or check `id` from create |
 | `422` `slug` | Slug already taken | Change `slug` or omit it |
 | `422` `category` | Unknown category | Use a name/slug from `/taxonomies` |
 | `422` `releases` | Unknown platform/language | Use values from `/taxonomies` |
@@ -245,10 +398,10 @@ curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
 
 ## Out of scope (do not attempt)
 
-- Update / delete games via API
 - Multipart binary image upload
 - Auto-creating categories, platforms, or languages
 - Unauthenticated public JSON catalog
+- Docs / non-game content via this API
 
 ## Agent checklist
 
@@ -259,4 +412,6 @@ curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
 - [ ] Detail/release `<img src>` (if any) are public image URLs (not data URIs)
 - [ ] Each release has platforms, languages, and ≥1 download link
 - [ ] POST `/games` → expect `201` and `data.url`
-- [ ] Optionally GET `/games/{id}` to verify counts
+- [ ] GET `/games` or GET `/games/{id}` to verify
+- [ ] PATCH `/games/{id}` for edits (send only changed fields)
+- [ ] DELETE `/games/{id}` when removing a resource

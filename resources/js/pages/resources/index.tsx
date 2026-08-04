@@ -1,6 +1,7 @@
-import { Head } from '@inertiajs/react';
 import { Library, RotateCcw, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 import { ResourceCard } from '@/components/site/resource-card';
 import {
     DEFAULT_FILTERS,
@@ -29,12 +30,14 @@ type Props = {
     resources: PaginatedResources;
     filters: ResourceFilters;
     filterOptions: FilterOptions;
+    pageSeo?: PageSeoData | null;
 };
 
 export default function ResourcesIndex({
     resources,
     filters,
     filterOptions,
+    pageSeo,
 }: Props) {
     const [isPending, setIsPending] = useState(false);
     const [searchQuery, setSearchQuery] = useState(filters.q);
@@ -87,7 +90,7 @@ export default function ResourcesIndex({
 
     return (
         <SiteLayout>
-            <Head title="Resources" />
+            <PageSeo seo={pageSeo} title="Resources" />
 
             <SitePageContainer className="gap-6 sm:gap-8">
                 <div className="flex flex-col gap-4 rounded-md border border-border/80 bg-card p-4 sm:p-5">
@@ -270,10 +273,11 @@ export default function ResourcesIndex({
                                 isPending && 'pointer-events-none opacity-50',
                             )}
                         >
-                            {resources.data.map((resource) => (
+                            {resources.data.map((resource, index) => (
                                 <ResourceCard
                                     key={resource.id}
                                     resource={resource}
+                                    priority={index < 4}
                                 />
                             ))}
                         </div>

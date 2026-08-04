@@ -27,6 +27,35 @@ test('dlsite product urls use the local favicon', function () {
     expect($source['faviconUrl'])->toBe('/images/sources/dlsite.ico');
 });
 
+test('game source favicon uses the local steam icon', function () {
+    $source = GameSource::present('Steam', '1234560', null);
+
+    expect($source)->not->toBeNull()
+        ->and($source['name'])->toBe('Steam')
+        ->and($source['id'])->toBe('1234560')
+        ->and($source['faviconUrl'])->toBe('/images/sources/steam.ico')
+        ->and(public_path('images/sources/steam.ico'))->toBeFile();
+});
+
+test('steam store product urls use the local favicon', function () {
+    $source = GameSource::present(
+        null,
+        '1234560',
+        'https://store.steampowered.com/app/1234560/Example/',
+    );
+
+    expect($source['faviconUrl'])->toBe('/images/sources/steam.ico');
+});
+
+test('known sources list dlsite and steam with local favicons', function () {
+    $known = GameSource::known();
+
+    expect($known)->toHaveCount(2)
+        ->and(collect($known)->pluck('name')->all())->toBe(['DLsite', 'Steam'])
+        ->and($known[0]['favicon_url'])->toBe('/images/sources/dlsite.ico')
+        ->and($known[1]['favicon_url'])->toBe('/images/sources/steam.ico');
+});
+
 test('game source favicon falls back to host favicon for other shops', function () {
     $source = GameSource::present(
         'Custom Shop',

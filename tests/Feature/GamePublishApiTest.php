@@ -166,14 +166,43 @@ test('administrators can list taxonomies and inspect a published game', function
         ->assertOk()
         ->assertJsonPath('data.categories.0.name', 'Visual Novel')
         ->assertJsonPath('data.platforms.0.slug', 'windows')
-        ->assertJsonPath('data.languages.0.code', 'zh');
+        ->assertJsonPath('data.languages.0.code', 'zh')
+        ->assertJsonPath('data.sources.0.name', 'DLsite')
+        ->assertJsonPath('data.sources.0.favicon_url', '/images/sources/dlsite.ico')
+        ->assertJsonPath('data.sources.1.name', 'Steam')
+        ->assertJsonPath('data.sources.1.favicon_url', '/images/sources/steam.ico');
 
     $this->postJson('/api/v1/games', validGamePayload())->assertCreated();
 
     $this->getJson('/api/v1/games/senren-banka')
         ->assertOk()
         ->assertJsonPath('data.id', 'senren-banka')
-        ->assertJsonPath('data.screenshots_count', 2);
+        ->assertJsonPath('data.screenshots_count', 2)
+        ->assertJsonPath('data.source.faviconUrl', '/images/sources/dlsite.ico');
+});
+
+test('publishing a steam-sourced game uses the local steam favicon', function () {
+    Sanctum::actingAs($this->admin);
+
+    $this->postJson('/api/v1/games', validGamePayload([
+        'title' => 'Steam Demo Game',
+        'slug' => 'steam-demo-game',
+        'source_name' => 'Steam',
+        'source_id' => '1234560',
+        'source_url' => 'https://store.steampowered.com/app/1234560/Steam_Demo_Game/',
+    ]))
+        ->assertCreated()
+        ->assertJsonPath('data.source.name', 'Steam')
+        ->assertJsonPath('data.source.id', '1234560')
+        ->assertJsonPath('data.source.faviconUrl', '/images/sources/steam.ico');
+
+    $this->get(route('resources.details', 'steam-demo-game'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('resource.source.name', 'Steam')
+            ->where('resource.source.id', '1234560')
+            ->where('resource.source.faviconUrl', '/images/sources/steam.ico')
+        );
 });
 
 test('publishing downloads remote images embedded in description html', function () {

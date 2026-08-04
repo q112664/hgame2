@@ -1,5 +1,6 @@
-import { Head } from '@inertiajs/react';
 import { Search, SearchX, X } from 'lucide-react';
+import { PageSeo } from '@/components/site/page-seo';
+import type { PageSeoData } from '@/components/site/page-seo';
 import {
     SearchResults,
     SearchResultsSkeleton,
@@ -19,6 +20,7 @@ import { search as searchRoute } from '@/routes';
 type Props = {
     query: string;
     resources: PaginatedSearchResources;
+    pageSeo?: PageSeoData | null;
 };
 
 function scrollToSearchResults() {
@@ -32,7 +34,11 @@ function formatResultCount(total: number): string {
     return total === 1 ? '1 result' : `${total.toLocaleString()} results`;
 }
 
-export default function SearchPage({ query: initialQuery, resources }: Props) {
+export default function SearchPage({
+    query: initialQuery,
+    resources,
+    pageSeo,
+}: Props) {
     const {
         query,
         setQuery,
@@ -52,7 +58,7 @@ export default function SearchPage({ query: initialQuery, resources }: Props) {
 
     return (
         <SiteLayout>
-            <Head title="Search" />
+            <PageSeo seo={pageSeo} title="Search" />
 
             <SitePageContainer className="gap-8">
                 <header className="flex flex-col gap-2">

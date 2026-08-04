@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Support\IntendedUrl;
+use App\Support\PageSeo;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -57,6 +58,7 @@ class FortifyServiceProvider extends ServiceProvider
                 'canResetPassword' => Features::enabled(Features::resetPasswords()),
                 'canUsePasskeys' => Features::canManagePasskeys(),
                 'status' => $request->session()->get('status'),
+                'pageSeo' => PageSeo::noindex('Log in'),
             ]);
         });
 
@@ -64,14 +66,17 @@ class FortifyServiceProvider extends ServiceProvider
             'email' => $request->email,
             'token' => $request->route('token'),
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            'pageSeo' => PageSeo::noindex('Reset password'),
         ]));
 
         Fortify::requestPasswordResetLinkView(fn (Request $request) => Inertia::render('auth/forgot-password', [
             'status' => $request->session()->get('status'),
+            'pageSeo' => PageSeo::noindex('Forgot password'),
         ]));
 
         Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/verify-email', [
             'status' => $request->session()->get('status'),
+            'pageSeo' => PageSeo::noindex('Email verification'),
         ]));
 
         Fortify::registerView(function (Request $request) {
@@ -79,12 +84,17 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Inertia::render('auth/register', [
                 'passwordRules' => Password::defaults()->toPasswordRulesString(),
+                'pageSeo' => PageSeo::noindex('Register'),
             ]);
         });
 
-        Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
+        Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge', [
+            'pageSeo' => PageSeo::noindex('Two-factor authentication'),
+        ]));
 
-        Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password'));
+        Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password', [
+            'pageSeo' => PageSeo::noindex('Confirm password'),
+        ]));
     }
 
     /**

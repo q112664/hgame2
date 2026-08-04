@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * Helpers for external game storefronts (DLsite, BOOTH, etc.).
+ * Helpers for external game storefronts (DLsite, Steam, etc.).
  */
 class GameSource
 {
@@ -15,6 +15,18 @@ class GameSource
     private const FAVICONS = [
         'dlsite' => '/images/sources/dlsite.ico',
         'dl site' => '/images/sources/dlsite.ico',
+        'steam' => '/images/sources/steam.ico',
+    ];
+
+    /**
+     * Hosts that map to a local favicon asset (substring match on product URL host).
+     *
+     * @var array<string, string>
+     */
+    private const HOST_FAVICONS = [
+        'dlsite.com' => 'dlsite',
+        'steampowered.com' => 'steam',
+        'steamcommunity.com' => 'steam',
     ];
 
     /**
@@ -38,6 +50,37 @@ class GameSource
         'itch' => 'itch.io',
     ];
 
+    /**
+     * Storefronts offered in admin UI and the publish API taxonomies list.
+     *
+     * @return list<array{name: string, slug: string, favicon_url: string}>
+     */
+    public static function known(): array
+    {
+        return [
+            [
+                'name' => 'DLsite',
+                'slug' => 'dlsite',
+                'favicon_url' => self::FAVICONS['dlsite'],
+            ],
+            [
+                'name' => 'Steam',
+                'slug' => 'steam',
+                'favicon_url' => self::FAVICONS['steam'],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function options(): array
+    {
+        return collect(self::known())
+            ->mapWithKeys(fn (array $source): array => [$source['name'] => $source['name']])
+            ->all();
+    }
+
     public static function faviconUrl(?string $name, ?string $url = null): ?string
     {
         if (filled($name)) {
@@ -48,12 +91,17 @@ class GameSource
             }
         }
 
-        // DLsite product URLs always use the local icon asset.
         if (filled($url)) {
             $host = parse_url((string) $url, PHP_URL_HOST);
 
-            if (is_string($host) && str_contains(strtolower($host), 'dlsite.com')) {
-                return self::FAVICONS['dlsite'];
+            if (is_string($host) && $host !== '') {
+                $host = strtolower($host);
+
+                foreach (self::HOST_FAVICONS as $needle => $faviconKey) {
+                    if (str_contains($host, $needle)) {
+                        return self::FAVICONS[$faviconKey];
+                    }
+                }
             }
         }
 

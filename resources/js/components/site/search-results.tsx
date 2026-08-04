@@ -18,12 +18,13 @@ export function SearchResults({ resources, isPending }: Props) {
             )}
             aria-busy={isPending}
         >
-            {resources.map((resource) => (
+            {resources.map((resource, index) => (
                 <li key={resource.id} className="h-full">
                     <DetailedResourceCard
                         resource={resource}
                         href={resourceDetails(resource.id).url}
                         isPending={isPending}
+                        priority={index < 4}
                     />
                 </li>
             ))}

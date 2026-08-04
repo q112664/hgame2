@@ -3,22 +3,32 @@ import { Head, usePage } from '@inertiajs/react';
 /**
  * Site-wide default meta tags from admin SEO settings.
  *
- * All tags use stable head-key values so PageSeo (and client navigations) can
- * replace them without stacking duplicates. Do not also emit these from Blade.
+ * head-key values MUST match Blade data-inertia attributes in app.blade.php
+ * so CSR fallbacks are adopted (not duplicated) on hydrate.
  */
 export function SiteSeo() {
     const { seo, siteTitle } = usePage().props;
     const description = seo.description.trim();
     const keywords = seo.keywords.trim();
     const ogImageUrl = seo.ogImageUrl?.trim() || null;
-    const faviconUrl = seo.faviconUrl?.trim() || null;
+    const customFavicon = seo.faviconUrl?.trim() || null;
+    const faviconHref = customFavicon || '/favicon.ico';
+    const appleTouchHref = customFavicon || '/apple-touch-icon.png';
     const googleVerification = seo.googleSiteVerification.trim();
 
     return (
         <Head>
-            {faviconUrl ? (
-                <link head-key="favicon" rel="icon" href={faviconUrl} />
-            ) : null}
+            <link
+                head-key="favicon"
+                rel="icon"
+                href={faviconHref}
+                sizes="any"
+            />
+            <link
+                head-key="apple-touch-icon"
+                rel="apple-touch-icon"
+                href={appleTouchHref}
+            />
             {description !== '' ? (
                 <meta
                     head-key="description"
@@ -36,11 +46,7 @@ export function SiteSeo() {
                 content={siteTitle}
             />
             <meta head-key="og:type" property="og:type" content="website" />
-            <meta
-                head-key="og:title"
-                property="og:title"
-                content={siteTitle}
-            />
+            <meta head-key="og:title" property="og:title" content={siteTitle} />
             {description !== '' ? (
                 <meta
                     head-key="og:description"

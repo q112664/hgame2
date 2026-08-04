@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -19,7 +19,9 @@ type Props = {
  * Keeps native lazy-loading for off-screen cards.
  *
  * On SSR hard refresh, the browser may finish loading the image before React
- * hydrates and binds onLoad — check img.complete so we still fade in.
+ * hydrates and binds onLoad — a callback ref checks img.complete so we still
+ * fade in. Tracking loadedSrc (not a boolean) means src changes naturally
+ * reset to the unloaded state without a setState Effect.
  */
 export function LazyThumbnail({
     src,
@@ -28,16 +30,17 @@ export function LazyThumbnail({
     priority = false,
     fit = 'cover',
 }: Props) {
-    const [loaded, setLoaded] = useState(false);
-    const imgRef = useRef<HTMLImageElement>(null);
+    const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+    const loaded = loadedSrc === src;
 
-    useEffect(() => {
-        setLoaded(false);
-
-        if (imgRef.current?.complete) {
-            setLoaded(true);
-        }
-    }, [src]);
+    const imgRef = useCallback(
+        (node: HTMLImageElement | null) => {
+            if (node?.complete) {
+                setLoadedSrc(src);
+            }
+        },
+        [src],
+    );
 
     return (
         <>
@@ -62,8 +65,8 @@ export function LazyThumbnail({
                 // fetchPriority is valid on HTMLImageElement; React types lag a bit.
                 {...(priority ? { fetchPriority: 'high' as const } : {})}
                 referrerPolicy="no-referrer"
-                onLoad={() => setLoaded(true)}
-                onError={() => setLoaded(true)}
+                onLoad={() => setLoadedSrc(src)}
+                onError={() => setLoadedSrc(src)}
             />
         </>
     );

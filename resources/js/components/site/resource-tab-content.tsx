@@ -11,6 +11,7 @@ import {
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
 import { PlatformIcon } from '@/components/site/platform-icon';
+import { RelatedResources } from '@/components/site/related-resources';
 import type { ResourceComment } from '@/components/site/resource-comments';
 import { ResourceComments } from '@/components/site/resource-comments';
 import {
@@ -23,7 +24,6 @@ import {
     releaseFooterInnerClassName,
     tagBadgeClassName,
 } from '@/components/site/resource-detail-styles';
-import { RelatedResources } from '@/components/site/related-resources';
 import { RichHtml } from '@/components/site/rich-html';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import type { PaginatedData } from '@/components/site/site-pagination';
@@ -412,7 +412,9 @@ export function ResourceTabContent({
                                                                     <CloudDownload
                                                                         data-icon="inline-start"
                                                                         className="size-4"
-                                                                        strokeWidth={2.25}
+                                                                        strokeWidth={
+                                                                            2.25
+                                                                        }
                                                                     />
                                                                     <span className="truncate">
                                                                         Download

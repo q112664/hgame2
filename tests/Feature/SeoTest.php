@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Games\ListPublishedGames;
 use App\Models\Category;
 use App\Models\Doc;
 use App\Models\Game;
@@ -53,21 +54,38 @@ test('unfiltered resource catalog page 1 uses a clean canonical without page que
 });
 
 test('unfiltered resource catalog deep pages self-canonicalize', function () {
-    $this->get(route('resources.index', ['page' => 3]))
+    // Two full pages + one item so page 2 is valid (PER_PAGE is 12).
+    Game::factory()->count(ListPublishedGames::PER_PAGE + 1)->create();
+
+    $this->get(route('resources.index', ['page' => 2]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('pageSeo.canonical', route('resources.index', ['page' => 3]))
-            ->where('pageSeo.title', 'Resources · Page 3')
+            ->where('pageSeo.canonical', route('resources.index', ['page' => 2]))
+            ->where('pageSeo.title', 'Resources · Page 2')
         );
 });
 
 test('filtered resource catalog deep pages still fold to the clean catalog', function () {
-    $this->get(route('resources.index', ['page' => 2, 'q' => 'spring', 'sort' => 'views']))
+    Game::factory()->count(ListPublishedGames::PER_PAGE + 1)->create([
+        'title' => 'Spring Tale Resource',
+    ]);
+
+    $this->get(route('resources.index', ['page' => 2, 'q' => 'Spring', 'sort' => 'views']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('pageSeo.canonical', route('resources.index'))
             ->where('pageSeo.title', 'Resources')
         );
+});
+
+test('resource catalog pages beyond the last page return 404', function () {
+    Game::factory()->count(2)->create();
+
+    $this->get(route('resources.index', ['page' => 999999]))
+        ->assertNotFound();
+
+    $this->get(route('resources.index', ['page' => 2]))
+        ->assertNotFound();
 });
 
 test('search pages are noindexed', function () {
@@ -133,20 +151,48 @@ test('page seo plain description strips tags and limits length', function () {
         ->and(mb_strlen((string) PageSeo::plainDescription(str_repeat('a', 200))))->toBeLessThanOrEqual(161);
 });
 
-test('root blade template does not emit business seo tags without data-inertia keys', function () {
+test('root blade csr fallback seo tags use data-inertia keys matching react head-key', function () {
     $blade = file_get_contents(resource_path('views/app.blade.php'));
+    $site = file_get_contents(resource_path('js/components/site/site-seo.tsx'));
 
     expect($blade)->not->toBeFalse();
+    expect($site)->not->toBeFalse();
+
+    // Favicon must only live inside x-inertia::head (not as a free-floating <link> before it).
+    $beforeHead = str($blade)->before('<x-inertia::head>')->toString();
+    expect($beforeHead)
+        ->not->toContain('rel="icon"')
+        ->not->toContain('rel="apple-touch-icon"');
+
+    $sharedKeys = [
+        'favicon',
+        'apple-touch-icon',
+        'description',
+        'keywords',
+        'robots',
+        'og:site_name',
+        'og:type',
+        'og:title',
+        'og:description',
+        'og:image',
+        'twitter:card',
+        'twitter:title',
+        'twitter:description',
+        'twitter:image',
+        'google-site-verification',
+    ];
+
+    foreach ($sharedKeys as $key) {
+        expect($blade)->toContain('data-inertia="'.$key.'"');
+        expect($site)->toContain('head-key="'.$key.'"');
+    }
 
     expect($blade)
         ->toContain('<x-inertia::head>')
         ->toContain('<title>')
-        ->not->toContain('name="description"')
-        ->not->toContain('name="keywords"')
-        ->not->toContain('name="robots"')
-        ->not->toContain('property="og:image"')
-        ->not->toContain('google-site-verification')
-        ->not->toContain('application/ld+json');
+        ->not->toContain('application/ld+json')
+        ->not->toContain('data-inertia="canonical"')
+        ->not->toContain('data-inertia="json-ld"');
 });
 
 test('site and page seo components share stable head-keys for inertia dedupe', function () {
@@ -158,6 +204,8 @@ test('site and page seo components share stable head-keys for inertia dedupe', f
 
     expect($site)
         ->toContain('export function SiteSeo')
+        ->toContain('head-key="favicon"')
+        ->toContain('head-key="apple-touch-icon"')
         ->toContain('head-key="description"')
         ->toContain('head-key="robots"')
         ->toContain('head-key="og:image"')

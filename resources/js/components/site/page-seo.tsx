@@ -75,11 +75,7 @@ export function PageSeo({ seo, title }: Props) {
                 />
             ) : null}
             {canonical !== '' ? (
-                <meta
-                    head-key="og:url"
-                    property="og:url"
-                    content={canonical}
-                />
+                <meta head-key="og:url" property="og:url" content={canonical} />
             ) : null}
             {ogImageUrl !== '' ? (
                 <meta

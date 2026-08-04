@@ -393,10 +393,14 @@ test('resource card thumbnails fade in with lazy loading', function () {
         ->toContain("loading={priority ? 'eager' : 'lazy'}")
         ->toContain("decoding={priority ? 'sync' : 'async'}")
         ->toContain('animate-pulse bg-muted')
+        ->toContain('const loaded = loadedSrc === src')
         ->toContain("loaded ? 'opacity-100' : 'opacity-0'")
-        ->toContain('onLoad={() => setLoaded(true)}')
-        ->toContain('imgRef')
-        ->toContain('imgRef.current?.complete');
+        ->toContain('useCallback')
+        ->toContain('[src]')
+        ->toContain('node?.complete')
+        ->toContain('onLoad={() => setLoadedSrc(src)}')
+        ->toContain('onError={() => setLoadedSrc(src)}')
+        ->not->toContain('useEffect');
 
     expect($card)
         ->toContain('LazyThumbnail')

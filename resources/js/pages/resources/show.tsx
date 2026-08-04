@@ -1,6 +1,4 @@
 import { Link, router, useHttp, usePage } from '@inertiajs/react';
-import { PageSeo } from '@/components/site/page-seo';
-import type { PageSeoData } from '@/components/site/page-seo';
 import {
     Building2,
     CalendarDays,
@@ -15,6 +13,8 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import { FavoriteButton } from '@/components/site/favorite-button';
 import { ImageLightbox } from '@/components/site/image-lightbox';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
+import type { PageSeoData } from '@/components/site/page-seo';
+import { PageSeo } from '@/components/site/page-seo';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import type { ResourceComment } from '@/components/site/resource-comments';
 import {
@@ -505,7 +505,9 @@ export default function ResourceShow({
                                     </span>
                                 </span>
                                 {resource.source ? (
-                                    <ResourceSourceMeta source={resource.source} />
+                                    <ResourceSourceMeta
+                                        source={resource.source}
+                                    />
                                 ) : null}
                                 <span className="inline-flex items-center gap-1.5">
                                     <CalendarDays

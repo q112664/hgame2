@@ -32,10 +32,19 @@ class ResourceController extends Controller
 
     public function index(ListResourcesRequest $request, ListPublishedGames $listPublishedGames): Response
     {
+        $page = $request->catalogPage();
+        $payload = $listPublishedGames($request->filters());
+
+        /** @var LengthAwarePaginator<int, array<string, mixed>> $resources */
+        $resources = $payload['resources'];
+
+        // Empty catalogs still expose last_page = 1; only reject pages past the end.
+        abort_if($page > $resources->lastPage(), 404);
+
         return Inertia::render('resources/index', [
-            ...$listPublishedGames($request->filters()),
+            ...$payload,
             'pageSeo' => PageSeo::resourcesIndex(
-                page: $request->catalogPage(),
+                page: $page,
                 hasFilters: $request->hasSeoFilters(),
             ),
         ]);

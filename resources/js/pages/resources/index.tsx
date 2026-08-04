@@ -40,7 +40,16 @@ export default function ResourcesIndex({
     pageSeo,
 }: Props) {
     const [isPending, setIsPending] = useState(false);
-    const [searchQuery, setSearchQuery] = useState(filters.q);
+    // Draft search text relative to the last server `filters.q` snapshot.
+    // When the server filter changes (clear / sort / external visit), prefer
+    // the server value without an Effect setState.
+    const [searchDraft, setSearchDraft] = useState({
+        source: filters.q,
+        value: filters.q,
+    });
+    const searchQuery =
+        searchDraft.source === filters.q ? searchDraft.value : filters.q;
+
     const selectedTagNames = useMemo(() => {
         const bySlug = new Map(
             filterOptions.tags.map((tag) => [tag.slug, tag.name]),
@@ -66,9 +75,9 @@ export default function ResourcesIndex({
         });
     };
 
-    useEffect(() => {
-        setSearchQuery(filters.q);
-    }, [filters.q]);
+    const setSearchQuery = (value: string) => {
+        setSearchDraft({ source: filters.q, value });
+    };
 
     useEffect(() => {
         const trimmed = searchQuery.trim();

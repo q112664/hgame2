@@ -193,8 +193,8 @@ class Setting extends Model
     }
 
     /**
-     * Site-wide SEO defaults shared with the frontend (SiteSeo via Inertia Head).
-     * Not rendered from Blade — avoids duplicate tags after hydration.
+     * Site-wide SEO defaults for SiteSeo (Inertia Head) and Blade CSR fallbacks.
+     * Blade tags use matching data-inertia keys so hydrate does not duplicate them.
      *
      * @return array{
      *     description: string,

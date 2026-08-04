@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
+import { BookOpen } from 'lucide-react';
 import { PageSeo } from '@/components/site/page-seo';
 import type { PageSeoData } from '@/components/site/page-seo';
-import { BookOpen } from 'lucide-react';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import {

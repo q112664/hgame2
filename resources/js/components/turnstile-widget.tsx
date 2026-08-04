@@ -103,7 +103,9 @@ export function TurnstileWidget({
     const onTokenChangeRef = useRef(onTokenChange);
     const [verified, setVerified] = useState(false);
 
-    onTokenChangeRef.current = onTokenChange;
+    useEffect(() => {
+        onTokenChangeRef.current = onTokenChange;
+    }, [onTokenChange]);
 
     useEffect(() => {
         let cancelled = false;

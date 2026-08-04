@@ -1,5 +1,5 @@
 import { router, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
 import { favorite as toggleFavorite } from '@/routes/resources';
 
@@ -38,24 +38,14 @@ export function useFavorite({
     const page = usePage();
     const { openAuthDialog } = useAuthDialog();
 
-    // Track optimistic state alongside the server-provided source of truth.
-    // When the server snapshot flips, the optimistic value is discarded.
+    // Optimistic toggle relative to the server snapshot that was current when
+    // the user clicked. When `initialIsFavorited` changes (partial reload /
+    // navigation), prefer the server value until the next local toggle.
     const [optimistic, setOptimistic] = useState({
         source: initialIsFavorited,
         value: initialIsFavorited,
     });
     const [isToggling, setIsToggling] = useState(false);
-
-    // Re-sync the optimistic snapshot when the server prop changes externally
-    // (e.g. navigating away and back, or receiving a fresh partial reload).
-    // Without this, `useState` keeps the stale initial value on remounts that
-    // preserve component identity.
-    useEffect(() => {
-        setOptimistic({
-            source: initialIsFavorited,
-            value: initialIsFavorited,
-        });
-    }, [initialIsFavorited]);
 
     const isFavorited =
         optimistic.source === initialIsFavorited

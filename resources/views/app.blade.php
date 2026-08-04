@@ -44,22 +44,14 @@
 
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx'])
+        {{--
+            SEO lives only in Inertia <Head> (SiteSeo + PageSeo) with stable head-key
+            values. Do not put description/robots/og/json-ld here — they lack
+            data-inertia and duplicate after hydration when SSR is off or mixed.
+            Slot content is SSR fallback only (used when SSR is inactive).
+        --}}
         <x-inertia::head>
-            @php($seo = \App\Models\Setting::seo())
             <title>{{ \App\Models\Setting::siteTitle() }}</title>
-            @if (filled($seo['description']))
-                <meta name="description" content="{{ $seo['description'] }}">
-            @endif
-            @if (filled($seo['keywords']))
-                <meta name="keywords" content="{{ $seo['keywords'] }}">
-            @endif
-            <meta name="robots" content="{{ $seo['robots'] }}">
-            @if (filled($seo['ogImageUrl']))
-                <meta property="og:image" content="{{ $seo['ogImageUrl'] }}">
-            @endif
-            @if (filled($seo['googleSiteVerification']))
-                <meta name="google-site-verification" content="{{ $seo['googleSiteVerification'] }}">
-            @endif
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">

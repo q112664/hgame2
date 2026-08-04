@@ -193,7 +193,8 @@ class Setting extends Model
     }
 
     /**
-     * Site-wide SEO defaults shared with the frontend and Blade fallbacks.
+     * Site-wide SEO defaults shared with the frontend (SiteSeo via Inertia Head).
+     * Not rendered from Blade — avoids duplicate tags after hydration.
      *
      * @return array{
      *     description: string,

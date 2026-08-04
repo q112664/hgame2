@@ -34,8 +34,10 @@ class ResourceController extends Controller
     {
         return Inertia::render('resources/index', [
             ...$listPublishedGames($request->filters()),
-            // Always canonical to the clean catalog URL (ignore filter query noise).
-            'pageSeo' => PageSeo::resourcesIndex(),
+            'pageSeo' => PageSeo::resourcesIndex(
+                page: $request->catalogPage(),
+                hasFilters: $request->hasSeoFilters(),
+            ),
         ]);
     }
 

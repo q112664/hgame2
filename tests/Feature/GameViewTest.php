@@ -42,6 +42,27 @@ test('visiting a resource page records a view on every full page load', function
     expect($game->fresh()->views_count)->toBe(12);
 });
 
+test('recording a view does not bump game updated_at for sitemap lastmod', function () {
+    $frozen = now()->subDay()->startOfSecond();
+
+    $game = Game::factory()->create([
+        'slug' => 'stable-lastmod-game',
+        'views_count' => 0,
+        'created_at' => $frozen,
+        'updated_at' => $frozen,
+    ]);
+
+    // Force the timestamp so factory/create side effects cannot skew the check.
+    $game->forceFill(['updated_at' => $frozen])->saveQuietly();
+
+    $this->get(route('resources.details', $game->slug))->assertOk();
+
+    $fresh = $game->fresh();
+
+    expect($fresh->views_count)->toBe(1)
+        ->and($fresh->updated_at?->equalTo($frozen))->toBeTrue();
+});
+
 test('inertia tab switches within the same resource do not record a view', function () {
     $game = Game::factory()->create([
         'slug' => 'tab-switch-game',

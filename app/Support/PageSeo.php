@@ -61,16 +61,31 @@ final class PageSeo
     }
 
     /**
+     * Catalog SEO: clean page 1 URL is the default.
+     *
+     * - Unfiltered page ≥ 2: self-referencing canonical (?page=N) and title suffix.
+     * - Any filter/sort noise (or filtered deep pages): fold canonical to /resources.
+     * - Never emit ?page=1 in the canonical.
+     *
      * @return PageSeoArray
      */
-    public static function resourcesIndex(): array
+    public static function resourcesIndex(int $page = 1, bool $hasFilters = false): array
     {
+        $page = max(1, $page);
+        $title = 'Resources';
+        $canonical = route('resources.index');
+
+        if (! $hasFilters && $page > 1) {
+            $canonical = route('resources.index', ['page' => $page]);
+            $title = 'Resources · Page '.$page;
+        }
+
         return self::make(
-            title: 'Resources',
+            title: $title,
             description: Setting::seoDescription() !== ''
                 ? Setting::seoDescription()
                 : 'Browse published game resources, filters, and downloads.',
-            canonical: route('resources.index'),
+            canonical: $canonical,
         );
     }
 

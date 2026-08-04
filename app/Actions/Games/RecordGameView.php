@@ -21,7 +21,11 @@ class RecordGameView
             return;
         }
 
-        $game->increment('views_count');
+        // Counters must not bump updated_at — sitemap lastmod and "recently
+        // edited" signals should reflect content changes, not page views.
+        Game::withoutTimestamps(function () use ($game): void {
+            $game->increment('views_count');
+        });
     }
 
     private function shouldSkip(Request $request, Game $game): bool

@@ -344,8 +344,10 @@ test('page seo component renders canonical robots og and json-ld overrides', fun
         ->toContain('head-key="canonical"')
         ->toContain('head-key="robots"')
         ->toContain('head-key="og:image"')
+        ->toContain('head-key="json-ld"')
         ->toContain('application/ld+json')
-        ->toContain('dangerouslySetInnerHTML');
+        ->toContain('dangerouslySetInnerHTML')
+        ->toContain('serializeJsonLd');
 });
 
 test('turnstile forms stay locked until the widget reports a token', function () {
@@ -392,7 +394,9 @@ test('resource card thumbnails fade in with lazy loading', function () {
         ->toContain("decoding={priority ? 'sync' : 'async'}")
         ->toContain('animate-pulse bg-muted')
         ->toContain("loaded ? 'opacity-100' : 'opacity-0'")
-        ->toContain('onLoad={() => setLoaded(true)}');
+        ->toContain('onLoad={() => setLoaded(true)}')
+        ->toContain('imgRef')
+        ->toContain('imgRef.current?.complete');
 
     expect($card)
         ->toContain('LazyThumbnail')

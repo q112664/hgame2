@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -17,6 +17,9 @@ type Props = {
 /**
  * Card thumbnail with muted placeholder pulse + fade-in once the image loads.
  * Keeps native lazy-loading for off-screen cards.
+ *
+ * On SSR hard refresh, the browser may finish loading the image before React
+ * hydrates and binds onLoad — check img.complete so we still fade in.
  */
 export function LazyThumbnail({
     src,
@@ -26,9 +29,14 @@ export function LazyThumbnail({
     fit = 'cover',
 }: Props) {
     const [loaded, setLoaded] = useState(false);
+    const imgRef = useRef<HTMLImageElement>(null);
 
     useEffect(() => {
         setLoaded(false);
+
+        if (imgRef.current?.complete) {
+            setLoaded(true);
+        }
     }, [src]);
 
     return (
@@ -40,6 +48,7 @@ export function LazyThumbnail({
                 />
             ) : null}
             <img
+                ref={imgRef}
                 src={src}
                 alt={alt}
                 className={cn(

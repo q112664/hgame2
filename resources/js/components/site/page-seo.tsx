@@ -17,8 +17,19 @@ type Props = {
 };
 
 /**
+ * Serialize JSON-LD so a closing </script> in content cannot break out of the tag.
+ */
+function serializeJsonLd(
+    value: Record<string, unknown> | Array<Record<string, unknown>>,
+): string {
+    return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
+/**
  * Page-level SEO overrides (description, canonical, OG, JSON-LD).
- * Uses head-key so these win over SiteSeo defaults.
+ *
+ * Uses the same head-key set as SiteSeo so Inertia replaces defaults instead of
+ * stacking tags after SSR hydration. JSON-LD always uses a single head-key.
  */
 export function PageSeo({ seo, title }: Props) {
     if (!seo && (title === undefined || title === '')) {
@@ -110,7 +121,7 @@ export function PageSeo({ seo, title }: Props) {
                     head-key="json-ld"
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{
-                        __html: JSON.stringify(jsonLd),
+                        __html: serializeJsonLd(jsonLd),
                     }}
                 />
             ) : null}

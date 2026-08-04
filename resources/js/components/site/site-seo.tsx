@@ -2,7 +2,9 @@ import { Head, usePage } from '@inertiajs/react';
 
 /**
  * Site-wide default meta tags from admin SEO settings.
- * Page-level <Head> entries with the same head-key override these.
+ *
+ * All tags use stable head-key values so PageSeo (and client navigations) can
+ * replace them without stacking duplicates. Do not also emit these from Blade.
  */
 export function SiteSeo() {
     const { seo, siteTitle } = usePage().props;
@@ -34,6 +36,11 @@ export function SiteSeo() {
                 content={siteTitle}
             />
             <meta head-key="og:type" property="og:type" content="website" />
+            <meta
+                head-key="og:title"
+                property="og:title"
+                content={siteTitle}
+            />
             {description !== '' ? (
                 <meta
                     head-key="og:description"
@@ -52,6 +59,11 @@ export function SiteSeo() {
                 head-key="twitter:card"
                 name="twitter:card"
                 content={ogImageUrl ? 'summary_large_image' : 'summary'}
+            />
+            <meta
+                head-key="twitter:title"
+                name="twitter:title"
+                content={siteTitle}
             />
             {description !== '' ? (
                 <meta

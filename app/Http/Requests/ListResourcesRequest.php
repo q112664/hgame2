@@ -74,4 +74,45 @@ class ListResourcesRequest extends FormRequest
             'sort' => $validated['sort'] ?? ListPublishedGames::SORT_LATEST,
         ];
     }
+
+    /**
+     * Current catalog page (1-based). Invalid/missing values become 1.
+     */
+    public function catalogPage(): int
+    {
+        $page = $this->integer('page', 1);
+
+        return max(1, $page);
+    }
+
+    /**
+     * True when the request carries filter/sort params that should not mint
+     * indexable pagination URLs (fold SEO back to the clean catalog).
+     */
+    public function hasSeoFilters(): bool
+    {
+        $filters = $this->filters();
+
+        if ($filters['q'] !== '') {
+            return true;
+        }
+
+        if ($filters['category'] !== null) {
+            return true;
+        }
+
+        if ($filters['platform'] !== null) {
+            return true;
+        }
+
+        if ($filters['language'] !== null) {
+            return true;
+        }
+
+        if ($filters['tags'] !== []) {
+            return true;
+        }
+
+        return $filters['sort'] !== ListPublishedGames::SORT_LATEST;
+    }
 }

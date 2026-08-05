@@ -186,7 +186,9 @@ class ManageMediaStorage extends Page
                                 ->modalSubmitActionLabel('Delete verified originals')
                                 ->disabled(fn (MediaStorageManager $manager): bool => $manager->cleanupPreview()['files'] === 0)
                                 ->action('startCleanup'),
-                        ])->fullWidth(),
+                        ])
+                            ->fullWidth()
+                            ->extraAttributes(['class' => 'media-storage-workflow-actions']),
                     ]),
                 View::make('filament.pages.manage-media-storage')
                     ->viewData(fn (): array => ['snapshot' => $this->storageSnapshot()])

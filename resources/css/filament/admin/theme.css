@@ -3,6 +3,33 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
+.media-storage-workflow-actions .fi-ac.fi-width-full {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.media-storage-workflow-actions .fi-ac.fi-width-full > * {
+    width: 100%;
+    min-width: 0;
+}
+
+@media (min-width: 640px) {
+    .media-storage-workflow-actions .fi-ac.fi-width-full {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .media-storage-workflow-actions .fi-ac.fi-width-full {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1536px) {
+    .media-storage-workflow-actions .fi-ac.fi-width-full {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
 .media-storage-state-grid {
     display: grid;
     gap: 1px;

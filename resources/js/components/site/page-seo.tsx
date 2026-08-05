@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 
 export type PageSeoData = {
     title?: string | null;
+    titleSuffix?: string | null;
     description?: string | null;
     canonical?: string | null;
     robots?: string | null;

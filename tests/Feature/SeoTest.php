@@ -41,7 +41,9 @@ test('resource catalog canonical ignores filter query strings', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('pageSeo.canonical', route('resources.index'))
-            ->where('pageSeo.title', 'Resources')
+            ->where('pageSeo.title', 'Hentai Games & Eroge Downloads')
+            ->where('pageSeo.titleSuffix', Setting::siteLogoText())
+            ->where('pageSeo.description', 'Browse hentai games and eroge by genre, platform, language and tags. Search by title or developer, then view release details and download information.')
             ->where('pageSeo.robots', 'noindex,follow')
         );
 });
@@ -51,7 +53,7 @@ test('unfiltered resource catalog page 1 uses a clean canonical without page que
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('pageSeo.canonical', route('resources.index'))
-            ->where('pageSeo.title', 'Resources')
+            ->where('pageSeo.title', 'Hentai Games & Eroge Downloads')
         );
 });
 
@@ -63,7 +65,7 @@ test('unfiltered resource catalog deep pages self-canonicalize', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('pageSeo.canonical', route('resources.index', ['page' => 2]))
-            ->where('pageSeo.title', 'Resources · Page 2')
+            ->where('pageSeo.title', 'Hentai Games & Eroge Downloads - Page 2')
         );
 });
 
@@ -76,7 +78,7 @@ test('filtered resource catalog deep pages still fold to the clean catalog', fun
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('pageSeo.canonical', route('resources.index'))
-            ->where('pageSeo.title', 'Resources')
+            ->where('pageSeo.title', 'Hentai Games & Eroge Downloads')
             ->where('pageSeo.robots', 'noindex,follow')
         );
 });

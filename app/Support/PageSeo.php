@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
  *
  * @phpstan-type PageSeoArray array{
  *     title: string|null,
+ *     titleSuffix: string|null,
  *     description: string|null,
  *     canonical: string|null,
  *     robots: string,
@@ -22,12 +23,15 @@ use Illuminate\Support\Str;
  */
 final class PageSeo
 {
+    private const RESOURCE_CATALOG_DESCRIPTION = 'Browse hentai games and eroge by genre, platform, language and tags. Search by title or developer, then view release details and download information.';
+
     /**
      * @param  array<string, mixed>|list<array<string, mixed>>|null  $jsonLd
      * @return PageSeoArray
      */
     public static function make(
         ?string $title = null,
+        ?string $titleSuffix = null,
         ?string $description = null,
         ?string $canonical = null,
         ?string $ogImageUrl = null,
@@ -37,6 +41,7 @@ final class PageSeo
     ): array {
         return [
             'title' => filled($title) ? trim((string) $title) : null,
+            'titleSuffix' => filled($titleSuffix) ? trim((string) $titleSuffix) : null,
             'description' => self::plainDescription($description),
             'canonical' => self::absoluteUrl($canonical),
             'robots' => self::resolveRobots($robots),
@@ -72,19 +77,18 @@ final class PageSeo
     public static function resourcesIndex(int $page = 1, bool $hasFilters = false): array
     {
         $page = max(1, $page);
-        $title = 'Resources';
+        $title = 'Hentai Games & Eroge Downloads';
         $canonical = route('resources.index');
 
         if (! $hasFilters && $page > 1) {
             $canonical = route('resources.index', ['page' => $page]);
-            $title = 'Resources · Page '.$page;
+            $title .= ' - Page '.$page;
         }
 
         return self::make(
             title: $title,
-            description: Setting::seoDescription() !== ''
-                ? Setting::seoDescription()
-                : 'Browse published game resources, filters, and downloads.',
+            titleSuffix: Setting::siteLogoText(),
+            description: self::RESOURCE_CATALOG_DESCRIPTION,
             canonical: $canonical,
             robots: $hasFilters ? 'noindex,follow' : null,
         );

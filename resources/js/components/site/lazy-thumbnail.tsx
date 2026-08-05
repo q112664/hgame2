@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useImageLoadState } from '@/hooks/use-image-load-state';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -30,17 +30,7 @@ export function LazyThumbnail({
     priority = false,
     fit = 'cover',
 }: Props) {
-    const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
-    const loaded = loadedSrc === src;
-
-    const imgRef = useCallback(
-        (node: HTMLImageElement | null) => {
-            if (node?.complete) {
-                setLoadedSrc(src);
-            }
-        },
-        [src],
-    );
+    const { imageRef, loaded, markLoaded } = useImageLoadState(src);
 
     return (
         <>
@@ -51,7 +41,7 @@ export function LazyThumbnail({
                 />
             ) : null}
             <img
-                ref={imgRef}
+                ref={imageRef}
                 src={src}
                 alt={alt}
                 className={cn(
@@ -65,8 +55,8 @@ export function LazyThumbnail({
                 // fetchPriority is valid on HTMLImageElement; React types lag a bit.
                 {...(priority ? { fetchPriority: 'high' as const } : {})}
                 referrerPolicy="no-referrer"
-                onLoad={() => setLoadedSrc(src)}
-                onError={() => setLoadedSrc(src)}
+                onLoad={markLoaded}
+                onError={markLoaded}
             />
         </>
     );

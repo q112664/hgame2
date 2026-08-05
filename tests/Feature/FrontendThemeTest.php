@@ -392,25 +392,60 @@ test('turnstile forms stay locked until the widget reports a token', function ()
 test('resource card thumbnails fade in with lazy loading', function () {
     $filesystem = app(Filesystem::class);
     $thumbnail = $filesystem->get(resource_path('js/components/site/lazy-thumbnail.tsx'));
+    $imageLoadState = $filesystem->get(resource_path('js/hooks/use-image-load-state.ts'));
     $card = $filesystem->get(resource_path('js/components/site/resource-card.tsx'));
+    $resourceShow = $filesystem->get(resource_path('js/pages/resources/show.tsx'));
+    $resourceTabContent = $filesystem->get(resource_path('js/components/site/resource-tab-content.tsx'));
 
     expect($thumbnail)
         ->toContain('export function LazyThumbnail')
         ->toContain("loading={priority ? 'eager' : 'lazy'}")
         ->toContain("decoding={priority ? 'sync' : 'async'}")
         ->toContain('animate-pulse bg-muted')
-        ->toContain('const loaded = loadedSrc === src')
         ->toContain("loaded ? 'opacity-100' : 'opacity-0'")
-        ->toContain('useCallback')
-        ->toContain('[src]')
+        ->toContain('useImageLoadState(src)')
+        ->toContain('ref={imageRef}')
+        ->toContain('onLoad={markLoaded}')
+        ->toContain('onError={markLoaded}')
+        ->not->toContain('useEffect');
+
+    expect($imageLoadState)
+        ->toContain('export function useImageLoadState')
+        ->toContain('const [loadedSrc')
         ->toContain('node?.complete')
-        ->toContain('onLoad={() => setLoadedSrc(src)}')
-        ->toContain('onError={() => setLoadedSrc(src)}')
+        ->toContain('loaded: loadedSrc === src')
         ->not->toContain('useEffect');
 
     expect($card)
         ->toContain('LazyThumbnail')
         ->toContain('priority={priority}');
+
+    foreach ([$resourceShow, $resourceTabContent] as $source) {
+        expect($source)
+            ->toContain('useImageLoadState(src)')
+            ->toContain('ref={imageRef}')
+            ->toContain('onLoad={markLoaded}')
+            ->toContain('onError={markLoaded}');
+    }
+});
+
+test('resource catalog exposes a descriptive heading and introduction', function () {
+    $filesystem = app(Filesystem::class);
+    $source = $filesystem->get(resource_path('js/pages/resources/index.tsx'));
+    $app = $filesystem->get(resource_path('js/app.tsx'));
+
+    expect($source)
+        ->toContain('Hentai Games and Eroge Downloads')
+        ->toContain('pageNumber > 1')
+        ->toContain('Use the search field to find a title')
+        ->toContain('Separate')
+        ->toContain('screenshots and downloads tabs')
+        ->toContain('release versions, file sizes')
+        ->not->toContain('verified file information');
+
+    expect($app)
+        ->toContain('resolvePageTitleSuffix')
+        ->toContain('`${title} | ${pageTitleSuffix}`');
 });
 
 test('site pagination uses a compact page window instead of listing every page', function () {

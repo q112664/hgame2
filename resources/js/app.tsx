@@ -28,6 +28,20 @@ function resolveSiteTitle(page?: Page): string {
         : fallbackSiteTitle;
 }
 
+function resolvePageTitleSuffix(page?: Page): string | null {
+    const pageSeo = page?.props?.pageSeo;
+
+    if (typeof pageSeo !== 'object' || pageSeo === null) {
+        return null;
+    }
+
+    const titleSuffix = Reflect.get(pageSeo, 'titleSuffix');
+
+    return typeof titleSuffix === 'string' && titleSuffix.trim() !== ''
+        ? titleSuffix.trim()
+        : null;
+}
+
 function FlashToastListener() {
     useFlashToast();
 
@@ -51,6 +65,12 @@ initializeTheme();
 
 createInertiaApp({
     title: (title, page) => {
+        const pageTitleSuffix = resolvePageTitleSuffix(page);
+
+        if (title && pageTitleSuffix) {
+            return `${title} | ${pageTitleSuffix}`;
+        }
+
         const siteTitle = resolveSiteTitle(page);
 
         return title ? `${title} - ${siteTitle}` : siteTitle;

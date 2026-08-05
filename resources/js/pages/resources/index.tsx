@@ -39,6 +39,8 @@ export default function ResourcesIndex({
     filterOptions,
     pageSeo,
 }: Props) {
+    const pageNumber = resources.current_page;
+    const catalogHeading = `Hentai Games and Eroge Downloads${pageNumber > 1 ? ` - Page ${pageNumber}` : ''}`;
     const [isPending, setIsPending] = useState(false);
     // Draft search text relative to the last server `filters.q` snapshot.
     // When the server filter changes (clear / sort / external visit), prefer
@@ -99,9 +101,29 @@ export default function ResourcesIndex({
 
     return (
         <SiteLayout>
-            <PageSeo seo={pageSeo} title="Resources" />
+            <PageSeo seo={pageSeo} title="Hentai Games & Eroge Downloads" />
 
             <SitePageContainer className="gap-6 sm:gap-8">
+                <header className="max-w-4xl space-y-3">
+                    <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                        {catalogHeading}
+                    </h1>
+                    <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+                        Browse hentai games and eroge by genre, platform,
+                        language, and tags. Use the search field to find a title
+                        or developer, then narrow the catalog with the available
+                        filters. Each game&apos;s details page shows its
+                        developer, category, supported platforms and languages,
+                        description, tags, and related titles. Separate
+                        screenshots and downloads tabs provide image galleries,
+                        release versions, file sizes, and available download
+                        links. New and recently updated entries appear first,
+                        with sorting by oldest release, title, or views.
+                        Resource cards summarize release dates, categories,
+                        platforms, and languages before you open a game.
+                    </p>
+                </header>
+
                 <div className="flex flex-col gap-4 rounded-md border border-border/80 bg-card p-4 sm:p-5">
                     <div className="relative">
                         <label className="sr-only" htmlFor="resource-search">

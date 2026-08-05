@@ -45,6 +45,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useFavorite } from '@/hooks/use-favorite';
+import { useImageLoadState } from '@/hooks/use-image-load-state';
 import { SiteLayout } from '@/layouts/site-layout';
 import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
@@ -113,21 +114,23 @@ function ResourceHeroCover({
     clickable,
     onOpen,
 }: ResourceHeroCoverProps) {
-    const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
-    const loaded = loadedSrc === src;
+    const { imageRef, loaded, markLoaded } = useImageLoadState(src);
 
     const image = (
         <img
+            ref={imageRef}
             src={src}
             alt={alt}
             className={cn(
                 'size-full object-cover transition-opacity duration-200',
                 loaded ? 'opacity-100' : 'opacity-0',
             )}
+            loading="eager"
             decoding="async"
+            fetchPriority="high"
             referrerPolicy="no-referrer"
-            onLoad={() => setLoadedSrc(src)}
-            onError={() => setLoadedSrc(src)}
+            onLoad={markLoaded}
+            onError={markLoaded}
         />
     );
 

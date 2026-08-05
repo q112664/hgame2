@@ -30,6 +30,7 @@ import type { PaginatedData } from '@/components/site/site-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useImageLoadState } from '@/hooks/use-image-load-state';
 import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
 import { show as downloadLinkShow } from '@/routes/download-links';
@@ -146,8 +147,7 @@ export function ResourceScreenshot({
     alt,
     onOpen,
 }: ResourceScreenshotProps) {
-    const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
-    const loaded = loadedSrc === src;
+    const { imageRef, loaded, markLoaded } = useImageLoadState(src);
 
     return (
         <button
@@ -162,6 +162,7 @@ export function ResourceScreenshot({
                 </div>
             ) : null}
             <img
+                ref={imageRef}
                 src={src}
                 alt={alt}
                 className={cn(
@@ -171,8 +172,8 @@ export function ResourceScreenshot({
                 loading="lazy"
                 decoding="async"
                 referrerPolicy="no-referrer"
-                onLoad={() => setLoadedSrc(src)}
-                onError={() => setLoadedSrc(src)}
+                onLoad={markLoaded}
+                onError={markLoaded}
             />
         </button>
     );

@@ -14,8 +14,8 @@ test('registration stores the user registration ip', function () {
     $this->post(route('register.store'), [
         'name' => 'Test User',
         'email' => 'register-ip@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
+        'password' => 'password1',
+        'password_confirmation' => 'password1',
     ], ['REMOTE_ADDR' => '203.0.113.10'])
         ->assertRedirect();
 

@@ -33,8 +33,8 @@ test('administrators can create a user with admin access and verified email', fu
         ->fillForm([
             'name' => 'New Admin',
             'email' => 'new-admin@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'password1',
+            'password_confirmation' => 'password1',
             'is_admin' => true,
             'email_verified' => true,
         ])
@@ -48,7 +48,7 @@ test('administrators can create a user with admin access and verified email', fu
         ->and($user->name)->toBe('New Admin')
         ->and($user->is_admin)->toBeTrue()
         ->and($user->email_verified_at)->not->toBeNull()
-        ->and(Hash::check('password', $user->password))->toBeTrue();
+        ->and(Hash::check('password1', $user->password))->toBeTrue();
 });
 
 test('administrators can edit a user profile without touching the password', function () {
@@ -94,14 +94,14 @@ test('administrators can reset a user password from a dedicated action', functio
     Livewire::test(ManageUsers::class)
         ->mountAction(TestAction::make('resetPassword')->table($user))
         ->fillForm([
-            'password' => 'new-password',
-            'password_confirmation' => 'new-password',
+            'password' => 'new-password1',
+            'password_confirmation' => 'new-password1',
         ])
         ->callMountedAction()
         ->assertHasNoActionErrors()
         ->assertNotified();
 
-    expect(Hash::check('new-password', $user->fresh()->password))->toBeTrue();
+    expect(Hash::check('new-password1', $user->fresh()->password))->toBeTrue();
 });
 
 test('administrators cannot delete themselves', function () {

@@ -265,10 +265,16 @@ test('site and page seo components share stable head-keys for inertia dedupe', f
         ->toContain('head-key="robots"')
         ->toContain('head-key="canonical"')
         ->toContain('head-key="og:image"')
+        ->toContain('head-key="twitter:card"')
+        ->toContain('head-key="twitter:image"')
         ->toContain('head-key="json-ld"')
         ->toContain('type="application/ld+json"')
         ->toContain("replace(/</g, '\\\\u003c')")
-        ->toContain('serializeJsonLd');
+        ->toContain('serializeJsonLd')
+        ->not->toContain('<>')
+        ->not->toContain('</>')
+        ->not->toContain('<Fragment')
+        ->not->toContain('React.Fragment');
 });
 
 test('resource catalog partial reloads include page seo', function () {

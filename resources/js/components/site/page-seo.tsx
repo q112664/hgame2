@@ -29,7 +29,9 @@ function serializeJsonLd(
  * Page-level SEO overrides (description, canonical, OG, JSON-LD).
  *
  * Uses the same head-key set as SiteSeo so Inertia replaces defaults instead of
- * stacking tags after SSR hydration. JSON-LD always uses a single head-key.
+ * stacking tags after SSR hydration. Keep every Head child as a direct native
+ * element because Inertia's SSR serializer does not flatten React fragments.
+ * JSON-LD always uses a single head-key.
  */
 export function PageSeo({ seo, title }: Props) {
     if (!seo && (title === undefined || title === '')) {
@@ -99,18 +101,18 @@ export function PageSeo({ seo, title }: Props) {
                 />
             ) : null}
             {ogImageUrl !== '' ? (
-                <>
-                    <meta
-                        head-key="twitter:card"
-                        name="twitter:card"
-                        content="summary_large_image"
-                    />
-                    <meta
-                        head-key="twitter:image"
-                        name="twitter:image"
-                        content={ogImageUrl}
-                    />
-                </>
+                <meta
+                    head-key="twitter:card"
+                    name="twitter:card"
+                    content="summary_large_image"
+                />
+            ) : null}
+            {ogImageUrl !== '' ? (
+                <meta
+                    head-key="twitter:image"
+                    name="twitter:image"
+                    content={ogImageUrl}
+                />
             ) : null}
             {jsonLd ? (
                 <script

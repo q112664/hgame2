@@ -41,7 +41,10 @@ test('search matches title subtitle tags category platforms and languages', func
         'published_at' => now()->subDay(),
         'views_count' => 1250,
     ]);
-    $tag = Tag::factory()->create(['name' => 'Romance']);
+    $tag = Tag::factory()->create([
+        'name' => 'Romance',
+        'slug' => 'romance',
+    ]);
     $game->tags()->attach($tag);
 
     $platform = Platform::factory()->create(['name' => 'Windows', 'slug' => 'windows']);
@@ -72,7 +75,9 @@ test('search matches title subtitle tags category platforms and languages', func
             ])
             ->where('resources.data.0.languages', ['Chinese'])
             ->where('resources.data.0.version', '2.1')
-            ->where('resources.data.0.tags', ['Romance'])
+            ->where('resources.data.0.tags', [
+                ['name' => 'Romance', 'slug' => 'romance'],
+            ])
             ->where('resources.data.0.views', 1250)
         );
 })->with([

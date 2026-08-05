@@ -17,7 +17,7 @@ test('media url returns absolute and rooted paths unchanged', function () {
 
 test('media url uses the site url on the public disk', function () {
     Storage::fake(Media::diskName());
-    Setting::applySiteUrlToConfig('http://hgame.test');
+    Setting::set('site_url', 'http://hgame.test');
 
     expect(Media::url('games/covers/demo.jpg'))->toBe('http://hgame.test/storage/games/covers/demo.jpg');
 });

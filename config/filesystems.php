@@ -21,7 +21,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Public images (covers, screenshots, avatars, editor attachments) are
-    | stored on this disk. Use "s3" for object storage, or "public" locally.
+    | stored on this disk. R2 is activated from the admin media storage page.
     |
     */
 
@@ -71,6 +71,19 @@ return [
             'throw' => false,
             'report' => false,
             'visibility' => 'public',
+        ],
+
+        'r2' => [
+            'driver' => 'r2',
+            'key' => null,
+            'secret' => null,
+            'region' => 'auto',
+            'bucket' => null,
+            'url' => null,
+            'endpoint' => null,
+            'use_path_style_endpoint' => false,
+            'throw' => true,
+            'report' => true,
         ],
 
     ],

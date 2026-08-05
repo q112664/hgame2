@@ -4,7 +4,7 @@ namespace App\Filament\Resources\Docs\Schemas;
 
 use App\DocStatus;
 use App\Models\Doc;
-use App\Support\Media;
+use App\Support\MediaUpload;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
@@ -56,13 +56,13 @@ class DocForm
                             ->rows(3)
                             ->maxLength(1000)
                             ->columnSpanFull(),
-                        FileUpload::make('cover_path')
-                            ->label('Thumbnail')
-                            ->image()
-                            ->imageEditor()
-                            ->disk(Media::diskName())
-                            ->directory('docs/covers')
-                            ->visibility('public')
+                        MediaUpload::fileUpload(
+                            FileUpload::make('cover_path')
+                                ->label('Thumbnail')
+                                ->image()
+                                ->imageEditor(),
+                            'docs/covers',
+                        )
                             ->columnSpanFull(),
                         Select::make('status')
                             ->options(DocStatus::class)
@@ -79,11 +79,11 @@ class DocForm
                             ->default(0)
                             ->minValue(0)
                             ->columnSpan(4),
-                        RichEditor::make('body')
-                            ->required()
-                            ->fileAttachmentsDisk(Media::diskName())
-                            ->fileAttachmentsDirectory('docs/content')
-                            ->fileAttachmentsVisibility('public')
+                        MediaUpload::richEditor(
+                            RichEditor::make('body')
+                                ->required(),
+                            'docs/content',
+                        )
                             ->columnSpanFull(),
                     ])
                     ->columns(12)

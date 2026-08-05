@@ -5,7 +5,7 @@ namespace App\Filament\Resources\Games\Schemas;
 use App\Filament\Forms\Components\ScreenshotsFileUpload;
 use App\GameStatus;
 use App\Support\GameSource;
-use App\Support\Media;
+use App\Support\MediaUpload;
 use App\Support\TagImporter;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -139,21 +139,21 @@ class GameForm
                             ->placeholder('https://www.dlsite.com/… or store.steampowered.com/app/…')
                             ->helperText('Optional link to the original product page.')
                             ->columnSpan(4),
-                        FileUpload::make('cover_path')
-                            ->label('Thumbnail')
-                            ->image()
-                            ->imageEditor()
-                            ->disk(Media::diskName())
-                            ->directory('games/covers')
-                            ->visibility('public')
+                        MediaUpload::fileUpload(
+                            FileUpload::make('cover_path')
+                                ->label('Thumbnail')
+                                ->image()
+                                ->imageEditor(),
+                            'games/covers',
+                        )
                             ->required(fn (string $operation): bool => $operation === 'create')
                             ->columnSpanFull(),
                         Hidden::make('cover_url')->default(''),
-                        RichEditor::make('description')
-                            ->label('Details')
-                            ->fileAttachmentsDisk(Media::diskName())
-                            ->fileAttachmentsDirectory('games/content')
-                            ->fileAttachmentsVisibility('public')
+                        MediaUpload::richEditor(
+                            RichEditor::make('description')
+                                ->label('Details'),
+                            'games/content',
+                        )
                             ->columnSpanFull(),
                     ])
                     ->columns(12)
@@ -193,10 +193,10 @@ class GameForm
                                     ->required()
                                     ->maxLength(255)
                                     ->columnSpanFull(),
-                                RichEditor::make('description')
-                                    ->fileAttachmentsDisk(Media::diskName())
-                                    ->fileAttachmentsDirectory('games/content')
-                                    ->fileAttachmentsVisibility('public')
+                                MediaUpload::richEditor(
+                                    RichEditor::make('description'),
+                                    'games/content',
+                                )
                                     ->columnSpanFull(),
                                 Toggle::make('is_active')->default(true)->required(),
                                 Hidden::make('published_at')->default(now()),

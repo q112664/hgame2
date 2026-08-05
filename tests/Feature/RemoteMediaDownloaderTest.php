@@ -19,9 +19,11 @@ test('remote media downloader stores successful downloads', function () {
     ]);
 
     $path = app(RemoteMediaDownloader::class)->download('https://example.com/cover.png', 'games/covers');
+    $stored = Storage::disk(Media::diskName())->get($path);
 
     expect($path)->toStartWith('games/covers/')
-        ->and(Storage::disk(Media::diskName())->get($path))->toBe($png);
+        ->and($path)->toEndWith('.webp')
+        ->and((new finfo(FILEINFO_MIME_TYPE))->buffer($stored))->toBe('image/webp');
 });
 
 test('remote media downloader rejects oversized responses before storing them', function () {

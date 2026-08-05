@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\Setting;
 use App\Support\Media;
+use App\Support\MediaUpload;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -115,12 +116,12 @@ class ManageSiteSettings extends Page
                                 Section::make('Favicon')
                                     ->description('Browser tab icon for the public site.')
                                     ->schema([
-                                        FileUpload::make('site_favicon_path')
-                                            ->label('Favicon')
-                                            ->image()
-                                            ->disk(Media::diskName())
-                                            ->directory('site/favicon')
-                                            ->visibility('public')
+                                        MediaUpload::fileUpload(
+                                            FileUpload::make('site_favicon_path')
+                                                ->label('Favicon')
+                                                ->image(),
+                                            'site/favicon',
+                                        )
                                             ->maxSize(1024)
                                             ->acceptedFileTypes([
                                                 'image/x-icon',
@@ -151,12 +152,12 @@ class ManageSiteSettings extends Page
                                             ->placeholder(Setting::defaultSiteLogoText())
                                             ->required(fn (Get $get): bool => in_array($get('site_logo_mode'), ['text', 'both'], true))
                                             ->visible(fn (Get $get): bool => in_array($get('site_logo_mode'), ['text', 'both'], true)),
-                                        FileUpload::make('site_logo_path')
-                                            ->label('Logo image')
-                                            ->image()
-                                            ->disk(Media::diskName())
-                                            ->directory('site/logo')
-                                            ->visibility('public')
+                                        MediaUpload::fileUpload(
+                                            FileUpload::make('site_logo_path')
+                                                ->label('Logo image')
+                                                ->image(),
+                                            'site/logo',
+                                        )
                                             ->maxSize(2048)
                                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
                                             ->required(fn (Get $get): bool => in_array($get('site_logo_mode'), ['image', 'both'], true))
@@ -170,13 +171,13 @@ class ManageSiteSettings extends Page
                                 Section::make('Hero background')
                                     ->description('Wide artwork behind the homepage hero card. Clear to restore the built-in default.')
                                     ->schema([
-                                        FileUpload::make('hero_background_path')
-                                            ->label('Background image')
-                                            ->image()
-                                            ->imageEditor()
-                                            ->disk(Media::diskName())
-                                            ->directory('site/hero')
-                                            ->visibility('public')
+                                        MediaUpload::fileUpload(
+                                            FileUpload::make('hero_background_path')
+                                                ->label('Background image')
+                                                ->image()
+                                                ->imageEditor(),
+                                            'site/hero',
+                                        )
                                             ->maxSize(5120)
                                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                             ->helperText('Recommended about 16:9. Max 5MB.'),
@@ -249,13 +250,13 @@ class ManageSiteSettings extends Page
                                             ])
                                             ->required()
                                             ->native(false),
-                                        FileUpload::make('seo_og_image_path')
-                                            ->label('Social share image')
-                                            ->image()
-                                            ->imageEditor()
-                                            ->disk(Media::diskName())
-                                            ->directory('site/seo')
-                                            ->visibility('public')
+                                        MediaUpload::fileUpload(
+                                            FileUpload::make('seo_og_image_path')
+                                                ->label('Social share image')
+                                                ->image()
+                                                ->imageEditor(),
+                                            'site/seo',
+                                        )
                                             ->maxSize(3072)
                                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                             ->helperText('Open Graph / Twitter. Recommended 1200×630.'),
@@ -274,11 +275,11 @@ class ManageSiteSettings extends Page
                                         Toggle::make('resource_notice_enabled')
                                             ->label('Show notice')
                                             ->default(false),
-                                        RichEditor::make('resource_notice_content')
-                                            ->label('Notice content')
-                                            ->fileAttachmentsDisk(Media::diskName())
-                                            ->fileAttachmentsDirectory('site/notices')
-                                            ->fileAttachmentsVisibility('public')
+                                        MediaUpload::richEditor(
+                                            RichEditor::make('resource_notice_content')
+                                                ->label('Notice content'),
+                                            'site/notices',
+                                        )
                                             ->columnSpanFull()
                                             ->helperText('Rich text with optional images.'),
                                     ]),

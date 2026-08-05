@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\Games\RelationManagers;
 
 use App\Filament\Resources\Games\Schemas\GameForm;
-use App\Support\Media;
+use App\Support\MediaUpload;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -51,10 +51,10 @@ class ReleasesRelationManager extends RelationManager
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
-                RichEditor::make('description')
-                    ->fileAttachmentsDisk(Media::diskName())
-                    ->fileAttachmentsDirectory('games/content')
-                    ->fileAttachmentsVisibility('public')
+                MediaUpload::richEditor(
+                    RichEditor::make('description'),
+                    'games/content',
+                )
                     ->columnSpanFull(),
                 Toggle::make('is_active')
                     ->default(true)

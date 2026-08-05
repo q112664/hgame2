@@ -14,7 +14,30 @@ final class Media
     /** @return list<string> */
     public static function diskNames(): array
     {
-        return ['public', 's3'];
+        $disks = ['public'];
+
+        if (
+            app()->environment('testing')
+            || self::diskName() === 's3'
+            || (
+                filled(config('filesystems.disks.s3.key'))
+                && filled(config('filesystems.disks.s3.bucket'))
+            )
+        ) {
+            $disks[] = 's3';
+        }
+
+        if (
+            self::diskName() === 'r2'
+            || (
+                filled(config('filesystems.disks.r2.key'))
+                && filled(config('filesystems.disks.r2.bucket'))
+            )
+        ) {
+            $disks[] = 'r2';
+        }
+
+        return $disks;
     }
 
     public static function diskName(): string

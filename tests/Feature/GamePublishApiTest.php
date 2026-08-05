@@ -224,11 +224,11 @@ test('publishing downloads remote images embedded in description html', function
     $game = Game::query()->where('slug', 'senren-banka')->firstOrFail();
 
     expect($game->description)
-        ->toMatch('#src="/storage/games/content/[^"]+\.png"#')
+        ->toMatch('#src="/storage/games/content/[^"]+\.webp"#')
         ->not->toContain('https://example.com/detail-1.png')
         ->and(substr_count((string) $game->description, '/storage/games/content/'))->toBe(2)
         ->and($game->releases->first()->description)
-        ->toMatch('#src="/storage/games/content/[^"]+\.png"#')
+        ->toMatch('#src="/storage/games/content/[^"]+\.webp"#')
         ->not->toContain('https://example.com/release-note.png');
 
     preg_match_all('#/storage/(games/content/[^"]+)#', (string) $game->description, $matches);

@@ -7,6 +7,7 @@ use App\Http\Requests\Settings\ProfileAvatarUpdateRequest;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\Support\Media;
+use App\Support\MediaUpload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -36,12 +37,18 @@ class ProfileController extends Controller
     /**
      * Update the user's avatar.
      */
-    public function updateAvatar(ProfileAvatarUpdateRequest $request): RedirectResponse
-    {
+    public function updateAvatar(
+        ProfileAvatarUpdateRequest $request,
+        MediaUpload $mediaUpload,
+    ): RedirectResponse {
         $user = $request->user();
         $previousPath = $user->avatarPath();
 
-        $path = $request->file('avatar')->store('avatars', Media::diskName());
+        $path = $mediaUpload->storeUploadedFile(
+            $request->file('avatar'),
+            'avatars',
+            Media::diskName(),
+        );
 
         $user->avatar = $path;
         $user->save();

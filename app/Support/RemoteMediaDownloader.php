@@ -22,6 +22,8 @@ class RemoteMediaDownloader
         'image/gif',
     ];
 
+    public function __construct(private readonly MediaUpload $mediaUpload) {}
+
     public function download(string $url, string $directory): string
     {
         $response = $this->fetchPinned($url);
@@ -61,23 +63,27 @@ class RemoteMediaDownloader
                 ]);
             }
 
-            $extensions = [
-                'image/jpeg' => 'jpg',
-                'image/png' => 'png',
-                'image/webp' => 'webp',
-                'image/gif' => 'gif',
-            ];
-
-            $path = trim($directory, '/').'/'.Str::uuid()->toString().'.'.$extensions[$detected];
             rewind($temporary);
+            $binary = stream_get_contents($temporary);
 
-            if (Media::disk()->put($path, $temporary, 'public') === false) {
+            if (! is_string($binary) || $binary === '') {
                 throw ValidationException::withMessages([
-                    'media' => "Failed to store media downloaded from [{$url}].",
+                    'media' => "Unable to read buffered media downloaded from [{$url}].",
                 ]);
             }
 
-            return $path;
+            try {
+                return $this->mediaUpload->storeBinary(
+                    $binary,
+                    $detected,
+                    $directory,
+                    Media::diskName(),
+                );
+            } catch (\RuntimeException $exception) {
+                throw ValidationException::withMessages([
+                    'media' => "Failed to store media downloaded from [{$url}]: {$exception->getMessage()}",
+                ]);
+            }
         } finally {
             fclose($temporary);
         }

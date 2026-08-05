@@ -30,7 +30,7 @@ export function ResourcePagination({
         <SitePagination
             pagination={resources}
             pageUrl={pageUrl}
-            only={['resources', 'filters']}
+            only={['resources', 'filters', 'pageSeo']}
             onSuccess={scrollToResourceResults}
         />
     );

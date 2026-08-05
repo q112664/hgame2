@@ -31,7 +31,7 @@ final class PageSeo
         ?string $description = null,
         ?string $canonical = null,
         ?string $ogImageUrl = null,
-        string $robots = 'index,follow',
+        ?string $robots = null,
         string $ogType = 'website',
         ?array $jsonLd = null,
     ): array {
@@ -39,7 +39,7 @@ final class PageSeo
             'title' => filled($title) ? trim((string) $title) : null,
             'description' => self::plainDescription($description),
             'canonical' => self::absoluteUrl($canonical),
-            'robots' => $robots !== '' ? $robots : 'index,follow',
+            'robots' => self::resolveRobots($robots),
             'ogType' => $ogType !== '' ? $ogType : 'website',
             'ogImageUrl' => self::absoluteUrl($ogImageUrl) ?? self::absoluteUrl(Setting::seoOgImageUrl()),
             'jsonLd' => $jsonLd,
@@ -86,6 +86,7 @@ final class PageSeo
                 ? Setting::seoDescription()
                 : 'Browse published game resources, filters, and downloads.',
             canonical: $canonical,
+            robots: $hasFilters ? 'noindex,follow' : null,
         );
     }
 
@@ -243,6 +244,25 @@ final class PageSeo
         }
 
         return Str::limit($text, $limit, '…');
+    }
+
+    private static function resolveRobots(?string $pageRobots): string
+    {
+        $siteRobots = Setting::seoRobots();
+
+        if ($pageRobots === null || $pageRobots === '') {
+            return $siteRobots;
+        }
+
+        if ($siteRobots === 'noindex,nofollow' || $pageRobots === 'noindex,nofollow') {
+            return 'noindex,nofollow';
+        }
+
+        if ($siteRobots === 'noindex,follow' || $pageRobots === 'noindex,follow') {
+            return 'noindex,follow';
+        }
+
+        return 'index,follow';
     }
 
     private static function gameDescription(Game $game): ?string

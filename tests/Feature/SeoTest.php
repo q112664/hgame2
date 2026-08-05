@@ -4,6 +4,7 @@ use App\Actions\Games\ListPublishedGames;
 use App\Models\Category;
 use App\Models\Doc;
 use App\Models\Game;
+use App\Models\Setting;
 use App\Models\User;
 use App\Support\PageSeo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,6 +42,7 @@ test('resource catalog canonical ignores filter query strings', function () {
         ->assertInertia(fn ($page) => $page
             ->where('pageSeo.canonical', route('resources.index'))
             ->where('pageSeo.title', 'Resources')
+            ->where('pageSeo.robots', 'noindex,follow')
         );
 });
 
@@ -75,7 +77,51 @@ test('filtered resource catalog deep pages still fold to the clean catalog', fun
         ->assertInertia(fn ($page) => $page
             ->where('pageSeo.canonical', route('resources.index'))
             ->where('pageSeo.title', 'Resources')
+            ->where('pageSeo.robots', 'noindex,follow')
         );
+});
+
+test('public pages inherit the site-wide robots setting', function () {
+    Setting::set('seo_robots', 'noindex,follow');
+
+    $game = Game::factory()->create();
+    $doc = Doc::factory()->create();
+
+    $publicPages = [
+        route('home'),
+        route('resources.index'),
+        route('resources.details', $game),
+        route('docs.index'),
+        route('docs.show', $doc),
+    ];
+
+    foreach ($publicPages as $url) {
+        $this->get($url)
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('pageSeo.robots', 'noindex,follow')
+            );
+    }
+
+    Setting::set('seo_robots', 'index,follow');
+});
+
+test('page robots rules cannot relax the site-wide robots setting', function () {
+    Setting::set('seo_robots', 'noindex,nofollow');
+
+    $this->get(route('resources.index', ['q' => 'spring']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('pageSeo.robots', 'noindex,nofollow')
+        );
+
+    $this->get(route('search', ['q' => 'spring']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('pageSeo.robots', 'noindex,nofollow')
+        );
+
+    Setting::set('seo_robots', 'index,follow');
 });
 
 test('resource catalog pages beyond the last page return 404', function () {
@@ -223,6 +269,19 @@ test('site and page seo components share stable head-keys for inertia dedupe', f
         ->toContain('type="application/ld+json"')
         ->toContain("replace(/</g, '\\\\u003c')")
         ->toContain('serializeJsonLd');
+});
+
+test('resource catalog partial reloads include page seo', function () {
+    $pagination = file_get_contents(resource_path('js/components/site/resource-pagination.tsx'));
+    $filters = file_get_contents(resource_path('js/components/site/resource-filter-controls.tsx'));
+
+    expect($pagination)
+        ->not->toBeFalse()
+        ->toContain("only={['resources', 'filters', 'pageSeo']}");
+
+    expect($filters)
+        ->not->toBeFalse()
+        ->toContain("only: ['resources', 'filters', 'pageSeo']");
 });
 
 test('auth modal layout mounts site-wide SiteSeo once for every page shell', function () {

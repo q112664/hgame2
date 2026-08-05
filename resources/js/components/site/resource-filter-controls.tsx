@@ -269,7 +269,7 @@ export function visitFilters(
             preserveState: true,
             preserveScroll: true,
             replace: true,
-            only: ['resources', 'filters'],
+            only: ['resources', 'filters', 'pageSeo'],
             onFinish: options.onFinish,
         },
     );

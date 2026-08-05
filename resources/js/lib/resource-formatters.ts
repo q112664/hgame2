@@ -38,3 +38,24 @@ export function formatDate(date: string): string {
         day: 'numeric',
     }).format(new Date(`${date}T00:00:00`));
 }
+
+/**
+ * Commercial release date for Western UI: e.g. Feb/02/2026 (MMM/DD/YYYY).
+ */
+export function formatReleaseDate(date: string): string {
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date.trim())
+        ? new Date(`${date.trim()}T00:00:00`)
+        : new Date(date);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return date;
+    }
+
+    const month = new Intl.DateTimeFormat(SITE_LOCALE, {
+        month: 'short',
+    }).format(parsed);
+    const day = String(parsed.getDate()).padStart(2, '0');
+    const year = String(parsed.getFullYear());
+
+    return `${month}/${day}/${year}`;
+}

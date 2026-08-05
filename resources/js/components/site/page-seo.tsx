@@ -8,6 +8,10 @@ export type PageSeoData = {
     robots?: string | null;
     ogType?: string | null;
     ogImageUrl?: string | null;
+    /** ISO-8601 site publish time (not commercial release date). */
+    publishedTime?: string | null;
+    /** ISO-8601 last meaningful content change. */
+    modifiedTime?: string | null;
     jsonLd?: Record<string, unknown> | Array<Record<string, unknown>> | null;
 };
 
@@ -45,6 +49,8 @@ export function PageSeo({ seo, title }: Props) {
     const robots = seo?.robots?.trim() || '';
     const ogType = seo?.ogType?.trim() || 'website';
     const ogImageUrl = seo?.ogImageUrl?.trim() || '';
+    const publishedTime = seo?.publishedTime?.trim() || '';
+    const modifiedTime = seo?.modifiedTime?.trim() || '';
     const jsonLd = seo?.jsonLd ?? null;
 
     return (
@@ -85,6 +91,20 @@ export function PageSeo({ seo, title }: Props) {
                     head-key="og:image"
                     property="og:image"
                     content={ogImageUrl}
+                />
+            ) : null}
+            {publishedTime !== '' ? (
+                <meta
+                    head-key="article:published_time"
+                    property="article:published_time"
+                    content={publishedTime}
+                />
+            ) : null}
+            {modifiedTime !== '' ? (
+                <meta
+                    head-key="article:modified_time"
+                    property="article:modified_time"
+                    content={modifiedTime}
                 />
             ) : null}
             {documentTitle ? (

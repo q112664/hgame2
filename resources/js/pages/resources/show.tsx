@@ -1,7 +1,8 @@
 import { Link, router, useHttp, usePage } from '@inertiajs/react';
 import {
     Building2,
-    CalendarDays,
+    CalendarCheck,
+    CalendarRange,
     Download,
     Eye,
     Pencil,
@@ -47,7 +48,7 @@ import {
 import { useFavorite } from '@/hooks/use-favorite';
 import { useImageLoadState } from '@/hooks/use-image-load-state';
 import { SiteLayout } from '@/layouts/site-layout';
-import { formatDate } from '@/lib/resource-formatters';
+import { formatDate, formatReleaseDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
 import { home } from '@/routes';
 import {
@@ -497,45 +498,74 @@ export default function ResourceShow({
                                 ) : null}
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
-                                <span className="inline-flex min-w-0 items-center gap-1.5">
-                                    <Building2
-                                        className="size-3.5 shrink-0"
-                                        aria-hidden
-                                    />
-                                    <span className="truncate">
-                                        {resource.developer}
+                            <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
+                                {/* Vendor / commercial metadata */}
+                                <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5">
+                                    <span className="inline-flex min-w-0 items-center gap-1.5">
+                                        <Building2
+                                            className="size-3.5 shrink-0"
+                                            aria-hidden
+                                        />
+                                        <span className="truncate">
+                                            {resource.developer}
+                                        </span>
                                     </span>
-                                </span>
-                                {resource.source ? (
-                                    <ResourceSourceMeta
-                                        source={resource.source}
-                                    />
-                                ) : null}
-                                <span className="inline-flex items-center gap-1.5">
-                                    <CalendarDays
-                                        className="size-3.5 shrink-0"
-                                        aria-hidden
-                                    />
-                                    <time
-                                        dateTime={
-                                            resource.releaseDate ?? undefined
-                                        }
-                                    >
-                                        {resource.releaseDate
-                                            ? formatDate(resource.releaseDate)
-                                            : '—'}
-                                    </time>
-                                </span>
-                                <span className="inline-flex items-center gap-1.5">
-                                    <Eye
-                                        className="size-3.5 shrink-0"
-                                        aria-hidden
-                                    />
-                                    {new Intl.NumberFormat('en-US').format(
-                                        resource.views,
-                                    )}
-                                </span>
+                                    {resource.releaseDate ? (
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <CalendarRange
+                                                className="size-3.5 shrink-0"
+                                                aria-hidden
+                                            />
+                                            <span className="text-muted-foreground/80">
+                                                Released
+                                            </span>
+                                            <span>
+                                                {formatReleaseDate(
+                                                    resource.releaseDate,
+                                                )}
+                                            </span>
+                                        </span>
+                                    ) : null}
+                                    {resource.source ? (
+                                        <ResourceSourceMeta
+                                            source={resource.source}
+                                        />
+                                    ) : null}
+                                </div>
+
+                                {/* Site publish time (SEO <time>) + views */}
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <CalendarCheck
+                                            className="size-3.5 shrink-0"
+                                            aria-hidden
+                                        />
+                                        <span className="text-muted-foreground/80">
+                                            Published
+                                        </span>
+                                        <time
+                                            dateTime={
+                                                resource.publishedAt ??
+                                                undefined
+                                            }
+                                        >
+                                            {resource.publishedAt
+                                                ? formatDate(
+                                                      resource.publishedAt,
+                                                  )
+                                                : '—'}
+                                        </time>
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Eye
+                                            className="size-3.5 shrink-0"
+                                            aria-hidden
+                                        />
+                                        {new Intl.NumberFormat('en-US').format(
+                                            resource.views,
+                                        )}
+                                    </span>
+                                </div>
                             </div>
 
                             <div className="mt-auto flex flex-col gap-2 pt-1">

@@ -18,6 +18,8 @@ use Illuminate\Support\Str;
  *     robots: string,
  *     ogType: string,
  *     ogImageUrl: string|null,
+ *     publishedTime: string|null,
+ *     modifiedTime: string|null,
  *     jsonLd: array<string, mixed>|list<array<string, mixed>>|null
  * }
  */
@@ -37,6 +39,8 @@ final class PageSeo
         ?string $ogImageUrl = null,
         ?string $robots = null,
         string $ogType = 'website',
+        ?string $publishedTime = null,
+        ?string $modifiedTime = null,
         ?array $jsonLd = null,
     ): array {
         return [
@@ -47,6 +51,8 @@ final class PageSeo
             'robots' => self::resolveRobots($robots),
             'ogType' => $ogType !== '' ? $ogType : 'website',
             'ogImageUrl' => self::absoluteUrl($ogImageUrl) ?? self::absoluteUrl(Setting::seoOgImageUrl()),
+            'publishedTime' => filled($publishedTime) ? trim((string) $publishedTime) : null,
+            'modifiedTime' => filled($modifiedTime) ? trim((string) $modifiedTime) : null,
             'jsonLd' => $jsonLd,
         ];
     }
@@ -128,12 +134,21 @@ final class PageSeo
             ? self::gameJsonLd($game, $description, $image)
             : null;
 
+        // Page publish / modify times for crawlers (site-side, not commercial release_date).
+        $publishedTime = $game->published_at?->toIso8601String();
+        $modified = $game->downloads_updated_at
+            ?? $game->updated_at
+            ?? $game->published_at;
+        $modifiedTime = $modified?->toIso8601String();
+
         return self::make(
             title: $title,
             description: $description,
             canonical: route($canonicalRoute, $game),
             ogImageUrl: $image,
             ogType: 'website',
+            publishedTime: $publishedTime,
+            modifiedTime: $modifiedTime,
             jsonLd: $jsonLd,
         );
     }
@@ -351,8 +366,17 @@ final class PageSeo
             ];
         }
 
+        // datePublished = when this resource page went live on the site.
         if ($game->published_at !== null) {
             $data['datePublished'] = $game->published_at->toIso8601String();
+        }
+
+        $modified = $game->downloads_updated_at
+            ?? $game->updated_at
+            ?? $game->published_at;
+
+        if ($modified !== null) {
+            $data['dateModified'] = $modified->toIso8601String();
         }
 
         if ($game->category?->name) {

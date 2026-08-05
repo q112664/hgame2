@@ -180,7 +180,9 @@ test('site empty states and download buttons use primary CTAs', function () {
     expect($filesystem->get(resource_path('js/lib/resource-formatters.ts')))
         ->toContain("import { SITE_LOCALE } from '@/lib/datetime';")
         ->toContain('Intl.DateTimeFormat(SITE_LOCALE')
-        ->not->toContain('`${year}-${month}-${day}`');
+        ->toContain("month: 'short'")
+        ->toContain('export function formatReleaseDate')
+        ->toContain('`${month}/${day}/${year}`');
 
     expect($filesystem->get(resource_path('js/lib/datetime.ts')))
         ->toContain("export const SITE_LOCALE = 'en-US';");

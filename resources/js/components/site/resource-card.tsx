@@ -18,6 +18,7 @@ import {
     abbreviateCategory,
     abbreviateVersion,
     formatDate,
+    formatReleaseDate,
     formatViews,
 } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
@@ -37,10 +38,15 @@ export function ResourceCard({
     dateField = 'publishedAt',
     priority = false,
 }: Props) {
-    const displayDate =
-        dateField === 'releaseDate'
-            ? (resource.releaseDate ?? resource.publishedAt)
-            : resource.publishedAt;
+    const isReleaseDate = dateField === 'releaseDate';
+    const displayDate = isReleaseDate
+        ? (resource.releaseDate ?? resource.publishedAt)
+        : resource.publishedAt;
+    const formattedDate = displayDate
+        ? isReleaseDate && resource.releaseDate
+            ? formatReleaseDate(displayDate)
+            : formatDate(displayDate)
+        : null;
 
     return (
         <Card
@@ -117,7 +123,7 @@ export function ResourceCard({
                     )}
                 >
                     <time dateTime={displayDate ?? undefined}>
-                        {displayDate ? formatDate(displayDate) : 'Unscheduled'}
+                        {formattedDate ?? 'Unscheduled'}
                     </time>
                     <span className="inline-flex items-center gap-1">
                         <Eye className="size-3.5 shrink-0 opacity-70" />

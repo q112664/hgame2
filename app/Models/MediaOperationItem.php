@@ -61,6 +61,6 @@ class MediaOperationItem extends Model
     /** @return BelongsTo<MediaOperation, $this> */
     public function operation(): BelongsTo
     {
-        return $this->belongsTo(MediaOperation::class);
+        return $this->belongsTo(MediaOperation::class, 'media_operation_id');
     }
 }

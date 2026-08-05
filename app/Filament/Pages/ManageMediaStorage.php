@@ -135,7 +135,7 @@ class ManageMediaStorage extends Page
             ->components([
                 $this->getFormContentComponent(),
                 Section::make('Storage workflow')
-                    ->description('Each file is queued independently. Local source files are retained for rollback.')
+                    ->description('Each file is queued independently. R2 changes retain verified local rollback copies.')
                     ->schema([
                         Actions::make([
                             Action::make('startMigration')
@@ -176,6 +176,16 @@ class ManageMediaStorage extends Page
                                 ->requiresConfirmation()
                                 ->modalDescription('Create WebP 80 versions of JPEG and PNG media, verify each new file, and update references. Original files are retained.')
                                 ->action('startOptimization'),
+                            Action::make('startCleanup')
+                                ->label('Free original image space')
+                                ->icon(Heroicon::OutlinedTrash)
+                                ->color('danger')
+                                ->requiresConfirmation()
+                                ->modalHeading('Permanently delete optimized originals?')
+                                ->modalDescription(fn (MediaStorageManager $manager): string => $this->cleanupDescription($manager))
+                                ->modalSubmitActionLabel('Delete verified originals')
+                                ->disabled(fn (MediaStorageManager $manager): bool => $manager->cleanupPreview()['files'] === 0)
+                                ->action('startCleanup'),
                         ])->fullWidth(),
                     ]),
                 View::make('filament.pages.manage-media-storage')
@@ -317,6 +327,15 @@ class ManageMediaStorage extends Page
         );
     }
 
+    public function startCleanup(MediaStorageManager $manager): void
+    {
+        $this->runAction(
+            fn (): MediaOperation => $manager->startCleanup(auth()->user()),
+            'Original image cleanup queued',
+            'Each original will be rechecked before permanent deletion. Failed safety checks keep the file.',
+        );
+    }
+
     public function retryFailedOperation(int $operationId, MediaStorageManager $manager): void
     {
         $operation = MediaOperation::query()->find($operationId);
@@ -356,7 +375,12 @@ class ManageMediaStorage extends Page
                 'skipped_items' => $operation->skipped_items,
                 'failed_items' => $operation->failed_items,
                 'source_bytes' => $operation->total_source_bytes,
-                'target_bytes' => $operation->total_target_bytes,
+                'target_bytes' => $operation->type === MediaOperation::TypeCleanup
+                    ? 0
+                    : $operation->total_target_bytes,
+                'storage_impact_bytes' => $operation->type === MediaOperation::TypeCleanup
+                    ? $operation->total_source_bytes
+                    : max(0, $operation->total_source_bytes - $operation->total_target_bytes),
                 'error' => $operation->error,
                 'started_at' => $operation->started_at?->toDateTimeString(),
                 'completed_at' => $operation->completed_at?->toDateTimeString(),
@@ -380,8 +404,42 @@ class ManageMediaStorage extends Page
                 'public_url' => $active->public_url,
                 'activated_at' => $active->activated_at?->toDateTimeString(),
             ],
+            'cleanup' => app(MediaStorageManager::class)->cleanupPreview(),
             'operations' => $operations,
         ];
+    }
+
+    private function cleanupDescription(MediaStorageManager $manager): string
+    {
+        $preview = $manager->cleanupPreview();
+
+        return sprintf(
+            'Delete %d verified original files and reclaim about %s. This cannot be undone. Each optimized WebP checksum and database reference is checked again before deletion.',
+            $preview['files'],
+            $this->formatBytes($preview['bytes']),
+        );
+    }
+
+    private function formatBytes(int $bytes): string
+    {
+        if ($bytes < 1024) {
+            return $bytes.' B';
+        }
+
+        $units = ['KiB', 'MiB', 'GiB', 'TiB'];
+        $value = $bytes;
+        $unit = 'B';
+
+        foreach ($units as $nextUnit) {
+            $value /= 1024;
+            $unit = $nextUnit;
+
+            if ($value < 1024) {
+                break;
+            }
+        }
+
+        return number_format($value, 1).' '.$unit;
     }
 
     private function currentConfiguration(): ?MediaStorageConfiguration

@@ -1,6 +1,7 @@
 @php
     $candidate = $snapshot['candidate'] ?? null;
     $active = $snapshot['active'] ?? null;
+    $cleanup = $snapshot['cleanup'] ?? ['files' => 0, 'bytes' => 0];
     $operations = $snapshot['operations'] ?? [];
     $formatBytes = static function (int $bytes): string {
         if ($bytes < 1024) {
@@ -25,123 +26,175 @@
 @endphp
 
 <div class="space-y-6">
-    <section class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-        <div class="border-b border-gray-200 px-6 py-4 dark:border-white/10">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Current state</h3>
-        </div>
-        <dl class="grid gap-5 px-6 py-5 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-                <dt class="text-sm text-gray-500 dark:text-gray-400">Active disk</dt>
-                <dd class="mt-1 font-mono text-sm font-medium text-gray-950 dark:text-white">
-                    {{ $snapshot['disk'] ?? 'public' }}
-                </dd>
+    <x-filament::section
+        heading="Current state"
+        description="Live storage routing and the next verified maintenance action."
+        icon="heroicon-o-circle-stack"
+    >
+        <div class="media-storage-state-grid -m-6 overflow-hidden rounded-b-xl">
+            <div class="media-storage-state-item">
+                <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Active disk</p>
+                <div class="mt-2 flex items-center gap-2">
+                    <span class="inline-flex size-2 rounded-full bg-success-500"></span>
+                    <span class="font-mono text-sm font-semibold text-gray-950 dark:text-white">
+                        {{ $snapshot['disk'] ?? 'public' }}
+                    </span>
+                </div>
             </div>
-            <div>
-                <dt class="text-sm text-gray-500 dark:text-gray-400">Candidate</dt>
-                <dd class="mt-1 text-sm text-gray-950 dark:text-white">
+
+            <div class="media-storage-state-item">
+                <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">R2 candidate</p>
+                <p class="mt-2 truncate text-sm font-semibold text-gray-950 dark:text-white">
                     {{ $candidate['bucket'] ?? 'Not configured' }}
-                </dd>
+                </p>
             </div>
-            <div>
-                <dt class="text-sm text-gray-500 dark:text-gray-400">Connection test</dt>
-                <dd class="mt-1">
+
+            <div class="media-storage-state-item">
+                <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Connection</p>
+                <div class="mt-2">
                     @if ($candidate['tested'] ?? false)
-                        <span class="inline-flex rounded-md bg-success-50 px-2 py-1 text-xs font-medium text-success-700 ring-1 ring-success-600/20 dark:bg-success-400/10 dark:text-success-400">Passed</span>
+                        <x-filament::badge color="success" icon="heroicon-o-check-circle">Test passed</x-filament::badge>
                     @elseif ($candidate)
-                        <span class="inline-flex rounded-md bg-warning-50 px-2 py-1 text-xs font-medium text-warning-700 ring-1 ring-warning-600/20 dark:bg-warning-400/10 dark:text-warning-400">Required</span>
+                        <x-filament::badge color="warning" icon="heroicon-o-exclamation-triangle">Test required</x-filament::badge>
                     @else
-                        <span class="text-sm text-gray-500 dark:text-gray-400">—</span>
+                        <x-filament::badge color="gray">Not available</x-filament::badge>
                     @endif
-                </dd>
+                </div>
             </div>
-            <div>
-                <dt class="text-sm text-gray-500 dark:text-gray-400">Active R2 bucket</dt>
-                <dd class="mt-1 text-sm text-gray-950 dark:text-white">
+
+            <div class="media-storage-state-item">
+                <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Active R2 bucket</p>
+                <p class="mt-2 truncate text-sm font-semibold text-gray-950 dark:text-white">
                     {{ $active['bucket'] ?? 'None' }}
-                </dd>
+                </p>
             </div>
-        </dl>
+
+            <div class="media-storage-state-item">
+                <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Reclaimable originals</p>
+                <div class="mt-2 flex items-baseline gap-2">
+                    <span class="text-lg font-semibold text-gray-950 dark:text-white">
+                        {{ $formatBytes((int) $cleanup['bytes']) }}
+                    </span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ $cleanup['files'] }} files
+                    </span>
+                </div>
+            </div>
+        </div>
 
         @if (filled($candidate['test_error'] ?? null))
-            <div class="border-t border-gray-200 px-6 py-4 dark:border-white/10">
-                <p class="text-sm text-danger-700 dark:text-danger-400">{{ $candidate['test_error'] }}</p>
+            <div class="mt-4 rounded-lg bg-danger-50 px-4 py-3 text-sm text-danger-700 ring-1 ring-danger-600/20 dark:bg-danger-400/10 dark:text-danger-400">
+                {{ $candidate['test_error'] }}
             </div>
         @endif
-    </section>
+    </x-filament::section>
 
-    <section class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-        <div class="border-b border-gray-200 px-6 py-4 dark:border-white/10">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Recent operations</h3>
-        </div>
-
+    <x-filament::section
+        heading="Recent operations"
+        description="Queued media work, verification results, and storage impact."
+        icon="heroicon-o-clock"
+        compact
+    >
         @if ($operations === [])
-            <div class="px-6 py-8 text-sm text-gray-500 dark:text-gray-400">No media operations yet.</div>
+            <div class="px-6 py-10 text-center">
+                <x-filament::icon icon="heroicon-o-inbox" class="mx-auto size-8 text-gray-400" />
+                <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">No media operations yet.</p>
+            </div>
         @else
-            <div class="divide-y divide-gray-100 dark:divide-white/5">
+            <div class="divide-y divide-gray-200 dark:divide-white/10">
                 @foreach ($operations as $operation)
                     @php
                         $statusColor = match ($operation['status']) {
                             'completed' => 'success',
                             'failed' => 'danger',
-                            'running' => 'primary',
+                            'running' => 'info',
                             default => 'gray',
                         };
+                        $operationLabel = match ($operation['type']) {
+                            'migration' => 'R2 migration',
+                            'validation' => 'R2 validation',
+                            'optimization' => 'Image optimization',
+                            'cleanup' => 'Original cleanup',
+                            default => ucfirst($operation['type']),
+                        };
                     @endphp
-                    <div class="px-6 py-5">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div class="min-w-0">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="font-medium capitalize text-gray-950 dark:text-white">{{ $operation['type'] }}</span>
-                                    <span @class([
-                                        'inline-flex rounded-md px-2 py-1 text-xs font-medium ring-1',
-                                        'bg-success-50 text-success-700 ring-success-600/20 dark:bg-success-400/10 dark:text-success-400' => $statusColor === 'success',
-                                        'bg-danger-50 text-danger-700 ring-danger-600/20 dark:bg-danger-400/10 dark:text-danger-400' => $statusColor === 'danger',
-                                        'bg-primary-50 text-primary-700 ring-primary-600/20 dark:bg-primary-400/10 dark:text-primary-400' => $statusColor === 'primary',
-                                        'bg-gray-50 text-gray-700 ring-gray-600/20 dark:bg-white/5 dark:text-gray-300' => $statusColor === 'gray',
-                                    ])>{{ $operation['status'] }}</span>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">#{{ $operation['id'] }}</span>
-                                </div>
-                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                    {{ $operation['processed_items'] }}/{{ $operation['total_items'] }} processed,
-                                    {{ $operation['succeeded_items'] }} succeeded,
-                                    {{ $operation['skipped_items'] }} skipped,
-                                    {{ $operation['failed_items'] }} failed
-                                </p>
+
+                    <article class="media-operation-row">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h4 class="truncate text-sm font-semibold text-gray-950 dark:text-white">
+                                    {{ $operationLabel }}
+                                </h4>
+                                <x-filament::badge :color="$statusColor" size="sm">
+                                    {{ ucfirst($operation['status']) }}
+                                </x-filament::badge>
+                                <span class="font-mono text-xs text-gray-400">#{{ $operation['id'] }}</span>
                             </div>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                @if ($operation['completed_at'])
+                                    Finished {{ $operation['completed_at'] }}
+                                @elseif ($operation['started_at'])
+                                    Started {{ $operation['started_at'] }}
+                                @endif
+                            </p>
+                        </div>
+
+                        <div class="min-w-0">
+                            <div class="flex items-center justify-between gap-4 text-xs">
+                                <span class="font-medium text-gray-700 dark:text-gray-300">
+                                    {{ $operation['processed_items'] }} of {{ $operation['total_items'] }} processed
+                                </span>
+                                <span class="font-mono text-gray-500 dark:text-gray-400">{{ $operation['progress'] }}%</span>
+                            </div>
+                            <div class="media-operation-progress mt-2" aria-label="Operation progress">
+                                <div class="media-operation-progress-bar" style="width: {{ $operation['progress'] }}%"></div>
+                            </div>
+                            <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                <span class="text-success-600 dark:text-success-400">{{ $operation['succeeded_items'] }} succeeded</span>
+                                <span>{{ $operation['skipped_items'] }} skipped</span>
+                                <span @class(['text-danger-600 dark:text-danger-400' => $operation['failed_items'] > 0])>
+                                    {{ $operation['failed_items'] }} failed
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-4 lg:justify-end">
+                            <dl class="grid grid-cols-2 gap-x-4 text-right text-xs">
+                                <div>
+                                    <dt class="text-gray-400">Source</dt>
+                                    <dd class="mt-1 font-mono font-medium text-gray-700 dark:text-gray-300">
+                                        {{ $formatBytes((int) $operation['source_bytes']) }}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-gray-400">
+                                        {{ $operation['type'] === 'cleanup' ? 'Reclaimed' : 'Saved' }}
+                                    </dt>
+                                    <dd class="mt-1 font-mono font-medium text-gray-700 dark:text-gray-300">
+                                        {{ $formatBytes((int) $operation['storage_impact_bytes']) }}
+                                    </dd>
+                                </div>
+                            </dl>
 
                             @if ($operation['failed_items'] > 0 && in_array($operation['status'], ['completed', 'failed'], true))
-                                <x-filament::button
+                                <x-filament::icon-button
                                     wire:click="retryFailedOperation({{ $operation['id'] }})"
                                     color="gray"
-                                    size="sm"
                                     icon="heroicon-o-arrow-path"
-                                >
-                                    Retry failed
-                                </x-filament::button>
-                            @endif
-                        </div>
-
-                        <div class="mt-4 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
-                            <div class="h-full bg-primary-500 transition-all" style="width: {{ $operation['progress'] }}%"></div>
-                        </div>
-
-                        <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                            <span>{{ $formatBytes((int) $operation['source_bytes']) }} source</span>
-                            <span>{{ $formatBytes((int) $operation['target_bytes']) }} target</span>
-                            @if ($operation['started_at'])
-                                <span>Started {{ $operation['started_at'] }}</span>
-                            @endif
-                            @if ($operation['completed_at'])
-                                <span>Finished {{ $operation['completed_at'] }}</span>
+                                    label="Retry failed items"
+                                    tooltip="Retry failed items"
+                                />
                             @endif
                         </div>
 
                         @if (filled($operation['error'] ?? null))
-                            <p class="mt-3 text-sm text-danger-700 dark:text-danger-400">{{ $operation['error'] }}</p>
+                            <p class="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-700 dark:bg-danger-400/10 dark:text-danger-400 lg:col-span-3">
+                                {{ $operation['error'] }}
+                            </p>
                         @endif
-                    </div>
+                    </article>
                 @endforeach
             </div>
         @endif
-    </section>
+    </x-filament::section>
 </div>

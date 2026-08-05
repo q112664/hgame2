@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\MediaOperation;
 use App\Models\MediaOperationItem;
 use App\Support\MediaImageOptimizer;
+use App\Support\MediaPathCollector;
 use App\Support\MediaReferenceRewriter;
 use App\Support\MediaStorageManager;
 use Illuminate\Bus\Queueable;
@@ -35,6 +36,7 @@ final class ProcessMediaOperationItem implements ShouldQueue
     public function handle(
         MediaStorageManager $manager,
         MediaImageOptimizer $imageOptimizer,
+        MediaPathCollector $pathCollector,
         MediaReferenceRewriter $referenceRewriter,
     ): void {
         $item = MediaOperationItem::query()->find($this->itemId);
@@ -73,6 +75,7 @@ final class ProcessMediaOperationItem implements ShouldQueue
                         $imageOptimizer,
                         $referenceRewriter,
                     ),
+                    MediaOperation::TypeCleanup => $this->cleanup($item, $operation, $pathCollector),
                     default => throw new RuntimeException("Unsupported media operation [{$operation->type}]."),
                 };
             } catch (Throwable $exception) {
@@ -252,6 +255,88 @@ final class ProcessMediaOperationItem implements ShouldQueue
             'target_size' => $optimized['target_size'],
             'source_checksum' => $optimized['source_checksum'],
             'target_checksum' => $optimized['target_checksum'],
+            'completed_at' => now(),
+        ])->save();
+    }
+
+    private function cleanup(
+        MediaOperationItem $item,
+        MediaOperation $operation,
+        MediaPathCollector $pathCollector,
+    ): void {
+        $sourceDisk = (string) $operation->source_disk;
+        $targetPath = (string) $item->target_path;
+
+        if ($targetPath === '' || blank($item->source_checksum) || blank($item->target_checksum)) {
+            throw new RuntimeException("Cleanup verification data is incomplete for [{$item->path}].");
+        }
+
+        if ($pathCollector->isReferenced($item->path)) {
+            throw new RuntimeException("Original media [{$item->path}] is still referenced and cannot be deleted.");
+        }
+
+        $diskNames = $sourceDisk === 'r2' ? ['public', 'r2'] : [$sourceDisk];
+        $sourceSizes = [];
+
+        foreach ($diskNames as $diskName) {
+            $disk = Storage::disk($diskName);
+
+            if (! $disk->exists($item->path)) {
+                continue;
+            }
+
+            if (! $disk->exists($targetPath)) {
+                throw new RuntimeException("Optimized media [{$targetPath}] is missing from [{$diskName}].");
+            }
+
+            $targetChecksum = $this->checksum(
+                $disk->readStream($targetPath),
+                "optimized {$diskName}",
+                $targetPath,
+            );
+
+            if (! hash_equals((string) $item->target_checksum, $targetChecksum)) {
+                throw new RuntimeException("Optimized media [{$targetPath}] failed checksum verification on [{$diskName}].");
+            }
+
+            $sourceChecksum = $this->checksum(
+                $disk->readStream($item->path),
+                "original {$diskName}",
+                $item->path,
+            );
+
+            if (! hash_equals((string) $item->source_checksum, $sourceChecksum)) {
+                throw new RuntimeException("Original media [{$item->path}] changed after optimization on [{$diskName}].");
+            }
+
+            $sourceSizes[$diskName] = $disk->size($item->path);
+        }
+
+        if ($sourceSizes === []) {
+            $item->forceFill([
+                'status' => MediaOperationItem::StatusSkipped,
+                'source_size' => 0,
+                'target_size' => 0,
+                'completed_at' => now(),
+            ])->save();
+
+            return;
+        }
+
+        foreach (array_keys($sourceSizes) as $diskName) {
+            $disk = Storage::disk($diskName);
+
+            if ($disk->delete($item->path) === false || $disk->exists($item->path)) {
+                throw new RuntimeException("Original media [{$item->path}] could not be deleted from [{$diskName}].");
+            }
+        }
+
+        $sourceSize = $sourceSizes[$sourceDisk] ?? reset($sourceSizes);
+
+        $item->forceFill([
+            'status' => MediaOperationItem::StatusCompleted,
+            'source_size' => $sourceSize,
+            'target_size' => 0,
             'completed_at' => now(),
         ])->save();
     }

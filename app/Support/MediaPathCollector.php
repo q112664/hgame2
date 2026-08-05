@@ -97,6 +97,44 @@ final class MediaPathCollector
         ));
     }
 
+    public function isReferenced(string $path): bool
+    {
+        if (
+            Game::query()->where('cover_path', $path)->exists()
+            || GameScreenshot::query()->where('path', $path)->exists()
+            || Doc::query()->where('cover_path', $path)->exists()
+            || User::query()->where('avatar', $path)->exists()
+        ) {
+            return true;
+        }
+
+        foreach (['site_favicon_path', 'site_logo_path', 'hero_background_path', 'seo_og_image_path'] as $key) {
+            if (Setting::get($key) === $path) {
+                return true;
+            }
+        }
+
+        $references = [
+            $path,
+            '/storage/'.$path,
+            rawurlencode($path),
+        ];
+
+        foreach ($references as $reference) {
+            if (
+                Game::query()->whereLike('description', '%'.$reference.'%')->exists()
+                || GameRelease::query()->whereLike('description', '%'.$reference.'%')->exists()
+                || Doc::query()->whereLike('body', '%'.$reference.'%')->exists()
+            ) {
+                return true;
+            }
+        }
+
+        $notice = (string) (Setting::get('resource_notice_content') ?? '');
+
+        return collect($references)->contains(fn (string $reference): bool => str_contains($notice, $reference));
+    }
+
     /** @return list<string> */
     private function fromHtml(string $html): array
     {

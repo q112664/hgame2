@@ -7,6 +7,8 @@ use App\Models\MediaOperation;
 use App\Models\MediaOperationItem;
 use App\Models\MediaStorageConfiguration;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -186,6 +188,65 @@ final class MediaStorageManager
                 'screenshot_max_dimension' => MediaImageOptimizer::ScreenshotMaxDimension,
                 'source_files_retained' => true,
             ],
+        );
+    }
+
+    /** @return array{operation_id: int|null, files: int, bytes: int} */
+    public function cleanupPreview(): array
+    {
+        $optimization = $this->latestCleanupCandidate();
+
+        if ($optimization === null) {
+            return [
+                'operation_id' => null,
+                'files' => 0,
+                'bytes' => 0,
+            ];
+        }
+
+        $items = $this->cleanupCandidateItems($optimization);
+
+        return [
+            'operation_id' => (int) $optimization->getKey(),
+            'files' => $items->count(),
+            'bytes' => (int) $items->sum('source_size'),
+        ];
+    }
+
+    public function startCleanup(?User $user = null): MediaOperation
+    {
+        $optimization = $this->latestCleanupCandidate();
+
+        if ($optimization === null) {
+            throw new RuntimeException('No completed image optimization has original files ready for cleanup.');
+        }
+
+        $items = $this->cleanupCandidateItems($optimization);
+
+        if ($items->isEmpty()) {
+            throw new RuntimeException('No verified, unreferenced original images are available to delete.');
+        }
+
+        return $this->createOperation(
+            type: MediaOperation::TypeCleanup,
+            configuration: $optimization->configuration,
+            paths: array_values($items->map(fn (MediaOperationItem $item): string => $item->path)->all()),
+            sourceDisk: (string) $optimization->source_disk,
+            targetDisk: (string) $optimization->target_disk,
+            user: $user,
+            metadata: [
+                'optimization_id' => (int) $optimization->getKey(),
+                'estimated_reclaimable_bytes' => (int) $items->sum('source_size'),
+                'permanent_deletion' => true,
+            ],
+            itemDetails: $items->mapWithKeys(fn (MediaOperationItem $item): array => [
+                $item->path => [
+                    'target_path' => $item->target_path,
+                    'source_checksum' => $item->source_checksum,
+                    'target_checksum' => $item->target_checksum,
+                ],
+            ])->all(),
+            configurationFingerprint: $optimization->configuration_fingerprint,
         );
     }
 
@@ -392,6 +453,13 @@ final class MediaStorageManager
     /**
      * @param  list<string>  $paths
      * @param  array<string, mixed>  $metadata
+     * @param  array<string, array{
+     *     target_path?: string|null,
+     *     source_size?: int|null,
+     *     target_size?: int|null,
+     *     source_checksum?: string|null,
+     *     target_checksum?: string|null
+     * }>  $itemDetails
      */
     private function createOperation(
         string $type,
@@ -402,6 +470,8 @@ final class MediaStorageManager
         ?User $user,
         array $metadata,
         bool $targetPaths = false,
+        array $itemDetails = [],
+        ?string $configurationFingerprint = null,
     ): MediaOperation {
         $this->assertNoOperationRunning();
 
@@ -414,6 +484,8 @@ final class MediaStorageManager
             $user,
             $metadata,
             $targetPaths,
+            $itemDetails,
+            $configurationFingerprint,
         ): MediaOperation {
             $operation = MediaOperation::query()->create([
                 'media_storage_configuration_id' => $configuration?->getKey(),
@@ -422,7 +494,8 @@ final class MediaStorageManager
                 'status' => $paths === [] ? MediaOperation::StatusCompleted : MediaOperation::StatusRunning,
                 'source_disk' => $sourceDisk,
                 'target_disk' => $targetDisk,
-                'configuration_fingerprint' => $configuration?->configuration_fingerprint,
+                'configuration_fingerprint' => $configurationFingerprint
+                    ?? $configuration?->configuration_fingerprint,
                 'total_items' => count($paths),
                 'metadata' => $metadata,
                 'started_at' => now(),
@@ -430,9 +503,10 @@ final class MediaStorageManager
             ]);
 
             foreach ($paths as $path) {
-                $targetPath = null;
+                $details = $itemDetails[$path] ?? [];
+                $targetPath = $details['target_path'] ?? null;
 
-                if ($targetPaths) {
+                if ($targetPaths && $targetPath === null) {
                     $targetPath = $this->imageOptimizer->targetPath($path);
 
                     if ($targetPath !== $path && Storage::disk($targetDisk)->exists($targetPath)) {
@@ -445,6 +519,10 @@ final class MediaStorageManager
                     'path_hash' => hash('sha256', $path),
                     'target_path' => $targetPath,
                     'status' => MediaOperationItem::StatusPending,
+                    'source_size' => $details['source_size'] ?? null,
+                    'target_size' => $details['target_size'] ?? null,
+                    'source_checksum' => $details['source_checksum'] ?? null,
+                    'target_checksum' => $details['target_checksum'] ?? null,
                 ]);
             }
 
@@ -456,6 +534,42 @@ final class MediaStorageManager
         }
 
         return $operation;
+    }
+
+    private function latestCleanupCandidate(): ?MediaOperation
+    {
+        return MediaOperation::query()
+            ->where('type', MediaOperation::TypeOptimization)
+            ->where('status', MediaOperation::StatusCompleted)
+            ->latest('id')
+            ->get()
+            ->first(fn (MediaOperation $operation): bool => $this->cleanupCandidateItems($operation)->isNotEmpty());
+    }
+
+    /** @return EloquentCollection<int, MediaOperationItem> */
+    private function cleanupCandidateItems(MediaOperation $optimization): EloquentCollection
+    {
+        $cleanupOperationIds = MediaOperation::query()
+            ->where('type', MediaOperation::TypeCleanup)
+            ->where('metadata->optimization_id', (int) $optimization->getKey())
+            ->pluck('id');
+        $cleanedPaths = MediaOperationItem::query()
+            ->whereIn('media_operation_id', $cleanupOperationIds)
+            ->pluck('path')
+            ->all();
+        $referencedPaths = array_flip($this->pathCollector->references());
+
+        return $optimization->items()
+            ->where('status', MediaOperationItem::StatusCompleted)
+            ->whereNotNull('target_path')
+            ->whereNotNull('source_checksum')
+            ->whereNotNull('target_checksum')
+            ->when($cleanedPaths !== [], fn (Builder $query): Builder => $query->whereNotIn('path', $cleanedPaths))
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (MediaOperationItem $item): bool => ! isset($referencedPaths[$item->path])
+                && Storage::disk((string) $optimization->source_disk)->exists($item->path))
+            ->values();
     }
 
     private function assertNoOperationRunning(): void

@@ -57,6 +57,8 @@ class MediaOperation extends Model
 
     public const string TypeOptimization = 'optimization';
 
+    public const string TypeCleanup = 'cleanup';
+
     public const string StatusPending = 'pending';
 
     public const string StatusRunning = 'running';

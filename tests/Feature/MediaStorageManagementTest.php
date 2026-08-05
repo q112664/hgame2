@@ -13,6 +13,7 @@ use App\Models\MediaStorageConfiguration;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\MediaImageOptimizer;
+use App\Support\MediaPathCollector;
 use App\Support\MediaReferenceRewriter;
 use App\Support\MediaStorageManager;
 use App\Support\MediaUpload;
@@ -254,6 +255,7 @@ test('candidate operation jobs restore the active r2 configuration after complet
     (new ProcessMediaOperationItem((int) $item->getKey()))->handle(
         $manager,
         app(MediaImageOptimizer::class),
+        app(MediaPathCollector::class),
         app(MediaReferenceRewriter::class),
     );
 
@@ -279,6 +281,7 @@ test('candidate operation jobs restore the active r2 configuration after failure
     expect(fn () => (new ProcessMediaOperationItem((int) $item->getKey()))->handle(
         $manager,
         app(MediaImageOptimizer::class),
+        app(MediaPathCollector::class),
         app(MediaReferenceRewriter::class),
     ))->toThrow(RuntimeException::class, 'does not exist');
 
@@ -421,6 +424,7 @@ function runMediaOperation(MediaOperation $operation): void
         (new ProcessMediaOperationItem((int) $item->getKey()))->handle(
             app(MediaStorageManager::class),
             app(MediaImageOptimizer::class),
+            app(MediaPathCollector::class),
             app(MediaReferenceRewriter::class),
         );
     });

@@ -429,19 +429,17 @@ test('resource card thumbnails fade in with lazy loading', function () {
     }
 });
 
-test('resource catalog exposes a descriptive heading and introduction', function () {
+test('resource catalog keeps seo metadata out of the visible interface', function () {
     $filesystem = app(Filesystem::class);
     $source = $filesystem->get(resource_path('js/pages/resources/index.tsx'));
     $app = $filesystem->get(resource_path('js/app.tsx'));
 
     expect($source)
-        ->toContain('Hentai Games and Eroge Downloads')
-        ->toContain('pageNumber > 1')
-        ->toContain('Use the search field to find a title')
-        ->toContain('Separate')
-        ->toContain('screenshots and downloads tabs')
-        ->toContain('release versions, file sizes')
-        ->not->toContain('verified file information');
+        ->toContain('<PageSeo seo={pageSeo}')
+        ->not->toContain('catalogHeading')
+        ->not->toContain('Hentai Games and Eroge Downloads')
+        ->not->toContain('Use the search field to find a title')
+        ->not->toContain('screenshots and downloads tabs');
 
     expect($app)
         ->toContain('resolvePageTitleSuffix')

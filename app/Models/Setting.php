@@ -601,6 +601,98 @@ class Setting extends Model
             && in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true);
     }
 
+    /**
+     * Default public footer links (empty — admins add DMCA, Contact, etc.).
+     *
+     * @return list<array{label: string, url: string, open_in_new_tab: bool}>
+     */
+    public static function defaultFooterLinks(): array
+    {
+        return [];
+    }
+
+    /**
+     * @return list<array{label: string, url: string, openInNewTab: bool}>
+     */
+    public static function footerLinks(): array
+    {
+        $raw = static::get('footer_links');
+
+        if (! filled($raw)) {
+            return static::presentFooterLinks(static::defaultFooterLinks());
+        }
+
+        try {
+            /** @var mixed $decoded */
+            $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        } catch (Throwable) {
+            return static::presentFooterLinks(static::defaultFooterLinks());
+        }
+
+        if (! is_array($decoded)) {
+            return static::presentFooterLinks(static::defaultFooterLinks());
+        }
+
+        return static::presentFooterLinks($decoded);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    public static function setFooterLinks(array $items): void
+    {
+        $normalized = array_values(array_filter(
+            array_map(fn (mixed $item): ?array => static::normalizeFooterLinkItem($item), $items),
+        ));
+
+        static::set('footer_links', json_encode($normalized, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @param  list<mixed>  $items
+     * @return list<array{label: string, url: string, openInNewTab: bool}>
+     */
+    protected static function presentFooterLinks(array $items): array
+    {
+        $normalized = array_values(array_filter(
+            array_map(fn (mixed $item): ?array => static::normalizeFooterLinkItem($item), $items),
+        ));
+
+        return array_map(fn (array $item): array => [
+            'label' => $item['label'],
+            'url' => $item['url'],
+            'openInNewTab' => $item['open_in_new_tab'],
+        ], $normalized);
+    }
+
+    /**
+     * @return array{label: string, url: string, open_in_new_tab: bool}|null
+     */
+    protected static function normalizeFooterLinkItem(mixed $item): ?array
+    {
+        if (! is_array($item)) {
+            return null;
+        }
+
+        $label = trim((string) ($item['label'] ?? ''));
+        $url = trim((string) ($item['url'] ?? ''));
+
+        if ($label === '' || $url === '' || ! static::isValidNavigationMenuUrl($url)) {
+            return null;
+        }
+
+        $openInNewTab = filter_var(
+            $item['open_in_new_tab'] ?? $item['openInNewTab'] ?? false,
+            FILTER_VALIDATE_BOOLEAN,
+        );
+
+        return [
+            'label' => mb_substr($label, 0, 80),
+            'url' => mb_substr($url, 0, 2048),
+            'open_in_new_tab' => $openInNewTab,
+        ];
+    }
+
     public static function applySiteUrlToConfig(?string $url = null): void
     {
         $siteUrl = rtrim($url ?? static::siteUrl(), '/');

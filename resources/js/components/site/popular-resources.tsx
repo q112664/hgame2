@@ -109,7 +109,7 @@ export function PopularResources({
                         return (
                             <li
                                 key={resource.id}
-                                className="w-[12rem] shrink-0 snap-start sm:w-[14rem]"
+                                className="w-[14.5rem] shrink-0 snap-start sm:w-[16.5rem]"
                             >
                                 <Link
                                     href={resourceDetails(resource.id)}
@@ -131,16 +131,16 @@ export function PopularResources({
                                     <div
                                         className={cn(
                                             'absolute inset-x-0 bottom-0',
-                                            'bg-gradient-to-t from-black/85 via-black/40 to-transparent',
-                                            'px-2 pt-6 pb-1.5 sm:px-2.5',
+                                            'bg-gradient-to-t from-black/85 via-black/45 to-transparent',
+                                            'px-2.5 pt-8 pb-2 sm:px-3 sm:pb-2.5',
                                         )}
                                     >
-                                        <p className="line-clamp-1 font-heading text-xs leading-tight font-semibold tracking-tight text-white sm:text-[13px]">
+                                        <p className="line-clamp-2 font-heading text-sm leading-snug font-semibold tracking-tight text-white">
                                             {resource.title}
                                         </p>
-                                        <p className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] leading-none tabular-nums text-white/75">
+                                        <p className="mt-1 inline-flex items-center gap-1 text-xs leading-none tabular-nums text-white/85">
                                             <Eye
-                                                className="size-2.5 shrink-0 opacity-80"
+                                                className="size-3.5 shrink-0 opacity-90"
                                                 aria-hidden
                                             />
                                             {formatViews(resource.views)}
@@ -149,8 +149,8 @@ export function PopularResources({
 
                                     <span
                                         className={cn(
-                                            'absolute top-2 left-2 inline-flex size-7 items-center justify-center',
-                                            'rounded-md text-xs font-bold tabular-nums shadow-sm',
+                                            'absolute top-2 left-2 inline-flex size-8 items-center justify-center',
+                                            'rounded-md text-sm font-bold tabular-nums shadow-sm',
                                             rank === 1 &&
                                                 'bg-primary text-primary-foreground',
                                             rank === 2 &&

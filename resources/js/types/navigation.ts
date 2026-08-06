@@ -20,3 +20,10 @@ export type NavigationMenuItem = {
     openInNewTab: boolean;
     match: 'exact' | 'prefix' | 'none';
 };
+
+/** Public footer link (admin-managed). */
+export type FooterLinkItem = {
+    label: string;
+    url: string;
+    openInNewTab: boolean;
+};

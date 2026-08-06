@@ -129,6 +129,9 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('md:aspect-auto md:h-[280px] md:w-auto md:max-w-[498px]')
         ->toContain('text-sm text-muted-foreground')
         ->toContain('FavoriteButton')
+        ->toContain('line-clamp-2')
+        ->toContain('Released')
+        ->toContain('Listed')
         ->not->toContain('sm:flex-row')
         ->not->toContain('sm:h-[280px]');
 });
@@ -146,7 +149,7 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain('releaseFooterClassName')
         ->toContain('releaseFooterInnerClassName')
         ->toContain('hover:bg-primary/90')
-        ->toContain('bg-primary px-4 text-primary-foreground')
+        ->toContain('h-9 border border-transparent bg-primary px-3.5 text-sm text-primary-foreground')
         ->toContain('dark:border-primary/40 dark:bg-primary/90')
         ->toContain('hover:bg-primary/10 hover:text-primary')
         ->not->toContain('hover:bg-foreground hover:text-background')
@@ -201,6 +204,8 @@ test('site empty states and download buttons use primary CTAs', function () {
 
     expect($filesystem->get(resource_path('js/components/site/site-footer.tsx')))
         ->toContain('All rights reserved')
+        ->toContain('footerLinks')
+        ->toContain('aria-label="Footer"')
         ->not->toContain('<SiteLogo');
 });
 
@@ -510,7 +515,7 @@ test('button variants use deliberate dark mode surfaces and borders', function (
         ->toContain('downloadButtonClassName')
         ->toContain('downloadHeroButtonClassName')
         ->toContain('releaseFooterClassName')
-        ->toContain('border border-transparent bg-primary px-4 text-primary-foreground')
+        ->toContain('h-9 border border-transparent bg-primary px-3.5 text-sm text-primary-foreground')
         ->toContain('hover:bg-primary/90')
         ->toContain('dark:border-primary/40 dark:bg-primary/90')
         ->not->toContain('border-0 bg-foreground')

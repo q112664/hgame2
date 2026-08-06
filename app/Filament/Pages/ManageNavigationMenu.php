@@ -55,8 +55,18 @@ class ManageNavigationMenu extends Page
             Setting::navigationMenu(),
         );
 
+        $footerItems = array_map(
+            fn (array $item): array => [
+                'label' => $item['label'],
+                'url' => $item['url'],
+                'open_in_new_tab' => $item['openInNewTab'],
+            ],
+            Setting::footerLinks(),
+        );
+
         $this->form->fill([
             'items' => $items,
+            'footer_items' => $footerItems,
         ]);
     }
 
@@ -117,6 +127,37 @@ class ManageNavigationMenu extends Page
                             ->addActionLabel('Add menu item')
                             ->columnSpanFull(),
                     ]),
+                Section::make('Footer links')
+                    ->description('Links on the right side of the public site footer (e.g. DMCA, Contact). Leave empty to hide the link group.')
+                    ->schema([
+                        Repeater::make('footer_items')
+                            ->label('Footer items')
+                            ->schema([
+                                TextInput::make('label')
+                                    ->required()
+                                    ->maxLength(80)
+                                    ->placeholder('DMCA'),
+                                TextInput::make('url')
+                                    ->label('URL')
+                                    ->required()
+                                    ->maxLength(2048)
+                                    ->placeholder('/docs/dmca')
+                                    ->helperText('Relative path (/docs/contact) or absolute http(s) URL.'),
+                                Toggle::make('open_in_new_tab')
+                                    ->label('Open in new tab')
+                                    ->default(false),
+                            ])
+                            ->columns(2)
+                            ->reorderable()
+                            ->reorderableWithButtons()
+                            ->collapsible()
+                            ->itemLabel(fn (array $state): ?string => $state['label'] ?? null)
+                            ->minItems(0)
+                            ->maxItems(12)
+                            ->defaultItems(0)
+                            ->addActionLabel('Add footer link')
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 
@@ -163,8 +204,11 @@ class ManageNavigationMenu extends Page
         $data = $this->form->getState();
         /** @var list<array<string, mixed>> $items */
         $items = array_values($data['items'] ?? []);
+        /** @var list<array<string, mixed>> $footerItems */
+        $footerItems = array_values($data['footer_items'] ?? []);
 
         Setting::setNavigationMenu($items);
+        Setting::setFooterLinks($footerItems);
 
         Notification::make()
             ->title('Navigation menu saved')
@@ -175,6 +219,7 @@ class ManageNavigationMenu extends Page
     public function restoreDefaults(): void
     {
         Setting::setNavigationMenu(Setting::defaultNavigationMenu());
+        Setting::setFooterLinks(Setting::defaultFooterLinks());
 
         $this->form->fill([
             'items' => array_map(
@@ -187,6 +232,7 @@ class ManageNavigationMenu extends Page
                 ],
                 Setting::defaultNavigationMenu(),
             ),
+            'footer_items' => [],
         ]);
 
         Notification::make()

@@ -130,7 +130,108 @@ test('navigation menu is shared with the frontend', function () {
             ->where('navigationMenu.0.icon', 'Library')
             ->where('navigationMenu.0.openInNewTab', false)
             ->where('navigationMenu.0.match', 'prefix')
+            ->has('footerLinks', 0)
         );
+});
+
+test('administrators can save footer links', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageNavigationMenu::class)
+        ->fillForm([
+            'items' => [
+                [
+                    'label' => 'Home',
+                    'url' => '/',
+                    'icon' => 'Home',
+                    'open_in_new_tab' => false,
+                    'match' => 'exact',
+                ],
+            ],
+            'footer_items' => [
+                [
+                    'label' => 'DMCA',
+                    'url' => '/docs/dmca',
+                    'open_in_new_tab' => false,
+                ],
+                [
+                    'label' => 'Contact',
+                    'url' => 'https://example.com/contact',
+                    'open_in_new_tab' => true,
+                ],
+            ],
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    expect(Setting::footerLinks())->toMatchArray([
+        [
+            'label' => 'DMCA',
+            'url' => '/docs/dmca',
+            'openInNewTab' => false,
+        ],
+        [
+            'label' => 'Contact',
+            'url' => 'https://example.com/contact',
+            'openInNewTab' => true,
+        ],
+    ]);
+});
+
+test('footer links are shared with the frontend', function () {
+    Setting::setFooterLinks([
+        [
+            'label' => 'DMCA',
+            'url' => '/docs/dmca',
+            'open_in_new_tab' => false,
+        ],
+    ]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('footerLinks', 1)
+            ->where('footerLinks.0.label', 'DMCA')
+            ->where('footerLinks.0.url', '/docs/dmca')
+            ->where('footerLinks.0.openInNewTab', false)
+        );
+});
+
+test('invalid footer link urls are rejected when saving', function () {
+    Setting::setFooterLinks([
+        [
+            'label' => 'Safe',
+            'url' => '/docs/contact',
+            'open_in_new_tab' => false,
+        ],
+        [
+            'label' => 'Bad',
+            'url' => 'javascript:alert(1)',
+            'open_in_new_tab' => false,
+        ],
+    ]);
+
+    expect(Setting::footerLinks())->toHaveCount(1)
+        ->and(Setting::footerLinks()[0]['label'])->toBe('Safe');
+});
+
+test('restore defaults clears footer links', function () {
+    Setting::setFooterLinks([
+        [
+            'label' => 'DMCA',
+            'url' => '/docs/dmca',
+            'open_in_new_tab' => false,
+        ],
+    ]);
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageNavigationMenu::class)
+        ->call('restoreDefaults')
+        ->assertNotified();
+
+    expect(Setting::footerLinks())->toBe([]);
 });
 
 test('invalid navigation urls are rejected when saving', function () {

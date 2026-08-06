@@ -5,7 +5,7 @@ type Props = {
 };
 
 /**
- * Source storefront meta for the resource hero — same rhythm as developer / date.
+ * Source storefront meta for the resource hero — inherits parent type size.
  */
 export function ResourceSourceMeta({ source }: Props) {
     const text = [source.name, source.id].filter(Boolean).join(' · ');
@@ -35,7 +35,7 @@ export function ResourceSourceMeta({ source }: Props) {
                 target="_blank"
                 rel="noopener noreferrer"
                 title={text || source.url}
-                className="inline-flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                className="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground hover:text-foreground"
             >
                 {icon}
                 {text !== '' ? (
@@ -47,7 +47,7 @@ export function ResourceSourceMeta({ source }: Props) {
 
     return (
         <span
-            className="inline-flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
+            className="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground"
             title={text || undefined}
         >
             {icon}

@@ -48,7 +48,11 @@ import {
 import { useFavorite } from '@/hooks/use-favorite';
 import { useImageLoadState } from '@/hooks/use-image-load-state';
 import { SiteLayout } from '@/layouts/site-layout';
-import { formatDate, formatReleaseDate } from '@/lib/resource-formatters';
+import {
+    formatDate,
+    formatReleaseDate,
+    formatViews,
+} from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
 import { home } from '@/routes';
 import {
@@ -452,7 +456,21 @@ export default function ResourceShow({
                             />
                         </div>
 
-                        <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:p-5">
+                        <div className="flex min-w-0 flex-1 flex-col gap-2.5 px-4 py-3 md:gap-3 md:px-5 md:py-4">
+                            {/* 1. Title + subtitle */}
+                            <div className="min-w-0 space-y-1">
+                                <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+                                    {resource.title}
+                                </h1>
+
+                                {resource.subtitle ? (
+                                    <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                        {resource.subtitle}
+                                    </p>
+                                ) : null}
+                            </div>
+
+                            {/* 2. Classification chips */}
                             <div className="flex flex-wrap gap-1.5">
                                 <Badge
                                     variant="outline"
@@ -486,203 +504,185 @@ export default function ResourceShow({
                                 ))}
                             </div>
 
-                            <div className="space-y-1">
-                                <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-                                    {resource.title}
-                                </h1>
-
-                                {resource.subtitle ? (
-                                    <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
-                                        {resource.subtitle}
-                                    </p>
-                                ) : null}
-                            </div>
-
-                            <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
-                                {/* Vendor / commercial metadata */}
-                                <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5">
-                                    <span className="inline-flex min-w-0 items-center gap-1.5">
-                                        <Building2
-                                            className="size-3.5 shrink-0"
-                                            aria-hidden
-                                        />
-                                        <span className="truncate">
-                                            {resource.developer}
-                                        </span>
+                            {/* 3. Catalog meta (game product) */}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+                                <span className="inline-flex min-w-0 max-w-full items-center gap-1.5">
+                                    <Building2
+                                        className="size-3.5 shrink-0 opacity-70"
+                                        aria-hidden
+                                    />
+                                    <span className="truncate">
+                                        {resource.developer}
                                     </span>
-                                    {resource.releaseDate ? (
-                                        <span className="inline-flex items-center gap-1.5">
-                                            <CalendarRange
-                                                className="size-3.5 shrink-0"
-                                                aria-hidden
-                                            />
-                                            <span className="text-muted-foreground/80">
-                                                Released
-                                            </span>
-                                            <span>
-                                                {formatReleaseDate(
-                                                    resource.releaseDate,
-                                                )}
-                                            </span>
-                                        </span>
-                                    ) : null}
-                                    {resource.source ? (
-                                        <ResourceSourceMeta
-                                            source={resource.source}
-                                        />
-                                    ) : null}
-                                </div>
+                                </span>
 
-                                {/* Site publish time (SEO <time>) + views */}
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                                {resource.source ? (
+                                    <ResourceSourceMeta
+                                        source={resource.source}
+                                    />
+                                ) : null}
+
+                                {resource.releaseDate ? (
                                     <span className="inline-flex items-center gap-1.5">
-                                        <CalendarCheck
-                                            className="size-3.5 shrink-0"
+                                        <CalendarRange
+                                            className="size-3.5 shrink-0 opacity-70"
                                             aria-hidden
                                         />
                                         <span className="text-muted-foreground/80">
-                                            Published
+                                            Released
                                         </span>
-                                        <time
-                                            dateTime={
-                                                resource.publishedAt ??
-                                                undefined
-                                            }
-                                        >
-                                            {resource.publishedAt
-                                                ? formatDate(
-                                                      resource.publishedAt,
-                                                  )
-                                                : '—'}
-                                        </time>
+                                        <span>
+                                            {formatReleaseDate(
+                                                resource.releaseDate,
+                                            )}
+                                        </span>
                                     </span>
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <Eye
-                                            className="size-3.5 shrink-0"
-                                            aria-hidden
-                                        />
-                                        {new Intl.NumberFormat('en-US').format(
-                                            resource.views,
-                                        )}
-                                    </span>
-                                </div>
+                                ) : null}
                             </div>
 
-                            <div className="mt-auto flex flex-col gap-2 pt-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {resource.hasDownloads ? (
-                                        <Button
-                                            size="lg"
-                                            variant="secondary"
-                                            className={
-                                                downloadHeroButtonClassName
+                            {/* 4. Site meta (listing on this site) */}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+                                <span className="inline-flex items-center gap-1.5">
+                                    <CalendarCheck
+                                        className="size-3.5 shrink-0 opacity-70"
+                                        aria-hidden
+                                    />
+                                    <span className="text-muted-foreground/80">
+                                        Listed
+                                    </span>
+                                    <time
+                                        dateTime={
+                                            resource.publishedAt ?? undefined
+                                        }
+                                    >
+                                        {resource.publishedAt
+                                            ? formatDate(resource.publishedAt)
+                                            : '—'}
+                                    </time>
+                                </span>
+                                <span className="inline-flex items-center gap-1.5">
+                                    <Eye
+                                        className="size-3.5 shrink-0 opacity-70"
+                                        aria-hidden
+                                    />
+                                    {formatViews(resource.views)}
+                                    <span className="text-muted-foreground/80">
+                                        views
+                                    </span>
+                                </span>
+                            </div>
+
+                            {/* 5. Actions */}
+                            <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
+                                {resource.hasDownloads ? (
+                                    <Button
+                                        size="default"
+                                        variant="secondary"
+                                        className={downloadHeroButtonClassName}
+                                        asChild
+                                    >
+                                        <Link
+                                            href={
+                                                resourceDownloads(resource.id)
+                                                    .url
                                             }
-                                            asChild
-                                        >
-                                            <Link
-                                                href={
-                                                    resourceDownloads(
-                                                        resource.id,
-                                                    ).url
-                                                }
-                                                headers={{
-                                                    'X-Resource-Tab-Nav': '1',
-                                                }}
-                                                preserveState
-                                                preserveScroll
-                                                onClick={(event) => {
-                                                    if (
-                                                        activeTab ===
-                                                            'downloads' &&
-                                                        pendingNavigation.current ===
-                                                            null
-                                                    ) {
-                                                        event.preventDefault();
-                                                        tabsListRef.current?.scrollIntoView(
-                                                            {
-                                                                behavior:
-                                                                    shouldReduceMotion
-                                                                        ? 'auto'
-                                                                        : 'smooth',
-                                                                block: 'start',
-                                                            },
-                                                        );
-                                                        tabRefs.current.downloads?.focus(
-                                                            {
-                                                                preventScroll: true,
-                                                            },
-                                                        );
-                                                    }
-                                                }}
-                                                onStart={() =>
-                                                    handleTabStart(
-                                                        'downloads',
-                                                        true,
-                                                    )
-                                                }
-                                                onSuccess={() =>
-                                                    settleTabNavigation(
-                                                        null,
-                                                        'downloads',
-                                                    )
-                                                }
-                                                onError={() => {
-                                                    rollbackTabNavigation(
-                                                        null,
-                                                        'downloads',
+                                            headers={{
+                                                'X-Resource-Tab-Nav': '1',
+                                            }}
+                                            preserveState
+                                            preserveScroll
+                                            onClick={(event) => {
+                                                if (
+                                                    activeTab ===
+                                                        'downloads' &&
+                                                    pendingNavigation.current ===
+                                                        null
+                                                ) {
+                                                    event.preventDefault();
+                                                    tabsListRef.current?.scrollIntoView(
+                                                        {
+                                                            behavior:
+                                                                shouldReduceMotion
+                                                                    ? 'auto'
+                                                                    : 'smooth',
+                                                            block: 'start',
+                                                        },
                                                     );
-                                                }}
-                                                onCancel={() =>
-                                                    rollbackTabNavigation(
-                                                        null,
-                                                        'downloads',
-                                                    )
+                                                    tabRefs.current.downloads?.focus(
+                                                        {
+                                                            preventScroll: true,
+                                                        },
+                                                    );
                                                 }
-                                            >
-                                                <Download data-icon="inline-start" />
-                                                Download
-                                            </Link>
-                                        </Button>
-                                    ) : (
-                                        <Button
-                                            size="lg"
-                                            variant="secondary"
-                                            className="border-0 px-4 shadow-none"
-                                            disabled
+                                            }}
+                                            onStart={() =>
+                                                handleTabStart(
+                                                    'downloads',
+                                                    true,
+                                                )
+                                            }
+                                            onSuccess={() =>
+                                                settleTabNavigation(
+                                                    null,
+                                                    'downloads',
+                                                )
+                                            }
+                                            onError={() => {
+                                                rollbackTabNavigation(
+                                                    null,
+                                                    'downloads',
+                                                );
+                                            }}
+                                            onCancel={() =>
+                                                rollbackTabNavigation(
+                                                    null,
+                                                    'downloads',
+                                                )
+                                            }
                                         >
                                             <Download data-icon="inline-start" />
-                                            Unavailable
-                                        </Button>
-                                    )}
-                                    <FavoriteButton
-                                        isFavorited={isFavorite}
-                                        isToggling={isTogglingFavorite}
-                                        onToggle={handleFavoriteClick}
-                                    />
-                                    {resource.adminEditUrl ? (
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon-lg"
-                                                    asChild
+                                            Download
+                                        </Link>
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        size="default"
+                                        variant="secondary"
+                                        className="h-9 border-0 px-3.5 shadow-none"
+                                        disabled
+                                    >
+                                        <Download data-icon="inline-start" />
+                                        Unavailable
+                                    </Button>
+                                )}
+                                <FavoriteButton
+                                    size="icon"
+                                    isFavorited={isFavorite}
+                                    isToggling={isTogglingFavorite}
+                                    onToggle={handleFavoriteClick}
+                                />
+                                {resource.adminEditUrl ? (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="size-9"
+                                                asChild
+                                            >
+                                                <a
+                                                    href={resource.adminEditUrl}
+                                                    aria-label="Edit in admin"
                                                 >
-                                                    <a
-                                                        href={
-                                                            resource.adminEditUrl
-                                                        }
-                                                        aria-label="Edit in admin"
-                                                    >
-                                                        <Pencil />
-                                                    </a>
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                Edit in admin
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    ) : null}
-                                </div>
+                                                    <Pencil />
+                                                </a>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            Edit in admin
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ) : null}
                             </div>
                         </div>
                     </div>

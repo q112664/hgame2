@@ -83,7 +83,7 @@ export const releaseFooterInnerClassName = cn(
 
 /** Primary download CTA on resource hero / confirm pages. */
 export const downloadHeroButtonClassName = cn(
-    'border border-transparent bg-primary px-4 text-primary-foreground shadow-none',
+    'h-9 border border-transparent bg-primary px-3.5 text-sm text-primary-foreground shadow-none',
     'hover:bg-primary/90',
     'dark:border-primary/40 dark:bg-primary/90',
     'dark:hover:border-primary/50 dark:hover:bg-primary',

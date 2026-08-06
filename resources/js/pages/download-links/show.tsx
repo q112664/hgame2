@@ -191,24 +191,29 @@ export default function DownloadLinkShow({ resource, link, pageSeo }: Props) {
                 >
                     {identity}
 
-                    {showTurnstile && turnstile.siteKey ? (
-                        <Form
-                            action={continueMethod.url(link.id)}
-                            method="post"
-                            onBefore={turnstileGate.onBefore}
-                            onError={turnstileGate.reset}
-                        >
-                            {({ processing, errors }) => (
-                                <>
-                                    <div className="space-y-4 border-t border-border/60 px-4 py-4 sm:px-5 sm:py-5">
-                                        {destination}
-                                        {notice}
+                    {/* Always POST continue so downloads are recorded server-side. */}
+                    <Form
+                        action={continueMethod.url(link.id)}
+                        method="post"
+                        onBefore={
+                            showTurnstile ? turnstileGate.onBefore : undefined
+                        }
+                        onError={
+                            showTurnstile ? turnstileGate.reset : undefined
+                        }
+                    >
+                        {({ processing, errors }) => (
+                            <>
+                                <div className="space-y-4 border-t border-border/60 px-4 py-4 sm:px-5 sm:py-5">
+                                    {destination}
+                                    {notice}
+                                    {showTurnstile && turnstile.siteKey ? (
                                         <div className="space-y-2">
                                             <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                                                 Security check
                                             </p>
                                             <TurnstileWidget
-                                                siteKey={turnstile.siteKey!}
+                                                siteKey={turnstile.siteKey}
                                                 error={
                                                     errors[
                                                         'cf-turnstile-response'
@@ -222,59 +227,30 @@ export default function DownloadLinkShow({ resource, link, pageSeo }: Props) {
                                                 }
                                             />
                                         </div>
-                                    </div>
+                                    ) : null}
+                                </div>
 
-                                    <ActionFooter
-                                        resourceId={resource.id}
-                                        primary={
-                                            <ContinueButton
-                                                processing={processing}
-                                                disabled={
-                                                    turnstileGate.submitDisabled
-                                                }
-                                                title={
-                                                    turnstileGate.submitTitle
-                                                }
-                                            />
-                                        }
-                                    />
-                                </>
-                            )}
-                        </Form>
-                    ) : (
-                        <>
-                            <div className="space-y-4 border-t border-border/60 px-4 py-4 sm:px-5 sm:py-5">
-                                {destination}
-                                {notice}
-                            </div>
-
-                            <ActionFooter
-                                resourceId={resource.id}
-                                primary={
-                                    link.url ? (
-                                        <ContinueButton asChild>
-                                            <a
-                                                href={link.url}
-                                                rel="noopener noreferrer"
-                                            >
-                                                <Download data-icon="inline-start" />
-                                                Continue
-                                            </a>
-                                        </ContinueButton>
-                                    ) : (
-                                        <Button
-                                            type="button"
-                                            variant="secondary"
-                                            className="h-10 w-full sm:w-auto sm:min-w-36"
-                                            disabled
-                                        >
-                                            Unavailable
-                                        </Button>
-                                    )
-                                }
-                            />
-                        </>
-                    )}
+                                <ActionFooter
+                                    resourceId={resource.id}
+                                    primary={
+                                        <ContinueButton
+                                            processing={processing}
+                                            disabled={
+                                                showTurnstile
+                                                    ? turnstileGate.submitDisabled
+                                                    : false
+                                            }
+                                            title={
+                                                showTurnstile
+                                                    ? turnstileGate.submitTitle
+                                                    : undefined
+                                            }
+                                        />
+                                    }
+                                />
+                            </>
+                        )}
+                    </Form>
                 </div>
             </SitePageContainer>
         </SiteLayout>

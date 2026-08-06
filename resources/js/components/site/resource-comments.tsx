@@ -1,11 +1,4 @@
 import { router, usePage } from '@inertiajs/react';
-import {
-    CornerDownRight,
-    MessageSquare,
-    Pencil,
-    Trash2,
-    X,
-} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
@@ -17,7 +10,6 @@ import { useAuthDialog } from '@/components/auth/auth-dialog';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { SitePagination } from '@/components/site/site-pagination';
 import type { PaginatedData } from '@/components/site/site-pagination';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { UserAvatar } from '@/components/user-avatar';
@@ -156,12 +148,10 @@ function scheduleScrollToComment(id: number, onFound: () => void): () => void {
 
 function CommentBody({
     body,
-    nested = false,
     replyToName = null,
     showReplyToName = false,
 }: {
     body: string;
-    nested?: boolean;
     /** Used to remove a legacy prefix from the stored reply body. */
     replyToName?: string | null;
     /** Whether to show the reply target in the rendered text. */
@@ -170,21 +160,24 @@ function CommentBody({
     const text = normalizeCommentBody(body, replyToName);
 
     return (
-        <p
-            className={cn(
-                'mt-1 leading-relaxed whitespace-pre-wrap text-foreground/90',
-                nested ? 'text-[13px] sm:text-sm' : 'text-sm',
-            )}
-        >
+        <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
             {showReplyToName && replyToName ? (
                 <>
-                    <span className="font-medium text-primary">
+                    <span className="text-muted-foreground">
                         @{replyToName}
                     </span>{' '}
                 </>
             ) : null}
             {text}
         </p>
+    );
+}
+
+function CommentMetaDot() {
+    return (
+        <span className="text-muted-foreground/40" aria-hidden>
+            ·
+        </span>
     );
 }
 
@@ -205,11 +198,11 @@ function CommentActionButton({
             disabled={disabled}
             onClick={onClick}
             className={cn(
-                'inline-flex h-8 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium transition-colors sm:h-7 sm:text-xs',
-                'text-muted-foreground hover:bg-muted hover:text-foreground',
+                'rounded-sm py-0.5 text-xs text-muted-foreground transition-colors',
+                'hover:text-foreground',
                 'disabled:pointer-events-none disabled:opacity-50',
                 'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-                destructive && 'hover:bg-destructive/10 hover:text-destructive',
+                destructive && 'hover:text-destructive',
             )}
         >
             {children}
@@ -224,8 +217,7 @@ export function ResourceComments({
 }: Props) {
     const page = usePage();
     const { openAuthDialog } = useAuthDialog();
-    const authUser = page.props.auth.user;
-    const isAuthenticated = Boolean(authUser);
+    const isAuthenticated = Boolean(page.props.auth.user);
     const [body, setBody] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -544,21 +536,20 @@ export function ResourceComments({
 
     const renderComment = (
         comment: ResourceCommentReply,
-        options: { nested?: boolean; rootAuthorId?: number } = {},
+        options: { nested?: boolean } = {},
     ) => {
         const isEditing = editingId === comment.id;
         const nested = options.nested ?? false;
-        const rootAuthorId = options.rootAuthorId;
 
         const isHighlighted = highlightedId === comment.id;
         const replyTo = nested ? comment.replyTo : null;
         const replyToName = replyTo?.name ?? null;
 
-        // Indent + reply rail already show this is a reply. Only label when
-        // answering someone other than the thread root author.
-        const showReplyTo =
-            replyTo !== null &&
-            (rootAuthorId === undefined || replyTo.id !== rootAuthorId);
+        // Nested replies always show the target so threads stay readable.
+        const showReplyTo = replyToName !== null;
+
+        const isReplyingHere = replyTarget?.commentId === comment.id;
+        const showActions = !isEditing && !isReplyingHere;
 
         return (
             <article
@@ -566,59 +557,35 @@ export function ResourceComments({
                 id={commentDomId(comment.id)}
                 data-comment-id={comment.id}
                 className={cn(
-                    'group/comment flex scroll-mt-24 gap-2.5 rounded-md sm:gap-3',
+                    'flex scroll-mt-24 gap-2.5',
                     nested && 'min-w-0',
-                    'target:bg-primary/6 target:ring-2 target:ring-primary/25 target:ring-offset-1 target:ring-offset-card',
-                    isHighlighted &&
-                        'bg-primary/6 ring-2 ring-primary/25 ring-offset-1 ring-offset-card',
+                    isHighlighted && 'rounded-md bg-muted/40',
                 )}
             >
                 <UserAvatar
                     user={comment.user}
                     className={cn(
-                        'mt-0.5 shrink-0 ring-1 ring-border/60',
-                        nested ? 'size-7 sm:size-8' : 'size-8 sm:size-9',
+                        'mt-0.5 shrink-0',
+                        nested ? 'size-7' : 'size-8',
                     )}
-                    fallbackClassName="rounded-full bg-muted text-[10px] text-muted-foreground sm:text-xs"
+                    fallbackClassName="rounded-full bg-muted text-[10px] text-muted-foreground"
                 />
                 <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                        <span
-                            className={cn(
-                                'font-medium text-foreground',
-                                nested ? 'text-[13px] sm:text-sm' : 'text-sm',
-                            )}
-                        >
+                        <span className="text-sm font-medium text-foreground">
                             {comment.user.name}
                         </span>
                         {comment.user.isAdmin ? (
-                            <Badge
-                                variant="outline"
-                                className={cn(
-                                    'h-5 border-0 px-1.5 text-[10px] leading-none font-medium shadow-none',
-                                    'bg-primary/12 text-primary',
-                                    'dark:bg-primary/18 dark:text-primary',
-                                )}
-                            >
-                                Admin
-                            </Badge>
-                        ) : null}
-                        {comment.isMine ? (
-                            <Badge
-                                variant="secondary"
-                                className="h-5 px-1.5 text-[10px] leading-none font-medium"
-                            >
-                                You
-                            </Badge>
+                            <>
+                                <CommentMetaDot />
+                                <span className="text-xs text-muted-foreground">
+                                    Admin
+                                </span>
+                            </>
                         ) : null}
                         {comment.createdAt ? (
                             <>
-                                <span
-                                    className="text-xs text-muted-foreground/50"
-                                    aria-hidden
-                                >
-                                    ·
-                                </span>
+                                <CommentMetaDot />
                                 <time
                                     dateTime={comment.createdAt}
                                     title={formatAbsoluteDateTime(
@@ -631,14 +598,17 @@ export function ResourceComments({
                             </>
                         ) : null}
                         {comment.isEdited ? (
-                            <span className="text-xs text-muted-foreground/70">
-                                · edited
-                            </span>
+                            <>
+                                <CommentMetaDot />
+                                <span className="text-xs text-muted-foreground">
+                                    edited
+                                </span>
+                            </>
                         ) : null}
                     </div>
 
                     {isEditing ? (
-                        <div className="mt-1.5 flex flex-col gap-1.5">
+                        <div className="mt-1.5 flex flex-col gap-2">
                             <Textarea
                                 value={editBody}
                                 onChange={(event) => {
@@ -667,7 +637,7 @@ export function ResourceComments({
                                 rows={2}
                                 maxLength={MAX_LENGTH}
                                 disabled={isSavingEdit}
-                                className="min-h-[3.5rem] resize-y bg-background text-sm"
+                                className="min-h-14 resize-y text-sm shadow-none"
                                 autoFocus
                             />
                             {editError ? (
@@ -678,7 +648,7 @@ export function ResourceComments({
                                     {editError}
                                 </p>
                             ) : null}
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                 <Button
                                     type="button"
                                     size="sm"
@@ -689,80 +659,57 @@ export function ResourceComments({
                                 >
                                     {isSavingEdit ? 'Saving…' : 'Save'}
                                 </Button>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
+                                <CommentActionButton
                                     disabled={isSavingEdit}
                                     onClick={cancelEdit}
                                 >
                                     Cancel
-                                </Button>
+                                </CommentActionButton>
                             </div>
                         </div>
                     ) : (
                         <>
                             <CommentBody
                                 body={comment.body}
-                                nested={nested}
                                 replyToName={replyToName}
                                 showReplyToName={showReplyTo}
                             />
-                            <div
-                                className={cn(
-                                    'mt-0.5 flex flex-wrap items-center gap-0.5',
-                                    'opacity-80 transition-opacity group-hover/comment:opacity-100 sm:opacity-70',
-                                )}
-                            >
-                                <CommentActionButton
-                                    onClick={() => beginReply(comment)}
-                                >
-                                    <CornerDownRight className="size-3" />
-                                    Reply
-                                </CommentActionButton>
-                                {comment.canEdit ? (
+                            {showActions ? (
+                                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
                                     <CommentActionButton
-                                        onClick={() => startEdit(comment)}
+                                        onClick={() => beginReply(comment)}
                                     >
-                                        <Pencil className="size-3" />
-                                        Edit
+                                        Reply
                                     </CommentActionButton>
-                                ) : null}
-                                {comment.canDelete ? (
-                                    <CommentActionButton
-                                        destructive
-                                        disabled={deletingId === comment.id}
-                                        onClick={() => remove(comment.id)}
-                                    >
-                                        <Trash2 className="size-3" />
-                                        {deletingId === comment.id
-                                            ? 'Deleting…'
-                                            : 'Delete'}
-                                    </CommentActionButton>
-                                ) : null}
-                            </div>
-                            {replyTarget?.commentId === comment.id ? (
+                                    {comment.canEdit ? (
+                                        <CommentActionButton
+                                            onClick={() => startEdit(comment)}
+                                        >
+                                            Edit
+                                        </CommentActionButton>
+                                    ) : null}
+                                    {comment.canDelete ? (
+                                        <CommentActionButton
+                                            destructive
+                                            disabled={
+                                                deletingId === comment.id
+                                            }
+                                            onClick={() =>
+                                                remove(comment.id)
+                                            }
+                                        >
+                                            {deletingId === comment.id
+                                                ? 'Deleting…'
+                                                : 'Delete'}
+                                        </CommentActionButton>
+                                    ) : null}
+                                </div>
+                            ) : null}
+                            {isReplyingHere ? (
                                 <form
-                                    className="mt-2 flex flex-col gap-1.5 rounded-md border border-border/80 bg-muted/20 p-2 sm:p-2.5 dark:bg-muted/10"
+                                    className="mt-2 flex flex-col gap-2"
                                     onSubmit={submitInlineReply}
                                 >
-                                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                                        <span className="min-w-0 truncate">
-                                            Reply to{' '}
-                                            <span className="font-medium text-primary">
-                                                @{replyTarget.userName}
-                                            </span>
-                                        </span>
-                                        <button
-                                            type="button"
-                                            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground"
-                                            aria-label="Cancel reply"
-                                            disabled={isSubmittingReply}
-                                            onClick={cancelReply}
-                                        >
-                                            <X className="size-3.5" />
-                                        </button>
-                                    </div>
                                     <Textarea
                                         ref={inlineReplyRef}
                                         value={replyBody}
@@ -790,12 +737,12 @@ export function ResourceComments({
                                                 event.currentTarget.form?.requestSubmit();
                                             }
                                         }}
-                                        placeholder={`Reply to @${replyTarget.userName}…`}
+                                        placeholder={`Reply to ${replyTarget.userName}…`}
                                         rows={2}
                                         maxLength={MAX_LENGTH}
                                         disabled={isSubmittingReply}
                                         className={cn(
-                                            'min-h-[3rem] resize-y bg-background text-[13px] shadow-none sm:text-sm',
+                                            'min-h-14 resize-y text-sm shadow-none',
                                             replyError &&
                                                 'border-destructive focus-visible:border-destructive',
                                         )}
@@ -808,33 +755,25 @@ export function ResourceComments({
                                             {replyError}
                                         </p>
                                     ) : null}
-                                    <div className="flex flex-wrap items-center justify-between gap-1.5">
-                                        <p className="text-[11px] text-muted-foreground tabular-nums">
-                                            {replyBody.length}/{MAX_LENGTH}
-                                        </p>
-                                        <div className="flex items-center gap-1.5">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                disabled={isSubmittingReply}
-                                                onClick={cancelReply}
-                                            >
-                                                Cancel
-                                            </Button>
-                                            <Button
-                                                type="submit"
-                                                size="sm"
-                                                disabled={
-                                                    isSubmittingReply ||
-                                                    replyBody.trim() === ''
-                                                }
-                                            >
-                                                {isSubmittingReply
-                                                    ? 'Posting…'
-                                                    : 'Post reply'}
-                                            </Button>
-                                        </div>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                        <Button
+                                            type="submit"
+                                            size="sm"
+                                            disabled={
+                                                isSubmittingReply ||
+                                                replyBody.trim() === ''
+                                            }
+                                        >
+                                            {isSubmittingReply
+                                                ? 'Posting…'
+                                                : 'Reply'}
+                                        </Button>
+                                        <CommentActionButton
+                                            disabled={isSubmittingReply}
+                                            onClick={cancelReply}
+                                        >
+                                            Cancel
+                                        </CommentActionButton>
                                     </div>
                                 </form>
                             ) : null}
@@ -849,149 +788,122 @@ export function ResourceComments({
         <section
             id="resource-comments"
             aria-label="Comments"
-            className="overflow-hidden rounded-lg border border-border bg-card"
+            className="rounded-md border border-border bg-card"
         >
-            <header className="flex items-center justify-between gap-2 border-b border-border/80 bg-muted/30 px-3 py-2 sm:px-4 dark:bg-muted/20">
-                <div className="flex items-center gap-1.5">
-                    <span className="flex size-6 items-center justify-center rounded-md bg-background text-muted-foreground ring-1 ring-border/60">
-                        <MessageSquare className="size-3.5" aria-hidden />
+            <header className="flex items-baseline gap-2 border-b border-border/70 px-4 py-3 sm:px-5">
+                <h2 className="font-heading text-sm font-semibold tracking-tight text-foreground">
+                    Comments
+                </h2>
+                {totalCount > 0 ? (
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                        {totalCount}
                     </span>
-                    <h2 className="font-heading text-[13px] font-semibold tracking-tight text-foreground sm:text-sm">
-                        Comments
-                    </h2>
-                    {totalCount > 0 ? (
-                        <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground tabular-nums">
-                            {totalCount}
-                        </span>
-                    ) : null}
-                </div>
+                ) : null}
             </header>
 
-            <div className="flex flex-col gap-0">
-                {/* Composer */}
-                <div className="border-b border-border/70 px-3 py-3 sm:px-4">
+            <div className="flex flex-col">
+                <div className="border-b border-border/70 px-4 py-3.5 sm:px-5">
                     {!isAuthenticated ? (
-                        <div
+                        <p
                             role="region"
                             aria-label="Sign in to comment"
-                            className={cn(
-                                'flex min-h-[4.5rem] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border/90',
-                                'bg-muted/20 px-3 py-3 text-center dark:bg-muted/10',
-                            )}
+                            className="text-sm text-muted-foreground"
                         >
-                            <p className="text-[13px] text-muted-foreground sm:text-sm">
-                                Log in to leave a comment
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={() =>
-                                        openAuthDialog('login', {
-                                            redirect: page.url,
-                                        })
-                                    }
-                                >
-                                    Log in
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        openAuthDialog('register', {
-                                            redirect: page.url,
-                                        })
-                                    }
-                                >
-                                    Sign up
-                                </Button>
-                            </div>
-                        </div>
+                            <button
+                                type="button"
+                                className="font-medium text-foreground underline-offset-4 hover:underline"
+                                onClick={() =>
+                                    openAuthDialog('login', {
+                                        redirect: page.url,
+                                    })
+                                }
+                            >
+                                Log in
+                            </button>
+                            <span className="mx-1.5 text-muted-foreground/50">
+                                or
+                            </span>
+                            <button
+                                type="button"
+                                className="font-medium text-foreground underline-offset-4 hover:underline"
+                                onClick={() =>
+                                    openAuthDialog('register', {
+                                        redirect: page.url,
+                                    })
+                                }
+                            >
+                                sign up
+                            </button>
+                            <span> to leave a comment.</span>
+                        </p>
                     ) : (
-                        <form onSubmit={submit}>
-                            <div className="flex gap-2">
-                                {authUser ? (
-                                    <UserAvatar
-                                        user={authUser}
-                                        className="mt-0.5 size-7 shrink-0 ring-1 ring-border/60 sm:size-8"
-                                        fallbackClassName="rounded-full bg-muted text-[10px] text-muted-foreground sm:text-xs"
-                                    />
-                                ) : null}
+                        <form onSubmit={submit} className="flex flex-col gap-2">
+                            <label
+                                className="sr-only"
+                                htmlFor="resource-comment-body"
+                            >
+                                Write a comment
+                            </label>
+                            <Textarea
+                                ref={composerRef}
+                                id="resource-comment-body"
+                                value={body}
+                                onChange={(event) => {
+                                    setBody(event.target.value);
 
-                                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                                    <label
-                                        className="sr-only"
-                                        htmlFor="resource-comment-body"
-                                    >
-                                        Write a comment
-                                    </label>
-                                    <Textarea
-                                        ref={composerRef}
-                                        id="resource-comment-body"
-                                        value={body}
-                                        onChange={(event) => {
-                                            setBody(event.target.value);
-
-                                            if (error) {
-                                                setError(null);
-                                            }
-                                        }}
-                                        onKeyDown={(event) => {
-                                            if (
-                                                (event.metaKey ||
-                                                    event.ctrlKey) &&
-                                                event.key === 'Enter'
-                                            ) {
-                                                event.preventDefault();
-                                                event.currentTarget.form?.requestSubmit();
-                                            }
-                                        }}
-                                        placeholder="Share your thoughts…"
-                                        rows={2}
-                                        maxLength={MAX_LENGTH}
-                                        disabled={isSubmitting}
+                                    if (error) {
+                                        setError(null);
+                                    }
+                                }}
+                                onKeyDown={(event) => {
+                                    if (
+                                        (event.metaKey || event.ctrlKey) &&
+                                        event.key === 'Enter'
+                                    ) {
+                                        event.preventDefault();
+                                        event.currentTarget.form?.requestSubmit();
+                                    }
+                                }}
+                                placeholder="Write a comment…"
+                                rows={2}
+                                maxLength={MAX_LENGTH}
+                                disabled={isSubmitting}
+                                className={cn(
+                                    'min-h-14 resize-y text-sm shadow-none',
+                                    error &&
+                                        'border-destructive focus-visible:border-destructive',
+                                )}
+                            />
+                            {error ? (
+                                <p
+                                    className="text-xs text-destructive"
+                                    role="alert"
+                                >
+                                    {error}
+                                </p>
+                            ) : null}
+                            <div className="flex flex-wrap items-center justify-end gap-3">
+                                {body.length > 0 ? (
+                                    <p
                                         className={cn(
-                                            'min-h-[3.25rem] resize-y bg-muted/25 text-[13px] shadow-none sm:text-sm dark:bg-muted/15',
-                                            'focus-visible:bg-background',
-                                            error &&
-                                                'border-destructive focus-visible:border-destructive',
+                                            'mr-auto text-xs text-muted-foreground tabular-nums',
+                                            nearLimit && 'text-warning',
+                                            remaining <= 0 &&
+                                                'text-destructive',
                                         )}
-                                    />
-                                    {error ? (
-                                        <p
-                                            className="text-xs text-destructive"
-                                            role="alert"
-                                        >
-                                            {error}
-                                        </p>
-                                    ) : null}
-                                    <div className="flex flex-wrap items-center justify-between gap-1.5">
-                                        <p className="text-[11px] text-muted-foreground">
-                                            <span
-                                                className={cn(
-                                                    'tabular-nums',
-                                                    nearLimit &&
-                                                        'font-medium text-warning',
-                                                    remaining <= 0 &&
-                                                        'text-destructive',
-                                                )}
-                                            >
-                                                {body.length}/{MAX_LENGTH}
-                                            </span>
-                                        </p>
-                                        <Button
-                                            type="submit"
-                                            size="sm"
-                                            disabled={
-                                                isSubmitting ||
-                                                body.trim() === ''
-                                            }
-                                        >
-                                            {isSubmitting ? 'Posting…' : 'Post'}
-                                        </Button>
-                                    </div>
-                                </div>
+                                    >
+                                        {body.length}/{MAX_LENGTH}
+                                    </p>
+                                ) : null}
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    disabled={
+                                        isSubmitting || body.trim() === ''
+                                    }
+                                >
+                                    {isSubmitting ? 'Posting…' : 'Post'}
+                                </Button>
                             </div>
                         </form>
                     )}
@@ -999,80 +911,60 @@ export function ResourceComments({
 
                 {commentItems.length === 0 ? (
                     <SiteEmptyState
-                        icon={MessageSquare}
                         title="No comments yet"
-                        className="min-h-0 rounded-none border-0 bg-transparent py-6"
+                        className="min-h-0 rounded-none border-0 bg-transparent py-10"
                     />
                 ) : (
                     <ul className="divide-y divide-border/60">
                         {commentItems.map((comment) => (
                             <li
                                 key={comment.id}
-                                className="flex flex-col gap-2 px-3 py-2.5 sm:gap-2.5 sm:px-4 sm:py-3"
+                                className="flex flex-col gap-3 px-4 py-4 sm:px-5"
                             >
                                 {renderComment(comment)}
                                 {comment.replies &&
                                 comment.replies.length > 0 ? (
-                                    <div className="flex gap-2.5 sm:gap-3">
-                                        <div
-                                            className="w-8 shrink-0 sm:w-9"
-                                            aria-hidden
-                                        />
-                                        <div className="relative min-w-0 flex-1">
-                                            <span
-                                                aria-hidden
-                                                className="pointer-events-none absolute top-0.5 bottom-1 left-0 w-px rounded-full bg-border/80 dark:bg-border/60"
-                                            />
-                                            <ul
-                                                className="flex flex-col gap-2.5 pl-3 sm:gap-3 sm:pl-3.5"
-                                                aria-label="Replies"
-                                            >
-                                                {comment.replies.map(
-                                                    (reply) => (
-                                                        <li key={reply.id}>
-                                                            {renderComment(
-                                                                reply,
-                                                                {
-                                                                    nested: true,
-                                                                    rootAuthorId:
-                                                                        comment
-                                                                            .user
-                                                                            .id,
-                                                                },
-                                                            )}
-                                                        </li>
-                                                    ),
-                                                )}
-                                            </ul>
-                                        </div>
-                                    </div>
+                                    <ul
+                                        className="flex flex-col gap-3 border-l border-border/60 pl-3 sm:gap-3.5 sm:pl-4"
+                                        aria-label="Replies"
+                                    >
+                                        {comment.replies.map((reply) => (
+                                            <li key={reply.id}>
+                                                {renderComment(reply, {
+                                                    nested: true,
+                                                })}
+                                            </li>
+                                        ))}
+                                    </ul>
                                 ) : null}
                             </li>
                         ))}
                     </ul>
                 )}
 
-                <div className="border-t border-border/60 px-3 py-3 sm:px-4">
-                    <SitePagination
-                        pagination={comments}
-                        pageUrl={(page) =>
-                            resourceCommentsRoute(resourceId, {
-                                query: { page },
-                            }).url
-                        }
-                        ariaLabel="Comments pagination"
-                        itemLabel="comments"
-                        only={['comments', 'commentsCount', 'activeTab']}
-                        onSuccess={() => {
-                            document
-                                .getElementById('resource-comments')
-                                ?.scrollIntoView({
-                                    behavior: 'smooth',
-                                    block: 'start',
-                                });
-                        }}
-                    />
-                </div>
+                {comments.last_page > 1 ? (
+                    <div className="border-t border-border/70 px-4 py-3 sm:px-5">
+                        <SitePagination
+                            pagination={comments}
+                            pageUrl={(page) =>
+                                resourceCommentsRoute(resourceId, {
+                                    query: { page },
+                                }).url
+                            }
+                            ariaLabel="Comments pagination"
+                            itemLabel="comments"
+                            only={['comments', 'commentsCount', 'activeTab']}
+                            onSuccess={() => {
+                                document
+                                    .getElementById('resource-comments')
+                                    ?.scrollIntoView({
+                                        behavior: 'smooth',
+                                        block: 'start',
+                                    });
+                            }}
+                        />
+                    </div>
+                ) : null}
             </div>
         </section>
     );

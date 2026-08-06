@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Games\RecordGameDownload;
 use App\GameStatus;
 use App\Models\GameDownloadLink;
 use App\Support\Turnstile;
@@ -11,6 +12,10 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class DownloadLinkContinueController extends Controller
 {
+    public function __construct(
+        private RecordGameDownload $recordGameDownload,
+    ) {}
+
     public function __invoke(Request $request, GameDownloadLink $downloadLink): SymfonyResponse
     {
         $downloadLink->load(['release.game']);
@@ -31,6 +36,8 @@ class DownloadLinkContinueController extends Controller
             $request->validate(Turnstile::validationRules(Turnstile::FEATURE_DOWNLOAD));
             Turnstile::validateRequest(Turnstile::FEATURE_DOWNLOAD);
         }
+
+        ($this->recordGameDownload)($game);
 
         return Inertia::location($downloadLink->url);
     }

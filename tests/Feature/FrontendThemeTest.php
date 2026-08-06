@@ -383,7 +383,6 @@ test('turnstile forms stay locked until the widget reports a token', function ()
             'components/auth/login-form.tsx',
             'components/auth/register-form.tsx',
             'components/auth/forgot-password-form.tsx',
-            'pages/download-links/show.tsx',
         ] as $file
     ) {
         $source = $filesystem->get(resource_path("js/{$file}"));
@@ -394,6 +393,13 @@ test('turnstile forms stay locked until the widget reports a token', function ()
             ->toContain('onTokenChange={')
             ->toContain('onBefore={turnstileGate.onBefore}');
     }
+
+    // Download continue always POSTs (to record counts); Turnstile is optional.
+    expect($filesystem->get(resource_path('js/pages/download-links/show.tsx')))
+        ->toContain('useTurnstileGate')
+        ->toContain('continueMethod.url(link.id)')
+        ->toContain('showTurnstile ? turnstileGate.onBefore : undefined')
+        ->toContain('turnstileGate.submitDisabled');
 });
 
 test('resource card thumbnails fade in with lazy loading', function () {

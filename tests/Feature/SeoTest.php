@@ -5,6 +5,7 @@ use App\Models\Category;
 use App\Models\Doc;
 use App\Models\Game;
 use App\Models\Setting;
+use App\Models\Tag;
 use App\Models\User;
 use App\Support\PageSeo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,6 +55,56 @@ test('resource catalog canonical ignores filter query strings', function () {
             ->where('pageSeo.titleSuffix', Setting::siteLogoText())
             ->where('pageSeo.description', 'Browse hentai games and eroge by genre, platform, language and tags. Search by title or developer, then view release details and download information.')
             ->where('pageSeo.robots', 'noindex,follow')
+        );
+});
+
+test('single category query redirects to genre taxonomy path', function () {
+    $category = Category::factory()->create([
+        'name' => 'SLG',
+        'slug' => 'slg',
+    ]);
+
+    $this->get(route('resources.index', ['category' => $category->slug]))
+        ->assertRedirect(route('resources.genre', $category));
+});
+
+test('genre taxonomy pages are indexable with self-canonical', function () {
+    $category = Category::factory()->create([
+        'name' => 'SLG',
+        'slug' => 'slg',
+    ]);
+    Game::factory()->create(['category_id' => $category->id]);
+
+    $this->get(route('resources.genre', $category))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('resources/index')
+            ->where('heading', 'SLG Hentai Games & Eroge')
+            ->where('resultsHeading', 'SLG games')
+            ->where('taxonomy.type', 'category')
+            ->where('taxonomy.value', 'slg')
+            ->where('filters.category', 'slg')
+            ->where('pageSeo.title', 'SLG Hentai Games & Eroge')
+            ->where('pageSeo.canonical', route('resources.genre', $category))
+            ->where('pageSeo.robots', 'index,follow')
+        );
+});
+
+test('tag taxonomy pages are indexable', function () {
+    $tag = Tag::factory()->create([
+        'name' => 'NTR',
+        'slug' => 'ntr',
+    ]);
+    $game = Game::factory()->create();
+    $game->tags()->attach($tag);
+
+    $this->get(route('resources.tag', $tag))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('pageSeo.title', 'NTR Hentai Games & Eroge')
+            ->where('pageSeo.canonical', route('resources.tag', $tag))
+            ->where('pageSeo.robots', 'index,follow')
+            ->where('filters.tags', ['ntr'])
         );
 });
 
@@ -294,11 +345,15 @@ test('resource catalog partial reloads include page seo', function () {
 
     expect($pagination)
         ->not->toBeFalse()
-        ->toContain("only={['resources', 'filters', 'pageSeo']}");
+        ->toContain("'pageSeo'")
+        ->toContain("'heading'")
+        ->toContain("'taxonomy'");
 
     expect($filters)
         ->not->toBeFalse()
-        ->toContain("only: ['resources', 'filters', 'pageSeo']");
+        ->toContain("'pageSeo'")
+        ->toContain("'heading'")
+        ->toContain("'taxonomy'");
 });
 
 test('auth modal layout mounts site-wide SiteSeo once for every page shell', function () {

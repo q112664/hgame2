@@ -14,7 +14,7 @@ type Props = {
 /** Simple recommendations for the Details tab — compact landscape cards. */
 export function RelatedResources({
     resources,
-    title = 'More recommendations',
+    title = 'Related games',
 }: Props) {
     if (resources.length === 0) {
         return null;

@@ -26,10 +26,21 @@ import { Spinner } from '@/components/ui/spinner';
 import { SiteLayout } from '@/layouts/site-layout';
 import { cn } from '@/lib/utils';
 
+type CatalogTaxonomy = {
+    type: 'category' | 'platform' | 'language' | 'tag';
+    name: string;
+    value: string;
+};
+
 type Props = {
     resources: PaginatedResources;
     filters: ResourceFilters;
     filterOptions: FilterOptions;
+    /** Visible H1 — matches SEO title intent for catalog / taxonomy pages. */
+    heading?: string;
+    /** Visible H2 above the result grid. */
+    resultsHeading?: string;
+    taxonomy?: CatalogTaxonomy | null;
     pageSeo?: PageSeoData | null;
 };
 
@@ -37,6 +48,9 @@ export default function ResourcesIndex({
     resources,
     filters,
     filterOptions,
+    heading = 'Hentai Games & Eroge Downloads',
+    resultsHeading = 'All games',
+    taxonomy = null,
     pageSeo,
 }: Props) {
     const [isPending, setIsPending] = useState(false);
@@ -99,9 +113,25 @@ export default function ResourcesIndex({
 
     return (
         <SiteLayout>
-            <PageSeo seo={pageSeo} title="Hentai Games & Eroge Downloads" />
+            <PageSeo seo={pageSeo} title={heading} />
 
             <SitePageContainer className="gap-6 sm:gap-8">
+                <header className="flex flex-col gap-1">
+                    <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                        {heading}
+                    </h1>
+                    {taxonomy ? (
+                        <p className="text-sm text-muted-foreground">
+                            Browse {taxonomy.name.toLowerCase()} titles in the
+                            catalog.
+                        </p>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            Browse, filter, and download hentai games and eroge.
+                        </p>
+                    )}
+                </header>
+
                 <div className="flex flex-col gap-4 rounded-md border border-border/80 bg-card p-4 sm:p-5">
                     <div className="relative">
                         <label className="sr-only" htmlFor="resource-search">
@@ -263,11 +293,21 @@ export default function ResourcesIndex({
                 </div>
 
                 {resources.data.length > 0 ? (
-                    <div
+                    <section
                         id="resource-results"
-                        className="relative flex scroll-mt-20 flex-col gap-8"
+                        className="relative flex scroll-mt-20 flex-col gap-5"
+                        aria-labelledby="resource-results-heading"
                         aria-busy={isPending || undefined}
                     >
+                        <h2
+                            id="resource-results-heading"
+                            className="font-heading text-lg font-semibold tracking-tight text-foreground sm:text-xl"
+                        >
+                            {resultsHeading}
+                            <span className="ml-2 text-sm font-normal text-muted-foreground tabular-nums">
+                                {resources.total}
+                            </span>
+                        </h2>
                         {isPending ? (
                             <div className="absolute inset-0 z-10 flex items-start justify-center pt-16">
                                 <Spinner
@@ -297,15 +337,25 @@ export default function ResourcesIndex({
                                 filters={filters}
                             />
                         ) : null}
-                    </div>
+                    </section>
                 ) : (
-                    <div id="resource-results" className="scroll-mt-20">
+                    <section
+                        id="resource-results"
+                        className="scroll-mt-20"
+                        aria-labelledby="resource-results-heading"
+                    >
+                        <h2
+                            id="resource-results-heading"
+                            className="sr-only"
+                        >
+                            {resultsHeading}
+                        </h2>
                         <SiteEmptyState
                             icon={Library}
                             title="No resources match these filters"
                             description="Clear filters or try a different search, category, platform, language, or tag."
                         />
-                    </div>
+                    </section>
                 )}
             </SitePageContainer>
         </SiteLayout>

@@ -10,6 +10,8 @@ test('resource filter panel has a keyword search above label-free menus', functi
     expect($controls)
         ->toContain("q: ''")
         ->toContain('query.q = filters.q.trim()')
+        ->toContain('export function catalogUrl')
+        ->toContain('resourcesGenre.url')
         ->toContain('aria-label={label}')
         ->not->toContain('tracking-wide text-muted-foreground uppercase');
 
@@ -17,5 +19,7 @@ test('resource filter panel has a keyword search above label-free menus', functi
         ->toContain('id="resource-search"')
         ->toContain('Search titles, tags, developers…')
         ->toContain('<TagFilterDialog')
+        ->toContain('<h1')
+        ->toContain('resource-results-heading')
         ->not->toContain('import { Label } from \'@/components/ui/label\';');
 });

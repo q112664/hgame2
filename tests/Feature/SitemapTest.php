@@ -1,19 +1,32 @@
 <?php
 
+use App\Models\Category;
 use App\Models\Doc;
 use App\Models\Game;
+use App\Models\Tag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 test('sitemap lists public pages resources and docs', function () {
+    $category = Category::factory()->create([
+        'name' => 'SLG',
+        'slug' => 'slg',
+    ]);
+    $emptyCategory = Category::factory()->create([
+        'name' => 'Empty',
+        'slug' => 'empty-genre',
+    ]);
     $game = Game::factory()->create([
         'slug' => 'listed-game',
         'title' => 'Listed Game',
+        'category_id' => $category->id,
     ]);
     $draft = Game::factory()->draft()->create([
         'slug' => 'draft-game',
     ]);
+    $tag = Tag::factory()->create(['name' => 'Romance', 'slug' => 'romance']);
+    $game->tags()->attach($tag);
     $doc = Doc::factory()->create([
         'slug' => 'listed-doc',
         'title' => 'Listed Doc',
@@ -25,9 +38,12 @@ test('sitemap lists public pages resources and docs', function () {
 
     $response->assertSee(route('home'), false)
         ->assertSee(route('resources.index'), false)
+        ->assertSee(route('resources.genre', $category), false)
+        ->assertSee(route('resources.tag', $tag), false)
         ->assertSee(route('resources.details', $game), false)
         ->assertSee(route('docs.show', $doc), false)
-        ->assertDontSee(route('resources.details', $draft), false);
+        ->assertDontSee(route('resources.details', $draft), false)
+        ->assertDontSee(route('resources.genre', $emptyCategory), false);
 });
 
 test('sitemap lastmod stays stable after a resource is only viewed', function () {

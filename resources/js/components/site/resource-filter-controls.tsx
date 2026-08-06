@@ -21,7 +21,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { index as resourcesIndex } from '@/routes/resources';
+import {
+    genre as resourcesGenre,
+    index as resourcesIndex,
+    language as resourcesLanguage,
+    platform as resourcesPlatform,
+    tag as resourcesTag,
+} from '@/routes/resources';
 
 export type FilterOption = {
     name: string;
@@ -222,26 +228,28 @@ export function SortMenu({
 export function filterQuery(
     filters: ResourceFilters,
     page?: number,
+    options: { omitTaxonomyKeys?: boolean } = {},
 ): Record<string, string | number | string[]> {
     const query: Record<string, string | number | string[]> = {};
+    const omitTaxonomy = options.omitTaxonomyKeys === true;
 
     if (filters.q.trim() !== '') {
         query.q = filters.q.trim();
     }
 
-    if (filters.category) {
+    if (!omitTaxonomy && filters.category) {
         query.category = filters.category;
     }
 
-    if (filters.platform) {
+    if (!omitTaxonomy && filters.platform) {
         query.platform = filters.platform;
     }
 
-    if (filters.language) {
+    if (!omitTaxonomy && filters.language) {
         query.language = filters.language;
     }
 
-    if (filters.tags.length > 0) {
+    if (!omitTaxonomy && filters.tags.length > 0) {
         query.tags = filters.tags;
     }
 
@@ -256,20 +264,69 @@ export function filterQuery(
     return query;
 }
 
+/**
+ * Single pure taxonomy dimension → path URL; otherwise query-string catalog.
+ */
+export function catalogUrl(
+    filters: ResourceFilters,
+    page?: number,
+): string {
+    const q = filters.q.trim();
+    const hasCategory = Boolean(filters.category);
+    const hasPlatform = Boolean(filters.platform);
+    const hasLanguage = Boolean(filters.language);
+    const tagCount = filters.tags.length;
+
+    const dimensionCount =
+        (hasCategory ? 1 : 0) +
+        (hasPlatform ? 1 : 0) +
+        (hasLanguage ? 1 : 0) +
+        (tagCount > 0 ? 1 : 0);
+
+    if (q === '' && dimensionCount === 1 && tagCount <= 1) {
+        const query = filterQuery(filters, page, { omitTaxonomyKeys: true });
+
+        if (hasCategory && filters.category) {
+            return resourcesGenre.url(filters.category, { query });
+        }
+
+        if (hasPlatform && filters.platform) {
+            return resourcesPlatform.url(filters.platform, { query });
+        }
+
+        if (hasLanguage && filters.language) {
+            return resourcesLanguage.url(filters.language, { query });
+        }
+
+        if (tagCount === 1) {
+            return resourcesTag.url(filters.tags[0]!, { query });
+        }
+    }
+
+    return resourcesIndex.url({
+        query: filterQuery(filters, page),
+    });
+}
+
 export function visitFilters(
     next: ResourceFilters,
     options: { page?: number; onFinish?: () => void } = {},
 ) {
     router.get(
-        resourcesIndex.url({
-            query: filterQuery(next, options.page),
-        }),
+        catalogUrl(next, options.page),
         {},
         {
             preserveState: true,
             preserveScroll: true,
             replace: true,
-            only: ['resources', 'filters', 'pageSeo'],
+            only: [
+                'resources',
+                'filters',
+                'pageSeo',
+                'heading',
+                'resultsHeading',
+                'taxonomy',
+            ],
             onFinish: options.onFinish,
         },
     );

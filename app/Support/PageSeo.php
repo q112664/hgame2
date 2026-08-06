@@ -101,6 +101,103 @@ final class PageSeo
     }
 
     /**
+     * Single-dimension taxonomy landing pages (genre / platform / language / tag).
+     *
+     * Pure pages (no search, no extra dims, default sort) are indexable with a
+     * self-referencing canonical. Extra query noise folds the canonical back to
+     * the clean taxonomy URL and uses noindex.
+     *
+     * @param  'category'|'platform'|'language'|'tag'  $type
+     * @return PageSeoArray
+     */
+    public static function resourcesTaxonomy(
+        string $type,
+        string $name,
+        string $value,
+        int $page = 1,
+        bool $isPure = true,
+    ): array {
+        $page = max(1, $page);
+        $name = trim($name);
+        $route = self::taxonomyRouteName($type);
+        $params = self::taxonomyRouteParams($type, $value);
+        $title = self::taxonomyTitle($type, $name);
+        $description = self::taxonomyDescription($type, $name);
+
+        $canonicalParams = $params;
+
+        if ($isPure && $page > 1) {
+            $canonicalParams['page'] = $page;
+            $title .= ' - Page '.$page;
+        }
+
+        return self::make(
+            title: $title,
+            titleSuffix: Setting::siteLogoText(),
+            description: $description,
+            canonical: route($route, $canonicalParams),
+            robots: $isPure ? null : 'noindex,follow',
+        );
+    }
+
+    /**
+     * @param  'category'|'platform'|'language'|'tag'  $type
+     */
+    public static function taxonomyRouteName(string $type): string
+    {
+        return match ($type) {
+            'category' => 'resources.genre',
+            'platform' => 'resources.platform',
+            'language' => 'resources.language',
+            'tag' => 'resources.tag',
+            default => throw new \InvalidArgumentException("Unknown taxonomy type [{$type}]."),
+        };
+    }
+
+    /**
+     * @param  'category'|'platform'|'language'|'tag'  $type
+     * @return array<string, string>
+     */
+    public static function taxonomyRouteParams(string $type, string $value): array
+    {
+        return match ($type) {
+            'category' => ['category' => $value],
+            'platform' => ['platform' => $value],
+            'language' => ['language' => $value],
+            'tag' => ['tag' => $value],
+            default => throw new \InvalidArgumentException("Unknown taxonomy type [{$type}]."),
+        };
+    }
+
+    /**
+     * @param  'category'|'platform'|'language'|'tag'  $type
+     */
+    public static function taxonomyTitle(string $type, string $name): string
+    {
+        return match ($type) {
+            'category' => "{$name} Hentai Games & Eroge",
+            'platform' => "{$name} Hentai Games & Eroge Downloads",
+            'language' => "{$name} Hentai Games & Eroge",
+            'tag' => "{$name} Hentai Games & Eroge",
+            default => "{$name} Hentai Games & Eroge",
+        };
+    }
+
+    /**
+     * @param  'category'|'platform'|'language'|'tag'  $type
+     */
+    public static function taxonomyDescription(string $type, string $name): string
+    {
+        return match ($type) {
+            'category' => "Browse {$name} hentai games and eroge. Filter by platform and language, then open release details and download links.",
+            'platform' => "Browse hentai games and eroge for {$name}. Discover titles with downloads, screenshots, and release information.",
+            'language' => "Browse {$name} hentai games and eroge with language-matched releases, downloads, and screenshots.",
+            'tag' => "Browse hentai games and eroge tagged {$name}. Find related titles, platforms, and download packages.",
+            default => self::RESOURCE_CATALOG_DESCRIPTION,
+        };
+    }
+
+    /**
      * @return PageSeoArray
      */
     public static function forGame(Game $game, string $tab = 'details'): array

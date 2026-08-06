@@ -34,7 +34,7 @@ import { useImageLoadState } from '@/hooks/use-image-load-state';
 import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
 import { show as downloadLinkShow } from '@/routes/download-links';
-import { index as resourcesIndex } from '@/routes/resources';
+import { tag as resourcesTag } from '@/routes/resources';
 import type { GameCard, GameDetail } from '@/types/resources';
 
 type ResourceTab = 'details' | 'downloads' | 'screenshots' | 'comments';
@@ -220,15 +220,22 @@ export function ResourceTabContent({
         <div aria-busy={isTabPending || undefined}>
             {activeTab === 'details' ? (
                 <div className="flex flex-col gap-4 sm:gap-5">
-                    <section className="rounded-md border border-border bg-card p-4 sm:p-5">
+                    <section
+                        className="rounded-md border border-border bg-card p-4 sm:p-5"
+                        aria-labelledby="resource-overview-heading"
+                    >
+                        <h2
+                            id="resource-overview-heading"
+                            className="mb-3 font-heading text-base font-semibold tracking-tight text-foreground sm:text-lg"
+                        >
+                            Overview
+                        </h2>
                         {resource.tags.length > 0 ? (
                             <div className="mb-4 flex flex-wrap gap-2">
                                 {resource.tags.map((tag) => (
                                     <Link
                                         key={tag.slug}
-                                        href={resourcesIndex.url({
-                                            query: { tags: [tag.slug] },
-                                        })}
+                                        href={resourcesTag.url(tag.slug)}
                                         className={tagBadgeClassName}
                                         prefetch
                                     >
@@ -240,12 +247,24 @@ export function ResourceTabContent({
                         <RichHtml html={resource.description} />
                     </section>
 
-                    <RelatedResources resources={related} />
+                    <RelatedResources
+                        resources={related}
+                        title="Related games"
+                    />
                 </div>
             ) : null}
 
             {activeTab === 'downloads' ? (
-                <div className="flex flex-col gap-3 sm:gap-4">
+                <div
+                    className="flex flex-col gap-3 sm:gap-4"
+                    aria-labelledby="resource-downloads-heading"
+                >
+                    <h2
+                        id="resource-downloads-heading"
+                        className="font-heading text-base font-semibold tracking-tight text-foreground sm:text-lg"
+                    >
+                        Downloads
+                    </h2>
                     {resourceNotice !== '' ? (
                         <div
                             role="note"
@@ -441,26 +460,40 @@ export function ResourceTabContent({
             ) : null}
 
             {activeTab === 'screenshots' ? (
-                resource.screenshots.length > 0 ? (
-                    <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-3">
-                        {resource.screenshots.map((screenshot, index) => (
-                            <ResourceScreenshot
-                                key={screenshot}
-                                src={screenshot}
-                                alt={`${resource.title} screenshot ${index + 1}`}
-                                onOpen={() =>
-                                    onOpenLightbox(screenshotSlides, index)
-                                }
-                            />
-                        ))}
-                    </div>
-                ) : (
-                    <SiteEmptyState
-                        icon={Images}
-                        title="No images yet"
-                        description="This resource does not have screenshots uploaded."
-                    />
-                )
+                <div
+                    className="flex flex-col gap-3 sm:gap-4"
+                    aria-labelledby="resource-screenshots-heading"
+                >
+                    <h2
+                        id="resource-screenshots-heading"
+                        className="font-heading text-base font-semibold tracking-tight text-foreground sm:text-lg"
+                    >
+                        Screenshots
+                    </h2>
+                    {resource.screenshots.length > 0 ? (
+                        <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-3">
+                            {resource.screenshots.map((screenshot, index) => (
+                                <ResourceScreenshot
+                                    key={screenshot}
+                                    src={screenshot}
+                                    alt={`${resource.title} screenshot ${index + 1}`}
+                                    onOpen={() =>
+                                        onOpenLightbox(
+                                            screenshotSlides,
+                                            index,
+                                        )
+                                    }
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <SiteEmptyState
+                            icon={Images}
+                            title="No images yet"
+                            description="This resource does not have screenshots uploaded."
+                        />
+                    )}
+                </div>
             ) : null}
 
             {activeTab === 'comments' && resourceId ? (

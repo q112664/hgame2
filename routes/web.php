@@ -37,6 +37,17 @@ Route::get('/resources', [ResourceController::class, 'index'])
     ->name('resources.index');
 Route::get('/resources/random', [ResourceController::class, 'random'])
     ->name('resources.random');
+
+// Indexable single-dimension taxonomy landings (before {resource} catch-all).
+Route::get('/resources/genre/{category:slug}', [ResourceController::class, 'genre'])
+    ->name('resources.genre');
+Route::get('/resources/platform/{platform:slug}', [ResourceController::class, 'platform'])
+    ->name('resources.platform');
+Route::get('/resources/language/{language:code}', [ResourceController::class, 'language'])
+    ->name('resources.language');
+Route::get('/resources/tag/{tag:slug}', [ResourceController::class, 'tag'])
+    ->name('resources.tag');
+
 Route::get('/resources/{resource}/details', [ResourceController::class, 'details'])
     ->name('resources.details');
 Route::get('/resources/{resource}/downloads', [ResourceController::class, 'downloads'])

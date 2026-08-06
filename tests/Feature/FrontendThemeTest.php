@@ -134,6 +134,18 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('Listed')
         ->not->toContain('sm:flex-row')
         ->not->toContain('sm:h-[280px]');
+
+    expect($filesystem->get(resource_path('js/components/site/resource-tab-content.tsx')))
+        ->toContain('resource-overview-heading')
+        ->toContain('resource-downloads-heading')
+        ->toContain('resource-screenshots-heading')
+        ->toContain('Related games');
+
+    expect($filesystem->get(resource_path('js/components/site/home-hero.tsx')))
+        ->toContain('<h1');
+
+    expect($filesystem->get(resource_path('js/components/site/popular-resources.tsx')))
+        ->toContain('<h2');
 });
 
 test('site empty states and download buttons use primary CTAs', function () {

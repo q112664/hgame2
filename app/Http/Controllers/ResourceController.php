@@ -8,9 +8,13 @@ use App\Actions\Games\MarkFavoriteDownloadsSeen;
 use App\Actions\Games\RecordGameView;
 use App\Filament\Resources\Games\GameResource;
 use App\Http\Requests\ListResourcesRequest;
+use App\Models\Category;
 use App\Models\Game;
 use App\Models\GameComment;
+use App\Models\Language;
+use App\Models\Platform;
 use App\Models\Setting;
+use App\Models\Tag;
 use App\Support\GamePresenter;
 use App\Support\PageSeo;
 use Illuminate\Http\RedirectResponse;
@@ -30,24 +34,87 @@ class ResourceController extends Controller
         private ListRelatedGames $listRelatedGames,
     ) {}
 
-    public function index(ListResourcesRequest $request, ListPublishedGames $listPublishedGames): Response
-    {
-        $page = $request->catalogPage();
-        $payload = $listPublishedGames($request->filters());
+    public function index(
+        ListResourcesRequest $request,
+        ListPublishedGames $listPublishedGames,
+    ): Response|RedirectResponse {
+        if ($redirect = $this->singleTaxonomyRedirect($request)) {
+            return redirect()->to($redirect, 301);
+        }
 
-        /** @var LengthAwarePaginator<int, array<string, mixed>> $resources */
-        $resources = $payload['resources'];
+        return $this->renderCatalog(
+            $request,
+            $listPublishedGames,
+            taxonomy: null,
+        );
+    }
 
-        // Empty catalogs still expose last_page = 1; only reject pages past the end.
-        abort_if($page > $resources->lastPage(), 404);
+    public function genre(
+        ListResourcesRequest $request,
+        Category $category,
+        ListPublishedGames $listPublishedGames,
+    ): Response {
+        return $this->renderCatalog(
+            $request,
+            $listPublishedGames,
+            taxonomy: [
+                'type' => 'category',
+                'name' => $category->name,
+                'value' => $category->slug,
+                'forcedFilters' => ['category' => $category->slug],
+            ],
+        );
+    }
 
-        return Inertia::render('resources/index', [
-            ...$payload,
-            'pageSeo' => PageSeo::resourcesIndex(
-                page: $page,
-                hasFilters: $request->hasSeoFilters(),
-            ),
-        ]);
+    public function platform(
+        ListResourcesRequest $request,
+        Platform $platform,
+        ListPublishedGames $listPublishedGames,
+    ): Response {
+        return $this->renderCatalog(
+            $request,
+            $listPublishedGames,
+            taxonomy: [
+                'type' => 'platform',
+                'name' => $platform->name,
+                'value' => $platform->slug,
+                'forcedFilters' => ['platform' => $platform->slug],
+            ],
+        );
+    }
+
+    public function language(
+        ListResourcesRequest $request,
+        Language $language,
+        ListPublishedGames $listPublishedGames,
+    ): Response {
+        return $this->renderCatalog(
+            $request,
+            $listPublishedGames,
+            taxonomy: [
+                'type' => 'language',
+                'name' => $language->name,
+                'value' => $language->code,
+                'forcedFilters' => ['language' => $language->code],
+            ],
+        );
+    }
+
+    public function tag(
+        ListResourcesRequest $request,
+        Tag $tag,
+        ListPublishedGames $listPublishedGames,
+    ): Response {
+        return $this->renderCatalog(
+            $request,
+            $listPublishedGames,
+            taxonomy: [
+                'type' => 'tag',
+                'name' => $tag->name,
+                'value' => $tag->slug,
+                'forcedFilters' => ['tags' => [$tag->slug]],
+            ],
+        );
     }
 
     public function random(): RedirectResponse
@@ -64,6 +131,161 @@ class ResourceController extends Controller
         return $response->withHeaders([
             'Cache-Control' => 'no-store, private',
         ]);
+    }
+
+    /**
+     * @param  array{
+     *     type: 'category'|'platform'|'language'|'tag',
+     *     name: string,
+     *     value: string,
+     *     forcedFilters: array<string, mixed>
+     * }|null  $taxonomy
+     */
+    private function renderCatalog(
+        ListResourcesRequest $request,
+        ListPublishedGames $listPublishedGames,
+        ?array $taxonomy,
+    ): Response {
+        $page = $request->catalogPage();
+        $filters = $request->filters();
+
+        if ($taxonomy !== null) {
+            $filters = [
+                ...$filters,
+                ...$taxonomy['forcedFilters'],
+            ];
+        }
+
+        $payload = $listPublishedGames($filters);
+
+        /** @var LengthAwarePaginator<int, array<string, mixed>> $resources */
+        $resources = $payload['resources'];
+
+        // Empty catalogs still expose last_page = 1; only reject pages past the end.
+        abort_if($page > $resources->lastPage(), 404);
+
+        $heading = $taxonomy === null
+            ? 'Hentai Games & Eroge Downloads'
+            : PageSeo::taxonomyTitle($taxonomy['type'], $taxonomy['name']);
+
+        $resultsHeading = $taxonomy === null
+            ? 'All games'
+            : match ($taxonomy['type']) {
+                'category' => $taxonomy['name'].' games',
+                'platform' => $taxonomy['name'].' games',
+                'language' => $taxonomy['name'].' games',
+                'tag' => 'Tagged '.$taxonomy['name'],
+            };
+
+        $pageSeo = $taxonomy === null
+            ? PageSeo::resourcesIndex(
+                page: $page,
+                hasFilters: $request->hasSeoFilters(),
+            )
+            : PageSeo::resourcesTaxonomy(
+                type: $taxonomy['type'],
+                name: $taxonomy['name'],
+                value: $taxonomy['value'],
+                page: $page,
+                isPure: $this->isPureTaxonomyFilters($filters, $taxonomy['type']),
+            );
+
+        return Inertia::render('resources/index', [
+            ...$payload,
+            'heading' => $heading,
+            'resultsHeading' => $resultsHeading,
+            'taxonomy' => $taxonomy === null ? null : [
+                'type' => $taxonomy['type'],
+                'name' => $taxonomy['name'],
+                'value' => $taxonomy['value'],
+            ],
+            'pageSeo' => $pageSeo,
+        ]);
+    }
+
+    /**
+     * 301 single-dimension query filters to path-based taxonomy URLs.
+     */
+    private function singleTaxonomyRedirect(ListResourcesRequest $request): ?string
+    {
+        $filters = $request->filters();
+
+        if ($filters['q'] !== '' || $filters['sort'] !== ListPublishedGames::SORT_LATEST) {
+            return null;
+        }
+
+        $hasCategory = $filters['category'] !== null;
+        $hasPlatform = $filters['platform'] !== null;
+        $hasLanguage = $filters['language'] !== null;
+        $tagCount = count($filters['tags']);
+
+        $dimensions = ($hasCategory ? 1 : 0)
+            + ($hasPlatform ? 1 : 0)
+            + ($hasLanguage ? 1 : 0)
+            + ($tagCount > 0 ? 1 : 0);
+
+        if ($dimensions !== 1 || $tagCount > 1) {
+            return null;
+        }
+
+        $page = $request->catalogPage();
+        $query = $page > 1 ? ['page' => $page] : [];
+
+        if ($hasCategory) {
+            return route('resources.genre', [
+                'category' => $filters['category'],
+                ...$query,
+            ]);
+        }
+
+        if ($hasPlatform) {
+            return route('resources.platform', [
+                'platform' => $filters['platform'],
+                ...$query,
+            ]);
+        }
+
+        if ($hasLanguage) {
+            return route('resources.language', [
+                'language' => $filters['language'],
+                ...$query,
+            ]);
+        }
+
+        return route('resources.tag', [
+            'tag' => $filters['tags'][0],
+            ...$query,
+        ]);
+    }
+
+    /**
+     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}  $filters
+     * @param  'category'|'platform'|'language'|'tag'  $type
+     */
+    private function isPureTaxonomyFilters(array $filters, string $type): bool
+    {
+        if ($filters['q'] !== '' || $filters['sort'] !== ListPublishedGames::SORT_LATEST) {
+            return false;
+        }
+
+        return match ($type) {
+            'category' => $filters['category'] !== null
+                && $filters['platform'] === null
+                && $filters['language'] === null
+                && $filters['tags'] === [],
+            'platform' => $filters['platform'] !== null
+                && $filters['category'] === null
+                && $filters['language'] === null
+                && $filters['tags'] === [],
+            'language' => $filters['language'] !== null
+                && $filters['category'] === null
+                && $filters['platform'] === null
+                && $filters['tags'] === [],
+            'tag' => count($filters['tags']) === 1
+                && $filters['category'] === null
+                && $filters['platform'] === null
+                && $filters['language'] === null,
+        };
     }
 
     public function show(Game $resource): RedirectResponse

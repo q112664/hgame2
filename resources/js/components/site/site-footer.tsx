@@ -63,7 +63,10 @@ export function SiteFooter() {
                             className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:justify-end"
                         >
                             {footerLinks.map((item) => (
-                                <FooterNavLink key={`${item.label}-${item.url}`} item={item} />
+                                <FooterNavLink
+                                    key={`${item.label}-${item.url}`}
+                                    item={item}
+                                />
                             ))}
                         </nav>
                     ) : null}

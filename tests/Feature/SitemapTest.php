@@ -38,6 +38,7 @@ test('sitemap lists public pages resources and docs', function () {
 
     $response->assertSee(route('home'), false)
         ->assertSee(route('resources.index'), false)
+        ->assertSee(route('resources.tags'), false)
         ->assertSee(route('resources.genre', $category), false)
         ->assertSee(route('resources.tag', $tag), false)
         ->assertSee(route('resources.details', $game), false)

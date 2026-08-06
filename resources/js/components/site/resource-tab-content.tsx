@@ -350,13 +350,13 @@ export function ResourceTabContent({
                                                 {release.languages.map(
                                                     (language) => (
                                                         <Badge
-                                                            key={language}
+                                                            key={language.code}
                                                             variant="outline"
                                                             className={
                                                                 languageBadgeClassName
                                                             }
                                                         >
-                                                            {language}
+                                                            {language.name}
                                                         </Badge>
                                                     ),
                                                 )}

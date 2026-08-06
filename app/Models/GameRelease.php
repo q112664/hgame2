@@ -58,7 +58,7 @@ class GameRelease extends Model
             ->select(['id', 'game_id', 'version', 'sort_order'])
             ->with([
                 'platforms:id,name,slug',
-                'languages:id,name',
+                'languages:id,name,code',
             ])
             ->orderBy('sort_order');
     }
@@ -73,7 +73,7 @@ class GameRelease extends Model
             ->available()
             ->with([
                 'platforms:id,name,slug',
-                'languages:id,name',
+                'languages:id,name,code',
                 'downloadLinks' => fn ($links) => $links
                     ->where('is_active', true)
                     ->orderBy('sort_order'),

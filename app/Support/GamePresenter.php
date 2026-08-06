@@ -19,6 +19,7 @@ class GamePresenter
             'subtitle' => $game->subtitle,
             'thumbnail' => self::cardThumbnailUrl($game),
             'category' => filled($categoryName) ? $categoryName : 'Uncategorized',
+            'categorySlug' => $game->category?->slug,
             'developer' => $game->developer ?? 'Unknown',
             'source' => GameSource::present(
                 $game->source_name,
@@ -34,7 +35,15 @@ class GamePresenter
                 ])
                 ->values()
                 ->all(),
-            'languages' => $game->releases->flatMap->languages->pluck('name')->unique()->values()->all(),
+            'languages' => $game->releases
+                ->flatMap->languages
+                ->unique('code')
+                ->map(fn ($language): array => [
+                    'name' => $language->name,
+                    'code' => $language->code,
+                ])
+                ->values()
+                ->all(),
             'version' => $game->releases
                 ->pluck('version')
                 ->map(fn (?string $version): ?string => filled($version) ? trim($version) : null)
@@ -82,8 +91,11 @@ class GamePresenter
                 ->all(),
             'languages' => $game->releases
                 ->flatMap->languages
-                ->pluck('name')
-                ->unique()
+                ->unique('code')
+                ->map(fn ($language): array => [
+                    'name' => $language->name,
+                    'code' => $language->code,
+                ])
                 ->values()
                 ->all(),
             'updatedAt' => self::dateTimeString($updatedAt),
@@ -133,7 +145,13 @@ class GamePresenter
                             ])
                             ->values()
                             ->all(),
-                        'languages' => $release->languages->pluck('name')->values()->all(),
+                        'languages' => $release->languages
+                            ->map(fn ($language): array => [
+                                'name' => $language->name,
+                                'code' => $language->code,
+                            ])
+                            ->values()
+                            ->all(),
                         'version' => $release->version,
                         'fileSize' => $release->file_size,
                         'description' => str($release->description ?? '')->sanitizeHtml()->toString(),

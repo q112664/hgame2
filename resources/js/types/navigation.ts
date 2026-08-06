@@ -27,3 +27,16 @@ export type FooterLinkItem = {
     url: string;
     openInNewTab: boolean;
 };
+
+/** Shared taxonomy directory for internal SEO links. */
+export type TaxonomyNavLink = {
+    name: string;
+    value: string;
+};
+
+export type TaxonomyNav = {
+    categories: TaxonomyNavLink[];
+    platforms: TaxonomyNavLink[];
+    languages: TaxonomyNavLink[];
+    tags: TaxonomyNavLink[];
+};

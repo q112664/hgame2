@@ -141,6 +141,21 @@ final class PageSeo
     }
 
     /**
+     * Dedicated tag directory page (/resources/tags).
+     *
+     * @return PageSeoArray
+     */
+    public static function resourcesTagsIndex(): array
+    {
+        return self::make(
+            title: 'Game Tags',
+            titleSuffix: Setting::siteLogoText(),
+            description: 'Browse hentai games and eroge by tag. Open a tag to see matching titles, platforms, and download packages.',
+            canonical: route('resources.tags'),
+        );
+    }
+
+    /**
      * @param  'category'|'platform'|'language'|'tag'  $type
      */
     public static function taxonomyRouteName(string $type): string
@@ -203,7 +218,7 @@ final class PageSeo
     public static function forGame(Game $game, string $tab = 'details'): array
     {
         if (! $game->relationLoaded('category')) {
-            $game->load('category:id,name');
+            $game->load('category:id,name,slug');
         }
 
         $canonicalRoute = match ($tab) {

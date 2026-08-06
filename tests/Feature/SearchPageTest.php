@@ -73,7 +73,9 @@ test('search matches title subtitle tags category platforms and languages', func
             ->where('resources.data.0.platforms', [
                 ['name' => 'Windows', 'slug' => 'windows'],
             ])
-            ->where('resources.data.0.languages', ['Chinese'])
+            ->where('resources.data.0.languages', [
+                ['name' => 'Chinese', 'code' => 'zh'],
+            ])
             ->where('resources.data.0.version', '2.1')
             ->where('resources.data.0.tags', [
                 ['name' => 'Romance', 'slug' => 'romance'],

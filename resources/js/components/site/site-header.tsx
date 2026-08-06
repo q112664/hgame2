@@ -19,6 +19,10 @@ import { useAuthDialog } from '@/components/auth/auth-dialog';
 import type { AuthDialogView } from '@/components/auth/auth-dialog';
 import { NotificationBell } from '@/components/site/notification-bell';
 import { SiteLogo } from '@/components/site/site-logo';
+import {
+    SiteTaxonomyNavDesktop,
+    SiteTaxonomyNavMobile,
+} from '@/components/site/site-taxonomy-nav';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -336,11 +340,14 @@ export function SiteHeader() {
                             </SheetClose>
                         </div>
 
-                        <div className="flex min-h-0 flex-1 flex-col px-3 py-4">
+                        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4">
                             <NavLinks
                                 className="flex-col items-stretch gap-1 [&>a]:h-10 [&>a]:justify-start [&>a]:px-3"
                                 onNavigate={closeMenu}
                             />
+
+                            <Separator className="my-3 bg-border" />
+                            <SiteTaxonomyNavMobile onNavigate={closeMenu} />
 
                             {!auth.user && (
                                 <div className="mt-auto flex flex-col gap-3 pt-6">
@@ -384,7 +391,10 @@ export function SiteHeader() {
                         <SiteLogo />
                     </Link>
 
-                    <NavLinks className="hidden md:flex" />
+                    <div className="hidden min-w-0 items-center gap-1 md:flex">
+                        <NavLinks />
+                        <SiteTaxonomyNavDesktop />
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-2.5">

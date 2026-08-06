@@ -1,5 +1,9 @@
 import type { Auth, AuthModalConfig, TurnstileConfig } from '@/types/auth';
-import type { FooterLinkItem, NavigationMenuItem } from '@/types/navigation';
+import type {
+    FooterLinkItem,
+    NavigationMenuItem,
+    TaxonomyNav,
+} from '@/types/navigation';
 import type { NotificationsShared } from '@/types/notifications';
 import type { FlashToast } from '@/types/ui';
 
@@ -39,6 +43,7 @@ declare module '@inertiajs/core' {
             siteLogo: SiteLogo;
             navigationMenu: NavigationMenuItem[];
             footerLinks: FooterLinkItem[];
+            taxonomyNav: TaxonomyNav;
             turnstile: TurnstileConfig;
             auth: Auth;
             authModal: AuthModalConfig | null;

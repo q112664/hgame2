@@ -26,6 +26,11 @@ class SitemapController extends Controller
                 'priority' => '0.9',
             ],
             [
+                'loc' => route('resources.tags'),
+                'changefreq' => 'daily',
+                'priority' => '0.8',
+            ],
+            [
                 'loc' => route('docs.index'),
                 'changefreq' => 'weekly',
                 'priority' => '0.6',

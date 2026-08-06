@@ -58,7 +58,10 @@ import { home } from '@/routes';
 import {
     details as resourceDetails,
     downloads as resourceDownloads,
+    genre as resourcesGenre,
     index as resourcesIndex,
+    language as resourcesLanguage,
+    platform as resourcesPlatform,
     comments as resourceComments,
     screenshots as resourceScreenshots,
 } from '@/routes/resources';
@@ -472,34 +475,67 @@ export default function ResourceShow({
 
                             {/* 2. Classification chips */}
                             <div className="flex flex-wrap gap-1.5">
-                                <Badge
-                                    variant="outline"
-                                    className={categoryBadgeClassName}
-                                >
-                                    {resource.category}
-                                </Badge>
+                                {resource.categorySlug ? (
+                                    <Badge
+                                        variant="ghost"
+                                        className={categoryBadgeClassName}
+                                        asChild
+                                    >
+                                        <Link
+                                            href={resourcesGenre.url(
+                                                resource.categorySlug,
+                                            )}
+                                            prefetch
+                                        >
+                                            {resource.category}
+                                        </Link>
+                                    </Badge>
+                                ) : (
+                                    <Badge
+                                        variant="ghost"
+                                        className={categoryBadgeClassName}
+                                    >
+                                        {resource.category}
+                                    </Badge>
+                                )}
                                 {resource.platforms.map((platform) => (
                                     <Badge
                                         key={platform.slug}
-                                        variant="outline"
+                                        variant="ghost"
                                         className={platformBadgeClassName(
                                             platform.slug,
                                         )}
+                                        asChild
                                     >
-                                        <PlatformIcon
-                                            slug={platform.slug}
-                                            data-icon="inline-start"
-                                        />
-                                        {platform.name}
+                                        <Link
+                                            href={resourcesPlatform.url(
+                                                platform.slug,
+                                            )}
+                                            prefetch
+                                        >
+                                            <PlatformIcon
+                                                slug={platform.slug}
+                                                data-icon="inline-start"
+                                            />
+                                            {platform.name}
+                                        </Link>
                                     </Badge>
                                 ))}
                                 {resource.languages.map((language) => (
                                     <Badge
-                                        key={language}
-                                        variant="outline"
+                                        key={language.code}
+                                        variant="ghost"
                                         className={languageBadgeClassName}
+                                        asChild
                                     >
-                                        {language}
+                                        <Link
+                                            href={resourcesLanguage.url(
+                                                language.code,
+                                            )}
+                                            prefetch
+                                        >
+                                            {language.name}
+                                        </Link>
                                     </Badge>
                                 ))}
                             </div>

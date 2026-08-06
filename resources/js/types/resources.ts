@@ -3,6 +3,11 @@ export type GamePlatform = {
     slug: string;
 };
 
+export type GameLanguage = {
+    name: string;
+    code: string;
+};
+
 export type GameTag = {
     name: string;
     slug: string;
@@ -21,10 +26,12 @@ export type GameCard = {
     subtitle: string | null;
     thumbnail: string;
     category: string;
+    /** Null when uncategorized (not linked). */
+    categorySlug: string | null;
     developer: string;
     source: GameSource | null;
     platforms: GamePlatform[];
-    languages: string[];
+    languages: GameLanguage[];
     version: string | null;
     tags: GameTag[];
     releaseDate: string | null;
@@ -41,7 +48,7 @@ export type GameUpdateListItem = {
     developer: string;
     version: string | null;
     platforms: GamePlatform[];
-    languages: string[];
+    languages: GameLanguage[];
     updatedAt: string | null;
     activityType: 'updated' | 'published';
 };
@@ -56,7 +63,7 @@ export type GameRelease = {
     id: number;
     title: string | null;
     platforms: GamePlatform[];
-    languages: string[];
+    languages: GameLanguage[];
     version: string | null;
     fileSize: string | null;
     description: string;

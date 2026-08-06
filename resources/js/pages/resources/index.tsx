@@ -1,5 +1,7 @@
+import { usePage } from '@inertiajs/react';
 import { Library, RotateCcw, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { CatalogBrowseLinks } from '@/components/site/catalog-browse-links';
 import { PageSeo } from '@/components/site/page-seo';
 import type { PageSeoData } from '@/components/site/page-seo';
 import { ResourceCard } from '@/components/site/resource-card';
@@ -53,6 +55,7 @@ export default function ResourcesIndex({
     taxonomy = null,
     pageSeo,
 }: Props) {
+    const { taxonomyNav } = usePage().props;
     const [isPending, setIsPending] = useState(false);
     // Draft search text relative to the last server `filters.q` snapshot.
     // When the server filter changes (clear / sort / external visit), prefer
@@ -357,6 +360,16 @@ export default function ResourcesIndex({
                         />
                     </section>
                 )}
+
+                <CatalogBrowseLinks
+                    nav={taxonomyNav}
+                    heading={
+                        taxonomy
+                            ? 'Browse more in the catalog'
+                            : 'Browse by genre, platform & tag'
+                    }
+                    headingId="catalog-directory-heading"
+                />
             </SitePageContainer>
         </SiteLayout>
     );

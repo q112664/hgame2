@@ -125,8 +125,11 @@ export function FavoriteResourceCard({
                             </Tooltip>
                         ))}
                         {resource.languages.map((language) => (
-                            <span key={language} className={metaChipClassName}>
-                                {abbreviateLanguage(language)}
+                            <span
+                                key={language.code}
+                                className={metaChipClassName}
+                            >
+                                {abbreviateLanguage(language.name)}
                             </span>
                         ))}
                     </div>

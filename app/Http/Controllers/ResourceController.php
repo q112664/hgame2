@@ -17,6 +17,7 @@ use App\Models\Setting;
 use App\Models\Tag;
 use App\Support\GamePresenter;
 use App\Support\PageSeo;
+use App\Support\TaxonomyDirectory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -115,6 +116,14 @@ class ResourceController extends Controller
                 'forcedFilters' => ['tags' => [$tag->slug]],
             ],
         );
+    }
+
+    public function tagsIndex(): Response
+    {
+        return Inertia::render('resources/tags', [
+            'tags' => TaxonomyDirectory::tagsIndex(),
+            'pageSeo' => PageSeo::resourcesTagsIndex(),
+        ]);
     }
 
     public function random(): RedirectResponse
@@ -386,7 +395,7 @@ class ResourceController extends Controller
         bool $includeTags,
     ): Game {
         $with = [
-            'category:id,name',
+            'category:id,name,slug',
             'releases' => $includeDownloadLinks
                 ? fn ($query) => $query->withDownloadDetails()
                 : fn ($query) => $query->withCardSummary(),

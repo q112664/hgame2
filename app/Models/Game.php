@@ -121,7 +121,7 @@ class Game extends Model
     public function scopeWithCardData(Builder $query): Builder
     {
         return $query->with([
-            'category:id,name',
+            'category:id,name,slug',
             'tags:id,name,slug',
             'releases' => fn ($releases) => $releases->withCardSummary(),
         ]);

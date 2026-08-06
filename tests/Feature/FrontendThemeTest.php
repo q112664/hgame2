@@ -218,7 +218,31 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain('All rights reserved')
         ->toContain('footerLinks')
         ->toContain('aria-label="Footer"')
+        ->not->toContain('taxonomyNav')
+        ->not->toContain('resourcesGenre')
         ->not->toContain('<SiteLogo');
+
+    expect($filesystem->get(resource_path('js/components/site/catalog-browse-links.tsx')))
+        ->toContain('export function CatalogBrowseLinks')
+        ->toContain('resourcesGenre.url')
+        ->toContain('resourcesTag.url')
+        ->toContain('resourcesTagsIndex');
+
+    expect($filesystem->get(resource_path('js/components/site/site-taxonomy-nav.tsx')))
+        ->toContain('export function SiteTaxonomyNavDesktop')
+        ->toContain('export function SiteTaxonomyNavMobile')
+        ->toContain('resourcesTagsIndex')
+        ->not->toContain('Genres')
+        ->not->toContain('Platforms')
+        ->not->toContain('Languages');
+
+    expect($filesystem->get(resource_path('js/components/site/site-header.tsx')))
+        ->toContain('SiteTaxonomyNavDesktop')
+        ->toContain('SiteTaxonomyNavMobile');
+
+    expect($filesystem->get(resource_path('js/pages/resources/tags.tsx')))
+        ->toContain('Game Tags')
+        ->toContain('resourcesTag.url');
 });
 
 test('docs pages use the public site shell instead of the starter kit app layout', function () {
@@ -357,7 +381,9 @@ test('homepage popular section uses a ranked landscape strip', function () {
 
     expect($welcome)
         ->toContain('<PopularResources')
-        ->toContain('<LatestResources');
+        ->toContain('<LatestResources')
+        ->not->toContain('CatalogBrowseLinks')
+        ->not->toContain('HomeTaxonomyPanel');
 });
 
 test('page seo component renders canonical robots og and json-ld overrides', function () {

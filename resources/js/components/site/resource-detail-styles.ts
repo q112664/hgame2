@@ -2,8 +2,14 @@ import { cn } from '@/lib/utils';
 
 /** Shared flat badge shell — no border, soft fill, compact type. */
 export const heroBadgeClassName = cn(
-    'h-6 gap-1 rounded-md border-0 px-2.5 text-xs font-medium shadow-none',
+    'h-6 gap-1 rounded-md border-0 px-2.5 text-xs font-medium shadow-none no-underline',
+    'transition-[color,background-color,box-shadow] duration-150',
     '[&>svg]:size-3.5!',
+);
+
+/** Shared focus ring for linked hero chips. */
+const heroBadgeFocusClassName = cn(
+    'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
 );
 
 /**
@@ -12,14 +18,23 @@ export const heroBadgeClassName = cn(
  */
 export const categoryBadgeClassName = cn(
     heroBadgeClassName,
+    heroBadgeFocusClassName,
     'bg-primary/12 text-primary',
     'dark:bg-primary/18 dark:text-primary',
+    // Linked chip: deepen fill, keep hue (overrides Badge outline [a]:hover).
+    'hover:bg-primary/20 hover:text-primary',
+    'dark:hover:bg-primary/28 dark:hover:text-primary',
+    'active:bg-primary/24 dark:active:bg-primary/32',
 );
 
 /** Language — violet soft fill (distinct from platform blue / size green) */
 export const languageBadgeClassName = cn(
     heroBadgeClassName,
+    heroBadgeFocusClassName,
     'bg-language/15 text-language',
+    'hover:bg-language/25 hover:text-language',
+    'dark:hover:bg-language/30',
+    'active:bg-language/28',
 );
 
 /** Clickable tags in the details tab — quiet surface, light primary hint on hover */
@@ -35,15 +50,42 @@ export const tagBadgeClassName = cn(
 );
 
 const platformBadgeClassNames: Record<string, string> = {
-    windows: cn(heroBadgeClassName, 'bg-info/15 text-info'),
-    ios: cn(heroBadgeClassName, 'bg-info/15 text-info'),
-    android: cn(heroBadgeClassName, 'bg-success/15 text-success'),
+    windows: cn(
+        heroBadgeClassName,
+        heroBadgeFocusClassName,
+        'bg-info/15 text-info',
+        'hover:bg-info/25 hover:text-info',
+        'dark:hover:bg-info/30',
+        'active:bg-info/28',
+    ),
+    ios: cn(
+        heroBadgeClassName,
+        heroBadgeFocusClassName,
+        'bg-info/15 text-info',
+        'hover:bg-info/25 hover:text-info',
+        'dark:hover:bg-info/30',
+        'active:bg-info/28',
+    ),
+    android: cn(
+        heroBadgeClassName,
+        heroBadgeFocusClassName,
+        'bg-success/15 text-success',
+        'hover:bg-success/25 hover:text-success',
+        'dark:hover:bg-success/30',
+        'active:bg-success/28',
+    ),
 };
 
 export function platformBadgeClassName(slug: string): string {
     return (
         platformBadgeClassNames[slug.toLowerCase()] ??
-        cn(heroBadgeClassName, 'bg-muted text-muted-foreground')
+        cn(
+            heroBadgeClassName,
+            heroBadgeFocusClassName,
+            'bg-muted text-muted-foreground',
+            'hover:bg-muted/80 hover:text-foreground',
+            'active:bg-muted',
+        )
     );
 }
 

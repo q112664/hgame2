@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Setting;
+use App\Support\TaxonomyDirectory;
 use App\Support\Turnstile;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
@@ -47,6 +48,7 @@ class HandleInertiaRequests extends Middleware
             'siteLogo' => Setting::siteLogo(),
             'navigationMenu' => Setting::navigationMenu(),
             'footerLinks' => Setting::footerLinks(),
+            'taxonomyNav' => TaxonomyDirectory::navigation(),
             'turnstile' => Turnstile::frontendConfig(),
             'auth' => [
                 'user' => $request->user(),

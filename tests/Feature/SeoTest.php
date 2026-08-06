@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\User;
 use App\Support\PageSeo;
+use App\Support\TaxonomyDirectory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -105,6 +106,53 @@ test('tag taxonomy pages are indexable', function () {
             ->where('pageSeo.canonical', route('resources.tag', $tag))
             ->where('pageSeo.robots', 'index,follow')
             ->where('filters.tags', ['ntr'])
+        );
+});
+
+test('taxonomy navigation is shared for internal catalog links', function () {
+    $category = Category::factory()->create([
+        'name' => 'SLG',
+        'slug' => 'slg',
+    ]);
+    Game::factory()->create(['category_id' => $category->id]);
+    TaxonomyDirectory::forget();
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('taxonomyNav.categories', 1)
+            ->where('taxonomyNav.categories.0.value', 'slg')
+            ->where('taxonomyNav.categories.0.name', 'SLG')
+        );
+
+    $this->get(route('resources.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('taxonomyNav.categories', 1)
+            ->where('taxonomyNav.categories.0.value', 'slg')
+        );
+});
+
+test('tags index page lists tags with counts and is indexable', function () {
+    $tag = Tag::factory()->create([
+        'name' => 'Romance',
+        'slug' => 'romance',
+    ]);
+    $game = Game::factory()->create();
+    $game->tags()->attach($tag);
+    TaxonomyDirectory::forget();
+
+    $this->get(route('resources.tags'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('resources/tags')
+            ->where('pageSeo.title', 'Game Tags')
+            ->where('pageSeo.canonical', route('resources.tags'))
+            ->where('pageSeo.robots', 'index,follow')
+            ->has('tags', 1)
+            ->where('tags.0.value', 'romance')
+            ->where('tags.0.name', 'Romance')
+            ->where('tags.0.count', 1)
         );
 });
 

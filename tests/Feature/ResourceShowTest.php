@@ -65,7 +65,9 @@ test('resource tab pages share hero metadata without shipping every tab payload'
             ->where('resource.platforms', [
                 ['name' => 'Windows', 'slug' => 'windows'],
             ])
-            ->where('resource.languages', ['Chinese'])
+            ->where('resource.languages', [
+                ['name' => 'Chinese', 'code' => 'zh'],
+            ])
             ->where('resource.isFavorited', false)
             ->where('resource.adminEditUrl', null)
             ->where('resource.hasDownloads', true)
@@ -172,7 +174,9 @@ test('downloads tab includes releases and download links without screenshots', f
             ->where('resource.releases.0.platforms', [
                 ['name' => 'Windows', 'slug' => 'windows'],
             ])
-            ->where('resource.releases.0.languages', ['Chinese'])
+            ->where('resource.releases.0.languages', [
+                ['name' => 'Chinese', 'code' => 'zh'],
+            ])
             ->where(
                 'resource.releases.0.description',
                 fn (string $description): bool => str_contains($description, '<p>Release notes</p>') && ! str_contains($description, '<script>'),
@@ -237,7 +241,9 @@ test('home receives only published games', function () {
             ->where('resources.0.platforms', [
                 ['name' => 'Windows', 'slug' => 'windows'],
             ])
-            ->where('resources.0.languages', ['Chinese'])
+            ->where('resources.0.languages', [
+                ['name' => 'Chinese', 'code' => 'zh'],
+            ])
             ->where('resources.0.version', '1.2 demo')
             ->where('hero.backgroundUrl', Setting::defaultHeroBackgroundUrl())
             ->where('hero.description', Setting::defaultHeroDescription())
@@ -373,7 +379,9 @@ test('inactive releases or releases without download links do not advertise a pl
             ->where('resource.platforms', [
                 ['name' => 'Windows', 'slug' => 'windows'],
             ])
-            ->where('resource.languages', ['Chinese'])
+            ->where('resource.languages', [
+                ['name' => 'Chinese', 'code' => 'zh'],
+            ])
         );
 
     expect($emptyRelease->downloadLinks)->toHaveCount(0);

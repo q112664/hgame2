@@ -29,6 +29,29 @@ final class TaxonomyDirectory
     public const int TagLimit = 48;
 
     /**
+     * Minimum published games for a tag landing page to be indexable / in sitemap.
+     * Thin tag pages (1–2 games) stay reachable but noindex.
+     */
+    public const int MinPublishedGamesForIndex = 3;
+
+    public static function isIndexablePublishedCount(int $count): bool
+    {
+        return $count >= self::MinPublishedGamesForIndex;
+    }
+
+    /**
+     * Published game count for a single tag (for robots / sitemap decisions).
+     */
+    public static function publishedGameCountForTag(Tag $tag): int
+    {
+        return (int) $tag->games()
+            ->where('status', GameStatus::Published)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->count();
+    }
+
+    /**
      * @return TaxonomyNav
      */
     public static function navigation(): array

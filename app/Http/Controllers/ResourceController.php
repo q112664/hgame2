@@ -186,6 +186,19 @@ class ResourceController extends Controller
                 'tag' => 'Tagged '.$taxonomy['name'],
             };
 
+        $isPure = $taxonomy !== null
+            && $this->isPureTaxonomyFilters($filters, $taxonomy['type']);
+
+        $isIndexable = true;
+
+        if ($taxonomy !== null && $taxonomy['type'] === 'tag') {
+            $tagModel = Tag::query()->where('slug', $taxonomy['value'])->first();
+            $tagCount = $tagModel !== null
+                ? TaxonomyDirectory::publishedGameCountForTag($tagModel)
+                : 0;
+            $isIndexable = TaxonomyDirectory::isIndexablePublishedCount($tagCount);
+        }
+
         $pageSeo = $taxonomy === null
             ? PageSeo::resourcesIndex(
                 page: $page,
@@ -196,7 +209,8 @@ class ResourceController extends Controller
                 name: $taxonomy['name'],
                 value: $taxonomy['value'],
                 page: $page,
-                isPure: $this->isPureTaxonomyFilters($filters, $taxonomy['type']),
+                isPure: $isPure,
+                isIndexable: $isIndexable,
             );
 
         return Inertia::render('resources/index', [

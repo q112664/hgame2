@@ -62,12 +62,32 @@ final class PageSeo
      */
     public static function home(): array
     {
+        $siteUrl = Setting::siteUrl();
+        $name = Setting::siteTitle();
+        $description = Setting::seoDescription();
+        $searchTarget = rtrim($siteUrl, '/').'/search?q={search_term_string}';
+
         return self::make(
             title: null,
-            description: Setting::seoDescription(),
+            description: $description,
             canonical: route('home'),
             ogImageUrl: Setting::seoOgImageUrl(),
             robots: Setting::seoRobots(),
+            jsonLd: [
+                '@context' => 'https://schema.org',
+                '@type' => 'WebSite',
+                'name' => $name,
+                'url' => $siteUrl,
+                'description' => $description,
+                'potentialAction' => [
+                    '@type' => 'SearchAction',
+                    'target' => [
+                        '@type' => 'EntryPoint',
+                        'urlTemplate' => $searchTarget,
+                    ],
+                    'query-input' => 'required name=search_term_string',
+                ],
+            ],
         );
     }
 
@@ -116,6 +136,7 @@ final class PageSeo
         string $value,
         int $page = 1,
         bool $isPure = true,
+        bool $isIndexable = true,
     ): array {
         $page = max(1, $page);
         $name = trim($name);
@@ -125,8 +146,9 @@ final class PageSeo
         $description = self::taxonomyDescription($type, $name);
 
         $canonicalParams = $params;
+        $indexable = $isPure && $isIndexable;
 
-        if ($isPure && $page > 1) {
+        if ($indexable && $page > 1) {
             $canonicalParams['page'] = $page;
             $title .= ' - Page '.$page;
         }
@@ -136,7 +158,7 @@ final class PageSeo
             titleSuffix: Setting::siteLogoText(),
             description: $description,
             canonical: route($route, $canonicalParams),
-            robots: $isPure ? null : 'noindex,follow',
+            robots: $indexable ? null : 'noindex,follow',
         );
     }
 
@@ -366,7 +388,24 @@ final class PageSeo
             return null;
         }
 
-        $text = html_entity_decode(strip_tags((string) $value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $html = (string) $value;
+
+        // Preserve word boundaries when stripping block-level HTML.
+        $html = preg_replace('/<\s*br\s*\/?>/iu', ' ', $html) ?? $html;
+        $html = preg_replace(
+            '/<\/(?:p|div|h[1-6]|li|tr|td|th|blockquote|section|article|header|footer|figcaption|pre|dt|dd)\s*>/iu',
+            ' ',
+            $html,
+        ) ?? $html;
+        $html = preg_replace(
+            '/<(?:p|div|h[1-6]|li|tr|td|th|blockquote|section|article|header|footer|figcaption|pre|dt|dd)\b[^>]*>/iu',
+            ' ',
+            $html,
+        ) ?? $html;
+
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // Decorative bullets / list markers often glued to titles.
+        $text = preg_replace('/^[\s◆★■●▪◦•·‧]+/u', '', $text) ?? $text;
         $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
         $text = trim($text);
 
@@ -399,9 +438,10 @@ final class PageSeo
     private static function gameDescription(Game $game): ?string
     {
         $fromBody = self::plainDescription($game->description);
+        $fromBody = self::stripLeadingSynopsisLabels($fromBody);
 
-        if ($fromBody !== null) {
-            return $fromBody;
+        if ($fromBody !== null && mb_strlen($fromBody) >= 40) {
+            return Str::limit($fromBody, 160, '…');
         }
 
         $parts = array_values(array_filter([
@@ -410,7 +450,45 @@ final class PageSeo
             $game->category?->name,
         ], filled(...)));
 
-        return self::plainDescription(implode(' · ', $parts));
+        $fallback = self::plainDescription(implode(' · ', $parts));
+
+        // Prefer a short cleaned body over empty; else structured fallback.
+        if ($fromBody !== null && $fromBody !== '') {
+            return Str::limit($fromBody, 160, '…');
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * Drop common pseudo-headings glued to AI/import synopsis blocks.
+     */
+    private static function stripLeadingSynopsisLabels(?string $text): ?string
+    {
+        if ($text === null || $text === '') {
+            return $text;
+        }
+
+        $patterns = [
+            // Synopsis (AI-translated English) …
+            '/^(?:synopsis|story|game\s*story|game\s*description|description|overview|plot|summary)(?:\s*\([^)]*\))?\s*[:：\-–—]?\s*/iu',
+        ];
+
+        $cleaned = $text;
+
+        foreach ($patterns as $pattern) {
+            $next = preg_replace($pattern, '', $cleaned, 1);
+
+            if (is_string($next) && $next !== $cleaned) {
+                $cleaned = trim($next);
+            }
+        }
+
+        // Leading decorative markers again after label strip.
+        $cleaned = preg_replace('/^[\s◆★■●▪◦•·‧]+/u', '', $cleaned) ?? $cleaned;
+        $cleaned = trim($cleaned);
+
+        return $cleaned === '' ? null : $cleaned;
     }
 
     private static function gameImageUrl(Game $game): ?string

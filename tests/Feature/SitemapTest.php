@@ -4,6 +4,7 @@ use App\Models\Category;
 use App\Models\Doc;
 use App\Models\Game;
 use App\Models\Tag;
+use App\Support\TaxonomyDirectory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -25,8 +26,13 @@ test('sitemap lists public pages resources and docs', function () {
     $draft = Game::factory()->draft()->create([
         'slug' => 'draft-game',
     ]);
-    $tag = Tag::factory()->create(['name' => 'Romance', 'slug' => 'romance']);
-    $game->tags()->attach($tag);
+    $thickTag = Tag::factory()->create(['name' => 'Romance', 'slug' => 'romance']);
+    $thinTag = Tag::factory()->create(['name' => 'Ahegao', 'slug' => 'ahegao']);
+    $thickGames = Game::factory()->count(TaxonomyDirectory::MinPublishedGamesForIndex)->create([
+        'category_id' => $category->id,
+    ]);
+    $thickTag->games()->attach($thickGames->pluck('id'));
+    $game->tags()->attach($thinTag);
     $doc = Doc::factory()->create([
         'slug' => 'listed-doc',
         'title' => 'Listed Doc',
@@ -40,9 +46,10 @@ test('sitemap lists public pages resources and docs', function () {
         ->assertSee(route('resources.index'), false)
         ->assertSee(route('resources.tags'), false)
         ->assertSee(route('resources.genre', $category), false)
-        ->assertSee(route('resources.tag', $tag), false)
+        ->assertSee(route('resources.tag', $thickTag), false)
         ->assertSee(route('resources.details', $game), false)
         ->assertSee(route('docs.show', $doc), false)
+        ->assertDontSee(route('resources.tag', $thinTag), false)
         ->assertDontSee(route('resources.details', $draft), false)
         ->assertDontSee(route('resources.genre', $emptyCategory), false);
 });

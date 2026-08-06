@@ -91,13 +91,13 @@ test('genre taxonomy pages are indexable with self-canonical', function () {
         );
 });
 
-test('tag taxonomy pages are indexable', function () {
+test('tag taxonomy pages with enough games are indexable', function () {
     $tag = Tag::factory()->create([
         'name' => 'NTR',
         'slug' => 'ntr',
     ]);
-    $game = Game::factory()->create();
-    $game->tags()->attach($tag);
+    $games = Game::factory()->count(TaxonomyDirectory::MinPublishedGamesForIndex)->create();
+    $tag->games()->attach($games->pluck('id'));
 
     $this->get(route('resources.tag', $tag))
         ->assertOk()
@@ -106,6 +106,70 @@ test('tag taxonomy pages are indexable', function () {
             ->where('pageSeo.canonical', route('resources.tag', $tag))
             ->where('pageSeo.robots', 'index,follow')
             ->where('filters.tags', ['ntr'])
+        );
+});
+
+test('thin tag taxonomy pages are noindex', function () {
+    $tag = Tag::factory()->create([
+        'name' => 'Ahegao',
+        'slug' => 'ahegao',
+    ]);
+    $game = Game::factory()->create();
+    $game->tags()->attach($tag);
+
+    $this->get(route('resources.tag', $tag))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('pageSeo.robots', 'noindex,follow')
+            ->where('pageSeo.canonical', route('resources.tag', $tag))
+        );
+});
+
+test('game meta description strips synopsis labels and block-tag glue', function () {
+    $cases = [
+        [
+            'html' => '<p><strong>Synopsis (AI-translated English)</strong></p><p>Play a puzzle game with friends.</p>',
+            'starts' => 'Play a puzzle game',
+        ],
+        [
+            'html' => '<p>◆Game Story</p><p>You run into a mysterious girl.</p>',
+            'starts' => 'You run into a mysterious girl',
+        ],
+        [
+            'html' => '<h3>Story</h3><p>You are an ordinary office worker.</p>',
+            'starts' => 'You are an ordinary office worker',
+        ],
+    ];
+
+    foreach ($cases as $index => $case) {
+        $game = Game::factory()->create([
+            'slug' => 'meta-desc-'.$index,
+            'description' => $case['html'],
+        ]);
+
+        $this->get(route('resources.details', $game))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where(
+                    'pageSeo.description',
+                    fn (string $description): bool => str_starts_with($description, $case['starts'])
+                        && ! str_contains($description, 'Synopsis (AI-translated English)Play')
+                        && ! str_contains($description, 'StoryYou'),
+                )
+            );
+    }
+});
+
+test('home page exposes WebSite JSON-LD with SearchAction', function () {
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('pageSeo.jsonLd.@type', 'WebSite')
+            ->where('pageSeo.jsonLd.potentialAction.@type', 'SearchAction')
+            ->where(
+                'pageSeo.jsonLd.potentialAction.target.urlTemplate',
+                fn (string $template): bool => str_contains($template, '/search?q={search_term_string}'),
+            )
         );
 });
 

@@ -8,6 +8,7 @@ use App\Models\Game;
 use App\Models\Language;
 use App\Models\Platform;
 use App\Models\Tag;
+use App\Support\TaxonomyDirectory;
 use Illuminate\Http\Response;
 
 class SitemapController extends Controller
@@ -130,10 +131,17 @@ class SitemapController extends Controller
             ];
         }
 
+        $publishedGames = fn ($query) => $query->published();
         $tags = Tag::query()
-            ->whereHas('games', fn ($query) => $query->published())
+            ->whereHas('games', $publishedGames)
+            ->withCount(['games' => $publishedGames])
             ->orderBy('name')
-            ->get(['slug']);
+            ->get(['id', 'slug'])
+            ->filter(
+                fn (Tag $tag): bool => TaxonomyDirectory::isIndexablePublishedCount(
+                    (int) $tag->games_count,
+                ),
+            );
 
         foreach ($tags as $tag) {
             $urls[] = [

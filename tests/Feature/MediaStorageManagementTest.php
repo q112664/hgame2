@@ -17,6 +17,7 @@ use App\Support\MediaPathCollector;
 use App\Support\MediaReferenceRewriter;
 use App\Support\MediaStorageManager;
 use App\Support\MediaUpload;
+use Aws\CommandInterface;
 use Aws\Result;
 use Aws\S3\S3ClientInterface;
 use Illuminate\Support\Facades\Queue;
@@ -197,6 +198,36 @@ test('r2 adapter removes object acl options from uploads', function (): void {
         'GrantRead' => 'everyone',
         'CacheControl' => 'public, max-age=3600',
     ]));
+});
+
+test('r2 adapter can read object metadata for size verification', function (): void {
+    $client = Mockery::mock(S3ClientInterface::class);
+    $command = Mockery::mock(CommandInterface::class);
+    $client->shouldReceive('getCommand')
+        ->once()
+        ->with('HeadObject', Mockery::on(function (array $arguments): bool {
+            expect($arguments)
+                ->toHaveKey('Bucket', 'media-bucket')
+                ->toHaveKey('Key', 'prefix/games/covers/test.webp');
+
+            return true;
+        }))
+        ->andReturn($command);
+    $client->shouldReceive('execute')
+        ->once()
+        ->with($command)
+        ->andReturn(new Result([
+            'ContentLength' => 10,
+            'ContentType' => 'image/webp',
+            'ETag' => '"test-etag"',
+        ]));
+
+    $attributes = (new R2FilesystemAdapter($client, 'media-bucket', 'prefix'))
+        ->fileSize('games/covers/test.webp');
+
+    expect($attributes->fileSize())->toBe(10)
+        ->and($attributes->mimeType())->toBe('image/webp')
+        ->and($attributes->extraMetadata())->toHaveKey('ETag', '"test-etag"');
 });
 
 test('new r2 uploads keep an identical local rollback copy', function (): void {

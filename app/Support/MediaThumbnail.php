@@ -51,6 +51,13 @@ final class MediaThumbnail
         return ! Str::startsWith($path, ['http://', 'https://', '/']);
     }
 
+    /**
+     * Public card URL for a cover path.
+     *
+     * Must never probe or read object storage: on R2/S3 each exists()/get() is a
+     * network round-trip, and doing that per card on catalog/home pages stalls TTFB.
+     * Thumbnails are written on cover save and via media:generate-cover-thumbnails.
+     */
     public static function url(?string $path): string
     {
         if (blank($path)) {
@@ -61,25 +68,16 @@ final class MediaThumbnail
             return Media::url($path);
         }
 
-        $thumbnailPath = self::pathFor($path);
-
-        if (Media::disk()->exists($thumbnailPath)) {
-            return Media::url($thumbnailPath);
-        }
-
-        $generated = self::generate($path);
-
-        if ($generated !== null) {
-            return Media::url($generated);
-        }
-
-        return Media::url($path);
+        return Media::url(self::pathFor($path));
     }
 
     /**
      * Create or refresh a WebP thumbnail for a stored media path.
      *
-     * @return string|null Thumbnail path when created or already small enough to skip.
+     * Always materializes a WebP at the deterministic thumbnail path so card URLs
+     * never need a remote existence check (even when the source is already small).
+     *
+     * @return string|null Thumbnail path when created.
      */
     public static function generate(string $path, ?int $maxWidth = null, ?int $quality = null): ?string
     {
@@ -112,12 +110,10 @@ final class MediaThumbnail
                     return null;
                 }
 
-                if ($width <= $maxWidth) {
-                    return null;
-                }
-
-                $targetWidth = $maxWidth;
-                $targetHeight = (int) max(1, (int) round($height * ($targetWidth / $width)));
+                $targetWidth = $width > $maxWidth ? $maxWidth : $width;
+                $targetHeight = $width > $maxWidth
+                    ? (int) max(1, (int) round($height * ($targetWidth / $width)))
+                    : $height;
 
                 $canvas = imagecreatetruecolor($targetWidth, $targetHeight);
 

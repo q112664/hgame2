@@ -46,12 +46,7 @@ class GenerateCoverThumbnails
                     $result = MediaThumbnail::generate($path);
 
                     if ($result === null) {
-                        // Source already within the card width, or unreadable — both are non-fatal.
-                        if (Media::disk()->exists($path)) {
-                            $skipped++;
-                        } else {
-                            $failed++;
-                        }
+                        $failed++;
 
                         continue;
                     }

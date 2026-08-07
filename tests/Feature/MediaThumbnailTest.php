@@ -34,13 +34,34 @@ test('it generates a webp thumbnail at the default max width for wide cover imag
         ->and($size['mime'])->toBe('image/webp');
 });
 
-test('it skips thumbnail generation when the cover is already small enough', function () {
+test('it materializes a webp thumbnail even when the cover is already small enough', function () {
     $path = UploadedFile::fake()
         ->image('small.jpg', 400, 250)
         ->store('games/covers', Media::diskName());
 
-    expect(MediaThumbnail::generate($path))->toBeNull()
+    $thumbnailPath = MediaThumbnail::generate($path);
+
+    expect($thumbnailPath)->toBe(MediaThumbnail::pathFor($path))
+        ->and(Media::disk()->exists($thumbnailPath))->toBeTrue();
+
+    $size = getimagesizefromstring(Media::disk()->get($thumbnailPath));
+
+    expect($size[0])->toBe(400)
+        ->and($size[1])->toBe(250)
+        ->and($size['mime'])->toBe('image/webp');
+});
+
+test('card thumbnail urls use the deterministic thumbnail path without requiring objects to exist', function () {
+    $path = 'games/covers/example-cover.jpg';
+
+    expect(Media::disk()->exists($path))->toBeFalse()
         ->and(Media::disk()->exists(MediaThumbnail::pathFor($path)))->toBeFalse();
+
+    // Previously this probed the disk (and could generate on the request path).
+    // With object storage that is one HTTP round-trip per card and stalls the homepage.
+    expect(MediaThumbnail::url($path))
+        ->toContain('thumbs/example-cover.webp')
+        ->not->toContain('example-cover.jpg');
 });
 
 test('saving a game with a cover generates a card thumbnail', function () {

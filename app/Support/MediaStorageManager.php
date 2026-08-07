@@ -151,7 +151,7 @@ final class MediaStorageManager
         $paths = $this->pathCollector->all('public');
         $migrationPaths = $migration->items()->orderBy('path')->pluck('path')->all();
 
-        if ($paths !== $migrationPaths) {
+        if (! $this->samePathSet($paths, $migrationPaths)) {
             throw new RuntimeException('Local media changed after migration. Run the migration again before validation.');
         }
 
@@ -608,7 +608,9 @@ final class MediaStorageManager
             ->orderBy('path')
             ->get(['path', 'source_size', 'source_checksum']);
 
-        if ($paths !== $validatedItems->pluck('path')->all()) {
+        $validatedPaths = $validatedItems->pluck('path')->all();
+
+        if (! $this->samePathSet($paths, $validatedPaths)) {
             throw new RuntimeException('Local media changed after validation. Run migration and validation again.');
         }
 
@@ -648,6 +650,14 @@ final class MediaStorageManager
         } finally {
             fclose($stream);
         }
+    }
+
+    /** @param list<string> $left @param list<string> $right */
+    private function samePathSet(array $left, array $right): bool
+    {
+        return count($left) === count($right)
+            && array_diff($left, $right) === []
+            && array_diff($right, $left) === [];
     }
 
     /** @return array{count: int, fingerprint: string} */

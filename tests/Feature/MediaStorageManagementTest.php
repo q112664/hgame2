@@ -271,6 +271,18 @@ test('migration and validation copy every managed media reference and keep local
         ->and($validation->items()->whereColumn('source_checksum', 'target_checksum')->count())->toBe(8);
 });
 
+test('validation path comparison ignores database collation order', function (): void {
+    $manager = app(MediaStorageManager::class);
+    $samePathSet = Closure::bind(
+        fn (array $left, array $right): bool => $this->samePathSet($left, $right),
+        $manager,
+        MediaStorageManager::class,
+    );
+
+    expect($samePathSet(['games/covers/z.jpg', 'games/covers/a.jpg'], ['games/covers/a.jpg', 'games/covers/z.jpg']))->toBeTrue()
+        ->and($samePathSet(['games/covers/a.jpg'], ['games/covers/z.jpg']))->toBeFalse();
+});
+
 test('candidate operation jobs restore the active r2 configuration after completion', function (): void {
     Queue::fake();
     $active = createTestedMediaConfiguration(publicUrl: 'https://active-media.example.com');

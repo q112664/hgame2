@@ -17,7 +17,7 @@ final class MediaPathCollector
     /** @return list<string> */
     public function all(string $disk): array
     {
-        $paths = collect($this->references());
+        $paths = collect($this->required());
 
         try {
             $paths = $paths->merge(Storage::disk($disk)->allFiles());
@@ -26,6 +26,39 @@ final class MediaPathCollector
         }
 
         return $this->normalize($paths->all());
+    }
+
+    /**
+     * Return every object required for the application to serve managed media.
+     *
+     * Cover thumbnails are derived objects, but they are still part of the
+     * storage contract because card presenters use their deterministic paths.
+     *
+     * @return list<string>
+     */
+    public function required(): array
+    {
+        $paths = collect($this->references());
+
+        Game::query()
+            ->whereNotNull('cover_path')
+            ->pluck('cover_path')
+            ->each(function (mixed $path) use ($paths): void {
+                if (is_string($path) && MediaThumbnail::isManagedPath($path)) {
+                    $paths->push(MediaThumbnail::pathFor($path));
+                }
+            });
+
+        return $this->normalize($paths->all());
+    }
+
+    /** @return list<string> */
+    public function missing(string $disk): array
+    {
+        return array_values(array_filter(
+            $this->required(),
+            static fn (string $path): bool => ! Storage::disk($disk)->exists($path),
+        ));
     }
 
     /** @return list<string> */

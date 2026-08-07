@@ -1,10 +1,12 @@
 <?php
 
 use App\Actions\Media\GenerateCoverThumbnails;
+use App\Jobs\GenerateCoverThumbnail;
 use App\Models\Game;
 use App\Support\GamePresenter;
 use App\Support\Media;
 use App\Support\MediaThumbnail;
+use Illuminate\Contracts\Filesystem\Filesystem as FilesystemContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
@@ -12,8 +14,10 @@ use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
-    Storage::fake(Media::diskName());
+beforeEach(function (): void {
+    config(['filesystems.media' => 'public']);
+    Storage::fake('public');
+    Storage::fake('r2');
 });
 
 test('it generates a webp thumbnail at the default max width for wide cover images', function () {
@@ -34,7 +38,7 @@ test('it generates a webp thumbnail at the default max width for wide cover imag
         ->and($size['mime'])->toBe('image/webp');
 });
 
-test('it materializes a webp thumbnail even when the cover is already small enough', function () {
+test('it materializes a webp thumbnail when the cover is already small enough', function (): void {
     $path = UploadedFile::fake()
         ->image('small.jpg', 400, 250)
         ->store('games/covers', Media::diskName());
@@ -64,6 +68,60 @@ test('card thumbnail urls use the deterministic thumbnail path without requiring
         ->not->toContain('example-cover.jpg');
 });
 
+test('r2 thumbnails keep an identical local rollback copy', function (): void {
+    config(['filesystems.media' => 'r2']);
+    $path = UploadedFile::fake()
+        ->image('cover.jpg', 1280, 720)
+        ->store('games/covers', 'r2');
+
+    $thumbnailPath = MediaThumbnail::generate($path);
+
+    expect($thumbnailPath)->toBe(MediaThumbnail::pathFor($path))
+        ->and(Storage::disk('r2')->exists($thumbnailPath))->toBeTrue()
+        ->and(Storage::disk('public')->exists($thumbnailPath))->toBeTrue()
+        ->and(Storage::disk('r2')->get($thumbnailPath))
+        ->toBe(Storage::disk('public')->get($thumbnailPath));
+});
+
+test('r2 thumbnail backfill repairs a missing local copy without regeneration', function (): void {
+    config(['filesystems.media' => 'r2']);
+    $path = UploadedFile::fake()
+        ->image('cover.jpg', 1280, 720)
+        ->store('games/covers', 'r2');
+    $thumbnailPath = MediaThumbnail::generate($path);
+    $r2Binary = Storage::disk('r2')->get($thumbnailPath);
+    Storage::disk('public')->delete($thumbnailPath);
+
+    Game::withoutEvents(fn () => Game::factory()->create([
+        'cover_path' => $path,
+        'cover_url' => '',
+    ]));
+
+    $result = app(GenerateCoverThumbnails::class)();
+
+    expect($result['generated'])->toBe(1)
+        ->and(Storage::disk('public')->get($thumbnailPath))->toBe($r2Binary);
+});
+
+test('r2 thumbnail writes restore the previous remote copy when local mirroring fails', function (): void {
+    config(['filesystems.media' => 'r2']);
+    $path = UploadedFile::fake()
+        ->image('cover.jpg', 1280, 720)
+        ->store('games/covers', 'r2');
+    $thumbnailPath = MediaThumbnail::pathFor($path);
+    Storage::disk('r2')->put($thumbnailPath, 'previous-thumbnail');
+    $r2 = Storage::disk('r2');
+    $public = Mockery::mock(FilesystemContract::class);
+    $public->shouldReceive('exists')->with($thumbnailPath)->andReturn(false);
+    $public->shouldReceive('put')->with($thumbnailPath, Mockery::type('string'), 'public')->andReturn(false);
+
+    Storage::shouldReceive('disk')->with('r2')->andReturn($r2);
+    Storage::shouldReceive('disk')->with('public')->andReturn($public);
+
+    expect(MediaThumbnail::generate($path))->toBeNull()
+        ->and($r2->get($thumbnailPath))->toBe('previous-thumbnail');
+});
+
 test('saving a game with a cover generates a card thumbnail', function () {
     $path = UploadedFile::fake()
         ->image('cover.jpg', 1280, 720)
@@ -90,6 +148,21 @@ test('saving a game with a cover generates a card thumbnail', function () {
         ->and($detail['thumbnail'])->toContain('/thumbs/')
         ->and($detail['cover'])->not->toContain('/thumbs/')
         ->and($detail['cover'])->toContain($path);
+});
+
+test('cover thumbnail jobs ignore a stale cover path', function (): void {
+    $path = UploadedFile::fake()
+        ->image('cover.jpg', 1280, 720)
+        ->store('games/covers', Media::diskName());
+    $game = Game::withoutEvents(fn () => Game::factory()->create([
+        'cover_path' => $path,
+        'cover_url' => '',
+    ]));
+    $stalePath = 'games/covers/replaced.jpg';
+
+    (new GenerateCoverThumbnail((int) $game->getKey(), $stalePath))->handle();
+
+    expect(Media::disk()->exists(MediaThumbnail::pathFor($stalePath)))->toBeFalse();
 });
 
 test('deleting a game removes its cover thumbnail', function () {
@@ -132,6 +205,20 @@ test('the generate cover thumbnails action backfills missing thumbs', function (
     expect($result['generated'])->toBe(1)
         ->and(Media::disk()->exists($thumbnailPath))->toBeTrue()
         ->and($game->fresh())->not->toBeNull();
+});
+
+test('the generate cover thumbnails action reports missing managed originals as failures', function (): void {
+    Game::withoutEvents(fn () => Game::factory()->create([
+        'cover_path' => 'games/covers/missing.jpg',
+        'cover_url' => '',
+    ]));
+
+    expect(app(GenerateCoverThumbnails::class)())
+        ->toMatchArray([
+            'generated' => 0,
+            'skipped' => 0,
+            'failed' => 1,
+        ]);
 });
 
 test('the generate cover thumbnails command delegates to the action', function () {

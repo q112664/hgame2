@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Actions\Games\DeleteGameMedia;
 use App\GameStatus;
+use App\Jobs\GenerateCoverThumbnail;
 use App\Notifications\FavoriteDownloadsUpdatedNotification;
 use App\Support\MediaThumbnail;
 use Database\Factories\GameFactory;
@@ -45,7 +46,15 @@ class Game extends Model
                 return;
             }
 
-            MediaThumbnail::generate((string) $game->cover_path);
+            $coverPath = (string) $game->cover_path;
+
+            if (! MediaThumbnail::isManagedPath($coverPath)) {
+                return;
+            }
+
+            if (MediaThumbnail::generate($coverPath) === null && ! app()->environment('testing')) {
+                GenerateCoverThumbnail::dispatch((int) $game->getKey(), $coverPath)->afterCommit();
+            }
         });
 
         static::deleting(function (Game $game): void {

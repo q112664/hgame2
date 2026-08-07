@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -84,7 +85,7 @@ final class MediaStorageManager
     public function testConnection(MediaStorageConfiguration $configuration): void
     {
         $this->configureR2($configuration);
-        $path = '.media-healthchecks/'.Str::uuid()->toString().'.txt';
+        $path = 'media-healthchecks/'.Str::uuid()->toString().'.txt';
         $token = Str::random(48);
 
         try {
@@ -96,6 +97,16 @@ final class MediaStorageManager
 
             if ($disk->get($path) !== $token) {
                 throw new RuntimeException('The R2 test object could not be read back correctly.');
+            }
+
+            $publicResponse = Http::timeout(10)
+                ->retry(3, 250)
+                ->get(rtrim((string) $configuration->public_url, '/').'/'.$path, [
+                    'media_healthcheck' => $token,
+                ]);
+
+            if (! $publicResponse->successful() || $publicResponse->body() !== $token) {
+                throw new RuntimeException('The R2 public URL could not read the test object correctly.');
             }
 
             if ($disk->delete($path) === false || $disk->exists($path)) {
@@ -125,6 +136,7 @@ final class MediaStorageManager
     public function startMigration(MediaStorageConfiguration $configuration, ?User $user = null): MediaOperation
     {
         $this->assertTested($configuration);
+        $this->assertLocalMediaComplete();
 
         return $this->createOperation(
             type: MediaOperation::TypeMigration,
@@ -148,8 +160,13 @@ final class MediaStorageManager
             throw new RuntimeException('A successful migration for this R2 configuration is required first.');
         }
 
+        $this->assertLocalMediaComplete();
+
         $paths = $this->pathCollector->all('public');
-        $migrationPaths = $migration->items()->orderBy('path')->pluck('path')->all();
+        $migrationPaths = array_values(array_map(
+            static fn (mixed $path): string => (string) $path,
+            $migration->items()->orderBy('path')->pluck('path')->all(),
+        ));
 
         if (! $this->samePathSet($paths, $migrationPaths)) {
             throw new RuntimeException('Local media changed after migration. Run the migration again before validation.');
@@ -326,11 +343,7 @@ final class MediaStorageManager
             throw new RuntimeException('Only the active R2 configuration can be rolled back.');
         }
 
-        $missing = collect($this->pathCollector->references())
-            ->reject(fn (string $path): bool => Storage::disk('public')->exists($path))
-            ->take(10)
-            ->values()
-            ->all();
+        $missing = array_slice($this->pathCollector->missing('public'), 0, 10);
 
         if ($missing !== []) {
             throw new RuntimeException('Rollback is blocked because some referenced media is missing locally: '.implode(', ', $missing));
@@ -582,6 +595,18 @@ final class MediaStorageManager
         }
     }
 
+    private function assertLocalMediaComplete(): void
+    {
+        $missing = array_slice($this->pathCollector->missing('public'), 0, 10);
+
+        if ($missing !== []) {
+            throw new RuntimeException(
+                'Required local media is missing, including rollback copies or cover thumbnails: '
+                .implode(', ', $missing),
+            );
+        }
+    }
+
     private function assertTested(MediaStorageConfiguration $configuration): void
     {
         if (! $configuration->wasSuccessfullyTested()) {
@@ -608,7 +633,10 @@ final class MediaStorageManager
             ->orderBy('path')
             ->get(['path', 'source_size', 'source_checksum']);
 
-        $validatedPaths = $validatedItems->pluck('path')->all();
+        $validatedPaths = array_values(array_map(
+            static fn (mixed $path): string => (string) $path,
+            $validatedItems->pluck('path')->all(),
+        ));
 
         if (! $this->samePathSet($paths, $validatedPaths)) {
             throw new RuntimeException('Local media changed after validation. Run migration and validation again.');
@@ -652,7 +680,10 @@ final class MediaStorageManager
         }
     }
 
-    /** @param list<string> $left @param list<string> $right */
+    /**
+     * @param  list<string>  $left
+     * @param  list<string>  $right
+     */
     private function samePathSet(array $left, array $right): bool
     {
         return count($left) === count($right)

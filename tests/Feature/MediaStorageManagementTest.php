@@ -16,10 +16,13 @@ use App\Support\MediaImageOptimizer;
 use App\Support\MediaPathCollector;
 use App\Support\MediaReferenceRewriter;
 use App\Support\MediaStorageManager;
+use App\Support\MediaThumbnail;
 use App\Support\MediaUpload;
 use Aws\CommandInterface;
 use Aws\Result;
 use Aws\S3\S3ClientInterface;
+use Illuminate\Http\Client\Factory;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\Config;
@@ -32,6 +35,11 @@ beforeEach(function (): void {
         'filesystems.media' => 'public',
         'filesystems.disks.r2.url' => 'https://media.example.com',
     ]);
+    Http::fake(function ($request) {
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+        return Http::response($query['media_healthcheck'] ?? '', 200);
+    });
 });
 
 test('r2 credentials are encrypted and blank secrets keep the previous value', function (): void {
@@ -107,6 +115,7 @@ test('saving media storage page creates a candidate without activating r2', func
 test('media storage page tests the saved configuration before queuing migration', function (): void {
     Queue::fake();
     Storage::disk('public')->put('games/covers/one.jpg', 'one');
+    Storage::disk('public')->put(MediaThumbnail::pathFor('games/covers/one.jpg'), 'thumb');
     Game::factory()->create(['cover_path' => 'games/covers/one.jpg']);
     $this->actingAs(User::factory()->admin()->create());
 
@@ -135,7 +144,7 @@ test('media storage page tests the saved configuration before queuing migration'
         ->and(MediaOperation::query()->where('type', MediaOperation::TypeMigration)->count())->toBe(1)
         ->and(config('filesystems.media'))->toBe('public');
 
-    Queue::assertPushed(ProcessMediaOperationItem::class, 1);
+    Queue::assertPushed(ProcessMediaOperationItem::class, 2);
 });
 
 test('connection test verifies upload read and delete without activating r2', function (): void {
@@ -146,6 +155,18 @@ test('connection test verifies upload read and delete without activating r2', fu
     expect($configuration->refresh()->wasSuccessfullyTested())->toBeTrue()
         ->and($configuration->is_active)->toBeFalse()
         ->and(config('filesystems.media'))->toBe('public')
+        ->and(Storage::disk('r2')->allFiles())->toBeEmpty();
+});
+
+test('connection test rejects a public url that cannot read the test object', function (): void {
+    Http::swap(new Factory);
+    Http::fake(fn () => Http::response('wrong-body', 200));
+    $configuration = createTestedMediaConfiguration(tested: false);
+
+    expect(fn () => app(MediaStorageManager::class)->testConnection($configuration))
+        ->toThrow(RuntimeException::class, 'public URL');
+
+    expect($configuration->refresh()->wasSuccessfullyTested())->toBeFalse()
         ->and(Storage::disk('r2')->allFiles())->toBeEmpty();
 });
 
@@ -247,6 +268,16 @@ test('new r2 uploads keep an identical local rollback copy', function (): void {
         ->and(Storage::disk('public')->get($path))->toBe(Storage::disk('r2')->get($path));
 });
 
+test('migration is blocked when a required cover thumbnail is missing locally', function (): void {
+    Queue::fake();
+    $configuration = createTestedMediaConfiguration();
+    Storage::disk('public')->put('games/covers/one.jpg', 'one');
+    Game::factory()->create(['cover_path' => 'games/covers/one.jpg']);
+
+    expect(fn () => app(MediaStorageManager::class)->startMigration($configuration))
+        ->toThrow(RuntimeException::class, 'cover thumbnails');
+});
+
 test('migration and validation copy every managed media reference and keep local sources', function (): void {
     Queue::fake();
     $configuration = createTestedMediaConfiguration();
@@ -255,20 +286,20 @@ test('migration and validation copy every managed media reference and keep local
 
     $migration = $manager->startMigration($configuration);
 
-    Queue::assertPushed(ProcessMediaOperationItem::class, 8);
+    Queue::assertPushed(ProcessMediaOperationItem::class, 9);
     runMediaOperation($migration);
 
     expect($migration->refresh()->status)->toBe(MediaOperation::StatusCompleted)
         ->and($migration->failed_items)->toBe(0)
-        ->and(Storage::disk('public')->allFiles())->toHaveCount(8)
-        ->and(Storage::disk('r2')->allFiles())->toHaveCount(8);
+        ->and(Storage::disk('public')->allFiles())->toHaveCount(9)
+        ->and(Storage::disk('r2')->allFiles())->toHaveCount(9);
 
     $validation = $manager->startValidation($configuration);
     runMediaOperation($validation);
 
     expect($validation->refresh()->status)->toBe(MediaOperation::StatusCompleted)
         ->and($validation->failed_items)->toBe(0)
-        ->and($validation->items()->whereColumn('source_checksum', 'target_checksum')->count())->toBe(8);
+        ->and($validation->items()->whereColumn('source_checksum', 'target_checksum')->count())->toBe(9);
 });
 
 test('validation path comparison ignores database collation order', function (): void {
@@ -289,6 +320,7 @@ test('candidate operation jobs restore the active r2 configuration after complet
     $active->forceFill(['is_active' => true, 'activated_at' => now()])->save();
     $candidate = createTestedMediaConfiguration(publicUrl: 'https://candidate-media.example.com');
     Storage::disk('public')->put('games/covers/one.jpg', 'one');
+    Storage::disk('public')->put(MediaThumbnail::pathFor('games/covers/one.jpg'), 'thumb');
     Game::factory()->create(['cover_path' => 'games/covers/one.jpg']);
     $manager = app(MediaStorageManager::class);
     $manager->applyRuntimeConfiguration();
@@ -314,6 +346,7 @@ test('candidate operation jobs restore the active r2 configuration after failure
     $active->forceFill(['is_active' => true, 'activated_at' => now()])->save();
     $candidate = createTestedMediaConfiguration(publicUrl: 'https://candidate-media.example.com');
     Storage::disk('public')->put('games/covers/one.jpg', 'one');
+    Storage::disk('public')->put(MediaThumbnail::pathFor('games/covers/one.jpg'), 'thumb');
     Game::factory()->create(['cover_path' => 'games/covers/one.jpg']);
     $manager = app(MediaStorageManager::class);
     $manager->applyRuntimeConfiguration();
@@ -350,7 +383,7 @@ test('r2 activation requires current validation and rollback keeps local media a
         ->and($models['release']->refresh()->description)->toContain('https://media.example.com/games/content/release.jpg')
         ->and($models['doc']->refresh()->body)->toContain('https://media.example.com/docs/content/doc.jpg')
         ->and(Setting::get('resource_notice_content'))->toContain('https://media.example.com/site/notices/notice.jpg')
-        ->and(Storage::disk('public')->allFiles())->toHaveCount(8);
+        ->and(Storage::disk('public')->allFiles())->toHaveCount(9);
 
     $manager->rollbackToLocal($configuration);
 
@@ -430,6 +463,7 @@ function seedManagedMediaReferences(): array
 {
     $files = [
         'games/covers/cover.jpg' => 'cover',
+        'games/covers/thumbs/cover.webp' => 'cover-thumb',
         'games/screenshots/shot.jpg' => 'screenshot',
         'games/content/game.jpg' => 'game-content',
         'games/content/release.jpg' => 'release-content',

@@ -129,7 +129,13 @@ final class MediaUpload
             throw new RuntimeException("Unable to store media [{$path}] on [{$disk}].");
         }
 
-        if (! $storage->exists($path) || $storage->size($path) !== strlen($binary)) {
+        $stored = $storage->get($path);
+
+        if (
+            ! is_string($stored)
+            || strlen($stored) !== strlen($binary)
+            || ! hash_equals(hash('sha256', $binary), hash('sha256', $stored))
+        ) {
             rescue(fn (): bool => $storage->delete($path), report: false);
 
             throw new RuntimeException("Stored media [{$path}] failed verification on [{$disk}].");

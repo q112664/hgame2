@@ -84,9 +84,11 @@ class ManageSiteSettings extends Page
             'oauth_google_enabled' => Setting::boolean('oauth_google_enabled', false),
             'oauth_google_client_id' => Setting::get('oauth_google_client_id') ?? config('services.google.client_id'),
             'oauth_google_client_secret' => Setting::get('oauth_google_client_secret') ? '••••••••' : '',
+            'oauth_google_callback' => route('auth.social.callback', ['provider' => 'google'], absolute: true),
             'oauth_discord_enabled' => Setting::boolean('oauth_discord_enabled', false),
             'oauth_discord_client_id' => Setting::get('oauth_discord_client_id') ?? config('services.discord.client_id'),
             'oauth_discord_client_secret' => Setting::get('oauth_discord_client_secret') ? '••••••••' : '',
+            'oauth_discord_callback' => route('auth.social.callback', ['provider' => 'discord'], absolute: true),
         ]);
     }
 
@@ -341,8 +343,8 @@ class ManageSiteSettings extends Page
                                             ->helperText('Leave blank to keep the current secret.'),
                                         TextInput::make('oauth_google_callback')
                                             ->label('Authorized redirect URI')
-                                            ->default(fn (): string => route('auth.social.callback', ['provider' => 'google'], absolute: true))
-                                            ->disabled()
+                                            ->readOnly()
+                                            ->copyable(copyMessage: 'Redirect URI copied')
                                             ->dehydrated(false)
                                             ->helperText('Copy this into the Google OAuth client “Authorized redirect URIs”.')
                                             ->columnSpanFull(),
@@ -368,8 +370,8 @@ class ManageSiteSettings extends Page
                                             ->helperText('Leave blank to keep the current secret.'),
                                         TextInput::make('oauth_discord_callback')
                                             ->label('Redirects URI')
-                                            ->default(fn (): string => route('auth.social.callback', ['provider' => 'discord'], absolute: true))
-                                            ->disabled()
+                                            ->readOnly()
+                                            ->copyable(copyMessage: 'Redirect URI copied')
                                             ->dehydrated(false)
                                             ->helperText('Copy this into Discord OAuth2 “Redirects”.')
                                             ->columnSpanFull(),

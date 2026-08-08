@@ -333,6 +333,16 @@ test('administrators can update social login settings', function () {
         ->and(Setting::get('oauth_discord_client_secret'))->toBe('discord-secret-from-admin');
 });
 
+test('site settings show oauth callback urls for google and discord', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->assertFormSet([
+            'oauth_google_callback' => route('auth.social.callback', ['provider' => 'google'], absolute: true),
+            'oauth_discord_callback' => route('auth.social.callback', ['provider' => 'discord'], absolute: true),
+        ]);
+});
+
 test('avatar urls use the configured site url', function () {
     Storage::fake(Media::diskName());
 

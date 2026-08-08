@@ -28,7 +28,7 @@ use Laravel\Sanctum\NewAccessToken;
  * @property string $email
  * @property string|null $avatar
  * @property Carbon|null $email_verified_at
- * @property string $password
+ * @property string|null $password
  * @property bool $is_admin
  * @property string|null $registration_ip
  * @property string|null $last_login_ip
@@ -92,6 +92,11 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
         return (bool) $this->is_admin;
     }
 
+    public function hasPassword(): bool
+    {
+        return filled($this->getAuthPassword());
+    }
+
     /** @return BelongsToMany<Game, $this> */
     public function favoritedGames(): BelongsToMany
     {
@@ -104,6 +109,12 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
     public function comments(): HasMany
     {
         return $this->hasMany(GameComment::class);
+    }
+
+    /** @return HasMany<SocialAccount, $this> */
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
     }
 
     /**

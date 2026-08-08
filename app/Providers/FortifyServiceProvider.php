@@ -6,6 +6,7 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Support\IntendedUrl;
 use App\Support\PageSeo;
+use App\Support\SocialAuth;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -57,6 +58,7 @@ class FortifyServiceProvider extends ServiceProvider
                 'canRegister' => Features::enabled(Features::registration()),
                 'canResetPassword' => Features::enabled(Features::resetPasswords()),
                 'canUsePasskeys' => Features::canManagePasskeys(),
+                'socialProviders' => SocialAuth::enabledProviders(),
                 'status' => $request->session()->get('status'),
                 'pageSeo' => PageSeo::noindex('Log in'),
             ]);
@@ -84,6 +86,7 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Inertia::render('auth/register', [
                 'passwordRules' => Password::defaults()->toPasswordRulesString(),
+                'socialProviders' => SocialAuth::enabledProviders(),
                 'pageSeo' => PageSeo::noindex('Register'),
             ]);
         });

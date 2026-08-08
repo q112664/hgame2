@@ -23,6 +23,8 @@ test('settings page includes security settings', function () {
             ->where('activeTab', 'security')
             ->where('canManagePasskeys', false)
             ->where('passkeys', [])
+            ->where('hasPassword', true)
+            ->where('socialConnections', [])
             ->where('canManageTwoFactor', true)
             ->where('twoFactorEnabled', false),
         );

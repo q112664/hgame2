@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Setting;
+use App\Support\SocialAuth;
 use App\Support\TaxonomyDirectory;
 use App\Support\Turnstile;
 use Illuminate\Http\Request;
@@ -59,6 +60,7 @@ class HandleInertiaRequests extends Middleware
                 'canUsePasskeys' => Features::canManagePasskeys(),
                 'passwordRules' => Password::defaults()->toPasswordRulesString(),
                 'turnstile' => Turnstile::frontendConfig(),
+                'socialProviders' => SocialAuth::enabledProviders(),
             ],
             'notificationSummary' => [
                 'unreadCount' => $request->user()

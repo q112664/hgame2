@@ -81,6 +81,12 @@ class ManageSiteSettings extends Page
             'turnstile_register_enabled' => Setting::boolean('turnstile_register_enabled', false),
             'turnstile_forgot_password_enabled' => Setting::boolean('turnstile_forgot_password_enabled', false),
             'turnstile_download_enabled' => Setting::boolean('turnstile_download_enabled', false),
+            'oauth_google_enabled' => Setting::boolean('oauth_google_enabled', false),
+            'oauth_google_client_id' => Setting::get('oauth_google_client_id') ?? config('services.google.client_id'),
+            'oauth_google_client_secret' => Setting::get('oauth_google_client_secret') ? '••••••••' : '',
+            'oauth_discord_enabled' => Setting::boolean('oauth_discord_enabled', false),
+            'oauth_discord_client_id' => Setting::get('oauth_discord_client_id') ?? config('services.discord.client_id'),
+            'oauth_discord_client_secret' => Setting::get('oauth_discord_client_secret') ? '••••••••' : '',
         ]);
     }
 
@@ -315,6 +321,60 @@ class ManageSiteSettings extends Page
                                             ->default(false),
                                     ])
                                     ->columns(2),
+                                Section::make('Google login')
+                                    ->description('OAuth client from Google Cloud Console. Callback URL must match exactly.')
+                                    ->schema([
+                                        Toggle::make('oauth_google_enabled')
+                                            ->label('Enable Google login')
+                                            ->default(false)
+                                            ->columnSpanFull(),
+                                        TextInput::make('oauth_google_client_id')
+                                            ->label('Client ID')
+                                            ->maxLength(255)
+                                            ->placeholder(config('services.google.client_id') ?: '….apps.googleusercontent.com'),
+                                        TextInput::make('oauth_google_client_secret')
+                                            ->label('Client secret')
+                                            ->password()
+                                            ->revealable()
+                                            ->maxLength(255)
+                                            ->dehydrated(fn (?string $state): bool => filled($state) && $state !== '••••••••')
+                                            ->helperText('Leave blank to keep the current secret.'),
+                                        TextInput::make('oauth_google_callback')
+                                            ->label('Authorized redirect URI')
+                                            ->default(fn (): string => route('auth.social.callback', ['provider' => 'google'], absolute: true))
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->helperText('Copy this into the Google OAuth client “Authorized redirect URIs”.')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(2),
+                                Section::make('Discord login')
+                                    ->description('OAuth2 application from the Discord Developer Portal.')
+                                    ->schema([
+                                        Toggle::make('oauth_discord_enabled')
+                                            ->label('Enable Discord login')
+                                            ->default(false)
+                                            ->columnSpanFull(),
+                                        TextInput::make('oauth_discord_client_id')
+                                            ->label('Client ID')
+                                            ->maxLength(255)
+                                            ->placeholder(config('services.discord.client_id') ?: 'Application client ID'),
+                                        TextInput::make('oauth_discord_client_secret')
+                                            ->label('Client secret')
+                                            ->password()
+                                            ->revealable()
+                                            ->maxLength(255)
+                                            ->dehydrated(fn (?string $state): bool => filled($state) && $state !== '••••••••')
+                                            ->helperText('Leave blank to keep the current secret.'),
+                                        TextInput::make('oauth_discord_callback')
+                                            ->label('Redirects URI')
+                                            ->default(fn (): string => route('auth.social.callback', ['provider' => 'discord'], absolute: true))
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->helperText('Copy this into Discord OAuth2 “Redirects”.')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(2),
                             ]),
                     ]),
             ]);
@@ -468,6 +528,9 @@ class ManageSiteSettings extends Page
             filter_var($data['turnstile_download_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
         );
 
+        $this->saveOAuthProviderSettings('google', $data);
+        $this->saveOAuthProviderSettings('discord', $data);
+
         if ($mode !== 'text') {
             Setting::set('site_logo_path', $nextLogoPath);
 
@@ -504,6 +567,31 @@ class ManageSiteSettings extends Page
             ->title('Settings saved')
             ->success()
             ->send();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function saveOAuthProviderSettings(string $provider, array $data): void
+    {
+        Setting::setBoolean(
+            "oauth_{$provider}_enabled",
+            filter_var($data["oauth_{$provider}_enabled"] ?? false, FILTER_VALIDATE_BOOLEAN),
+        );
+
+        $clientId = trim((string) ($data["oauth_{$provider}_client_id"] ?? ''));
+        Setting::set(
+            "oauth_{$provider}_client_id",
+            $clientId !== '' ? $clientId : null,
+        );
+
+        if (array_key_exists("oauth_{$provider}_client_secret", $data)) {
+            $secret = trim((string) $data["oauth_{$provider}_client_secret"]);
+
+            if ($secret !== '' && $secret !== '••••••••') {
+                Setting::set("oauth_{$provider}_client_secret", $secret);
+            }
+        }
     }
 
     private function normalizeUploadPath(mixed $value): ?string

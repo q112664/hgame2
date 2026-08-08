@@ -176,6 +176,7 @@ function AuthDialog({
                             canRegister={authModal.canRegister}
                             canResetPassword={authModal.canResetPassword}
                             canUsePasskeys={authModal.canUsePasskeys}
+                            socialProviders={authModal.socialProviders}
                             onForgotPassword={
                                 authModal.canResetPassword
                                     ? () => switchView('forgot-password')
@@ -194,6 +195,7 @@ function AuthDialog({
                             onLogin={() => switchView('login')}
                             onSuccess={closeAuthDialog}
                             passwordRules={authModal.passwordRules}
+                            socialProviders={authModal.socialProviders}
                             redirect={redirect}
                         />
                     ) : (

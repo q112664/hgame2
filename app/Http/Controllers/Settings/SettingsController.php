@@ -101,6 +101,14 @@ class SettingsController extends Controller
 
     private function requiresPasswordConfirmation(Request $request): bool
     {
+        /** @var User|null $user */
+        $user = $request->user();
+
+        // Social-only accounts have no password to confirm.
+        if ($user === null || ! $user->hasPassword()) {
+            return false;
+        }
+
         return Date::now()->unix() - $request->session()->get('auth.password_confirmed_at', 0) > config('auth.password_timeout');
     }
 }

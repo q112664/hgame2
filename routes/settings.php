@@ -3,6 +3,7 @@
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SettingsController;
+use App\Http\Controllers\SocialAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -19,6 +20,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('settings/security/confirm', [SettingsController::class, 'confirmSecurity'])
         ->middleware('throttle:6,1')
         ->name('security.confirm');
+    Route::get('settings/security/social/{provider}/redirect', [SocialAuthController::class, 'linkRedirect'])
+        ->name('security.social.redirect')
+        ->whereIn('provider', ['google', 'discord'])
+        ->middleware('throttle:20,1');
+    Route::delete('settings/security/social/{provider}', [SocialAuthController::class, 'unlink'])
+        ->name('security.social.unlink')
+        ->whereIn('provider', ['google', 'discord'])
+        ->middleware('throttle:20,1');
     Route::get('settings/appearance', [SettingsController::class, 'appearance'])->name('appearance.edit');
 
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

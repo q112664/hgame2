@@ -11,6 +11,7 @@ use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\SocialAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/robots.txt', RobotsController::class)->name('robots');
@@ -21,6 +22,15 @@ Route::get('/search', SearchController::class)->name('search');
 
 // Legacy Filament login URL — admin signs in on the public site only.
 Route::redirect('/admin/login', '/login');
+
+Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])
+    ->name('auth.social.redirect')
+    ->whereIn('provider', ['google', 'discord'])
+    ->middleware(['guest', 'throttle:20,1']);
+Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'])
+    ->name('auth.social.callback')
+    ->whereIn('provider', ['google', 'discord'])
+    ->middleware('throttle:20,1');
 
 Route::get('/docs', [DocController::class, 'index'])->name('docs.index');
 Route::get('/docs/{doc}', [DocController::class, 'show'])->name('docs.show');

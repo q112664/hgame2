@@ -23,12 +23,24 @@ export type TurnstileConfig = {
     download: boolean;
 };
 
+export type SocialProvider = 'google' | 'discord';
+
+export type SocialConnection = {
+    provider: SocialProvider;
+    label: string;
+    available: boolean;
+    linked: boolean;
+    email: string | null;
+    canUnlink: boolean;
+};
+
 export type AuthModalConfig = {
     canRegister: boolean;
     canResetPassword: boolean;
     canUsePasskeys: boolean;
     passwordRules: string;
     turnstile: TurnstileConfig;
+    socialProviders: SocialProvider[];
 };
 
 /* @chisel-passkeys */

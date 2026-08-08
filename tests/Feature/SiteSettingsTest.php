@@ -308,6 +308,31 @@ test('administrators can update turnstile settings', function () {
         ->and(Setting::boolean('turnstile_download_enabled'))->toBeTrue();
 });
 
+test('administrators can update social login settings', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'oauth_google_enabled' => true,
+            'oauth_google_client_id' => 'google-client-from-admin',
+            'oauth_google_client_secret' => 'google-secret-from-admin',
+            'oauth_discord_enabled' => true,
+            'oauth_discord_client_id' => 'discord-client-from-admin',
+            'oauth_discord_client_secret' => 'discord-secret-from-admin',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    expect(Setting::boolean('oauth_google_enabled'))->toBeTrue()
+        ->and(Setting::get('oauth_google_client_id'))->toBe('google-client-from-admin')
+        ->and(Setting::get('oauth_google_client_secret'))->toBe('google-secret-from-admin')
+        ->and(Setting::boolean('oauth_discord_enabled'))->toBeTrue()
+        ->and(Setting::get('oauth_discord_client_id'))->toBe('discord-client-from-admin')
+        ->and(Setting::get('oauth_discord_client_secret'))->toBe('discord-secret-from-admin');
+});
+
 test('avatar urls use the configured site url', function () {
     Storage::fake(Media::diskName());
 

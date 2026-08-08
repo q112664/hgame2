@@ -8,6 +8,8 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import type { Props as ManagePasskeysProps } from '@/components/manage-passkeys';
 import ManagePasskeys from '@/components/manage-passkeys';
+import type { Props as ManageSocialAccountsProps } from '@/components/manage-social-accounts';
+import ManageSocialAccounts from '@/components/manage-social-accounts';
 import type { Props as ManageTwoFactorProps } from '@/components/manage-two-factor';
 import ManageTwoFactor from '@/components/manage-two-factor';
 import PasswordInput from '@/components/password-input';
@@ -36,11 +38,13 @@ type Props = {
     activeTab: SettingsTab;
     mustVerifyEmail: boolean;
     passwordRules?: string;
+    hasPassword?: boolean;
     requiresPasswordConfirmation: boolean;
     status?: string;
     pageSeo?: PageSeoData | null;
 } & ManagePasskeysProps &
-    ManageTwoFactorProps;
+    ManageTwoFactorProps &
+    ManageSocialAccountsProps;
 
 const settingsTabs: Array<{
     value: SettingsTab;
@@ -229,8 +233,16 @@ export default function Settings(props: Props) {
                                 <div className="space-y-6">
                                     <Heading
                                         variant="small"
-                                        title="Update password"
-                                        description="Ensure your account is using a long, random password to stay secure"
+                                        title={
+                                            props.hasPassword === false
+                                                ? 'Set password'
+                                                : 'Update password'
+                                        }
+                                        description={
+                                            props.hasPassword === false
+                                                ? 'Add a password so you can sign in without a social account'
+                                                : 'Ensure your account is using a long, random password to stay secure'
+                                        }
                                     />
 
                                     <Form
@@ -246,34 +258,44 @@ export default function Settings(props: Props) {
                                     >
                                         {({ errors, processing }) => (
                                             <>
-                                                <div className="grid gap-2">
-                                                    <Label htmlFor="current_password">
-                                                        Current password
-                                                    </Label>
-                                                    <PasswordInput
-                                                        id="current_password"
-                                                        name="current_password"
-                                                        className="block w-full"
-                                                        autoComplete="current-password"
-                                                        placeholder="Current password"
-                                                    />
-                                                    <InputError
-                                                        message={
-                                                            errors.current_password
-                                                        }
-                                                    />
-                                                </div>
+                                                {props.hasPassword !== false ? (
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="current_password">
+                                                            Current password
+                                                        </Label>
+                                                        <PasswordInput
+                                                            id="current_password"
+                                                            name="current_password"
+                                                            className="block w-full"
+                                                            autoComplete="current-password"
+                                                            placeholder="Current password"
+                                                        />
+                                                        <InputError
+                                                            message={
+                                                                errors.current_password
+                                                            }
+                                                        />
+                                                    </div>
+                                                ) : null}
 
                                                 <div className="grid gap-2">
                                                     <Label htmlFor="password">
-                                                        New password
+                                                        {props.hasPassword ===
+                                                        false
+                                                            ? 'Password'
+                                                            : 'New password'}
                                                     </Label>
                                                     <PasswordInput
                                                         id="password"
                                                         name="password"
                                                         className="block w-full"
                                                         autoComplete="new-password"
-                                                        placeholder="New password"
+                                                        placeholder={
+                                                            props.hasPassword ===
+                                                            false
+                                                                ? 'Password'
+                                                                : 'New password'
+                                                        }
                                                         passwordrules={
                                                             props.passwordRules
                                                         }
@@ -318,6 +340,10 @@ export default function Settings(props: Props) {
                                         )}
                                     </Form>
                                 </div>
+
+                                <ManageSocialAccounts
+                                    socialConnections={props.socialConnections}
+                                />
 
                                 <ManageTwoFactor
                                     canManageTwoFactor={

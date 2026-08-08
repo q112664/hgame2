@@ -27,6 +27,8 @@ use Laravel\Fortify\Http\Requests\LoginRequest as FortifyLoginRequest;
 use Laravel\Fortify\Http\Requests\SendPasswordResetLinkRequest as FortifySendPasswordResetLinkRequest;
 use Laravel\Sanctum\Sanctum;
 use League\Flysystem\Filesystem;
+use SocialiteProviders\Discord\Provider;
+use SocialiteProviders\Manager\SocialiteWasCalled;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -53,6 +55,10 @@ class AppServiceProvider extends ServiceProvider
         $this->configureMediaStorage();
 
         Event::listen(Login::class, RecordUserLogin::class);
+
+        Event::listen(function (SocialiteWasCalled $event): void {
+            $event->extendSocialite('discord', Provider::class);
+        });
 
         Route::bind('resource', static fn (string $value): Game => Game::query()
             ->published()

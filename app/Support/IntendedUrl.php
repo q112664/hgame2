@@ -19,6 +19,7 @@ class IntendedUrl
         'email/verify',
         'user/confirm-password',
         'dashboard',
+        'auth',
     ];
 
     public static function remember(Request $request, bool $overwrite = false): void

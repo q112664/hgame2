@@ -124,6 +124,7 @@ export function PopularResources({
                                 >
                                     <LazyThumbnail
                                         src={resource.thumbnail}
+                                        fallbackSrc={resource.thumbnailFallback}
                                         alt={resource.title}
                                         priority={index < 3}
                                     />

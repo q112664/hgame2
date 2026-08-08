@@ -9,7 +9,7 @@ use App\Models\Game;
 use App\Models\Language;
 use App\Models\Platform;
 use App\Support\DescriptionMediaImporter;
-use App\Support\Media;
+use App\Support\MediaDeletionService;
 use App\Support\MediaThumbnail;
 use App\Support\RemoteMediaDownloader;
 use App\Support\TagImporter;
@@ -76,7 +76,7 @@ class SaveGameFromApi
 
             $title = array_key_exists('title', $data)
                 ? (string) $data['title']
-                : (string) ($existing?->title ?? '');
+                : (string) ($existing instanceof Game ? $existing->title : '');
 
             $slug = $isUpdate ? (string) $existing->slug : null;
 
@@ -278,7 +278,7 @@ class SaveGameFromApi
             return $game;
         } catch (Throwable $exception) {
             foreach ($uploadedPaths as $path) {
-                Media::delete($path);
+                app(MediaDeletionService::class)->deleteIfUnreferenced($path);
                 MediaThumbnail::deleteFor($path);
             }
 

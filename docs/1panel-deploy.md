@@ -1,6 +1,6 @@
 # 在 1Panel 中部署 hgame
 
-本文说明如何用 **1Panel + Docker Compose** 部署本项目。项目自带 `Dockerfile` 与 `docker-compose.yml`，默认数据库为 **PostgreSQL 16**，缓存 / 队列 / Session 使用 **Redis 7**，应用容器内为 PHP 8.4 + Nginx（监听 `8080`），并附带 queue worker。
+本文说明如何用 **1Panel + Docker Compose** 部署本项目。项目自带 `Dockerfile` 与 `docker-compose.yml`，默认数据库为 **PostgreSQL 16**，缓存 / 队列 / Session 使用 **Redis 7**，应用容器内为 PHP 8.4 + Nginx（监听 `8080`），并附带 queue worker 与 Laravel scheduler。
 
 > 官方编排文档：[1Panel 编排](https://1panel.cn/docs/v2/user_manual/containers/compose/)  
 > 官方反向代理网站：[创建网站](https://1panel.cn/docs/v2/user_manual/websites/website_create/)
@@ -206,7 +206,7 @@ curl -I http://127.0.0.1:8080/up
 - 创建 storage 软链
 - `optimize`
 
-queue 由 `worker` 服务处理。
+queue 由 `worker` 服务处理，定时任务由 `scheduler` 服务执行。
 
 ---
 
@@ -299,7 +299,7 @@ git pull
 # 3. 重建镜像并启动（必须 --build：旧镜像没有 ext-redis）
 docker compose up -d --build
 
-# 4. 确认四个服务都在
+# 4. 确认各服务都在
 docker compose ps
 ```
 
@@ -312,6 +312,7 @@ docker compose exec redis redis-cli ping
 docker compose exec app php artisan tinker --execute "echo Illuminate\Support\Facades\Redis::connection()->ping();"
 
 docker compose logs worker --tail=50
+docker compose logs scheduler --tail=50
 ```
 
 ### 升级注意
@@ -321,7 +322,7 @@ docker compose logs worker --tail=50
 | 必须 `--build` | 旧镜像未装 `phpredis`，只 `up -d` 不够 |
 | Session 改 redis | 用户可能需重新登录（正常） |
 | 数据 | Postgres / 上传文件 volume 不受影响 |
-| 队列 | 之后任务走 Redis，由 `worker` 消费 |
+| 队列与调度 | 队列由 `worker` 消费，定时恢复任务由 `scheduler` 执行 |
 | 网络 | 默认 Redis **不映射公网端口**，仅容器网访问 |
 
 ### 最短命令汇总
@@ -428,6 +429,7 @@ docker compose logs worker --tail=100
     → http://127.0.0.1:8080
       → app（PHP-FPM + Nginx，Laravel）
       → worker（queue:work redis）
+      → scheduler（schedule:work）
       → postgres:16（仅容器网内）
       → redis:7（缓存 / 队列 / Session）
 ```
@@ -493,5 +495,6 @@ docker compose up -d --build
 - [ ] 生产已取消 Postgres 公网端口映射；Redis 未对公网暴露
 - [ ] `docker compose up -d --build` 成功，`/up` 可访问，`redis-cli ping` 为 PONG
 - [ ] `worker` 容器在运行（队列）
+- [ ] `scheduler` 容器在运行（定时任务）
 - [ ] 1Panel 反向代理 + HTTPS 正常
 - [ ] 已创建管理员并可打开 `/admin`

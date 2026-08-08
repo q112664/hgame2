@@ -22,6 +22,7 @@ type Props = {
         id: string;
         title: string;
         thumbnail: string;
+        thumbnailFallback: string;
     };
     link: {
         id: number;
@@ -115,6 +116,7 @@ export default function DownloadLinkShow({ resource, link, pageSeo }: Props) {
                 >
                     <LazyThumbnail
                         src={resource.thumbnail}
+                        fallbackSrc={resource.thumbnailFallback}
                         alt={resource.title}
                         priority
                     />

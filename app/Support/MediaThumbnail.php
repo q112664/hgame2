@@ -133,6 +133,18 @@ final class MediaThumbnail
         ?int $maxWidth = null,
         ?int $quality = null,
     ): ?string {
+        return app(MediaOperationCoordinator::class)->cutover(fn (): ?string => self::generateOrFailUnlocked(
+            $path,
+            $maxWidth,
+            $quality,
+        ));
+    }
+
+    private static function generateOrFailUnlocked(
+        string $path,
+        ?int $maxWidth = null,
+        ?int $quality = null,
+    ): ?string {
         if (! self::isManagedPath($path)) {
             return null;
         }
@@ -342,6 +354,6 @@ final class MediaThumbnail
             return true;
         }
 
-        return Media::delete(self::pathFor((string) $path));
+        return app(MediaDeletionService::class)->deleteIfUnreferenced(self::pathFor((string) $path));
     }
 }

@@ -12,7 +12,10 @@ use RuntimeException;
 
 final class MediaUpload
 {
-    public function __construct(private readonly MediaImageOptimizer $imageOptimizer) {}
+    public function __construct(
+        private readonly MediaImageOptimizer $imageOptimizer,
+        private readonly MediaOperationCoordinator $coordinator,
+    ) {}
 
     public function storeUploadedFile(
         UploadedFile $file,
@@ -41,6 +44,20 @@ final class MediaUpload
     }
 
     public function storeBinary(
+        string $binary,
+        string $mimeType,
+        string $directory,
+        ?string $disk = null,
+    ): string {
+        return $this->coordinator->cutover(fn (): string => $this->storeBinaryUnlocked(
+            $binary,
+            $mimeType,
+            $directory,
+            $disk,
+        ));
+    }
+
+    private function storeBinaryUnlocked(
         string $binary,
         string $mimeType,
         string $directory,

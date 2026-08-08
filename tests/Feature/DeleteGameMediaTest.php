@@ -2,10 +2,13 @@
 
 use App\Actions\Games\PublishGame;
 use App\GameStatus;
+use App\Models\Doc;
 use App\Models\Game;
 use App\Models\GameScreenshot;
 use App\Models\Platform;
+use App\Models\Setting;
 use App\Support\Media;
+use App\Support\MediaDeletionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -129,6 +132,24 @@ test('deleting a game keeps media still referenced by another game', function ()
     $game->delete();
 
     expect(Storage::disk('public')->exists($shared))->toBeTrue();
+});
+
+test('central media deletion keeps paths referenced by docs and site settings', function (): void {
+    $path = 'games/content/shared-outside-game.jpg';
+    Storage::disk('public')->put($path, 'shared');
+    $doc = Doc::factory()->create([
+        'body' => '<p><img src="/storage/'.$path.'"></p>',
+    ]);
+    Setting::set('site_favicon_path', $path);
+
+    expect(app(MediaDeletionService::class)->deleteIfUnreferenced($path))->toBeTrue()
+        ->and(Storage::disk('public')->exists($path))->toBeTrue();
+
+    Setting::set('site_favicon_path', null);
+    $doc->delete();
+
+    expect(app(MediaDeletionService::class)->deleteIfUnreferenced($path))->toBeTrue()
+        ->and(Storage::disk('public')->exists($path))->toBeFalse();
 });
 
 test('media delete removes objects from both public and s3 disks', function () {

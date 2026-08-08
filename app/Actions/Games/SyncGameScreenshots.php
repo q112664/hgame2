@@ -4,7 +4,7 @@ namespace App\Actions\Games;
 
 use App\Models\Game;
 use App\Models\GameScreenshot;
-use App\Support\Media;
+use App\Support\MediaDeletionService;
 use Illuminate\Support\Facades\DB;
 
 class SyncGameScreenshots
@@ -59,7 +59,7 @@ class SyncGameScreenshots
 
         DB::afterCommit(function () use ($removedPaths): void {
             foreach ($removedPaths as $path) {
-                Media::delete($path);
+                app(MediaDeletionService::class)->deleteIfUnreferenced($path);
             }
         });
     }

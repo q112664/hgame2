@@ -9,6 +9,7 @@ use App\Models\MediaStorageConfiguration;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -23,6 +24,7 @@ final class MediaStorageManager
         private readonly MediaPathCollector $pathCollector,
         private readonly MediaImageOptimizer $imageOptimizer,
         private readonly MediaReferenceRewriter $referenceRewriter,
+        private readonly MediaOperationCoordinator $coordinator,
     ) {}
 
     /**
@@ -269,44 +271,139 @@ final class MediaStorageManager
 
     public function retryFailed(MediaOperation $operation): MediaOperation
     {
-        if (! in_array($operation->status, [MediaOperation::StatusFailed, MediaOperation::StatusCompleted], true)) {
-            throw new RuntimeException('Only finished operations can retry failed items.');
-        }
+        return $this->coordinator->operation(function () use ($operation): MediaOperation {
+            $operation = DB::transaction(function () use ($operation): MediaOperation {
+                $locked = MediaOperation::query()
+                    ->lockForUpdate()
+                    ->findOrFail((int) $operation->getKey());
 
-        $itemIds = $operation->items()
-            ->where('status', MediaOperationItem::StatusFailed)
-            ->pluck('id')
-            ->all();
+                if (! in_array($locked->status, [MediaOperation::StatusFailed, MediaOperation::StatusCompleted], true)) {
+                    throw new RuntimeException('Only finished operations can retry failed items.');
+                }
 
-        if ($itemIds === []) {
-            throw new RuntimeException('This operation has no failed items to retry.');
-        }
+                $itemIds = $locked->items()
+                    ->where('status', MediaOperationItem::StatusFailed)
+                    ->pluck('id')
+                    ->all();
 
-        $this->assertNoOperationRunning();
+                if ($itemIds === []) {
+                    throw new RuntimeException('This operation has no failed items to retry.');
+                }
 
-        $operation->items()->whereKey($itemIds)->update([
-            'status' => MediaOperationItem::StatusPending,
-            'error' => null,
-            'started_at' => null,
-            'completed_at' => null,
-        ]);
+                $this->assertNoOperationRunning();
 
-        $operation->forceFill([
-            'status' => MediaOperation::StatusRunning,
-            'error' => null,
-            'completed_at' => null,
-        ])->save();
-        $this->refreshOperationProgress($operation);
+                $locked->items()->whereKey($itemIds)->update([
+                    'status' => MediaOperationItem::StatusPending,
+                    'attempts' => 0,
+                    'error' => null,
+                    'started_at' => null,
+                    'completed_at' => null,
+                    'dispatch_token' => null,
+                    'dispatched_at' => null,
+                    'lease_token' => null,
+                    'lease_expires_at' => null,
+                    'heartbeat_at' => null,
+                ]);
 
-        foreach ($itemIds as $itemId) {
-            ProcessMediaOperationItem::dispatch($itemId);
-        }
+                $locked->forceFill([
+                    'status' => MediaOperation::StatusRunning,
+                    'running_slot' => 1,
+                    'error' => null,
+                    'completed_at' => null,
+                ])->save();
 
-        return $operation->refresh();
+                return $locked;
+            });
+
+            $this->refreshOperationProgress($operation);
+            $this->dispatchPending($operation);
+
+            return $operation->refresh();
+        });
+    }
+
+    /**
+     * Dispatch pending items through a durable item-level outbox.
+     *
+     * The database row is committed before the queue push. If the queue
+     * backend is unavailable, the row remains pending and the recovery
+     * command can safely retry it later.
+     */
+    public function dispatchPending(MediaOperation $operation): int
+    {
+        $dispatched = 0;
+        $staleBefore = now()->subSeconds(60);
+
+        $operation->items()
+            ->where('status', MediaOperationItem::StatusPending)
+            ->where(function (Builder $query) use ($staleBefore): void {
+                $query->whereNull('dispatch_token')
+                    ->orWhereNull('dispatched_at')
+                    ->orWhere('dispatched_at', '<=', $staleBefore);
+            })
+            ->orderBy('id')
+            ->each(function (MediaOperationItem $candidate) use (&$dispatched): void {
+                $token = (string) Str::uuid();
+                $reserved = DB::transaction(function () use ($candidate, $token): bool {
+                    $item = MediaOperationItem::query()
+                        ->lockForUpdate()
+                        ->find((int) $candidate->getKey());
+
+                    if ($item === null || $item->status !== MediaOperationItem::StatusPending) {
+                        return false;
+                    }
+
+                    if ($item->dispatch_token !== null
+                        && $item->dispatched_at !== null
+                        && $item->dispatched_at->isAfter(now()->subSeconds(60))) {
+                        return false;
+                    }
+
+                    $item->forceFill([
+                        'dispatch_token' => $token,
+                        'dispatched_at' => now(),
+                        'error' => null,
+                    ])->save();
+
+                    return true;
+                });
+
+                if (! $reserved) {
+                    return;
+                }
+
+                try {
+                    ProcessMediaOperationItem::dispatch(
+                        (int) $candidate->getKey(),
+                        $token,
+                    );
+                    $dispatched++;
+                } catch (Throwable $exception) {
+                    $operation = $candidate->operation()->first();
+
+                    if ($operation !== null) {
+                        $operation->forceFill([
+                            'error' => 'Queue dispatch failed: '.mb_substr($exception->getMessage(), 0, 3900),
+                        ])->save();
+                    }
+                }
+            });
+
+        return $dispatched;
     }
 
     public function activate(MediaStorageConfiguration $configuration): void
     {
+        $this->coordinator->operation(function () use ($configuration): void {
+            $this->coordinator->cutover(function () use ($configuration): void {
+                $this->activateUnderLock($configuration);
+            });
+        });
+    }
+
+    private function activateUnderLock(MediaStorageConfiguration $configuration): void
+    {
+        $this->assertNoOperationRunning();
         $this->assertTested($configuration);
         $validation = $this->latestSuccessfulOperation(MediaOperation::TypeValidation, $configuration);
 
@@ -314,45 +411,73 @@ final class MediaStorageManager
             throw new RuntimeException('A successful validation for this R2 configuration is required first.');
         }
 
-        $this->assertValidationIsCurrent($validation);
         $previousActive = MediaStorageConfiguration::active();
 
-        DB::transaction(function () use ($configuration, $previousActive): void {
-            MediaStorageConfiguration::query()->where('is_active', true)->update([
-                'is_active' => false,
-                'activated_at' => null,
-            ]);
+        try {
+            // The active runtime may still point at a different R2 configuration.
+            // Switch the filesystem client to the candidate before preflight checks.
+            $this->configureR2($configuration);
+            $this->assertValidationIsCurrent($validation);
+            $this->assertRemoteMediaIsCurrent($validation, (string) $configuration->public_url);
 
-            $configuration->forceFill([
-                'is_active' => true,
-                'activated_at' => now(),
-            ])->save();
+            DB::transaction(function () use ($configuration, $previousActive): void {
+                MediaStorageConfiguration::query()
+                    ->where(function (Builder $query): void {
+                        $query->where('is_active', true)->orWhere('active_slot', 1);
+                    })
+                    ->update([
+                        'is_active' => false,
+                        'active_slot' => null,
+                        'activated_at' => null,
+                    ]);
 
-            $this->referenceRewriter->activateR2(
-                (string) $configuration->public_url,
-                $previousActive?->public_url,
-            );
-        });
+                $configuration->forceFill([
+                    'is_active' => true,
+                    'active_slot' => 1,
+                    'activated_at' => now(),
+                ])->save();
 
-        $this->applyRuntimeConfiguration();
+                $this->referenceRewriter->activateR2(
+                    (string) $configuration->public_url,
+                    $previousActive?->public_url,
+                );
+            });
+        } finally {
+            // A failed preflight or rewrite must leave the process using the
+            // database-backed active configuration, not the candidate client.
+            $this->applyRuntimeConfiguration();
+        }
     }
 
     public function rollbackToLocal(MediaStorageConfiguration $configuration): void
     {
+        $this->coordinator->operation(function () use ($configuration): void {
+            $this->coordinator->cutover(function () use ($configuration): void {
+                $this->rollbackToLocalUnderLock($configuration);
+            });
+        });
+    }
+
+    private function rollbackToLocalUnderLock(MediaStorageConfiguration $configuration): void
+    {
+        $this->assertNoOperationRunning();
         if (! $configuration->is_active) {
             throw new RuntimeException('Only the active R2 configuration can be rolled back.');
         }
 
-        $missing = array_slice($this->pathCollector->missing('public'), 0, 10);
+        $validation = $this->latestSuccessfulOperation(MediaOperation::TypeValidation, $configuration);
 
-        if ($missing !== []) {
-            throw new RuntimeException('Rollback is blocked because some referenced media is missing locally: '.implode(', ', $missing));
+        if ($validation === null) {
+            throw new RuntimeException('Rollback is blocked because no successful media validation is available.');
         }
+
+        $this->assertLocalRollbackMediaIsCurrent($validation);
 
         DB::transaction(function () use ($configuration): void {
             $this->referenceRewriter->rollbackToLocal((string) $configuration->public_url);
             $configuration->forceFill([
                 'is_active' => false,
+                'active_slot' => null,
                 'activated_at' => null,
             ])->save();
         });
@@ -458,6 +583,7 @@ final class MediaStorageManager
                 'status' => $finished
                     ? ($failed > 0 ? MediaOperation::StatusFailed : MediaOperation::StatusCompleted)
                     : MediaOperation::StatusRunning,
+                'running_slot' => $finished ? null : 1,
                 'completed_at' => $finished ? now() : null,
             ])->save();
         });
@@ -486,9 +612,7 @@ final class MediaStorageManager
         array $itemDetails = [],
         ?string $configurationFingerprint = null,
     ): MediaOperation {
-        $this->assertNoOperationRunning();
-
-        $operation = DB::transaction(function () use (
+        $operation = $this->coordinator->operation(function () use (
             $type,
             $configuration,
             $paths,
@@ -500,51 +624,82 @@ final class MediaStorageManager
             $itemDetails,
             $configurationFingerprint,
         ): MediaOperation {
-            $operation = MediaOperation::query()->create([
-                'media_storage_configuration_id' => $configuration?->getKey(),
-                'user_id' => $user?->getKey(),
-                'type' => $type,
-                'status' => $paths === [] ? MediaOperation::StatusCompleted : MediaOperation::StatusRunning,
-                'source_disk' => $sourceDisk,
-                'target_disk' => $targetDisk,
-                'configuration_fingerprint' => $configurationFingerprint
-                    ?? $configuration?->configuration_fingerprint,
-                'total_items' => count($paths),
-                'metadata' => $metadata,
-                'started_at' => now(),
-                'completed_at' => $paths === [] ? now() : null,
-            ]);
+            $this->assertNoOperationRunning();
 
-            foreach ($paths as $path) {
-                $details = $itemDetails[$path] ?? [];
-                $targetPath = $details['target_path'] ?? null;
+            return DB::transaction(function () use (
+                $type,
+                $configuration,
+                $paths,
+                $sourceDisk,
+                $targetDisk,
+                $user,
+                $metadata,
+                $targetPaths,
+                $itemDetails,
+                $configurationFingerprint,
+            ): MediaOperation {
+                $operation = MediaOperation::query()->create([
+                    'media_storage_configuration_id' => $configuration?->getKey(),
+                    'user_id' => $user?->getKey(),
+                    'type' => $type,
+                    'status' => $paths === [] ? MediaOperation::StatusCompleted : MediaOperation::StatusRunning,
+                    'running_slot' => $paths === [] ? null : 1,
+                    'source_disk' => $sourceDisk,
+                    'target_disk' => $targetDisk,
+                    'configuration_fingerprint' => $configurationFingerprint
+                        ?? $configuration?->configuration_fingerprint,
+                    'total_items' => count($paths),
+                    'metadata' => $metadata,
+                    'started_at' => now(),
+                    'completed_at' => $paths === [] ? now() : null,
+                ]);
+                $reservedTargetPaths = [];
 
-                if ($targetPaths && $targetPath === null) {
-                    $targetPath = $this->imageOptimizer->targetPath($path);
+                foreach ($paths as $path) {
+                    $details = $itemDetails[$path] ?? [];
+                    $targetPath = $details['target_path'] ?? null;
 
-                    if ($targetPath !== $path && Storage::disk($targetDisk)->exists($targetPath)) {
-                        $targetPath = $this->imageOptimizer->targetPath($path, true);
+                    if ($targetPaths && $targetPath === null) {
+                        $targetPath = $this->imageOptimizer->targetPath($path);
+
+                        if ($targetPath !== $path) {
+                            $collisionIndex = 0;
+
+                            while (isset($reservedTargetPaths[$targetPath])
+                                || Storage::disk($targetDisk)->exists($targetPath)) {
+                                $collisionIndex++;
+                                $collisionTarget = $this->imageOptimizer->targetPath($path, true);
+
+                                if ($collisionIndex > 1) {
+                                    $collisionTarget = pathinfo($collisionTarget, PATHINFO_DIRNAME).'/'.pathinfo($collisionTarget, PATHINFO_FILENAME)
+                                        .'-'.$collisionIndex.'.webp';
+                                }
+
+                                $targetPath = $collisionTarget;
+                            }
+
+                            $reservedTargetPaths[$targetPath] = true;
+                        }
                     }
+
+                    $operation->items()->create([
+                        'path' => $path,
+                        'path_hash' => hash('sha256', $path),
+                        'target_path' => $targetPath,
+                        'target_path_hash' => $targetPath === null ? null : hash('sha256', $targetPath),
+                        'status' => MediaOperationItem::StatusPending,
+                        'source_size' => $details['source_size'] ?? null,
+                        'target_size' => $details['target_size'] ?? null,
+                        'source_checksum' => $details['source_checksum'] ?? null,
+                        'target_checksum' => $details['target_checksum'] ?? null,
+                    ]);
                 }
 
-                $operation->items()->create([
-                    'path' => $path,
-                    'path_hash' => hash('sha256', $path),
-                    'target_path' => $targetPath,
-                    'status' => MediaOperationItem::StatusPending,
-                    'source_size' => $details['source_size'] ?? null,
-                    'target_size' => $details['target_size'] ?? null,
-                    'source_checksum' => $details['source_checksum'] ?? null,
-                    'target_checksum' => $details['target_checksum'] ?? null,
-                ]);
-            }
-
-            return $operation;
+                return $operation;
+            });
         });
 
-        foreach ($operation->items()->pluck('id') as $itemId) {
-            ProcessMediaOperationItem::dispatch((int) $itemId);
-        }
+        $this->dispatchPending($operation);
 
         return $operation;
     }
@@ -580,17 +735,21 @@ final class MediaStorageManager
             ->when($cleanedPaths !== [], fn (Builder $query): Builder => $query->whereNotIn('path', $cleanedPaths))
             ->orderBy('id')
             ->get()
-            ->filter(fn (MediaOperationItem $item): bool => ! isset($referencedPaths[$item->path])
-                && Storage::disk((string) $optimization->source_disk)->exists($item->path))
+            ->filter(fn (MediaOperationItem $item): bool => ! isset($referencedPaths[$item->path]))
             ->values();
     }
 
     private function assertNoOperationRunning(): void
     {
-        if (MediaOperation::query()->whereIn('status', [
-            MediaOperation::StatusPending,
-            MediaOperation::StatusRunning,
-        ])->exists()) {
+        if (MediaOperation::query()
+            ->where(function (Builder $query): void {
+                $query->where('running_slot', 1)
+                    ->orWhereIn('status', [
+                        MediaOperation::StatusPending,
+                        MediaOperation::StatusRunning,
+                    ]);
+            })
+            ->exists()) {
             throw new RuntimeException('Another media operation is already running.');
         }
     }
@@ -660,6 +819,204 @@ final class MediaStorageManager
                 throw new RuntimeException("Local media [{$item->path}] changed after validation.");
             }
         }
+    }
+
+    private function assertLocalRollbackMediaIsCurrent(MediaOperation $validation): void
+    {
+        $validated = $validation->items()
+            ->whereNotNull('source_checksum')
+            ->get(['path', 'source_size', 'source_checksum'])
+            ->keyBy('path');
+        $requiredPaths = $this->pathCollector->required();
+        $remote = Storage::disk('r2');
+
+        foreach ($requiredPaths as $path) {
+            $local = Storage::disk('public');
+
+            if (! $local->exists($path)) {
+                throw new RuntimeException("Local rollback media [{$path}] is missing.");
+            }
+
+            $item = $validated->get($path);
+
+            if ($item !== null) {
+                if ($local->size($path) !== (int) $item->source_size) {
+                    throw new RuntimeException("Local rollback media [{$path}] changed after validation.");
+                }
+
+                $checksum = $this->streamChecksum($local->readStream($path), $path);
+
+                if (! hash_equals((string) $item->source_checksum, $checksum)) {
+                    throw new RuntimeException("Local rollback media [{$path}] changed after validation.");
+                }
+
+                continue;
+            }
+
+            // Media uploaded after activation was not part of the immutable
+            // migration validation. Verify its local rollback copy against R2
+            // before switching URLs back to local.
+            if (! $remote->exists($path)) {
+                throw new RuntimeException("R2 media [{$path}] is missing for rollback verification.");
+            }
+
+            if ($remote->size($path) !== $local->size($path)) {
+                throw new RuntimeException("Local rollback media [{$path}] does not match R2.");
+            }
+
+            $localChecksum = $this->streamChecksum($local->readStream($path), $path);
+            $remoteChecksum = $this->streamChecksum($remote->readStream($path), $path);
+
+            if (! hash_equals($localChecksum, $remoteChecksum)) {
+                throw new RuntimeException("Local rollback media [{$path}] does not match R2.");
+            }
+        }
+    }
+
+    private function assertRemoteMediaIsCurrent(MediaOperation $validation, string $publicUrl): void
+    {
+        $remote = Storage::disk('r2');
+        $items = $validation->items()
+            ->orderBy('path')
+            ->get(['path', 'target_size', 'target_checksum', 'remote_etag', 'remote_version_id']);
+        $remoteManifest = $this->remoteManifest();
+
+        if ($remoteManifest !== null) {
+            foreach ($items as $item) {
+                $path = (string) $item->path;
+                $entry = $remoteManifest[$path] ?? null;
+
+                if ($entry === null) {
+                    throw new RuntimeException("R2 media [{$path}] is missing before activation.");
+                }
+
+                if ($item->target_size !== null && $entry['size'] !== (int) $item->target_size) {
+                    throw new RuntimeException("R2 media [{$path}] changed before activation.");
+                }
+
+                if ($item->remote_etag !== null && $entry['etag'] !== null
+                    && ! hash_equals($this->normalizeRemoteTag((string) $item->remote_etag), $this->normalizeRemoteTag($entry['etag']))) {
+                    throw new RuntimeException("R2 media [{$path}] changed before activation.");
+                }
+
+                if ($item->remote_version_id !== null && $entry['version_id'] !== null
+                    && ! hash_equals((string) $item->remote_version_id, $entry['version_id'])) {
+                    throw new RuntimeException("R2 media [{$path}] changed before activation.");
+                }
+            }
+        } else {
+            $items->each(function (MediaOperationItem $item) use ($remote): void {
+                $path = (string) $item->path;
+
+                if (! $remote->exists($path)) {
+                    throw new RuntimeException("R2 media [{$path}] is missing before activation.");
+                }
+
+                if ($item->target_size !== null && $remote->size($path) !== (int) $item->target_size) {
+                    throw new RuntimeException("R2 media [{$path}] changed before activation.");
+                }
+
+                if ($item->target_checksum !== null) {
+                    $checksum = $this->streamChecksum($remote->readStream($path), $path);
+
+                    if (! hash_equals((string) $item->target_checksum, $checksum)) {
+                        throw new RuntimeException("R2 media [{$path}] changed before activation.");
+                    }
+                }
+            });
+        }
+
+        $probePath = 'media-healthchecks/activation-'.Str::uuid()->toString().'.txt';
+        $probeToken = Str::random(48);
+
+        if ($remote->put($probePath, $probeToken) === false) {
+            throw new RuntimeException('The R2 activation probe could not be written.');
+        }
+
+        try {
+            $response = Http::timeout(10)
+                ->retry(3, 250)
+                ->get($this->publicMediaUrl($publicUrl, $probePath), [
+                    'media_healthcheck' => $probeToken,
+                ]);
+        } catch (Throwable $exception) {
+            throw new RuntimeException('The R2 public URL could not be reached before activation.', 0, $exception);
+        } finally {
+            rescue(fn () => $remote->delete($probePath), report: false);
+        }
+
+        if (! $response->successful() || $response->body() !== $probeToken) {
+            throw new RuntimeException('The R2 public URL failed the activation body probe.');
+        }
+    }
+
+    /** @return array<string, array{size: int, etag: string|null, version_id: string|null}>|null */
+    private function remoteManifest(): ?array
+    {
+        $remote = Storage::disk('r2');
+
+        if (! $remote instanceof AwsS3V3Adapter) {
+            return null;
+        }
+
+        $config = $remote->getConfig();
+        $client = $remote->getClient();
+        $root = trim((string) ($config['root'] ?? ''), '/');
+        $manifest = [];
+
+        foreach (['avatars/', 'docs/', 'games/', 'site/'] as $managedPrefix) {
+            $continuationToken = null;
+
+            do {
+                $arguments = [
+                    'Bucket' => (string) ($config['bucket'] ?? ''),
+                    'Prefix' => $root === '' ? $managedPrefix : $root.'/'.$managedPrefix,
+                    'MaxKeys' => 1000,
+                ];
+
+                if ($continuationToken !== null) {
+                    $arguments['ContinuationToken'] = $continuationToken;
+                }
+
+                $result = $client->listObjectsV2($arguments);
+
+                foreach ((array) ($result['Contents'] ?? []) as $object) {
+                    $key = (string) ($object['Key'] ?? '');
+                    $relative = $root === '' ? $key : ltrim(substr($key, strlen($root)), '/');
+
+                    if ($relative === '') {
+                        continue;
+                    }
+
+                    $manifest[$relative] = [
+                        'size' => (int) ($object['Size'] ?? 0),
+                        'etag' => isset($object['ETag']) ? (string) $object['ETag'] : null,
+                        'version_id' => isset($object['VersionId']) ? (string) $object['VersionId'] : null,
+                    ];
+                }
+
+                $continuationToken = ($result['IsTruncated'] ?? false)
+                    ? (string) ($result['NextContinuationToken'] ?? '')
+                    : null;
+            } while ($continuationToken !== null && $continuationToken !== '');
+        }
+
+        return $manifest;
+    }
+
+    private function normalizeRemoteTag(string $tag): string
+    {
+        return trim($tag, " \t\n\r\0\x0B\"");
+    }
+
+    private function publicMediaUrl(string $publicUrl, string $path): string
+    {
+        $encodedPath = implode('/', array_map(
+            static fn (string $segment): string => rawurlencode($segment),
+            explode('/', ltrim($path, '/')),
+        ));
+
+        return rtrim($publicUrl, '/').'/'.$encodedPath;
     }
 
     /** @param resource|false $stream */
@@ -745,6 +1102,12 @@ final class MediaStorageManager
 
         if ($host === '' || str_ends_with($host, '.r2.dev')) {
             throw new InvalidArgumentException('Use a Cloudflare R2 custom domain, not an r2.dev URL.');
+        }
+
+        if (trim((string) parse_url($publicUrl, PHP_URL_PATH), '/') !== ''
+            || parse_url($publicUrl, PHP_URL_QUERY) !== null
+            || parse_url($publicUrl, PHP_URL_FRAGMENT) !== null) {
+            throw new InvalidArgumentException('The public media URL must point to the domain root without a path prefix.');
         }
     }
 }

@@ -187,7 +187,6 @@ final class PageSeo
             'platform' => 'resources.platform',
             'language' => 'resources.language',
             'tag' => 'resources.tag',
-            default => throw new \InvalidArgumentException("Unknown taxonomy type [{$type}]."),
         };
     }
 
@@ -202,7 +201,6 @@ final class PageSeo
             'platform' => ['platform' => $value],
             'language' => ['language' => $value],
             'tag' => ['tag' => $value],
-            default => throw new \InvalidArgumentException("Unknown taxonomy type [{$type}]."),
         };
     }
 
@@ -216,7 +214,6 @@ final class PageSeo
             'platform' => "{$name} Hentai Games & Eroge Downloads",
             'language' => "{$name} Hentai Games & Eroge",
             'tag' => "{$name} Hentai Games & Eroge",
-            default => "{$name} Hentai Games & Eroge",
         };
     }
 
@@ -230,7 +227,6 @@ final class PageSeo
             'platform' => "Browse hentai games and eroge for {$name}. Discover titles with downloads, screenshots, and release information.",
             'language' => "Browse {$name} hentai games and eroge with language-matched releases, downloads, and screenshots.",
             'tag' => "Browse hentai games and eroge tagged {$name}. Find related titles, platforms, and download packages.",
-            default => self::RESOURCE_CATALOG_DESCRIPTION,
         };
     }
 
@@ -313,6 +309,7 @@ final class PageSeo
             : Setting::seoOgImageUrl();
 
         $canonical = route('docs.show', $doc);
+        $absoluteImage = self::absoluteUrl($image);
 
         return self::make(
             title: $doc->title,
@@ -325,7 +322,7 @@ final class PageSeo
                 '@type' => 'Article',
                 'headline' => $doc->title,
                 'description' => self::plainDescription($description) ?? '',
-                'image' => array_values(array_filter([self::absoluteUrl($image)])),
+                'image' => $absoluteImage !== null ? [$absoluteImage] : [],
                 'datePublished' => $doc->published_at?->toIso8601String(),
                 'mainEntityOfPage' => self::absoluteUrl($canonical),
             ],

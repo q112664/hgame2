@@ -23,6 +23,7 @@ use Throwable;
  * @property CarbonImmutable|null $connection_tested_at
  * @property string|null $connection_test_error
  * @property bool $is_active
+ * @property int|null $active_slot
  * @property CarbonImmutable|null $activated_at
  */
 #[Fillable([
@@ -38,6 +39,7 @@ use Throwable;
     'connection_tested_at',
     'connection_test_error',
     'is_active',
+    'active_slot',
     'activated_at',
 ])]
 class MediaStorageConfiguration extends Model
@@ -95,7 +97,14 @@ class MediaStorageConfiguration extends Model
             return null;
         }
 
-        return self::query()->where('is_active', true)->latest('id')->first();
+        $query = self::query();
+
+        if (! Schema::hasColumn((new self)->getTable(), 'active_slot')) {
+            return $query->where('is_active', true)->latest('id')->first();
+        }
+
+        return $query->where('active_slot', 1)->latest('id')->first()
+            ?? self::query()->where('is_active', true)->latest('id')->first();
     }
 
     public static function tableReady(): bool

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\GameStatus;
 use App\Models\Category;
+use App\Models\Game;
 use App\Models\Language;
 use App\Models\Platform;
 use App\Models\Tag;
@@ -96,9 +97,9 @@ final class TaxonomyDirectory
      */
     private static function buildTagsIndex(): array
     {
-        $publishedGames = self::publishedGamesConstraint();
+        $publishedGames = self::publishedGamesConstraint(...);
 
-        return Tag::query()
+        return array_values(Tag::query()
             ->whereHas('games', $publishedGames)
             ->withCount(['games' => $publishedGames])
             ->orderBy('name')
@@ -108,21 +109,19 @@ final class TaxonomyDirectory
                 'value' => $tag->slug,
                 'count' => (int) $tag->games_count,
             ])
-            ->values()
-            ->all();
+            ->all());
     }
 
     /**
-     * @return \Closure(Builder): Builder
+     * @param  Builder<Game>  $games
+     * @return Builder<Game>
      */
-    private static function publishedGamesConstraint(): \Closure
+    public static function publishedGamesConstraint(Builder $games): Builder
     {
-        return static function (Builder $games): Builder {
-            return $games
-                ->where('status', GameStatus::Published)
-                ->whereNotNull('published_at')
-                ->where('published_at', '<=', now());
-        };
+        return $games
+            ->where('status', GameStatus::Published)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now());
     }
 
     /**
@@ -130,7 +129,7 @@ final class TaxonomyDirectory
      */
     private static function build(): array
     {
-        $publishedGames = self::publishedGamesConstraint();
+        $publishedGames = self::publishedGamesConstraint(...);
 
         $activeRelease = static function (Builder $releases) use ($publishedGames): Builder {
             return $releases
@@ -148,7 +147,7 @@ final class TaxonomyDirectory
         };
 
         return [
-            'categories' => Category::query()
+            'categories' => array_values(Category::query()
                 ->whereHas('games', $publishedGames)
                 ->withCount(['games' => $publishedGames])
                 ->orderByDesc('games_count')
@@ -158,9 +157,8 @@ final class TaxonomyDirectory
                     'name' => $category->name,
                     'value' => $category->slug,
                 ])
-                ->values()
-                ->all(),
-            'platforms' => Platform::query()
+                ->all()),
+            'platforms' => array_values(Platform::query()
                 ->whereHas('releases', $activeRelease)
                 ->withCount(['releases' => $activeRelease])
                 ->orderByDesc('releases_count')
@@ -170,9 +168,8 @@ final class TaxonomyDirectory
                     'name' => $platform->name,
                     'value' => $platform->slug,
                 ])
-                ->values()
-                ->all(),
-            'languages' => Language::query()
+                ->all()),
+            'languages' => array_values(Language::query()
                 ->whereHas('releases', $activeRelease)
                 ->withCount(['releases' => $activeRelease])
                 ->orderByDesc('releases_count')
@@ -182,9 +179,8 @@ final class TaxonomyDirectory
                     'name' => $language->name,
                     'value' => $language->code,
                 ])
-                ->values()
-                ->all(),
-            'tags' => Tag::query()
+                ->all()),
+            'tags' => array_values(Tag::query()
                 ->whereHas('games', $publishedGames)
                 ->withCount(['games' => $publishedGames])
                 ->orderByDesc('games_count')
@@ -195,8 +191,7 @@ final class TaxonomyDirectory
                     'name' => $tag->name,
                     'value' => $tag->slug,
                 ])
-                ->values()
-                ->all(),
+                ->all()),
         ];
     }
 }

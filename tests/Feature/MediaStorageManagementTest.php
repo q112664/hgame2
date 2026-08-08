@@ -22,6 +22,7 @@ use Aws\CommandInterface;
 use Aws\Result;
 use Aws\S3\S3ClientInterface;
 use Illuminate\Http\Client\Factory;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -434,6 +435,191 @@ test('activation is blocked when local media changes after validation', function
 
     expect($configuration->refresh()->is_active)->toBeFalse()
         ->and(config('filesystems.media'))->toBe('public');
+});
+
+test('activation revalidates r2 objects before rewriting references', function (): void {
+    Queue::fake();
+    $configuration = createTestedMediaConfiguration();
+    seedManagedMediaReferences();
+    $manager = app(MediaStorageManager::class);
+
+    runMediaOperation($manager->startMigration($configuration));
+    runMediaOperation($manager->startValidation($configuration));
+    Storage::disk('r2')->delete('games/content/game.jpg');
+
+    expect(fn () => $manager->activate($configuration))
+        ->toThrow(RuntimeException::class, 'missing before activation');
+
+    expect($configuration->refresh()->is_active)->toBeFalse()
+        ->and(config('filesystems.media'))->toBe('public');
+});
+
+test('activation requires the r2 public url to serve a validated object', function (): void {
+    Queue::fake();
+    $configuration = createTestedMediaConfiguration();
+    seedManagedMediaReferences();
+    $manager = app(MediaStorageManager::class);
+
+    runMediaOperation($manager->startMigration($configuration));
+    runMediaOperation($manager->startValidation($configuration));
+    Http::swap(new Factory);
+    Http::fake(fn () => Http::response('', 503));
+
+    expect(fn () => $manager->activate($configuration))
+        ->toThrow(RuntimeException::class, 'public URL');
+
+    expect($configuration->refresh()->is_active)->toBeFalse()
+        ->and(config('filesystems.media'))->toBe('public');
+});
+
+test('rollback rejects a same-size corrupted local media copy', function (): void {
+    Queue::fake();
+    $configuration = createTestedMediaConfiguration();
+    seedManagedMediaReferences();
+    $manager = app(MediaStorageManager::class);
+
+    runMediaOperation($manager->startMigration($configuration));
+    runMediaOperation($manager->startValidation($configuration));
+    $manager->activate($configuration);
+
+    $path = 'games/content/game.jpg';
+    $original = Storage::disk('public')->get($path);
+    Storage::disk('public')->put($path, str_repeat('x', strlen($original)));
+
+    expect(fn () => $manager->rollbackToLocal($configuration))
+        ->toThrow(RuntimeException::class, 'changed after validation');
+
+    expect($configuration->refresh()->is_active)->toBeTrue()
+        ->and(config('filesystems.media'))->toBe('r2');
+});
+
+test('rollback accepts media uploaded after activation when local and r2 copies match', function (): void {
+    Queue::fake();
+    $configuration = createTestedMediaConfiguration();
+    $models = seedManagedMediaReferences();
+    $manager = app(MediaStorageManager::class);
+
+    runMediaOperation($manager->startMigration($configuration));
+    runMediaOperation($manager->startValidation($configuration));
+    $manager->activate($configuration);
+
+    $latePath = app(MediaUpload::class)->storeBinary(
+        'late-media',
+        'image/gif',
+        'games/content',
+        'r2',
+    );
+    $models['game']->forceFill([
+        'description' => '<p><img src="/storage/'.$latePath.'"></p>',
+    ])->saveQuietly();
+
+    $manager->rollbackToLocal($configuration);
+
+    expect($configuration->refresh()->is_active)->toBeFalse()
+        ->and(config('filesystems.media'))->toBe('public')
+        ->and($models['game']->refresh()->description)->toContain('/storage/'.$latePath)
+        ->and(Storage::disk('public')->get($latePath))->toBe('late-media');
+});
+
+test('expired media operation leases are recovered and old queue tokens are rejected', function (): void {
+    Queue::fake();
+    $configuration = createTestedMediaConfiguration();
+    Storage::disk('public')->put('games/covers/one.jpg', 'one');
+    Storage::disk('public')->put(MediaThumbnail::pathFor('games/covers/one.jpg'), 'thumb');
+    Game::factory()->create(['cover_path' => 'games/covers/one.jpg']);
+    $operation = app(MediaStorageManager::class)->startMigration($configuration);
+    $item = $operation->items()->firstOrFail();
+    $oldToken = (string) $item->dispatch_token;
+
+    $item->forceFill([
+        'status' => MediaOperationItem::StatusRunning,
+        'lease_token' => $oldToken,
+        'lease_expires_at' => now()->subSecond(),
+        'attempts' => 1,
+    ])->save();
+
+    Artisan::call('media:recover-operations');
+
+    expect($item->refresh()->status)->toBe(MediaOperationItem::StatusPending)
+        ->and($item->dispatch_token)->not->toBe($oldToken);
+
+    Queue::assertPushed(ProcessMediaOperationItem::class, function (ProcessMediaOperationItem $job) use ($item, $oldToken): bool {
+        return $job->itemId === $item->id && $job->dispatchToken !== $oldToken;
+    });
+});
+
+test('legacy running items without a lease are recovered after the grace period', function (): void {
+    Queue::fake();
+    $configuration = createTestedMediaConfiguration();
+    Storage::disk('public')->put('games/covers/one.jpg', 'one');
+    Storage::disk('public')->put(MediaThumbnail::pathFor('games/covers/one.jpg'), 'thumb');
+    Game::factory()->create(['cover_path' => 'games/covers/one.jpg']);
+    $operation = app(MediaStorageManager::class)->startMigration($configuration);
+    $item = $operation->items()->firstOrFail();
+    $oldToken = (string) $item->dispatch_token;
+
+    MediaOperationItem::query()->whereKey($item)->update([
+        'status' => MediaOperationItem::StatusRunning,
+        'lease_token' => null,
+        'lease_expires_at' => null,
+        'attempts' => 1,
+        'updated_at' => now()->subMinutes(6),
+    ]);
+    Queue::fake();
+
+    Artisan::call('media:recover-operations');
+
+    expect($item->refresh()->status)->toBe(MediaOperationItem::StatusPending)
+        ->and($item->dispatch_token)->not->toBe($oldToken);
+
+    Queue::assertPushed(ProcessMediaOperationItem::class, function (ProcessMediaOperationItem $job) use ($item, $oldToken): bool {
+        return $job->itemId === $item->id && $job->dispatchToken !== $oldToken;
+    });
+});
+
+test('retrying failed operation items atomically resets their attempt budget', function (): void {
+    Queue::fake();
+    $configuration = createTestedMediaConfiguration();
+    Storage::disk('public')->put('games/covers/one.jpg', 'one');
+    Storage::disk('public')->put(MediaThumbnail::pathFor('games/covers/one.jpg'), 'thumb');
+    Game::factory()->create(['cover_path' => 'games/covers/one.jpg']);
+    $manager = app(MediaStorageManager::class);
+    $operation = $manager->startMigration($configuration);
+    $failedItem = $operation->items()->firstOrFail();
+
+    $operation->items()->whereKeyNot([$failedItem->id])->update([
+        'status' => MediaOperationItem::StatusCompleted,
+        'completed_at' => now(),
+    ]);
+    $failedItem->forceFill([
+        'status' => MediaOperationItem::StatusFailed,
+        'attempts' => ProcessMediaOperationItem::MaxAttempts,
+        'completed_at' => now(),
+        'lease_token' => null,
+        'lease_expires_at' => null,
+    ])->save();
+    $manager->refreshOperationProgress($operation);
+    Queue::fake();
+
+    $retried = $manager->retryFailed($operation->refresh());
+
+    expect($retried->status)->toBe(MediaOperation::StatusRunning)
+        ->and($retried->running_slot)->toBe(1)
+        ->and($failedItem->refresh()->status)->toBe(MediaOperationItem::StatusPending)
+        ->and($failedItem->attempts)->toBe(0)
+        ->and($failedItem->dispatch_token)->not->toBeNull();
+
+    Queue::assertPushed(ProcessMediaOperationItem::class, fn (ProcessMediaOperationItem $job): bool => $job->itemId === $failedItem->id);
+});
+
+test('public media urls with a path prefix are rejected before storage is tested', function (): void {
+    expect(fn () => app(MediaStorageManager::class)->saveConfiguration([
+        'account_id' => 'account-id',
+        'access_key_id' => 'access-key',
+        'secret_access_key' => 'secret-key',
+        'bucket' => 'media-bucket',
+        'public_url' => 'https://media.example.com/assets',
+    ]))->toThrow(InvalidArgumentException::class, 'path prefix');
 });
 
 function createTestedMediaConfiguration(

@@ -66,6 +66,7 @@ export function FavoriteResourceCard({
                 <div className="relative aspect-[16/10] w-[42%] max-w-44 shrink-0 overflow-hidden bg-muted">
                     <LazyThumbnail
                         src={resource.thumbnail}
+                        fallbackSrc={resource.thumbnailFallback}
                         alt={resource.title}
                         priority={priority}
                     />

@@ -7,9 +7,11 @@ use App\GameStatus;
 use App\Jobs\GenerateCoverThumbnail;
 use App\Notifications\FavoriteDownloadsUpdatedNotification;
 use App\Support\MediaThumbnail;
+use Carbon\CarbonInterface;
 use Database\Factories\GameFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +22,20 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
+/**
+ * @property GameStatus $status
+ * @property CarbonInterface|null $release_date
+ * @property CarbonInterface|null $published_at
+ * @property CarbonInterface|null $downloads_updated_at
+ * @property CarbonInterface|null $created_at
+ * @property CarbonInterface|null $updated_at
+ * @property-read Category|null $category
+ * @property-read EloquentCollection<int, Tag> $tags
+ * @property-read EloquentCollection<int, GameRelease> $releases
+ * @property-read EloquentCollection<int, GameScreenshot> $screenshots
+ * @property-read EloquentCollection<int, GameComment> $comments
+ * @property-read EloquentCollection<int, User> $favoritedBy
+ */
 #[Fillable([
     'category_id', 'title', 'subtitle', 'slug', 'description', 'developer',
     'source_name', 'source_id', 'source_url',

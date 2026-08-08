@@ -24,8 +24,7 @@ class AppNotification
      */
     public static function present(DatabaseNotification $notification): array
     {
-        /** @var array<string, mixed> $data */
-        $data = is_array($notification->data) ? $notification->data : [];
+        $data = $notification->data;
 
         $actor = null;
 
@@ -43,7 +42,7 @@ class AppNotification
             }
         }
 
-        $type = is_string($notification->type) && $notification->type !== ''
+        $type = $notification->type !== ''
             ? $notification->type
             : (string) ($data['type'] ?? 'general');
 

@@ -40,9 +40,7 @@ final class DescriptionMediaImporter
         $images = [];
 
         foreach ($root->getElementsByTagName('img') as $image) {
-            if ($image instanceof DOMElement) {
-                $images[] = $image;
-            }
+            $images[] = $image;
         }
 
         /** @var array<string, string> $cache */

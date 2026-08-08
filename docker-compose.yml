@@ -79,6 +79,44 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  scheduler:
+    build:
+      context: .
+      target: app
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: "${DB_DATABASE:-hgame}"
+      DB_USERNAME: "${DB_USERNAME:-hgame}"
+      DB_PASSWORD: "${DB_PASSWORD:-secret}"
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      CACHE_STORE: redis
+      AUTORUN_ENABLED: "false"
+    entrypoint: ["php", "/var/www/html/artisan"]
+    command: ["schedule:work", "--no-interaction"]
+    healthcheck:
+      disable: true
+    volumes:
+      - app_storage:/var/www/html/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_started
+    restart: unless-stopped
+
   ssr:
     build:
       context: .

@@ -49,9 +49,10 @@ class HomeController extends Controller
      */
     private function presentCards(Collection $games): array
     {
-        return $games
-            ->map(fn (Game $game): array => GamePresenter::card($game))
-            ->values()
-            ->all();
+        return array_values(
+            $games
+                ->map(fn (Game $game): array => GamePresenter::card($game))
+                ->all(),
+        );
     }
 }

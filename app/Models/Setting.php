@@ -480,7 +480,7 @@ class Setting extends Model
     }
 
     /**
-     * @param  list<mixed>  $items
+     * @param  array<string|int, mixed>  $items
      * @return list<array{label: string, url: string, icon: string|null, openInNewTab: bool, match: 'exact'|'prefix'|'none'}>
      */
     protected static function presentNavigationMenu(array $items): array
@@ -649,7 +649,7 @@ class Setting extends Model
     }
 
     /**
-     * @param  list<mixed>  $items
+     * @param  array<string|int, mixed>  $items
      * @return list<array{label: string, url: string, openInNewTab: bool}>
      */
     protected static function presentFooterLinks(array $items): array

@@ -3,12 +3,19 @@
 namespace App\Models;
 
 use App\DocStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\DocFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property DocStatus $status
+ * @property CarbonInterface|null $published_at
+ * @property CarbonInterface|null $created_at
+ * @property CarbonInterface|null $updated_at
+ */
 #[Fillable([
     'title',
     'slug',

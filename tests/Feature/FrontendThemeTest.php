@@ -454,30 +454,34 @@ test('resource card thumbnails fade in with lazy loading', function () {
         ->toContain("decoding={priority ? 'sync' : 'async'}")
         ->toContain('animate-pulse bg-muted')
         ->toContain("loaded ? 'opacity-100' : 'opacity-0'")
-        ->toContain('useImageLoadState(src)')
+        ->toContain('useImageLoadState(src, fallbackSrc)')
         ->toContain('ref={imageRef}')
         ->toContain('onLoad={markLoaded}')
-        ->toContain('onError={markLoaded}')
+        ->toContain('onError={markError}')
         ->not->toContain('useEffect');
 
     expect($imageLoadState)
         ->toContain('export function useImageLoadState')
         ->toContain('const [loadedSrc')
         ->toContain('node?.complete')
-        ->toContain('loaded: loadedSrc === src')
+        ->toContain('loaded: loadedSrc === displaySrc')
         ->not->toContain('useEffect');
 
     expect($card)
         ->toContain('LazyThumbnail')
         ->toContain('priority={priority}');
 
-    foreach ([$resourceShow, $resourceTabContent] as $source) {
-        expect($source)
-            ->toContain('useImageLoadState(src)')
-            ->toContain('ref={imageRef}')
-            ->toContain('onLoad={markLoaded}')
-            ->toContain('onError={markLoaded}');
-    }
+    expect($resourceShow)
+        ->toContain('useImageLoadState(src, fallbackSrc)')
+        ->toContain('ref={imageRef}')
+        ->toContain('onLoad={markLoaded}')
+        ->toContain('onError={markError}');
+
+    expect($resourceTabContent)
+        ->toContain('useImageLoadState(src)')
+        ->toContain('ref={imageRef}')
+        ->toContain('onLoad={markLoaded}')
+        ->toContain('onError={markLoaded}');
 });
 
 test('resource catalog keeps seo metadata out of the visible interface', function () {

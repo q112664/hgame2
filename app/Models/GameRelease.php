@@ -2,15 +2,26 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\GameReleaseFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property CarbonInterface|null $published_at
+ * @property CarbonInterface|null $created_at
+ * @property CarbonInterface|null $updated_at
+ * @property-read Game|null $game
+ * @property-read EloquentCollection<int, Platform> $platforms
+ * @property-read EloquentCollection<int, Language> $languages
+ * @property-read EloquentCollection<int, GameDownloadLink> $downloadLinks
+ */
 #[Fillable([
     'game_id', 'platform_id', 'language_id', 'title', 'version', 'file_size',
     'description', 'published_at', 'is_active', 'sort_order',

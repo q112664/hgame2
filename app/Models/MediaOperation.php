@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $user_id
  * @property string $type
  * @property string $status
+ * @property int|null $running_slot
  * @property string|null $source_disk
  * @property string|null $target_disk
  * @property string|null $configuration_fingerprint
@@ -34,6 +35,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'user_id',
     'type',
     'status',
+    'running_slot',
     'source_disk',
     'target_disk',
     'configuration_fingerprint',

@@ -87,7 +87,7 @@ class SitemapController extends Controller
         $urls = [];
 
         $categories = Category::query()
-            ->whereHas('games', fn ($query) => $query->published())
+            ->whereHas('games', TaxonomyDirectory::publishedGamesConstraint(...))
             ->orderBy('name')
             ->get(['slug']);
 
@@ -102,7 +102,7 @@ class SitemapController extends Controller
         $platforms = Platform::query()
             ->whereHas(
                 'releases.game',
-                fn ($query) => $query->published(),
+                TaxonomyDirectory::publishedGamesConstraint(...),
             )
             ->orderBy('name')
             ->get(['slug']);
@@ -118,7 +118,7 @@ class SitemapController extends Controller
         $languages = Language::query()
             ->whereHas(
                 'releases.game',
-                fn ($query) => $query->published(),
+                TaxonomyDirectory::publishedGamesConstraint(...),
             )
             ->orderBy('name')
             ->get(['code']);

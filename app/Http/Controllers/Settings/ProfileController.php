@@ -7,6 +7,7 @@ use App\Http\Requests\Settings\ProfileAvatarUpdateRequest;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\Support\Media;
+use App\Support\MediaDeletionService;
 use App\Support\MediaUpload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,7 +55,7 @@ class ProfileController extends Controller
         $user->save();
 
         if ($previousPath !== null && $previousPath !== $path) {
-            DB::afterCommit(fn (): bool => Media::delete($previousPath));
+            DB::afterCommit(fn (): bool => app(MediaDeletionService::class)->deleteIfUnreferenced($previousPath));
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Avatar updated.')]);
@@ -73,7 +74,7 @@ class ProfileController extends Controller
         if ($path !== null) {
             $user->avatar = null;
             $user->save();
-            DB::afterCommit(fn (): bool => Media::delete($path));
+            DB::afterCommit(fn (): bool => app(MediaDeletionService::class)->deleteIfUnreferenced($path));
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Avatar removed.')]);
@@ -94,7 +95,7 @@ class ProfileController extends Controller
         $user->delete();
 
         if ($avatarPath !== null) {
-            DB::afterCommit(fn (): bool => Media::delete($avatarPath));
+            DB::afterCommit(fn (): bool => app(MediaDeletionService::class)->deleteIfUnreferenced($avatarPath));
         }
 
         $request->session()->invalidate();

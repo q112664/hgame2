@@ -111,6 +111,7 @@ const resourceTabs: Array<{
 
 type ResourceHeroCoverProps = {
     src: string;
+    fallbackSrc?: string;
     alt: string;
     clickable: boolean;
     onOpen?: () => void;
@@ -118,16 +119,23 @@ type ResourceHeroCoverProps = {
 
 function ResourceHeroCover({
     src,
+    fallbackSrc,
     alt,
     clickable,
     onOpen,
 }: ResourceHeroCoverProps) {
-    const { imageRef, loaded, markLoaded } = useImageLoadState(src);
+    const {
+        imageRef,
+        loaded,
+        markError,
+        markLoaded,
+        src: displaySrc,
+    } = useImageLoadState(src, fallbackSrc);
 
     const image = (
         <img
             ref={imageRef}
-            src={src}
+            src={displaySrc}
             alt={alt}
             className={cn(
                 'size-full object-cover transition-opacity duration-200',
@@ -138,7 +146,7 @@ function ResourceHeroCover({
             fetchPriority="high"
             referrerPolicy="no-referrer"
             onLoad={markLoaded}
-            onError={markLoaded}
+            onError={markError}
         />
     );
 
@@ -453,6 +461,7 @@ export default function ResourceShow({
                         <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted md:aspect-auto md:h-[280px] md:w-auto md:max-w-[498px]">
                             <ResourceHeroCover
                                 src={resource.thumbnail}
+                                fallbackSrc={coverSrc}
                                 alt={resource.title}
                                 clickable={hasCover}
                                 onOpen={() => setCoverDialogOpen(true)}

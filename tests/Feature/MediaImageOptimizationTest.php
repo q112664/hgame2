@@ -35,6 +35,29 @@ test('optimizer converts jpeg to validated webp and limits screenshot dimensions
     imagedestroy($decoded);
 });
 
+test('optimizer reserves distinct targets for same-basename image paths', function (): void {
+    Queue::fake();
+    $jpg = 'games/screenshots/gallery.jpg';
+    $png = 'games/screenshots/gallery.png';
+    Storage::disk('public')->put($jpg, makeJpegImage(1800, 1200));
+    Storage::disk('public')->put($png, makeJpegImage(1600, 1000));
+    $game = Game::factory()->create();
+    GameScreenshot::factory()->for($game)->create(['path' => $jpg]);
+    GameScreenshot::factory()->for($game)->create(['path' => $png]);
+
+    $operation = app(MediaStorageManager::class)->startOptimization();
+    $targets = $operation->items()->pluck('target_path')->all();
+
+    expect($targets)->toHaveCount(2)
+        ->and(array_unique($targets))->toHaveCount(2);
+
+    runImageOperation($operation);
+
+    expect(Storage::disk('public')->exists($targets[0]))->toBeTrue()
+        ->and(Storage::disk('public')->exists($targets[1]))->toBeTrue()
+        ->and($game->screenshots()->pluck('path')->all())->toEqualCanonicalizing($targets);
+});
+
 test('bulk optimization rewrites cover screenshot and embedded references while retaining originals', function (): void {
     Queue::fake();
     $cover = 'games/covers/cover.jpg';

@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Jobs\GenerateCoverThumbnail;
 use App\Models\Doc;
 use App\Models\Game;
 use App\Models\GameRelease;
@@ -15,6 +16,11 @@ final class MediaReferenceRewriter
     public function replacePath(string $oldPath, string $newPath, string $disk): int
     {
         $updated = 0;
+        $coverGameIds = Game::query()
+            ->where('cover_path', $oldPath)
+            ->pluck('id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
 
         $updated += Game::query()->where('cover_path', $oldPath)->update(['cover_path' => $newPath]);
         $updated += GameScreenshot::query()->where('path', $oldPath)->update(['path' => $newPath]);
@@ -37,6 +43,10 @@ final class MediaReferenceRewriter
         $updated += $this->rewriteHtmlReferences(
             fn (string $html): string => $this->replaceHtmlPath($html, $oldPath, $newPath, $replacementUrl),
         );
+
+        foreach ($coverGameIds as $gameId) {
+            GenerateCoverThumbnail::dispatch($gameId, $newPath)->afterCommit();
+        }
 
         return $updated;
     }

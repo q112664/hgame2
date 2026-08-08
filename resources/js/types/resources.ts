@@ -25,6 +25,7 @@ export type GameCard = {
     title: string;
     subtitle: string | null;
     thumbnail: string;
+    thumbnailFallback: string;
     category: string;
     /** Null when uncategorized (not linked). */
     categorySlug: string | null;
@@ -45,6 +46,7 @@ export type GameUpdateListItem = {
     title: string;
     subtitle: string | null;
     thumbnail: string;
+    thumbnailFallback: string;
     developer: string;
     version: string | null;
     platforms: GamePlatform[];

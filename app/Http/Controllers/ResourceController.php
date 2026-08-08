@@ -159,10 +159,40 @@ class ResourceController extends Controller
         $filters = $request->filters();
 
         if ($taxonomy !== null) {
-            $filters = [
-                ...$filters,
-                ...$taxonomy['forcedFilters'],
-            ];
+            $filters = match ($taxonomy['type']) {
+                'category' => [
+                    'q' => $filters['q'],
+                    'category' => $taxonomy['value'],
+                    'platform' => $filters['platform'],
+                    'language' => $filters['language'],
+                    'tags' => $filters['tags'],
+                    'sort' => $filters['sort'],
+                ],
+                'platform' => [
+                    'q' => $filters['q'],
+                    'category' => $filters['category'],
+                    'platform' => $taxonomy['value'],
+                    'language' => $filters['language'],
+                    'tags' => $filters['tags'],
+                    'sort' => $filters['sort'],
+                ],
+                'language' => [
+                    'q' => $filters['q'],
+                    'category' => $filters['category'],
+                    'platform' => $filters['platform'],
+                    'language' => $taxonomy['value'],
+                    'tags' => $filters['tags'],
+                    'sort' => $filters['sort'],
+                ],
+                'tag' => [
+                    'q' => $filters['q'],
+                    'category' => $filters['category'],
+                    'platform' => $filters['platform'],
+                    'language' => $filters['language'],
+                    'tags' => [$taxonomy['value']],
+                    'sort' => $filters['sort'],
+                ],
+            };
         }
 
         $payload = $listPublishedGames($filters);

@@ -45,9 +45,10 @@ class ListRelatedGames
      */
     private function present(Collection $games): array
     {
-        return $games
-            ->map(fn (Game $item): array => GamePresenter::card($item))
-            ->values()
-            ->all();
+        return array_values(
+            $games
+                ->map(fn (Game $item): array => GamePresenter::card($item))
+                ->all(),
+        );
     }
 }

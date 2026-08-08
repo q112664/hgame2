@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 
 type Props = {
     src: string;
+    fallbackSrc?: string;
     alt: string;
     className?: string;
     /**
@@ -25,12 +26,19 @@ type Props = {
  */
 export function LazyThumbnail({
     src,
+    fallbackSrc,
     alt,
     className,
     priority = false,
     fit = 'cover',
 }: Props) {
-    const { imageRef, loaded, markLoaded } = useImageLoadState(src);
+    const {
+        imageRef,
+        loaded,
+        markError,
+        markLoaded,
+        src: displaySrc,
+    } = useImageLoadState(src, fallbackSrc);
 
     return (
         <>
@@ -42,7 +50,7 @@ export function LazyThumbnail({
             ) : null}
             <img
                 ref={imageRef}
-                src={src}
+                src={displaySrc}
                 alt={alt}
                 className={cn(
                     'size-full transition-opacity duration-300 ease-out',
@@ -56,7 +64,7 @@ export function LazyThumbnail({
                 {...(priority ? { fetchPriority: 'high' as const } : {})}
                 referrerPolicy="no-referrer"
                 onLoad={markLoaded}
-                onError={markLoaded}
+                onError={markError}
             />
         </>
     );

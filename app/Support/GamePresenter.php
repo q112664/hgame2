@@ -18,6 +18,7 @@ class GamePresenter
             'title' => $game->title,
             'subtitle' => $game->subtitle,
             'thumbnail' => self::cardThumbnailUrl($game),
+            'thumbnailFallback' => self::mediaUrl($game->cover_path ?: $game->cover_url),
             'category' => filled($categoryName) ? $categoryName : 'Uncategorized',
             'categorySlug' => $game->category?->slug,
             'developer' => $game->developer ?? 'Unknown',
@@ -74,6 +75,7 @@ class GamePresenter
             'title' => $game->title,
             'subtitle' => $game->subtitle,
             'thumbnail' => self::cardThumbnailUrl($game),
+            'thumbnailFallback' => self::mediaUrl($game->cover_path ?: $game->cover_url),
             'developer' => $game->developer ?? 'Unknown',
             'version' => $game->releases
                 ->pluck('version')

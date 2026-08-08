@@ -3,7 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\Setting;
-use App\Support\Media;
+use App\Support\MediaDeletionService;
 use App\Support\MediaUpload;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -475,7 +475,7 @@ class ManageSiteSettings extends Page
                 filled($previousLogoPath)
                 && $previousLogoPath !== $nextLogoPath
             ) {
-                Media::delete($previousLogoPath);
+                app(MediaDeletionService::class)->deleteIfUnreferenced($previousLogoPath);
             }
         }
 
@@ -483,21 +483,21 @@ class ManageSiteSettings extends Page
             filled($previousHeroPath)
             && $previousHeroPath !== $nextHeroPath
         ) {
-            Media::delete($previousHeroPath);
+            app(MediaDeletionService::class)->deleteIfUnreferenced($previousHeroPath);
         }
 
         if (
             filled($previousOgImagePath)
             && $previousOgImagePath !== $nextOgImagePath
         ) {
-            Media::delete($previousOgImagePath);
+            app(MediaDeletionService::class)->deleteIfUnreferenced($previousOgImagePath);
         }
 
         if (
             filled($previousFaviconPath)
             && $previousFaviconPath !== $nextFaviconPath
         ) {
-            Media::delete($previousFaviconPath);
+            app(MediaDeletionService::class)->deleteIfUnreferenced($previousFaviconPath);
         }
 
         Notification::make()

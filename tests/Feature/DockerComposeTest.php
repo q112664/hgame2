@@ -33,7 +33,9 @@ test('docker compose includes redis for cache queue and session', function () {
         ->toContain('CACHE_STORE: redis')
         ->toContain('QUEUE_CONNECTION: redis')
         ->toContain('SESSION_DRIVER: redis')
-        ->toContain('queue:work');
+        ->toContain('queue:work')
+        ->toContain('scheduler:')
+        ->toContain('schedule:work');
 
     expect($dockerfile)->toContain('redis');
 

@@ -8,6 +8,7 @@ use App\Support\Media;
 use App\Support\MediaThumbnail;
 use App\Support\PageSeo;
 use App\Support\Turnstile;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -15,17 +16,18 @@ class DownloadLinkController extends Controller
 {
     public function show(GameDownloadLink $downloadLink): Response
     {
-        $downloadLink->load(['release.game:id,slug,title,status,published_at,cover_path,cover_url']);
-
-        $release = $downloadLink->release;
-        $game = $release?->game;
+        $release = $downloadLink->release()->first();
+        $game = $release?->game()->first();
 
         abort_if($release === null || $game === null, 404);
         abort_unless($downloadLink->is_active, 404);
+        $gameStatus = GameStatus::tryFrom((string) $game->getRawOriginal('status'));
+        $publishedAt = $game->getRawOriginal('published_at');
+
         abort_unless(
-            $game->status === GameStatus::Published
-            && $game->published_at !== null
-            && $game->published_at->lte(now()),
+            $gameStatus === GameStatus::Published
+            && filled($publishedAt)
+            && Carbon::parse((string) $publishedAt)->lte(now()),
             404,
         );
 
@@ -37,6 +39,7 @@ class DownloadLinkController extends Controller
                 'id' => $game->slug,
                 'title' => $game->title,
                 'thumbnail' => $this->thumbnailUrl($game->cover_path, $game->cover_url),
+                'thumbnailFallback' => Media::url($game->cover_path ?: $game->cover_url),
             ],
             'link' => [
                 'id' => $downloadLink->id,

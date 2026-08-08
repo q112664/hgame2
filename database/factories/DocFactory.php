@@ -24,7 +24,11 @@ class DocFactory extends Factory
             'category' => fake()->randomElement(['Guides', 'Account', 'Admin', 'FAQ']),
             'excerpt' => fake()->sentence(16),
             'cover_path' => null,
-            'body' => '<p>'.fake()->paragraphs(2, true).'</p><h2>Overview</h2><p>'.fake()->paragraph().'</p>',
+            'body' => sprintf(
+                '<p>%s</p><h2>Overview</h2><p>%s</p>',
+                fake()->paragraph(),
+                fake()->paragraph(),
+            ),
             'status' => DocStatus::Published,
             'published_at' => fake()->dateTimeBetween('-6 months'),
             'sort_order' => 0,

@@ -78,7 +78,9 @@ class UserResource extends Resource
         unset($data['email_verified'], $data['password_confirmation']);
 
         if ($verified) {
-            $data['email_verified_at'] = $record?->email_verified_at ?? now();
+            $data['email_verified_at'] = $record !== null && $record->email_verified_at !== null
+                ? $record->email_verified_at
+                : now();
         } else {
             $data['email_verified_at'] = null;
         }
@@ -316,9 +318,13 @@ class UserResource extends Resource
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->action(function (Collection $records): void {
-                            $records
-                                ->filter(fn (User $record): bool => self::canDeleteUser($record))
-                                ->each(fn (User $record) => $record->delete());
+                            foreach ($records as $record) {
+                                if (! $record instanceof User || ! self::canDeleteUser($record)) {
+                                    continue;
+                                }
+
+                                $record->delete();
+                            }
                         }),
                 ]),
             ]);

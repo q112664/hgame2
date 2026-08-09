@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Illuminate\Http\UploadedFile;
@@ -106,6 +107,28 @@ final class MediaUpload
             ->disk(Media::diskName())
             ->directory($directory)
             ->visibility('public')
+            ->getUploadedFileUsing(
+                static function (
+                    BaseFileUpload $component,
+                    string $file,
+                    string|array|null $storedFileNames,
+                ): ?array {
+                    $uploadedFile = $component->getUploadedFile($file, $storedFileNames);
+
+                    if (
+                        $uploadedFile === null
+                        || Media::diskName() !== 'r2'
+                        || Str::startsWith($file, ['http://', 'https://', '/'])
+                        || ! Storage::disk('public')->exists($file)
+                    ) {
+                        return $uploadedFile;
+                    }
+
+                    $uploadedFile['url'] = Storage::disk('public')->url($file);
+
+                    return $uploadedFile;
+                },
+            )
             ->saveUploadedFileUsing(
                 static fn (TemporaryUploadedFile $file): string => app(self::class)
                     ->storeUploadedFile($file, $directory, Media::diskName()),

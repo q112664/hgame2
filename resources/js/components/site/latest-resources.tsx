@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { ArrowRight, Library, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronRight, Library, Sparkles } from 'lucide-react';
 import { ResourceCard } from '@/components/site/resource-card';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ type Props = {
     emptyMessage?: string;
     dateField?: 'publishedAt' | 'releaseDate';
     viewAllHref?: string | null;
+    nextPageHref?: string | null;
 };
 
 export function LatestResources({
@@ -22,6 +23,7 @@ export function LatestResources({
     emptyMessage = 'No resources yet.',
     dateField = 'publishedAt',
     viewAllHref = resourcesIndex().url,
+    nextPageHref = null,
 }: Props) {
     return (
         <section
@@ -78,6 +80,22 @@ export function LatestResources({
                         />
                     </div>
                 )}
+
+                {resources.length > 0 && nextPageHref ? (
+                    <div className="mt-4 flex justify-center sm:mt-5">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 border-border/80 bg-card px-3.5 shadow-none"
+                            asChild
+                        >
+                            <Link href={nextPageHref} prefetch>
+                                Next page
+                                <ChevronRight data-icon="inline-end" />
+                            </Link>
+                        </Button>
+                    </div>
+                ) : null}
             </div>
         </section>
     );

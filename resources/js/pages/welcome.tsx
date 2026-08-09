@@ -6,12 +6,14 @@ import { PageSeo } from '@/components/site/page-seo';
 import type { PageSeoData } from '@/components/site/page-seo';
 import { PopularResources } from '@/components/site/popular-resources';
 import { SiteLayout } from '@/layouts/site-layout';
+import { index as resourcesIndex } from '@/routes/resources';
 import type { GameCard } from '@/types/resources';
 
 type Props = {
     hero: HomeHeroContent;
     popular: GameCard[];
     resources: GameCard[];
+    hasMoreResources: boolean;
     pageSeo?: PageSeoData | null;
 };
 
@@ -19,6 +21,7 @@ export default function Welcome({
     hero,
     popular = [],
     resources,
+    hasMoreResources = false,
     pageSeo,
 }: Props) {
     const { siteTitle } = usePage().props;
@@ -41,6 +44,11 @@ export default function Welcome({
                     resources={resources}
                     dateField="publishedAt"
                     emptyMessage="No resources yet."
+                    nextPageHref={
+                        hasMoreResources
+                            ? resourcesIndex({ query: { page: 2 } }).url
+                            : null
+                    }
                 />
             </div>
         </SiteLayout>

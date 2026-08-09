@@ -18,6 +18,14 @@ class HomeController extends Controller
 
     public function __invoke(): Response
     {
+        $latestGames = Game::query()
+            ->published()
+            ->withCardData()
+            ->latest('published_at')
+            ->orderByDesc('id')
+            ->limit(self::HomeSectionLimit + 1)
+            ->get();
+
         return Inertia::render('welcome', [
             'hero' => Setting::homeHero(),
             'pageSeo' => PageSeo::home(),
@@ -32,14 +40,9 @@ class HomeController extends Controller
                     ->get(),
             ),
             'resources' => $this->presentCards(
-                Game::query()
-                    ->published()
-                    ->withCardData()
-                    ->latest('published_at')
-                    ->orderByDesc('id')
-                    ->limit(self::HomeSectionLimit)
-                    ->get(),
+                $latestGames->take(self::HomeSectionLimit),
             ),
+            'hasMoreResources' => $latestGames->count() > self::HomeSectionLimit,
         ]);
     }
 

@@ -36,6 +36,7 @@ test('home includes a popular section ordered by views', function () {
             ->where('popular.1.id', $mid->slug)
             ->where('popular.2.id', $low->slug)
             ->has('resources')
+            ->where('hasMoreResources', false)
         );
 });
 
@@ -48,5 +49,18 @@ test('home popular section is empty when nothing is published', function () {
             ->component('welcome')
             ->has('popular', 0)
             ->has('resources', 0)
+            ->where('hasMoreResources', false)
+        );
+});
+
+test('home indicates when another page of new resources is available', function () {
+    Game::factory()->count(13)->create();
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('welcome')
+            ->has('resources', 12)
+            ->where('hasMoreResources', true)
         );
 });

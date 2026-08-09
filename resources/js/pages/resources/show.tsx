@@ -551,7 +551,7 @@ export default function ResourceShow({
 
                             {/* 3. Catalog meta (game product) */}
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
-                                <span className="inline-flex min-w-0 max-w-full items-center gap-1.5">
+                                <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
                                     <Building2
                                         className="size-3.5 shrink-0 opacity-70"
                                         aria-hidden
@@ -618,116 +618,126 @@ export default function ResourceShow({
                             </div>
 
                             {/* 5. Actions */}
-                            <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
-                                {resource.hasDownloads ? (
-                                    <Button
-                                        size="default"
-                                        variant="secondary"
-                                        className={downloadHeroButtonClassName}
-                                        asChild
-                                    >
-                                        <Link
-                                            href={
-                                                resourceDownloads(resource.id)
-                                                    .url
+                            <div className="mt-auto w-full max-w-full pt-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    {resource.hasDownloads ? (
+                                        <Button
+                                            size="default"
+                                            variant="secondary"
+                                            className={
+                                                downloadHeroButtonClassName
                                             }
-                                            headers={{
-                                                'X-Resource-Tab-Nav': '1',
-                                            }}
-                                            preserveState
-                                            preserveScroll
-                                            onClick={(event) => {
-                                                if (
-                                                    activeTab ===
-                                                        'downloads' &&
-                                                    pendingNavigation.current ===
-                                                        null
-                                                ) {
-                                                    event.preventDefault();
-                                                    tabsListRef.current?.scrollIntoView(
-                                                        {
-                                                            behavior:
-                                                                shouldReduceMotion
-                                                                    ? 'auto'
-                                                                    : 'smooth',
-                                                            block: 'start',
-                                                        },
-                                                    );
-                                                    tabRefs.current.downloads?.focus(
-                                                        {
-                                                            preventScroll: true,
-                                                        },
-                                                    );
+                                            asChild
+                                        >
+                                            <Link
+                                                href={
+                                                    resourceDownloads(
+                                                        resource.id,
+                                                    ).url
                                                 }
-                                            }}
-                                            onStart={() =>
-                                                handleTabStart(
-                                                    'downloads',
-                                                    true,
-                                                )
-                                            }
-                                            onSuccess={() =>
-                                                settleTabNavigation(
-                                                    null,
-                                                    'downloads',
-                                                )
-                                            }
-                                            onError={() => {
-                                                rollbackTabNavigation(
-                                                    null,
-                                                    'downloads',
-                                                );
-                                            }}
-                                            onCancel={() =>
-                                                rollbackTabNavigation(
-                                                    null,
-                                                    'downloads',
-                                                )
-                                            }
+                                                headers={{
+                                                    'X-Resource-Tab-Nav': '1',
+                                                }}
+                                                preserveState
+                                                preserveScroll
+                                                onClick={(event) => {
+                                                    if (
+                                                        activeTab ===
+                                                            'downloads' &&
+                                                        pendingNavigation.current ===
+                                                            null
+                                                    ) {
+                                                        event.preventDefault();
+                                                        tabsListRef.current?.scrollIntoView(
+                                                            {
+                                                                behavior:
+                                                                    shouldReduceMotion
+                                                                        ? 'auto'
+                                                                        : 'smooth',
+                                                                block: 'start',
+                                                            },
+                                                        );
+                                                        tabRefs.current.downloads?.focus(
+                                                            {
+                                                                preventScroll: true,
+                                                            },
+                                                        );
+                                                    }
+                                                }}
+                                                onStart={() =>
+                                                    handleTabStart(
+                                                        'downloads',
+                                                        true,
+                                                    )
+                                                }
+                                                onSuccess={() =>
+                                                    settleTabNavigation(
+                                                        null,
+                                                        'downloads',
+                                                    )
+                                                }
+                                                onError={() => {
+                                                    rollbackTabNavigation(
+                                                        null,
+                                                        'downloads',
+                                                    );
+                                                }}
+                                                onCancel={() =>
+                                                    rollbackTabNavigation(
+                                                        null,
+                                                        'downloads',
+                                                    )
+                                                }
+                                            >
+                                                <Download data-icon="inline-start" />
+                                                Download
+                                            </Link>
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            size="default"
+                                            variant="secondary"
+                                            className="h-9 border-0 px-3.5 shadow-none"
+                                            disabled
                                         >
                                             <Download data-icon="inline-start" />
-                                            Download
-                                        </Link>
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        size="default"
-                                        variant="secondary"
-                                        className="h-9 border-0 px-3.5 shadow-none"
-                                        disabled
-                                    >
-                                        <Download data-icon="inline-start" />
-                                        Unavailable
-                                    </Button>
-                                )}
-                                <FavoriteButton
-                                    size="icon"
-                                    isFavorited={isFavorite}
-                                    isToggling={isTogglingFavorite}
-                                    onToggle={handleFavoriteClick}
-                                />
-                                {resource.adminEditUrl ? (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className="size-9"
-                                                asChild
-                                            >
-                                                <a
-                                                    href={resource.adminEditUrl}
-                                                    aria-label="Edit in admin"
+                                            Unavailable
+                                        </Button>
+                                    )}
+                                    <FavoriteButton
+                                        showLabel
+                                        isFavorited={isFavorite}
+                                        isToggling={isTogglingFavorite}
+                                        onToggle={handleFavoriteClick}
+                                    />
+                                    {resource.adminEditUrl ? (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="size-9"
+                                                    asChild
                                                 >
-                                                    <Pencil />
-                                                </a>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            Edit in admin
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ) : null}
+                                                    <a
+                                                        href={
+                                                            resource.adminEditUrl
+                                                        }
+                                                        aria-label="Edit in admin"
+                                                    >
+                                                        <Pencil />
+                                                    </a>
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                Edit in admin
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    ) : null}
+                                    <p className="w-full self-end text-left text-xs leading-5 whitespace-nowrap text-muted-foreground md:ml-auto md:w-auto md:text-right">
+                                        Favorite for update alerts.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>

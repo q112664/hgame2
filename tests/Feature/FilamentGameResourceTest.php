@@ -154,6 +154,51 @@ test('edit game page uses the create-style screenshots upload and only stacks re
     Storage::disk(Media::diskName())->assertMissing($removed->path);
 });
 
+test('r2 game editor previews use same-origin local rollback copies', function (): void {
+    config(['filesystems.media' => 'r2']);
+    Storage::fake('r2', ['url' => 'https://media.example.com']);
+    Storage::fake('public', [
+        'url' => 'http://hgame.test/storage',
+        'visibility' => 'public',
+    ]);
+
+    $coverPath = 'games/covers/cover.jpg';
+    $screenshotPath = 'games/screenshots/screenshot.jpg';
+    $cover = UploadedFile::fake()->image('cover.jpg', 1280, 720)->getContent();
+    $screenshot = UploadedFile::fake()->image('screenshot.jpg', 1280, 720)->getContent();
+
+    foreach (['r2', 'public'] as $disk) {
+        Storage::disk($disk)->put($coverPath, $cover);
+        Storage::disk($disk)->put($screenshotPath, $screenshot);
+    }
+
+    $game = Game::factory()->create(['cover_path' => $coverPath]);
+    GameScreenshot::factory()->for($game)->create([
+        'path' => $screenshotPath,
+        'sort_order' => 0,
+    ]);
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    $component = Livewire::test(EditGame::class, [
+        'record' => $game->getRouteKey(),
+    ]);
+
+    expect(Media::url($coverPath))->toBe('https://media.example.com/'.$coverPath);
+
+    $component
+        ->call('callSchemaComponentMethod', 'form.cover_path', 'getUploadedFiles')
+        ->assertReturned(fn (?array $files): bool => collect($files)->contains(
+            fn (array $file): bool => $file['url'] === 'http://hgame.test/storage/'.$coverPath,
+        ));
+
+    $component
+        ->call('callSchemaComponentMethod', 'form.screenshot_uploads', 'getUploadedFiles')
+        ->assertReturned(fn (?array $files): bool => collect($files)->contains(
+            fn (array $file): bool => $file['url'] === 'http://hgame.test/storage/'.$screenshotPath,
+        ));
+});
+
 test('games list defaults to newest created first', function () {
     $this->actingAs(User::factory()->admin()->create());
 

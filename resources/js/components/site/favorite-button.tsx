@@ -15,8 +15,9 @@ type FavoriteButtonProps = {
     isFavorited: boolean;
     isToggling: boolean;
     onToggle: () => void;
-    /** Inherits sizing; pass `size="icon-lg"` to match the detail page. */
+    /** Controls the icon-only size; labeled buttons use the default size. */
     size?: 'icon' | 'icon-lg';
+    showLabel?: boolean;
     className?: string;
 };
 
@@ -29,6 +30,7 @@ export function FavoriteButton({
     isToggling,
     onToggle,
     size = 'icon-lg',
+    showLabel = false,
     className,
 }: FavoriteButtonProps) {
     const label = isFavorited ? 'Remove from favorites' : 'Add to favorites';
@@ -39,7 +41,7 @@ export function FavoriteButton({
                 <Button
                     type="button"
                     variant="ghost"
-                    size={size}
+                    size={showLabel ? 'default' : size}
                     aria-label={label}
                     aria-pressed={isFavorited}
                     disabled={isToggling}
@@ -50,6 +52,7 @@ export function FavoriteButton({
                             : heroActionIdleClassName,
                         !isFavorited &&
                             'hover:bg-favorite/10 hover:text-favorite dark:hover:bg-favorite/20 dark:hover:text-favorite',
+                        showLabel && 'h-9 gap-1.5 px-3.5',
                         'disabled:opacity-60 dark:disabled:opacity-50',
                         className,
                     )}
@@ -61,6 +64,7 @@ export function FavoriteButton({
                             !isFavorited && 'dark:opacity-90',
                         )}
                     />
+                    {showLabel ? 'Favorite' : null}
                 </Button>
             </TooltipTrigger>
             <TooltipContent>{label}</TooltipContent>

@@ -129,11 +129,22 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('md:aspect-auto md:h-[280px] md:w-auto md:max-w-[498px]')
         ->toContain('text-sm text-muted-foreground')
         ->toContain('FavoriteButton')
+        ->toContain('showLabel')
+        ->toContain('Favorite for update alerts.')
+        ->toContain('mt-auto w-full max-w-full')
+        ->toContain('flex flex-wrap items-center gap-1.5')
+        ->toContain('w-full self-end text-left')
+        ->toContain('md:ml-auto md:w-auto md:text-right')
         ->toContain('line-clamp-2')
         ->toContain('Released')
         ->toContain('Listed')
         ->not->toContain('sm:flex-row')
         ->not->toContain('sm:h-[280px]');
+
+    expect($filesystem->get(resource_path('js/components/site/favorite-button.tsx')))
+        ->toContain('showLabel?: boolean')
+        ->toContain("showLabel ? 'default' : size")
+        ->toContain("showLabel ? 'Favorite' : null");
 
     expect($filesystem->get(resource_path('js/components/site/resource-tab-content.tsx')))
         ->toContain('resource-overview-heading')
@@ -146,6 +157,15 @@ test('search favorites settings and resources share the site page container', fu
 
     expect($filesystem->get(resource_path('js/components/site/popular-resources.tsx')))
         ->toContain('<h2');
+
+    expect($filesystem->get(resource_path('js/components/site/latest-resources.tsx')))
+        ->toContain('nextPageHref?: string | null')
+        ->toContain('Next page')
+        ->toContain('<ChevronRight data-icon="inline-end" />');
+
+    expect($filesystem->get(resource_path('js/pages/welcome.tsx')))
+        ->toContain('hasMoreResources: boolean')
+        ->toContain('resourcesIndex({ query: { page: 2 } }).url');
 });
 
 test('site empty states and download buttons use primary CTAs', function () {

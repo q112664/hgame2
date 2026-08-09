@@ -132,8 +132,52 @@ test('details tab omits screenshots and full release download payloads', functio
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resource.description', fn (string $description): bool => str_contains($description, '<strong>Rich details</strong>') && ! str_contains($description, '<script>'))
+            ->has('resource.detailVersions', 1)
+            ->where('resource.detailVersions.0.code', 'original')
+            ->where('resource.detailVersions.0.isDefault', true)
             ->where('resource.screenshots', [])
             ->where('resource.releases', [])
+        );
+});
+
+test('details tab exposes sanitized language versions in configured order', function () {
+    $japanese = Language::factory()->create(['name' => 'Japanese', 'code' => 'ja']);
+    $english = Language::factory()->create(['name' => 'English', 'code' => 'en']);
+
+    $this->game->detailTranslations()->createMany([
+        [
+            'language_id' => $japanese->id,
+            'description' => '<p>Japanese details<script>alert(1)</script></p>',
+            'sort_order' => 20,
+        ],
+        [
+            'language_id' => $english->id,
+            'description' => '<p><strong>English details</strong><script>alert(1)</script></p>',
+            'sort_order' => 10,
+        ],
+    ]);
+
+    $this->get(route('resources.details', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('resource.detailVersions', 3)
+            ->where('resource.detailVersions.0.code', 'original')
+            ->where('resource.detailVersions.0.name', 'Original')
+            ->where('resource.detailVersions.0.isDefault', true)
+            ->where('resource.detailVersions.1.code', 'en')
+            ->where('resource.detailVersions.1.name', 'English')
+            ->where(
+                'resource.detailVersions.1.html',
+                fn (string $html): bool => str_contains($html, '<strong>English details</strong>')
+                    && ! str_contains($html, '<script>'),
+            )
+            ->where('resource.detailVersions.1.isDefault', false)
+            ->where('resource.detailVersions.2.code', 'ja')
+            ->where(
+                'resource.detailVersions.2.html',
+                fn (string $html): bool => str_contains($html, 'Japanese details')
+                    && ! str_contains($html, '<script>'),
+            )
         );
 });
 
@@ -168,6 +212,7 @@ test('downloads tab includes releases and download links without screenshots', f
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resource.description', '')
+            ->where('resource.detailVersions', [])
             ->where('resource.screenshots', [])
             ->has('resource.releases', 1)
             ->where('resource.releases.0.title', 'Official release')
@@ -191,6 +236,7 @@ test('screenshots tab includes screenshots without release download payloads', f
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resource.description', '')
+            ->where('resource.detailVersions', [])
             ->has('resource.screenshots', 1)
             ->where('resource.releases', [])
         );

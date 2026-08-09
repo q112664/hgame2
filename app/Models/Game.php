@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Notification;
  * @property CarbonInterface|null $updated_at
  * @property-read Category|null $category
  * @property-read EloquentCollection<int, Tag> $tags
+ * @property-read EloquentCollection<int, GameDetailTranslation> $detailTranslations
  * @property-read EloquentCollection<int, GameRelease> $releases
  * @property-read EloquentCollection<int, GameScreenshot> $screenshots
  * @property-read EloquentCollection<int, GameComment> $comments
@@ -117,6 +118,14 @@ class Game extends Model
     public function releases(): HasMany
     {
         return $this->hasMany(GameRelease::class)->orderBy('sort_order');
+    }
+
+    /** @return HasMany<GameDetailTranslation, $this> */
+    public function detailTranslations(): HasMany
+    {
+        return $this->hasMany(GameDetailTranslation::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     /** @return HasMany<GameScreenshot, $this> */

@@ -5,6 +5,7 @@ use App\GameStatus;
 use App\Models\Doc;
 use App\Models\Game;
 use App\Models\GameScreenshot;
+use App\Models\Language;
 use App\Models\Platform;
 use App\Models\Setting;
 use App\Support\Media;
@@ -23,12 +24,14 @@ test('deleting a game removes cover screenshots and content attachments from med
     $cover = 'games/covers/cover.jpg';
     $screenshot = 'games/screenshots/shot.jpg';
     $content = 'games/content/embed.jpg';
+    $translationContent = 'games/content/translation.jpg';
     $releaseContent = 'games/content/release-note.jpg';
 
     Storage::disk('public')->put($cover, 'cover');
     Storage::disk('s3')->put($cover, 'cover');
     Storage::disk('public')->put($screenshot, 'shot');
     Storage::disk('public')->put($content, 'content');
+    Storage::disk('public')->put($translationContent, 'translation');
     Storage::disk('public')->put($releaseContent, 'release');
 
     $game = Game::factory()->create([
@@ -38,6 +41,12 @@ test('deleting a game removes cover screenshots and content attachments from med
 
     GameScreenshot::factory()->for($game)->create([
         'path' => $screenshot,
+    ]);
+
+    $language = Language::factory()->create();
+    $game->detailTranslations()->create([
+        'language_id' => $language->id,
+        'description' => '<p><img src="/storage/games/content/translation.jpg"></p>',
     ]);
 
     $game->releases()->create([
@@ -54,6 +63,7 @@ test('deleting a game removes cover screenshots and content attachments from med
         ->and(Storage::disk('s3')->exists($cover))->toBeFalse()
         ->and(Storage::disk('public')->exists($screenshot))->toBeFalse()
         ->and(Storage::disk('public')->exists($content))->toBeFalse()
+        ->and(Storage::disk('public')->exists($translationContent))->toBeFalse()
         ->and(Storage::disk('public')->exists($releaseContent))->toBeFalse();
 });
 
@@ -125,7 +135,9 @@ test('deleting a game keeps media still referenced by another game', function ()
         'description' => '<p><img src="/storage/games/content/shared.jpg"></p>',
     ]);
 
-    Game::factory()->create([
+    $otherGame = Game::factory()->create(['description' => null]);
+    $otherGame->detailTranslations()->create([
+        'language_id' => Language::factory()->create()->id,
         'description' => '<p><img src="/storage/games/content/shared.jpg"></p>',
     ]);
 

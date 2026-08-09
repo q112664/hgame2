@@ -30,6 +30,7 @@ import type { PaginatedData } from '@/components/site/site-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useImageLoadState } from '@/hooks/use-image-load-state';
 import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
@@ -179,6 +180,57 @@ export function ResourceScreenshot({
     );
 }
 
+type ResourceDetailVersionsProps = {
+    resource: GameDetail;
+};
+
+function ResourceDetailVersions({ resource }: ResourceDetailVersionsProps) {
+    const versions =
+        resource.detailVersions.length > 0
+            ? resource.detailVersions
+            : [
+                  {
+                      code: 'original',
+                      name: 'Original',
+                      html: resource.description,
+                      isDefault: true,
+                  },
+              ];
+    const defaultVersion =
+        versions.find((version) => version.isDefault) ?? versions[0];
+
+    if (versions.length === 1) {
+        return <RichHtml html={defaultVersion.html} />;
+    }
+
+    return (
+        <Tabs
+            key={versions.map((version) => version.code).join('|')}
+            defaultValue={defaultVersion.code}
+            className="gap-4"
+        >
+            <div className="max-w-full overflow-x-auto pb-1">
+                <TabsList
+                    variant="line"
+                    aria-label="Details language"
+                    className="justify-start"
+                >
+                    {versions.map((version) => (
+                        <TabsTrigger key={version.code} value={version.code}>
+                            {version.name}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+            </div>
+            {versions.map((version) => (
+                <TabsContent key={version.code} value={version.code}>
+                    <RichHtml html={version.html} />
+                </TabsContent>
+            ))}
+        </Tabs>
+    );
+}
+
 type Props = {
     resource: GameDetail;
     activeTab: ResourceTab;
@@ -244,7 +296,7 @@ export function ResourceTabContent({
                                 ))}
                             </div>
                         ) : null}
-                        <RichHtml html={resource.description} />
+                        <ResourceDetailVersions resource={resource} />
                     </section>
 
                     <RelatedResources
@@ -478,10 +530,7 @@ export function ResourceTabContent({
                                     src={screenshot}
                                     alt={`${resource.title} screenshot ${index + 1}`}
                                     onOpen={() =>
-                                        onOpenLightbox(
-                                            screenshotSlides,
-                                            index,
-                                        )
+                                        onOpenLightbox(screenshotSlides, index)
                                     }
                                 />
                             ))}

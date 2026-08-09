@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Doc;
 use App\Models\Game;
+use App\Models\GameDetailTranslation;
 use App\Models\GameRelease;
 use App\Models\GameScreenshot;
 use App\Models\Setting;
@@ -95,6 +96,11 @@ final class MediaPathCollector
             ->pluck('description')
             ->each(fn (mixed $html) => $paths->push(...$this->fromHtml((string) $html)));
 
+        GameDetailTranslation::query()
+            ->whereNotNull('description')
+            ->pluck('description')
+            ->each(fn (mixed $html) => $paths->push(...$this->fromHtml((string) $html)));
+
         GameRelease::query()
             ->whereNotNull('description')
             ->pluck('description')
@@ -156,6 +162,7 @@ final class MediaPathCollector
         foreach ($references as $reference) {
             if (
                 Game::query()->whereLike('description', '%'.$reference.'%')->exists()
+                || GameDetailTranslation::query()->whereLike('description', '%'.$reference.'%')->exists()
                 || GameRelease::query()->whereLike('description', '%'.$reference.'%')->exists()
                 || Doc::query()->whereLike('body', '%'.$reference.'%')->exists()
             ) {

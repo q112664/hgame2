@@ -79,6 +79,7 @@ class GameController extends Controller
             'releases.platforms',
             'releases.languages',
             'releases.downloadLinks',
+            'detailTranslations.language',
         ]);
 
         return response()->json([
@@ -164,6 +165,19 @@ class GameController extends Controller
             ),
             'release_date' => $game->release_date?->toDateString(),
             'description' => $game->description,
+            'detail_versions' => $game->relationLoaded('detailTranslations')
+                ? $game->detailTranslations
+                    ->map(fn ($translation): array => [
+                        'language' => [
+                            'name' => $translation->language?->name,
+                            'code' => $translation->language?->code,
+                        ],
+                        'description' => $translation->description,
+                        'sort_order' => (int) $translation->sort_order,
+                    ])
+                    ->values()
+                    ->all()
+                : [],
             'cover_url' => Media::url($game->cover_path ?: $game->cover_url),
             'published_at' => $game->published_at?->toIso8601String(),
             'url' => route('resources.details', $game),

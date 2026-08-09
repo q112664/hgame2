@@ -151,12 +151,40 @@ class GameForm
                         Hidden::make('cover_url')->default(''),
                         MediaUpload::richEditor(
                             RichEditor::make('description')
-                                ->label('Details'),
+                                ->label('Original details'),
                             'games/content',
                         )
                             ->columnSpanFull(),
                     ])
                     ->columns(12)
+                    ->columnSpanFull(),
+                Section::make('Localized details')
+                    ->schema([
+                        Repeater::make('detailTranslations')
+                            ->label('Language versions')
+                            ->relationship()
+                            ->default([])
+                            ->schema([
+                                Select::make('language_id')
+                                    ->label('Language')
+                                    ->relationship('language', 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                    ->columnSpanFull(),
+                                MediaUpload::richEditor(
+                                    RichEditor::make('description')
+                                        ->label('Details')
+                                        ->required(),
+                                    'games/content',
+                                )
+                                    ->columnSpanFull(),
+                            ])
+                            ->orderColumn('sort_order')
+                            ->addActionLabel('Add language version')
+                            ->columnSpanFull(),
+                    ])
                     ->columnSpanFull(),
                 Section::make('Screenshots')
                     ->schema([

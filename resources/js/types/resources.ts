@@ -73,10 +73,18 @@ export type GameRelease = {
     downloadLinks: GameDownloadLink[];
 };
 
+export type GameDetailVersion = {
+    code: string;
+    name: string;
+    html: string;
+    isDefault: boolean;
+};
+
 export type GameDetail = GameCard & {
     cover: string;
     subtitle: string | null;
     description: string;
+    detailVersions: GameDetailVersion[];
     developer: string;
     releaseDate: string | null;
     downloads: number;

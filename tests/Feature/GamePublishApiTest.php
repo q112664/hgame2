@@ -210,6 +210,10 @@ test('publishing downloads remote images embedded in description html', function
 
     $this->postJson('/api/v1/games', validGamePayload([
         'description' => '<p>Intro</p><p><img src="https://example.com/detail-1.png" alt="Scene"></p><p><img src="https://example.com/detail-1.png"></p>',
+        'detail_versions' => [[
+            'language' => 'zh',
+            'description' => '<p>Localized <img src="https://example.com/localized-detail.png"></p>',
+        ]],
         'releases' => [[
             'title' => 'Windows Chinese package',
             'platforms' => ['Windows'],
@@ -219,14 +223,22 @@ test('publishing downloads remote images embedded in description html', function
                 'https://example.com/game.zip',
             ],
         ]],
-    ]))->assertCreated();
+    ]))
+        ->assertCreated()
+        ->assertJsonPath('data.detail_versions.0.language.code', 'zh');
 
-    $game = Game::query()->where('slug', 'senren-banka')->firstOrFail();
+    $game = Game::query()
+        ->with('detailTranslations')
+        ->where('slug', 'senren-banka')
+        ->firstOrFail();
 
     expect($game->description)
         ->toMatch('#src="/storage/games/content/[^"]+\.webp"#')
         ->not->toContain('https://example.com/detail-1.png')
         ->and(substr_count((string) $game->description, '/storage/games/content/'))->toBe(2)
+        ->and($game->detailTranslations->first()->description)
+        ->toMatch('#src="/storage/games/content/[^"]+\.webp"#')
+        ->not->toContain('https://example.com/localized-detail.png')
         ->and($game->releases->first()->description)
         ->toMatch('#src="/storage/games/content/[^"]+\.webp"#')
         ->not->toContain('https://example.com/release-note.png');
@@ -238,6 +250,22 @@ test('publishing downloads remote images embedded in description html', function
 
     preg_match('#/storage/(games/content/[^"]+)#', (string) $game->releases->first()->description, $releaseMatch);
     Storage::disk(Media::diskName())->assertExists($releaseMatch[1]);
+
+    preg_match('#/storage/(games/content/[^"]+)#', (string) $game->detailTranslations->first()->description, $translationMatch);
+    Storage::disk(Media::diskName())->assertExists($translationMatch[1]);
+
+    $this->patchJson('/api/v1/games/senren-banka', [
+        'detail_versions' => [[
+            'language' => 'zh',
+            'description' => '<p>Updated <img src="https://example.com/localized-detail-v2.png"></p>',
+        ]],
+    ])->assertOk();
+
+    $updatedTranslation = $game->refresh()->detailTranslations()->firstOrFail();
+    preg_match('#/storage/(games/content/[^"]+)#', (string) $updatedTranslation->description, $updatedTranslationMatch);
+
+    Storage::disk(Media::diskName())->assertExists($updatedTranslationMatch[1]);
+    Storage::disk(Media::diskName())->assertMissing($translationMatch[1]);
 });
 
 test('publishing leaves already-local description images unchanged', function () {

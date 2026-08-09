@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Jobs\GenerateCoverThumbnail;
 use App\Models\Doc;
 use App\Models\Game;
+use App\Models\GameDetailTranslation;
 use App\Models\GameRelease;
 use App\Models\GameScreenshot;
 use App\Models\Setting;
@@ -84,6 +85,7 @@ final class MediaReferenceRewriter
         $updated = 0;
 
         $this->rewriteModelColumn(Game::class, 'description', $rewrite, $updated);
+        $this->rewriteModelColumn(GameDetailTranslation::class, 'description', $rewrite, $updated);
         $this->rewriteModelColumn(GameRelease::class, 'description', $rewrite, $updated);
         $this->rewriteModelColumn(Doc::class, 'body', $rewrite, $updated);
 

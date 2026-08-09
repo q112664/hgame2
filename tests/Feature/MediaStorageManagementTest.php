@@ -7,6 +7,7 @@ use App\Models\Doc;
 use App\Models\Game;
 use App\Models\GameRelease;
 use App\Models\GameScreenshot;
+use App\Models\Language;
 use App\Models\MediaOperation;
 use App\Models\MediaOperationItem;
 use App\Models\MediaStorageConfiguration;
@@ -394,6 +395,24 @@ test('r2 activation requires current validation and rollback keeps local media a
         ->and($models['release']->refresh()->description)->toContain('/storage/games/content/release.jpg')
         ->and($models['doc']->refresh()->body)->toContain('/storage/docs/content/doc.jpg')
         ->and(Setting::get('resource_notice_content'))->toContain('/storage/site/notices/notice.jpg');
+});
+
+test('r2 reference rewriting includes localized game details', function (): void {
+    Storage::disk('public')->put('games/content/localized.jpg', 'localized');
+    $game = Game::factory()->create(['description' => null]);
+    $translation = $game->detailTranslations()->create([
+        'language_id' => Language::factory()->create()->id,
+        'description' => '<p><img src="/storage/games/content/localized.jpg"></p>',
+    ]);
+    $rewriter = app(MediaReferenceRewriter::class);
+
+    expect(app(MediaPathCollector::class)->references())->toContain('games/content/localized.jpg')
+        ->and($rewriter->activateR2('https://media.example.com'))->toBe(1)
+        ->and($translation->refresh()->description)
+        ->toContain('https://media.example.com/games/content/localized.jpg')
+        ->and($rewriter->rollbackToLocal('https://media.example.com'))->toBe(1)
+        ->and($translation->refresh()->description)
+        ->toContain('/storage/games/content/localized.jpg');
 });
 
 test('activating a replacement r2 configuration rewrites the previous cdn domain', function (): void {

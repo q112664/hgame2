@@ -360,6 +360,7 @@ class ResourceController extends Controller
             includeScreenshots: false,
             includeDownloadLinks: true,
             includeTags: false,
+            includeDetailTranslations: false,
         );
         ($this->recordGameView)($request, $game);
 
@@ -408,6 +409,7 @@ class ResourceController extends Controller
             includeScreenshots: $activeTab === 'screenshots',
             includeDownloadLinks: $activeTab === 'downloads',
             includeTags: $includeDetails,
+            includeDetailTranslations: $includeDetails,
         );
         ($this->recordGameView)($request, $game);
 
@@ -437,6 +439,7 @@ class ResourceController extends Controller
         bool $includeScreenshots,
         bool $includeDownloadLinks,
         bool $includeTags,
+        bool $includeDetailTranslations,
     ): Game {
         $with = [
             'category:id,name,slug',
@@ -447,6 +450,12 @@ class ResourceController extends Controller
 
         if ($includeTags) {
             $with['tags'] = fn ($query) => $query->select(['tags.id', 'name', 'slug']);
+        }
+
+        if ($includeDetailTranslations) {
+            $with['detailTranslations'] = fn ($query) => $query
+                ->select(['id', 'game_id', 'language_id', 'description', 'sort_order'])
+                ->with('language:id,name,code');
         }
 
         if ($includeScreenshots) {

@@ -24,6 +24,10 @@ class DeleteGameMedia
             ->whereNotNull('description')
             ->pluck('description')
             ->all();
+        $detailTranslationDescriptions = $game->detailTranslations()
+            ->whereNotNull('description')
+            ->pluck('description')
+            ->all();
         $coverPath = is_string($game->cover_path) ? $game->cover_path : null;
         $thumbnailPath = $coverPath !== '' && MediaThumbnail::isManagedPath($coverPath)
             ? MediaThumbnail::pathFor((string) $coverPath)
@@ -34,6 +38,9 @@ class DeleteGameMedia
             $thumbnailPath,
             ...$game->screenshots()->pluck('path')->all(),
             ...$this->pathsFromDescription((string) $game->description),
+            ...collect($detailTranslationDescriptions)
+                ->flatMap(fn (mixed $description): array => $this->pathsFromDescription((string) $description))
+                ->all(),
             ...collect($releaseDescriptions)
                 ->flatMap(fn (mixed $description): array => $this->pathsFromDescription((string) $description))
                 ->all(),

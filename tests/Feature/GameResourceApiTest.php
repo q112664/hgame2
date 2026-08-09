@@ -124,6 +124,70 @@ test('administrators can inspect full game details', function () {
         ->and(test()->getJson("/api/v1/games/{$slug}")->json('data.screenshots'))->toHaveCount(1);
 });
 
+test('administrators can create and replace localized details through the api', function () {
+    Sanctum::actingAs($this->admin);
+    $english = Language::factory()->create(['name' => 'English', 'code' => 'en']);
+    $japanese = Language::factory()->create(['name' => 'Japanese', 'code' => 'ja']);
+
+    $slug = createGameViaApi([
+        'description' => '<p>Original details</p>',
+        'detail_versions' => [
+            [
+                'language' => 'Japanese',
+                'description' => '<p>Japanese details</p>',
+                'sort_order' => 20,
+            ],
+            [
+                'language' => 'en',
+                'description' => '<p>English details</p>',
+                'sort_order' => 10,
+            ],
+        ],
+    ]);
+
+    $this->getJson("/api/v1/games/{$slug}")
+        ->assertOk()
+        ->assertJsonPath('data.description', '<p>Original details</p>')
+        ->assertJsonPath('data.detail_versions.0.language.code', 'en')
+        ->assertJsonPath('data.detail_versions.0.description', '<p>English details</p>')
+        ->assertJsonPath('data.detail_versions.1.language.code', 'ja');
+
+    $this->patchJson("/api/v1/games/{$slug}", [
+        'detail_versions' => [[
+            'language' => 'ja',
+            'description' => '<p>Updated Japanese details</p>',
+        ]],
+    ])
+        ->assertOk()
+        ->assertJsonCount(1, 'data.detail_versions')
+        ->assertJsonPath('data.description', '<p>Original details</p>')
+        ->assertJsonPath('data.detail_versions.0.language.code', 'ja')
+        ->assertJsonPath('data.detail_versions.0.description', '<p>Updated Japanese details</p>');
+
+    $game = Game::query()->where('slug', $slug)->firstOrFail();
+
+    expect($game->detailTranslations)->toHaveCount(1)
+        ->and($game->detailTranslations->first()->language_id)->toBe($japanese->id)
+        ->and($game->detailTranslations()->where('language_id', $english->id)->exists())->toBeFalse();
+});
+
+test('api rejects duplicate localized detail languages', function () {
+    Sanctum::actingAs($this->admin);
+
+    $this->postJson('/api/v1/games', [
+        'title' => 'Duplicate Detail Languages',
+        'cover_url' => 'https://example.com/cover.png',
+        'detail_versions' => [
+            ['language' => 'zh', 'description' => '<p>Chinese by code</p>'],
+            ['language' => 'Chinese', 'description' => '<p>Chinese by name</p>'],
+        ],
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['detail_versions']);
+
+    expect(Game::query()->where('title', 'Duplicate Detail Languages')->exists())->toBeFalse();
+});
+
 test('administrators can partially update a game', function () {
     Sanctum::actingAs($this->admin);
 

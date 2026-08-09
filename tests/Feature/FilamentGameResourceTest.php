@@ -23,13 +23,25 @@ test('an administrator can create a game with a release and download link', func
 
     $this->actingAs(User::factory()->admin()->create());
     $platform = Platform::factory()->create();
-    $language = Language::factory()->create();
+    $language = Language::factory()->create(['name' => 'Chinese', 'code' => 'zh']);
+    $english = Language::factory()->create(['name' => 'English', 'code' => 'en']);
+    $japanese = Language::factory()->create(['name' => 'Japanese', 'code' => 'ja']);
 
     Livewire::test(CreateGame::class)
         ->fillForm([
             'title' => 'Example Game',
             'cover_path' => UploadedFile::fake()->image('cover.jpg', 1280, 720),
             'description' => '<p><strong>Rich details</strong></p>',
+            'detailTranslations' => [
+                [
+                    'language_id' => $english->id,
+                    'description' => '<p>English details</p>',
+                ],
+                [
+                    'language_id' => $japanese->id,
+                    'description' => '<p>Japanese details</p>',
+                ],
+            ],
             'screenshot_uploads' => [
                 UploadedFile::fake()->image('screenshot-one.jpg', 1280, 720),
                 UploadedFile::fake()->image('screenshot-two.jpg', 1280, 720),
@@ -57,6 +69,8 @@ test('an administrator can create a game with a release and download link', func
     expect($game->cover_path)->not->toBeNull()
         ->and($game->screenshots)->toHaveCount(2)
         ->and($game->screenshots->first()->path)->not->toBeNull()
+        ->and($game->detailTranslations)->toHaveCount(2)
+        ->and($game->detailTranslations->pluck('language_id')->all())->toBe([$english->id, $japanese->id])
         ->and($game->releases)->toHaveCount(1)
         ->and($game->releases->first()->title)->toBe('Windows Chinese package')
         ->and($game->releases->first()->platforms)->toHaveCount(1)
@@ -68,6 +82,41 @@ test('an administrator can create a game with a release and download link', func
 
     Storage::disk(Media::diskName())->assertExists($game->cover_path);
     Storage::disk(Media::diskName())->assertExists($game->screenshots->first()->path);
+});
+
+test('an administrator can replace localized details while editing a game', function () {
+    $this->actingAs(User::factory()->admin()->create());
+    $english = Language::factory()->create(['name' => 'English', 'code' => 'en']);
+    $japanese = Language::factory()->create(['name' => 'Japanese', 'code' => 'ja']);
+    $game = Game::factory()->create();
+
+    $game->detailTranslations()->create([
+        'language_id' => $english->id,
+        'description' => '<p>Old English details</p>',
+        'sort_order' => 0,
+    ]);
+
+    Livewire::test(EditGame::class, ['record' => $game->getRouteKey()])
+        ->fillForm([
+            'detailTranslations' => [
+                [
+                    'language_id' => $japanese->id,
+                    'description' => '<p>Japanese details</p>',
+                ],
+                [
+                    'language_id' => $english->id,
+                    'description' => '<p>Updated English details</p>',
+                ],
+            ],
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $game->refresh()->load('detailTranslations');
+
+    expect($game->detailTranslations)->toHaveCount(2)
+        ->and($game->detailTranslations->pluck('language_id')->all())->toBe([$japanese->id, $english->id])
+        ->and($game->detailTranslations->last()->description)->toContain('Updated English details');
 });
 
 test('an administrator can create a game with multiple screenshots at once', function () {

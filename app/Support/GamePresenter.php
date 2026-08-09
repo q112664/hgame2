@@ -113,14 +113,19 @@ class GamePresenter
         bool $includeDescription = true,
         bool $includeTags = true,
     ): array {
+        $description = $includeDescription
+            ? str($game->description ?? '')->sanitizeHtml()->toString()
+            : '';
+
         return [
             ...self::card($game, includeTags: $includeTags),
             // Hero uses the card thumbnail; cover is the full-size original for the lightbox.
             'cover' => self::mediaUrl($game->cover_path ?: $game->cover_url),
             'subtitle' => $game->subtitle,
-            'description' => $includeDescription
-                ? str($game->description ?? '')->sanitizeHtml()->toString()
-                : '',
+            'description' => $description,
+            'detailVersions' => $includeDescription
+                ? self::detailVersions($game, $description)
+                : [],
             'developer' => $game->developer ?? 'Unknown',
             'source' => GameSource::present(
                 $game->source_name,
@@ -173,6 +178,46 @@ class GamePresenter
                     ->all()
                 : [],
         ];
+    }
+
+    /**
+     * @return list<array{code: string, name: string, html: string, isDefault: bool}>
+     */
+    private static function detailVersions(Game $game, string $defaultDescription): array
+    {
+        $versions = [];
+
+        if (filled($defaultDescription)) {
+            $versions[] = [
+                'code' => 'original',
+                'name' => 'Original',
+                'html' => $defaultDescription,
+                'isDefault' => true,
+            ];
+        }
+
+        if ($game->relationLoaded('detailTranslations')) {
+            foreach ($game->detailTranslations as $translation) {
+                $language = $translation->language;
+
+                if ($language === null) {
+                    continue;
+                }
+
+                $versions[] = [
+                    'code' => $language->code,
+                    'name' => $language->name,
+                    'html' => str($translation->description ?? '')->sanitizeHtml()->toString(),
+                    'isDefault' => false,
+                ];
+            }
+        }
+
+        if ($versions !== [] && ! collect($versions)->contains('isDefault', true)) {
+            $versions[0]['isDefault'] = true;
+        }
+
+        return $versions;
     }
 
     private static function cardThumbnailUrl(Game $game): string

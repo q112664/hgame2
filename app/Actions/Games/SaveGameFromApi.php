@@ -150,6 +150,55 @@ class SaveGameFromApi
                 }
             }
 
+            /** @var list<array{language_id: int, description: string|null, sort_order: int}>|null $detailTranslations */
+            $detailTranslations = null;
+
+            if (array_key_exists('detail_versions', $data)) {
+                $detailTranslations = [];
+                $seenLanguageIds = [];
+
+                if ($isUpdate) {
+                    $existing->loadMissing('detailTranslations');
+
+                    foreach ($existing->detailTranslations as $oldTranslation) {
+                        $obsoletePaths = [
+                            ...$obsoletePaths,
+                            ...$this->pathsFromDescription((string) ($oldTranslation->description ?? '')),
+                        ];
+                    }
+                }
+
+                foreach (array_values($data['detail_versions'] ?? []) as $sortOrder => $translationData) {
+                    /** @var array<string, mixed> $translationData */
+                    $language = $this->resolveLanguage(
+                        trim((string) ($translationData['language'] ?? '')),
+                        'detail_versions',
+                    );
+
+                    if (in_array($language->id, $seenLanguageIds, true)) {
+                        throw ValidationException::withMessages([
+                            'detail_versions' => "Language [{$language->name}] may only appear once.",
+                        ]);
+                    }
+
+                    $seenLanguageIds[] = $language->id;
+                    $descriptionImport = $this->descriptionMediaImporter->import(
+                        isset($translationData['description'])
+                            ? (string) $translationData['description']
+                            : null,
+                        "detail_versions.{$sortOrder}.description",
+                    );
+                    $uploadedPaths = [...$uploadedPaths, ...$descriptionImport['paths']];
+                    $detailTranslations[] = [
+                        'language_id' => $language->id,
+                        'description' => $descriptionImport['html'],
+                        'sort_order' => isset($translationData['sort_order'])
+                            ? (int) $translationData['sort_order']
+                            : $sortOrder,
+                    ];
+                }
+            }
+
             /** @var list<array<string, mixed>>|null $releases */
             $releases = null;
 
@@ -190,6 +239,7 @@ class SaveGameFromApi
                 $coverPath,
                 $screenshotPaths,
                 $description,
+                $detailTranslations,
                 $releases,
             ): Game {
                 $attributes = [
@@ -257,6 +307,11 @@ class SaveGameFromApi
                     $this->createReleases($game, $releases);
                 }
 
+                if ($detailTranslations !== null) {
+                    $game->detailTranslations()->delete();
+                    $this->createDetailTranslations($game, $detailTranslations);
+                }
+
                 if (! $isUpdate) {
                     $game->forceFill(['downloads_updated_at' => null])->saveQuietly();
                 }
@@ -265,6 +320,7 @@ class SaveGameFromApi
                     'category',
                     'tags',
                     'screenshots',
+                    'detailTranslations.language',
                     'releases.platforms',
                     'releases.languages',
                     'releases.downloadLinks',
@@ -334,6 +390,16 @@ class SaveGameFromApi
         }
     }
 
+    /**
+     * @param  list<array{language_id: int, description: string|null, sort_order: int}>  $translations
+     */
+    private function createDetailTranslations(Game $game, array $translations): void
+    {
+        foreach ($translations as $translation) {
+            $game->detailTranslations()->create($translation);
+        }
+    }
+
     protected function resolveCategory(string $value): Category
     {
         $category = Category::query()
@@ -370,7 +436,7 @@ class SaveGameFromApi
         return $platform;
     }
 
-    protected function resolveLanguage(string $value): Language
+    protected function resolveLanguage(string $value, string $errorKey = 'releases'): Language
     {
         $language = Language::query()
             ->where(function ($query) use ($value): void {
@@ -381,7 +447,7 @@ class SaveGameFromApi
 
         if ($language === null) {
             throw ValidationException::withMessages([
-                'releases' => "Unknown language [{$value}].",
+                $errorKey => "Unknown language [{$value}].",
             ]);
         }
 

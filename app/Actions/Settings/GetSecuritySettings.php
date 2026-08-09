@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\SocialAuth;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Features;
+use Laravel\Passkeys\Passkey;
 
 class GetSecuritySettings
 {
@@ -47,7 +48,7 @@ class GetSecuritySettings
                     ->select(['id', 'name', 'credential', 'created_at', 'last_used_at'])
                     ->latest()
                     ->get()
-                    ->map(fn ($passkey) => [
+                    ->map(fn (Passkey $passkey): array => [
                         'id' => $passkey->id,
                         'name' => $passkey->name,
                         'authenticator' => $passkey->authenticator,
@@ -58,7 +59,7 @@ class GetSecuritySettings
                     ->all()
                 : [],
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
-            'socialConnections' => collect(SocialAuth::PROVIDERS)
+            'socialConnections' => array_values(collect(SocialAuth::PROVIDERS)
                 ->map(function (string $provider) use ($linkedAccounts, $unlinker, $user): ?array {
                     /** @var SocialAccount|null $account */
                     $account = $linkedAccounts->get($provider);
@@ -80,7 +81,7 @@ class GetSecuritySettings
                 })
                 ->filter()
                 ->values()
-                ->all(),
+                ->all()),
         ];
 
         if ($canManageTwoFactor) {

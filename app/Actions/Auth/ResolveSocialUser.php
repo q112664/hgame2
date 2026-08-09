@@ -6,6 +6,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Laravel\Socialite\AbstractUser;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 
 class ResolveSocialUser
@@ -98,6 +99,10 @@ class ResolveSocialUser
 
     private function isEmailVerified(string $provider, SocialiteUser $socialUser): bool
     {
+        if (! $socialUser instanceof AbstractUser) {
+            return false;
+        }
+
         $raw = $socialUser->getRaw();
 
         return match ($provider) {

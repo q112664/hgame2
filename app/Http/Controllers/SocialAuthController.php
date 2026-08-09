@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -21,7 +22,7 @@ class SocialAuthController extends Controller
 
     public const string INTENT_LINK = 'link';
 
-    public function redirect(Request $request, string $provider): RedirectResponse
+    public function redirect(Request $request, string $provider): SymfonyRedirectResponse
     {
         $this->ensureProviderEnabled($provider);
 
@@ -31,7 +32,7 @@ class SocialAuthController extends Controller
         return SocialAuth::driver($provider)->redirect();
     }
 
-    public function linkRedirect(Request $request, string $provider): RedirectResponse
+    public function linkRedirect(Request $request, string $provider): SymfonyRedirectResponse
     {
         $this->ensureProviderEnabled($provider);
 

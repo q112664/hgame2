@@ -162,7 +162,7 @@ test('details tab exposes sanitized language versions in configured order', func
         ->assertInertia(fn (Assert $page) => $page
             ->has('resource.detailVersions', 3)
             ->where('resource.detailVersions.0.code', 'original')
-            ->where('resource.detailVersions.0.name', 'Original')
+            ->where('resource.detailVersions.0.name', 'English')
             ->where('resource.detailVersions.0.isDefault', true)
             ->where('resource.detailVersions.1.code', 'en')
             ->where('resource.detailVersions.1.name', 'English')

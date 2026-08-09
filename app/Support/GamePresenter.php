@@ -190,7 +190,7 @@ class GamePresenter
         if (filled($defaultDescription)) {
             $versions[] = [
                 'code' => 'original',
-                'name' => 'Original',
+                'name' => 'English',
                 'html' => $defaultDescription,
                 'isDefault' => true,
             ];

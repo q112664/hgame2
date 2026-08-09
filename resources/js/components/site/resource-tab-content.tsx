@@ -191,7 +191,7 @@ function ResourceDetailVersions({ resource }: ResourceDetailVersionsProps) {
             : [
                   {
                       code: 'original',
-                      name: 'Original',
+                      name: 'English',
                       html: resource.description,
                       isDefault: true,
                   },

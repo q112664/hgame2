@@ -151,7 +151,7 @@ class GameForm
                         Hidden::make('cover_url')->default(''),
                         MediaUpload::richEditor(
                             RichEditor::make('description')
-                                ->label('Original details'),
+                                ->label('English details'),
                             'games/content',
                         )
                             ->columnSpanFull(),

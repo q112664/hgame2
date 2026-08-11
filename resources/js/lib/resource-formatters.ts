@@ -32,7 +32,7 @@ export function formatViews(views: number): string {
 }
 
 /**
- * Site-wide calendar date: e.g. Jul/04/2026 (MMM/DD/YYYY).
+ * Site-wide calendar date in en-US medium style: e.g. Jul 4, 2026.
  * Accepts YYYY-MM-DD or any Date-parseable string.
  */
 export function formatDate(date: string): string {
@@ -45,13 +45,11 @@ export function formatDate(date: string): string {
         return date;
     }
 
-    const month = new Intl.DateTimeFormat(SITE_LOCALE, {
+    return new Intl.DateTimeFormat(SITE_LOCALE, {
         month: 'short',
+        day: 'numeric',
+        year: 'numeric',
     }).format(parsed);
-    const day = String(parsed.getDate()).padStart(2, '0');
-    const year = String(parsed.getFullYear());
-
-    return `${month}/${day}/${year}`;
 }
 
 /** Alias of formatDate for commercial release dates. */

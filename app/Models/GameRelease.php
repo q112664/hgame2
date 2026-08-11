@@ -82,7 +82,15 @@ class GameRelease extends Model
     {
         return $query
             ->available()
-            ->select(['id', 'game_id', 'user_id', 'version', 'sort_order'])
+            ->select([
+                'id',
+                'game_id',
+                'user_id',
+                'version',
+                'sort_order',
+                'published_at',
+                'created_at',
+            ])
             ->with([
                 'contributor:id,name,avatar',
                 'platforms:id,name,slug',

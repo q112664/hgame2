@@ -588,31 +588,35 @@ export default function ResourceShow({
                                 ) : null}
                             </div>
 
-                            {/* 4. Site meta (contributors / listing / updates on this site) */}
+                            {/* 4. Site meta — latest contributor; keep first listed + optional update */}
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
-                                {resource.contributors.map((contributor) => (
+                                {resource.contributors[0] ? (
                                     <Link
-                                        key={contributor.id}
-                                        href={userShow(contributor.id)}
+                                        href={userShow(
+                                            resource.contributors[0].id,
+                                        )}
                                         prefetch
                                         className={cn(
                                             'inline-flex min-w-0 max-w-40 items-center gap-1.5 rounded-sm',
                                             'text-foreground/90 transition-colors hover:text-foreground',
                                             'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
                                         )}
-                                        title={`Contributed by ${contributor.name}`}
+                                        title={`Contributed by ${resource.contributors[0].name}`}
                                     >
                                         <UserAvatar
-                                            user={contributor}
+                                            user={resource.contributors[0]}
                                             className="size-5"
                                             fallbackClassName="bg-muted text-[10px] text-muted-foreground"
                                         />
                                         <span className="truncate font-medium">
-                                            {contributor.name}
+                                            {resource.contributors[0].name}
                                         </span>
                                     </Link>
-                                ))}
-                                <span className="inline-flex items-center gap-1.5">
+                                ) : null}
+                                <span
+                                    className="inline-flex items-center gap-1.5"
+                                    title="Package listed"
+                                >
                                     <CalendarCheck
                                         className="size-3.5 shrink-0 opacity-70"
                                         aria-hidden
@@ -631,7 +635,10 @@ export default function ResourceShow({
                                     </time>
                                 </span>
                                 {resource.downloadsUpdatedAt ? (
-                                    <span className="inline-flex items-center gap-1.5">
+                                    <span
+                                        className="inline-flex items-center gap-1.5"
+                                        title="Downloads last updated"
+                                    >
                                         <RefreshCw
                                             className="size-3.5 shrink-0 opacity-70"
                                             aria-hidden

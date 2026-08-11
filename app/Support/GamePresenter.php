@@ -96,7 +96,7 @@ class GamePresenter
             ),
             'releaseDate' => self::dateString($game->release_date),
             'downloads' => $game->downloads_count,
-            /** Unique site contributors across available release packages. */
+            /** Latest package contributor for the hero (0–1 entries). */
             'contributors' => self::resourceContributors($game),
             'screenshots' => $includeScreenshots
                 ? $game->screenshots
@@ -152,6 +152,10 @@ class GamePresenter
     }
 
     /**
+     * Latest package contributor for the resource hero (at most one).
+     *
+     * Prefers the release with the newest published_at, then created_at, then id.
+     *
      * @return list<array{id: int, name: string, avatar: string|null}>
      */
     private static function resourceContributors(Game $game): array
@@ -160,25 +164,42 @@ class GamePresenter
             return [];
         }
 
-        return $game->releases
-            ->map(function (GameRelease $release): ?User {
+        $latest = $game->releases
+            ->filter(function (GameRelease $release): bool {
                 if (! $release->relationLoaded('contributor')) {
-                    return null;
+                    return false;
                 }
 
-                $contributor = $release->getRelation('contributor');
-
-                return $contributor instanceof User ? $contributor : null;
+                return $release->getRelation('contributor') instanceof User;
             })
-            ->filter()
-            ->unique(fn (User $user): int => $user->id)
-            ->values()
-            ->map(fn (User $user): array => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'avatar' => $user->avatar,
-            ])
-            ->all();
+            ->sort(function (GameRelease $left, GameRelease $right): int {
+                $leftTime = $left->published_at?->getTimestamp()
+                    ?? $left->created_at?->getTimestamp()
+                    ?? 0;
+                $rightTime = $right->published_at?->getTimestamp()
+                    ?? $right->created_at?->getTimestamp()
+                    ?? 0;
+
+                if ($leftTime !== $rightTime) {
+                    return $rightTime <=> $leftTime;
+                }
+
+                return $right->id <=> $left->id;
+            })
+            ->first();
+
+        if ($latest === null) {
+            return [];
+        }
+
+        /** @var User $contributor */
+        $contributor = $latest->getRelation('contributor');
+
+        return [[
+            'id' => $contributor->id,
+            'name' => $contributor->name,
+            'avatar' => $contributor->avatar,
+        ]];
     }
 
     /**

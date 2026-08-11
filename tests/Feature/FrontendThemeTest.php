@@ -194,7 +194,7 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain('platformBadgeClassName')
         ->toContain('languageBadgeClassName')
         ->toContain('fileSizeBadgeClassName')
-        ->toContain('dateBadgeClassName')
+        ->toContain('LikeButton')
         ->toContain('SiteEmptyState')
         ->not->toContain('downloadButtonPalettes');
 
@@ -216,10 +216,11 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain("import { SITE_LOCALE } from '@/lib/datetime';")
         ->toContain('Intl.DateTimeFormat(SITE_LOCALE')
         ->toContain("month: 'short'")
+        ->toContain("day: 'numeric'")
+        ->toContain("year: 'numeric'")
         ->toContain('export function formatDate')
         ->toContain('export function formatReleaseDate')
-        ->toContain('MMM/DD/YYYY')
-        ->toContain('`${month}/${day}/${year}`');
+        ->toContain('Jul 4, 2026');
 
     expect($filesystem->get(resource_path('js/lib/datetime.ts')))
         ->toContain("export const SITE_LOCALE = 'en-US';");
@@ -549,22 +550,19 @@ test('download release items use the compact responsive layout', function () {
         ->toContain('flex flex-col gap-2.5')
         ->toContain('releaseFooterClassName')
         ->toContain('releaseFooterInnerClassName')
-        ->toContain('flex min-w-0 flex-wrap items-center gap-1.5')
         ->toContain('size="sm"')
         ->toContain('downloadButtonClassName')
-        ->toContain('aria-label="Download links"')
-        ->toContain('CloudDownload')
+        ->toContain('aria-label="Package actions"')
+        ->toContain('LikeButton')
         ->toContain('Download')
         ->toContain('release.contributor')
         ->toContain('UserAvatar')
-        ->toContain('contributorBadgeClassName')
         ->toContain('Contributed by')
         ->toContain('release.contributor.name')
-        ->toContain('dateBadgeClassName')
-        ->toContain('CalendarDays')
-        ->toContain('RefreshCw')
         ->toContain('resource.downloadsUpdatedAt')
         ->toContain('Downloads last updated')
+        ->toContain('sm:hidden')
+        ->toContain('hidden shrink-0 sm:inline-flex')
         ->not->toContain('link.contributor')
         ->not->toContain('link.label')
         ->not->toContain('p-3 sm:p-4')
@@ -576,7 +574,7 @@ test('download release items use the compact responsive layout', function () {
         ->toContain("'h-8 min-w-0 gap-1.5")
         ->toContain('bg-primary')
         ->toContain('hover:bg-primary/90')
-        ->toContain('contributorBadgeClassName')
+        ->toContain('likeButtonClassName')
         ->not->toContain('animate-heartbeat');
 });
 

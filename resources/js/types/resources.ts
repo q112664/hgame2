@@ -85,7 +85,7 @@ export type GameDetail = GameCard & {
     releaseDate: string | null;
     downloadsUpdatedAt: string | null;
     downloads: number;
-    /** Unique site contributors across available download packages. */
+    /** Latest package contributor for the hero (at most one). */
     contributors: GameReleaseContributor[];
     screenshots: string[];
     releases: GameRelease[];

@@ -59,7 +59,7 @@ test('resource downloads expose contributor avatar and name on releases', functi
         );
 });
 
-test('resource hero exposes unique contributors on every tab', function () {
+test('resource hero exposes only the latest package contributor', function () {
     $game = Game::factory()->create();
     $alice = User::factory()->create(['name' => 'Alice']);
     $bob = User::factory()->create(['name' => 'Bob']);
@@ -67,14 +67,17 @@ test('resource hero exposes unique contributors on every tab', function () {
     $first = GameRelease::factory()->for($game)->create([
         'user_id' => $alice->id,
         'sort_order' => 0,
+        'published_at' => now()->subDays(3),
     ]);
     $second = GameRelease::factory()->for($game)->create([
         'user_id' => $bob->id,
         'sort_order' => 1,
+        'published_at' => now()->subDay(),
     ]);
     $duplicate = GameRelease::factory()->for($game)->create([
         'user_id' => $alice->id,
         'sort_order' => 2,
+        'published_at' => now()->subDays(2),
     ]);
 
     GameDownloadLink::factory()->for($first, 'release')->create();
@@ -84,11 +87,9 @@ test('resource hero exposes unique contributors on every tab', function () {
     $this->get(route('resources.details', $game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('resource.contributors', 2)
-            ->where('resource.contributors.0.id', $alice->id)
-            ->where('resource.contributors.0.name', 'Alice')
-            ->where('resource.contributors.1.id', $bob->id)
-            ->where('resource.contributors.1.name', 'Bob')
+            ->has('resource.contributors', 1)
+            ->where('resource.contributors.0.id', $bob->id)
+            ->where('resource.contributors.0.name', 'Bob')
         );
 });
 

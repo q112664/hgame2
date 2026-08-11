@@ -394,7 +394,7 @@ test('recent resource updates only include games with download updates and order
         ]);
 });
 
-test('home exposes separate new listings and download-updated resources', function () {
+test('home does not include an updated resources strip', function () {
     $this->game->updateQuietly([
         'downloads_updated_at' => now()->subHour(),
     ]);
@@ -404,8 +404,7 @@ test('home exposes separate new listings and download-updated resources', functi
         ->assertInertia(fn (Assert $page) => $page
             ->component('welcome')
             ->has('resources')
-            ->has('updatedResources')
-            ->where('updatedResources.0.id', $this->game->slug)
+            ->missing('updatedResources')
         );
 });
 

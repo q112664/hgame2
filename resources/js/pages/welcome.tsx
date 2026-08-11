@@ -14,8 +14,6 @@ type Props = {
     popular: GameCard[];
     resources: GameCard[];
     hasMoreResources: boolean;
-    /** Resources with real download/package updates (separate from new listings). */
-    updatedResources?: GameCard[];
     pageSeo?: PageSeoData | null;
 };
 
@@ -24,7 +22,6 @@ export default function Welcome({
     popular = [],
     resources,
     hasMoreResources = false,
-    updatedResources = [],
     pageSeo,
 }: Props) {
     const { siteTitle } = usePage().props;
@@ -53,18 +50,6 @@ export default function Welcome({
                             : null
                     }
                 />
-                {updatedResources.length > 0 ? (
-                    <LatestResources
-                        id="updated"
-                        title="Updated"
-                        resources={updatedResources}
-                        dateField="downloadsUpdatedAt"
-                        emptyMessage="No download updates yet."
-                        viewAllHref={
-                            resourcesIndex({ query: { sort: 'updated' } }).url
-                        }
-                    />
-                ) : null}
             </div>
         </SiteLayout>
     );

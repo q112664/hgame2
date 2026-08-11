@@ -135,12 +135,12 @@ export const releaseFooterClassName = cn(
 );
 
 /**
- * Author block (left) + download CTAs (right).
- * Always a single horizontal strip; py gives room so two-line meta is not clipped.
+ * Author block + package actions.
+ * Mobile: stacked (author above, actions below). sm+: single horizontal strip.
  */
 export const releaseFooterInnerClassName = cn(
-    'flex flex-row items-center justify-between gap-3 px-4 py-3',
-    'sm:gap-4 sm:px-5',
+    'flex flex-col gap-3 px-4 py-3',
+    'sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5',
 );
 
 /** Primary download CTA on resource hero / confirm pages. */

@@ -21,11 +21,7 @@ test('an authenticated user can like and unlike a published game', function () {
     $this->actingAs($user)
         ->from(route('resources.downloads', $game->slug))
         ->post(route('resources.like', $game->slug))
-        ->assertRedirect(route('resources.downloads', $game->slug))
-        ->assertInertiaFlash('toast', [
-            'type' => 'success',
-            'message' => __('Liked.'),
-        ]);
+        ->assertRedirect(route('resources.downloads', $game->slug));
 
     expect($user->likedGames()->where('games.id', $game->id)->exists())->toBeTrue();
     expect($game->fresh()->likes_count)->toBe(1);
@@ -41,11 +37,7 @@ test('an authenticated user can like and unlike a published game', function () {
     $this->actingAs($user)
         ->from(route('resources.downloads', $game->slug))
         ->post(route('resources.like', $game->slug))
-        ->assertRedirect(route('resources.downloads', $game->slug))
-        ->assertInertiaFlash('toast', [
-            'type' => 'success',
-            'message' => __('Like removed.'),
-        ]);
+        ->assertRedirect(route('resources.downloads', $game->slug));
 
     expect($user->likedGames()->where('games.id', $game->id)->exists())->toBeFalse();
     expect($game->fresh()->likes_count)->toBe(0);

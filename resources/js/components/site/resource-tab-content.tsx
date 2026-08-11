@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 import {
     ChevronDown,
     ChevronUp,
-    CloudDownload,
+    Download,
     HardDrive,
     Images,
     Info,
@@ -451,103 +451,109 @@ export function ResourceTabContent({
                                             }
                                         >
                                             {/*
-                                              Compact contributor block (height ≈ download btn h-8):
-                                              [avatar]  Nickname
-                                                        ↻ Updated date
+                                              Mobile: author left + like right on one row,
+                                              download buttons full-width below.
+                                              sm+: author left, like + downloads on the right.
                                             */}
-                                            {release.contributor ? (
-                                                <Link
-                                                    href={userShow(
-                                                        release.contributor.id,
-                                                    )}
-                                                    prefetch
-                                                    className={cn(
-                                                        'inline-flex max-w-[min(100%,14rem)] min-w-0 items-center gap-2',
-                                                        'rounded-md transition-opacity hover:opacity-85',
-                                                        'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-                                                    )}
-                                                    title={`Contributed by ${release.contributor.name}`}
-                                                >
-                                                    <UserAvatar
-                                                        user={
+                                            <div className="flex w-full min-w-0 items-center justify-between gap-2 sm:w-auto sm:justify-start">
+                                                {release.contributor ? (
+                                                    <Link
+                                                        href={userShow(
                                                             release.contributor
-                                                        }
-                                                        className="size-8"
-                                                        fallbackClassName="bg-primary/15 text-xs text-primary"
-                                                    />
-                                                    <span className="flex min-w-0 flex-col justify-center gap-0.5 py-px">
-                                                        <span className="truncate text-sm leading-4 font-medium text-foreground">
-                                                            {
-                                                                release
-                                                                    .contributor
-                                                                    .name
-                                                            }
-                                                        </span>
-                                                        <span
-                                                            className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
-                                                            title={
-                                                                activityIsUpdate
-                                                                    ? 'Downloads last updated'
-                                                                    : 'Package listed'
-                                                            }
-                                                        >
-                                                            <span className="shrink-0">
-                                                                {activityIsUpdate
-                                                                    ? 'Updated'
-                                                                    : 'Listed'}
-                                                            </span>
-                                                            <time
-                                                                dateTime={
-                                                                    activityDate ??
-                                                                    undefined
-                                                                }
-                                                                className="min-w-0 truncate tabular-nums"
-                                                            >
-                                                                {activityDate
-                                                                    ? formatDate(
-                                                                          activityDate,
-                                                                      )
-                                                                    : 'Unscheduled'}
-                                                            </time>
-                                                        </span>
-                                                    </span>
-                                                </Link>
-                                            ) : (
-                                                <span
-                                                    className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
-                                                    title={
-                                                        activityIsUpdate
-                                                            ? 'Downloads last updated'
-                                                            : 'Package listed'
-                                                    }
-                                                >
-                                                    <span className="shrink-0">
-                                                        {activityIsUpdate
-                                                            ? 'Updated'
-                                                            : 'Listed'}
-                                                    </span>
-                                                    <time
-                                                        dateTime={
-                                                            activityDate ??
-                                                            undefined
-                                                        }
-                                                        className="tabular-nums"
+                                                                .id,
+                                                        )}
+                                                        prefetch
+                                                        className={cn(
+                                                            'inline-flex max-w-full min-w-0 items-center gap-2 sm:max-w-[min(100%,14rem)]',
+                                                            'rounded-md transition-opacity hover:opacity-85',
+                                                            'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                                                        )}
+                                                        title={`Contributed by ${release.contributor.name}`}
                                                     >
-                                                        {activityDate
-                                                            ? formatDate(
-                                                                  activityDate,
-                                                              )
-                                                            : 'Unscheduled'}
-                                                    </time>
-                                                </span>
-                                            )}
+                                                        <UserAvatar
+                                                            user={
+                                                                release.contributor
+                                                            }
+                                                            className="size-8"
+                                                            fallbackClassName="bg-primary/15 text-xs text-primary"
+                                                        />
+                                                        <span className="flex min-w-0 flex-col justify-center gap-0.5 py-px">
+                                                            <span className="truncate text-sm leading-4 font-medium text-foreground">
+                                                                {
+                                                                    release
+                                                                        .contributor
+                                                                        .name
+                                                                }
+                                                            </span>
+                                                            <span
+                                                                className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
+                                                                title={
+                                                                    activityIsUpdate
+                                                                        ? 'Downloads last updated'
+                                                                        : 'Package listed'
+                                                                }
+                                                            >
+                                                                <span className="shrink-0">
+                                                                    {activityIsUpdate
+                                                                        ? 'Updated'
+                                                                        : 'Listed'}
+                                                                </span>
+                                                                <time
+                                                                    dateTime={
+                                                                        activityDate ??
+                                                                        undefined
+                                                                    }
+                                                                    className="min-w-0 truncate tabular-nums"
+                                                                >
+                                                                    {activityDate
+                                                                        ? formatDate(
+                                                                              activityDate,
+                                                                          )
+                                                                        : 'Unscheduled'}
+                                                                </time>
+                                                            </span>
+                                                        </span>
+                                                    </Link>
+                                                ) : (
+                                                    <span
+                                                        className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
+                                                        title={
+                                                            activityIsUpdate
+                                                                ? 'Downloads last updated'
+                                                                : 'Package listed'
+                                                        }
+                                                    >
+                                                        <span className="shrink-0">
+                                                            {activityIsUpdate
+                                                                ? 'Updated'
+                                                                : 'Listed'}
+                                                        </span>
+                                                        <time
+                                                            dateTime={
+                                                                activityDate ??
+                                                                undefined
+                                                            }
+                                                            className="tabular-nums"
+                                                        >
+                                                            {activityDate
+                                                                ? formatDate(
+                                                                      activityDate,
+                                                                  )
+                                                                : 'Unscheduled'}
+                                                        </time>
+                                                    </span>
+                                                )}
+                                                <LikeButton
+                                                    isLiked={isLiked}
+                                                    likesCount={likesCount}
+                                                    isToggling={isTogglingLike}
+                                                    onToggle={toggleLike}
+                                                    className="shrink-0 sm:hidden"
+                                                />
+                                            </div>
 
                                             <div
-                                                className={cn(
-                                                    'flex shrink-0 flex-wrap items-center justify-end gap-2',
-                                                    multiLinks &&
-                                                        'max-w-[min(100%,22rem)]',
-                                                )}
+                                                className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-2"
                                                 role="group"
                                                 aria-label="Package actions"
                                             >
@@ -556,6 +562,7 @@ export function ResourceTabContent({
                                                     likesCount={likesCount}
                                                     isToggling={isTogglingLike}
                                                     onToggle={toggleLike}
+                                                    className="hidden shrink-0 sm:inline-flex"
                                                 />
                                                 {hasLinks
                                                     ? release.downloadLinks.map(
@@ -565,9 +572,10 @@ export function ResourceTabContent({
                                                                   asChild
                                                                   variant="default"
                                                                   size="sm"
-                                                                  className={
-                                                                      downloadButtonClassName
-                                                                  }
+                                                                  className={cn(
+                                                                      downloadButtonClassName,
+                                                                      'w-full sm:w-auto',
+                                                                  )}
                                                               >
                                                                   <Link
                                                                       href={downloadLinkShow(
@@ -581,13 +589,7 @@ export function ResourceTabContent({
                                                                               : 'Download'
                                                                       }
                                                                   >
-                                                                      <CloudDownload
-                                                                          data-icon="inline-start"
-                                                                          className="size-4"
-                                                                          strokeWidth={
-                                                                              2.25
-                                                                          }
-                                                                      />
+                                                                      <Download data-icon="inline-start" />
                                                                       <span className="truncate">
                                                                           Download
                                                                       </span>

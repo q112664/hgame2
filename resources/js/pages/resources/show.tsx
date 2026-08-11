@@ -6,6 +6,7 @@ import {
     Download,
     Eye,
     Pencil,
+    RefreshCw,
     XIcon,
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
@@ -45,6 +46,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { UserAvatar } from '@/components/user-avatar';
 import { useFavorite } from '@/hooks/use-favorite';
 import { useImageLoadState } from '@/hooks/use-image-load-state';
 import { SiteLayout } from '@/layouts/site-layout';
@@ -66,6 +68,7 @@ import {
     screenshots as resourceScreenshots,
 } from '@/routes/resources';
 import { seen as markDownloadsSeen } from '@/routes/resources/downloads';
+import { show as userShow } from '@/routes/users';
 import type { BreadcrumbItem } from '@/types';
 import type { GameCard, GameDetail } from '@/types/resources';
 
@@ -585,8 +588,30 @@ export default function ResourceShow({
                                 ) : null}
                             </div>
 
-                            {/* 4. Site meta (listing on this site) */}
+                            {/* 4. Site meta (contributors / listing / updates on this site) */}
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+                                {resource.contributors.map((contributor) => (
+                                    <Link
+                                        key={contributor.id}
+                                        href={userShow(contributor.id)}
+                                        prefetch
+                                        className={cn(
+                                            'inline-flex min-w-0 max-w-40 items-center gap-1.5 rounded-sm',
+                                            'text-foreground/90 transition-colors hover:text-foreground',
+                                            'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                                        )}
+                                        title={`Contributed by ${contributor.name}`}
+                                    >
+                                        <UserAvatar
+                                            user={contributor}
+                                            className="size-5"
+                                            fallbackClassName="bg-muted text-[10px] text-muted-foreground"
+                                        />
+                                        <span className="truncate font-medium">
+                                            {contributor.name}
+                                        </span>
+                                    </Link>
+                                ))}
                                 <span className="inline-flex items-center gap-1.5">
                                     <CalendarCheck
                                         className="size-3.5 shrink-0 opacity-70"
@@ -605,15 +630,35 @@ export default function ResourceShow({
                                             : '—'}
                                     </time>
                                 </span>
-                                <span className="inline-flex items-center gap-1.5">
+                                {resource.downloadsUpdatedAt ? (
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <RefreshCw
+                                            className="size-3.5 shrink-0 opacity-70"
+                                            aria-hidden
+                                        />
+                                        <span className="text-muted-foreground/80">
+                                            Updated
+                                        </span>
+                                        <time
+                                            dateTime={
+                                                resource.downloadsUpdatedAt
+                                            }
+                                        >
+                                            {formatDate(
+                                                resource.downloadsUpdatedAt,
+                                            )}
+                                        </time>
+                                    </span>
+                                ) : null}
+                                <span
+                                    className="inline-flex items-center gap-1.5"
+                                    title="Views"
+                                >
                                     <Eye
                                         className="size-3.5 shrink-0 opacity-70"
                                         aria-hidden
                                     />
                                     {formatViews(resource.views)}
-                                    <span className="text-muted-foreground/80">
-                                        views
-                                    </span>
                                 </span>
                             </div>
 

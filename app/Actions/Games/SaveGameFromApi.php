@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Game;
 use App\Models\Language;
 use App\Models\Platform;
+use App\Models\User;
 use App\Support\DescriptionMediaImporter;
 use App\Support\MediaDeletionService;
 use App\Support\MediaThumbnail;
@@ -321,6 +322,7 @@ class SaveGameFromApi
                     'tags',
                     'screenshots',
                     'detailTranslations.language',
+                    'releases.contributor',
                     'releases.platforms',
                     'releases.languages',
                     'releases.downloadLinks',
@@ -348,7 +350,13 @@ class SaveGameFromApi
     private function createReleases(Game $game, array $releases): void
     {
         foreach ($releases as $sortOrder => $releaseData) {
+            $contributorId = $this->resolveContributorId(
+                isset($releaseData['contributor']) ? (string) $releaseData['contributor'] : null,
+                "releases.{$sortOrder}.contributor",
+            );
+
             $release = $game->releases()->create([
+                'user_id' => $contributorId,
                 'title' => $releaseData['title'],
                 'version' => $releaseData['version'] ?? null,
                 'file_size' => $releaseData['file_size'] ?? null,
@@ -388,6 +396,25 @@ class SaveGameFromApi
                 ]);
             }
         }
+    }
+
+    protected function resolveContributorId(?string $email, string $errorKey): ?int
+    {
+        if ($email === null || trim($email) === '') {
+            return null;
+        }
+
+        $user = User::query()
+            ->whereRaw('lower(email) = ?', [Str::lower(trim($email))])
+            ->first();
+
+        if ($user === null) {
+            throw ValidationException::withMessages([
+                $errorKey => "Unknown contributor email [{$email}].",
+            ]);
+        }
+
+        return $user->id;
     }
 
     /**

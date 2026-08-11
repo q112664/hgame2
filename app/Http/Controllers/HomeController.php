@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Games\ListRecentResourceUpdates;
 use App\Models\Game;
 use App\Models\Setting;
 use App\Support\GamePresenter;
@@ -16,7 +17,7 @@ class HomeController extends Controller
 
     private const int PopularLimit = 8;
 
-    public function __invoke(): Response
+    public function __invoke(ListRecentResourceUpdates $listRecentResourceUpdates): Response
     {
         $latestGames = Game::query()
             ->published()
@@ -39,10 +40,13 @@ class HomeController extends Controller
                     ->limit(self::PopularLimit)
                     ->get(),
             ),
+            // New listings on this site (published_at) — not download updates.
             'resources' => $this->presentCards(
                 $latestGames->take(self::HomeSectionLimit),
             ),
             'hasMoreResources' => $latestGames->count() > self::HomeSectionLimit,
+            // Separate strip: resources with real download/package updates.
+            'updatedResources' => $listRecentResourceUpdates(self::HomeSectionLimit),
         ]);
     }
 

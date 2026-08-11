@@ -76,6 +76,7 @@ class GameController extends Controller
             'category',
             'tags',
             'screenshots',
+            'releases.contributor',
             'releases.platforms',
             'releases.languages',
             'releases.downloadLinks',
@@ -195,6 +196,12 @@ class GameController extends Controller
                     'description' => $release->description,
                     'is_active' => (bool) $release->is_active,
                     'published_at' => $release->published_at?->toIso8601String(),
+                    'contributor' => $release->relationLoaded('contributor') && $release->contributor !== null
+                        ? [
+                            'name' => $release->contributor->name,
+                            'email' => $release->contributor->email,
+                        ]
+                        : null,
                     'download_links' => $release->downloadLinks
                         ->pluck('url')
                         ->values()

@@ -145,6 +145,53 @@ test('publishing rejects unknown categories and platforms', function () {
         ->assertJsonValidationErrors(['releases']);
 });
 
+test('publishing can bind a release contributor by unique email', function () {
+    Sanctum::actingAs($this->admin);
+
+    $contributor = User::factory()->create([
+        'name' => 'MirrorFox',
+        'email' => 'mirrorfox@example.com',
+    ]);
+
+    $this->postJson('/api/v1/games', validGamePayload([
+        'releases' => [[
+            'title' => 'Windows Chinese package',
+            'platforms' => ['Windows'],
+            'languages' => ['Chinese'],
+            'version' => '1.0',
+            'file_size' => '5.4 GB',
+            'contributor' => 'MirrorFox@example.com',
+            'download_links' => [
+                'https://example.com/game.zip',
+            ],
+        ]],
+    ]))
+        ->assertCreated()
+        ->assertJsonPath('data.releases.0.contributor.name', 'MirrorFox')
+        ->assertJsonPath('data.releases.0.contributor.email', 'mirrorfox@example.com');
+
+    $game = Game::query()->where('slug', 'senren-banka')->firstOrFail();
+
+    expect($game->releases->first()->user_id)->toBe($contributor->id)
+        ->and($game->releases->first()->contributor?->email)->toBe('mirrorfox@example.com');
+});
+
+test('publishing rejects unknown contributor emails', function () {
+    Sanctum::actingAs($this->admin);
+
+    $this->postJson('/api/v1/games', validGamePayload([
+        'releases' => [[
+            'title' => 'Windows Chinese package',
+            'platforms' => ['Windows'],
+            'languages' => ['Chinese'],
+            'contributor' => 'missing@example.com',
+            'download_links' => ['https://example.com/game.zip'],
+        ]],
+    ]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['releases.0.contributor']);
+});
+
 test('publishing rejects duplicate slugs', function () {
     Sanctum::actingAs($this->admin);
 

@@ -111,6 +111,12 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
         return $this->hasMany(GameComment::class);
     }
 
+    /** @return HasMany<GameRelease, $this> */
+    public function contributedReleases(): HasMany
+    {
+        return $this->hasMany(GameRelease::class);
+    }
+
     /** @return HasMany<SocialAccount, $this> */
     public function socialAccounts(): HasMany
     {

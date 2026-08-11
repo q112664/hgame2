@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Games\Schemas;
 
 use App\Filament\Forms\Components\ScreenshotsFileUpload;
 use App\GameStatus;
+use App\Models\User;
 use App\Support\GameSource;
 use App\Support\MediaUpload;
 use App\Support\TagImporter;
@@ -20,6 +21,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -221,6 +223,7 @@ class GameForm
                                     ->required()
                                     ->maxLength(255)
                                     ->columnSpanFull(),
+                                self::contributorSelect(),
                                 MediaUpload::richEditor(
                                     RichEditor::make('description'),
                                     'games/content',
@@ -287,6 +290,38 @@ class GameForm
         $slug = Str::slug((string) $title, language: null);
 
         return $slug !== '' ? $slug : 'game-'.Str::lower(Str::random(8));
+    }
+
+    /**
+     * Contributors are site users. Email is unique; display names may collide.
+     */
+    public static function contributorSelect(): Select
+    {
+        return Select::make('user_id')
+            ->label('Contributor')
+            ->relationship(
+                name: 'contributor',
+                titleAttribute: 'email',
+                modifyQueryUsing: fn (Builder $query): Builder => $query->orderBy('email'),
+            )
+            ->getOptionLabelFromRecordUsing(
+                fn (User $record): string => self::contributorOptionLabel($record),
+            )
+            ->searchable(['email', 'name'])
+            ->preload()
+            ->nullable()
+            ->helperText('Search by email (unique). Nickname may not be unique.');
+    }
+
+    public static function contributorOptionLabel(User $user): string
+    {
+        $name = trim((string) $user->name);
+
+        if ($name === '') {
+            return (string) $user->email;
+        }
+
+        return $name.' · '.$user->email;
     }
 
     /**

@@ -10,31 +10,21 @@ class ListRecentResourceUpdates
     public const LIMIT = 8;
 
     /**
+     * Published games whose downloads were updated (separate from “new listings”).
+     *
      * @return list<array<string, mixed>>
      */
     public function __invoke(int $limit = self::LIMIT): array
     {
         $updates = Game::query()
-            ->select([
-                'id',
-                'slug',
-                'title',
-                'subtitle',
-                'developer',
-                'cover_url',
-                'cover_path',
-                'published_at',
-                'downloads_updated_at',
-            ])
             ->published()
-            ->with([
-                'releases' => fn ($releases) => $releases->withCardSummary(),
-            ])
-            ->orderByRaw('COALESCE(downloads_updated_at, published_at) DESC')
+            ->whereNotNull('downloads_updated_at')
+            ->withCardData()
+            ->orderByDesc('downloads_updated_at')
             ->orderByDesc('id')
             ->limit($limit)
             ->get()
-            ->map(fn (Game $game): array => GamePresenter::recentUpdate($game))
+            ->map(fn (Game $game): array => GamePresenter::card($game))
             ->all();
 
         return array_values($updates);

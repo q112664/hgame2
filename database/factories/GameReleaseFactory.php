@@ -35,6 +35,7 @@ class GameReleaseFactory extends Factory
     {
         return [
             'game_id' => Game::factory(),
+            'user_id' => null,
             'platform_id' => Platform::factory(),
             'language_id' => Language::factory(),
             'title' => fake()->sentence(3),

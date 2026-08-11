@@ -11,7 +11,7 @@ type Props = {
     title: string;
     id?: string;
     emptyMessage?: string;
-    dateField?: 'publishedAt' | 'releaseDate';
+    dateField?: 'publishedAt' | 'releaseDate' | 'downloadsUpdatedAt';
     viewAllHref?: string | null;
     nextPageHref?: string | null;
 };

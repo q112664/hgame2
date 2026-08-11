@@ -12,6 +12,7 @@ use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SocialAuthController;
+use App\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/robots.txt', RobotsController::class)->name('robots');
@@ -34,6 +35,10 @@ Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'
 
 Route::get('/docs', [DocController::class, 'index'])->name('docs.index');
 Route::get('/docs/{doc}', [DocController::class, 'show'])->name('docs.show');
+
+Route::get('/users/{user}', [UserProfileController::class, 'show'])
+    ->name('users.show')
+    ->whereNumber('user');
 
 Route::get('/go/{downloadLink}', [DownloadLinkController::class, 'show'])
     ->name('download-links.show')

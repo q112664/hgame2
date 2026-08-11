@@ -218,6 +218,10 @@ test('updating releases replaces the previous set', function () {
     Sanctum::actingAs($this->admin);
 
     $slug = createGameViaApi();
+    $contributor = User::factory()->create([
+        'name' => 'PackUploader',
+        'email' => 'uploader@example.com',
+    ]);
 
     $this->patchJson("/api/v1/games/{$slug}", [
         'releases' => [[
@@ -225,18 +229,22 @@ test('updating releases replaces the previous set', function () {
             'platforms' => ['Windows'],
             'languages' => ['Chinese'],
             'version' => '2.0',
+            'contributor' => 'uploader@example.com',
             'download_links' => ['https://example.com/game-v2.zip'],
         ]],
     ])
         ->assertOk()
         ->assertJsonPath('data.releases_count', 1)
         ->assertJsonPath('data.releases.0.title', 'Mac Chinese package')
-        ->assertJsonPath('data.releases.0.version', '2.0');
+        ->assertJsonPath('data.releases.0.version', '2.0')
+        ->assertJsonPath('data.releases.0.contributor.email', 'uploader@example.com')
+        ->assertJsonPath('data.releases.0.contributor.name', 'PackUploader');
 
     $game = Game::query()->where('slug', $slug)->firstOrFail();
 
     expect($game->releases)->toHaveCount(1)
         ->and($game->releases->first()->title)->toBe('Mac Chinese package')
+        ->and($game->releases->first()->user_id)->toBe($contributor->id)
         ->and($game->releases->first()->downloadLinks)->toHaveCount(1)
         ->and($game->releases->first()->downloadLinks->first()->url)->toBe('https://example.com/game-v2.zip');
 });

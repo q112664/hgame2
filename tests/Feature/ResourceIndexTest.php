@@ -250,6 +250,33 @@ test('resources index rejects unknown filter values', function () {
     ]))->assertSessionHasErrors('category');
 });
 
+test('resources index can sort by download updates without changing default latest', function () {
+    $olderListing = Game::factory()->create([
+        'title' => 'Older Listing',
+        'published_at' => now()->subDays(5),
+        'downloads_updated_at' => now()->subHour(),
+    ]);
+    $newerListing = Game::factory()->create([
+        'title' => 'Newer Listing',
+        'published_at' => now()->subDay(),
+        'downloads_updated_at' => null,
+    ]);
+
+    $this->get(route('resources.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.sort', 'latest')
+            ->where('resources.data.0.id', $newerListing->slug)
+        );
+
+    $this->get(route('resources.index', ['sort' => 'updated']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.sort', 'updated')
+            ->where('resources.data.0.id', $olderListing->slug)
+        );
+});
+
 test('resources index sorts by title views and oldest', function () {
     $category = Category::factory()->create([
         'name' => 'Visual Novel',

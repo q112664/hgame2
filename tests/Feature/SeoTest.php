@@ -16,6 +16,7 @@ uses(RefreshDatabase::class);
 test('resource detail pages expose page-level seo props', function () {
     $category = Category::factory()->create(['name' => 'Visual Novel']);
     $sitePublishedAt = now()->subDays(3)->startOfSecond();
+    $downloadsUpdatedAt = now()->subDay()->startOfSecond();
     $commercialRelease = now()->subYears(5)->toDateString();
     $game = Game::factory()->create([
         'title' => 'Senren Banka',
@@ -26,7 +27,10 @@ test('resource detail pages expose page-level seo props', function () {
         'cover_path' => 'games/covers/senren.png',
         'release_date' => $commercialRelease,
         'published_at' => $sitePublishedAt,
+        'downloads_updated_at' => $downloadsUpdatedAt,
     ]);
+    // Eloquent updated_at must not drive SEO modified time.
+    $game->forceFill(['updated_at' => now()])->saveQuietly();
 
     $this->get(route('resources.details', $game))
         ->assertOk()
@@ -38,11 +42,14 @@ test('resource detail pages expose page-level seo props', function () {
             ->where('pageSeo.description', 'A published visual novel about spring.')
             ->where('pageSeo.ogImageUrl', PageSeo::absoluteUrl('/storage/games/covers/senren.png'))
             ->where('pageSeo.publishedTime', $sitePublishedAt->toIso8601String())
+            ->where('pageSeo.modifiedTime', $downloadsUpdatedAt->toIso8601String())
             ->where('pageSeo.jsonLd.@type', 'SoftwareApplication')
             ->where('pageSeo.jsonLd.name', 'Senren Banka')
             // Crawlers use site publish time, not commercial release_date.
             ->where('pageSeo.jsonLd.datePublished', $sitePublishedAt->toIso8601String())
+            ->where('pageSeo.jsonLd.dateModified', $downloadsUpdatedAt->toIso8601String())
             ->where('resource.publishedAt', $sitePublishedAt->toDateString())
+            ->where('resource.downloadsUpdatedAt', $downloadsUpdatedAt->toDateString())
             ->where('resource.releaseDate', $commercialRelease)
         );
 });

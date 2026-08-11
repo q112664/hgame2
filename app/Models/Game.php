@@ -161,6 +161,26 @@ class Game extends Model
         ]);
     }
 
+    /**
+     * When this resource was listed on the site (catalog “latest”, SEO datePublished).
+     */
+    public function sitePublishedAt(): ?CarbonInterface
+    {
+        return $this->published_at;
+    }
+
+    /**
+     * User-facing content change time for downloads (SEO dateModified, “updated” sort).
+     *
+     * Uses downloads_updated_at only when set — never Eloquent updated_at — so
+     * views/admin metadata saves do not look like resource updates.
+     * Falls back to site publish time when downloads have never been updated.
+     */
+    public function contentModifiedAt(): ?CarbonInterface
+    {
+        return $this->downloads_updated_at ?? $this->published_at;
+    }
+
     public function touchDownloadsUpdatedAt(): void
     {
         $this->forceFill([

@@ -67,6 +67,7 @@ class UpdateGameRequest extends FormRequest
             'releases.*.description' => ['nullable', 'string'],
             'releases.*.is_active' => ['nullable', 'boolean'],
             'releases.*.published_at' => ['nullable', 'date'],
+            'releases.*.contributor' => ['nullable', 'email', 'max:255'],
             'releases.*.download_links' => ['required', 'array', 'min:1'],
             'releases.*.download_links.*' => ['url', 'max:2048'],
         ];

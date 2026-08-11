@@ -264,12 +264,10 @@ final class PageSeo
             ? self::gameJsonLd($game, $description, $image)
             : null;
 
-        // Page publish / modify times for crawlers (site-side, not commercial release_date).
-        $publishedTime = $game->published_at?->toIso8601String();
-        $modified = $game->downloads_updated_at
-            ?? $game->updated_at
-            ?? $game->published_at;
-        $modifiedTime = $modified?->toIso8601String();
+        // Site listing time vs download-update time — never commercial release_date,
+        // never Eloquent updated_at (views/metadata must not fake freshness).
+        $publishedTime = $game->sitePublishedAt()?->toIso8601String();
+        $modifiedTime = $game->contentModifiedAt()?->toIso8601String();
 
         return self::make(
             title: $title,
@@ -554,16 +552,13 @@ final class PageSeo
         }
 
         // datePublished = when this resource page went live on the site.
-        if ($game->published_at !== null) {
-            $data['datePublished'] = $game->published_at->toIso8601String();
+        if ($game->sitePublishedAt() !== null) {
+            $data['datePublished'] = $game->sitePublishedAt()->toIso8601String();
         }
 
-        $modified = $game->downloads_updated_at
-            ?? $game->updated_at
-            ?? $game->published_at;
-
-        if ($modified !== null) {
-            $data['dateModified'] = $modified->toIso8601String();
+        // dateModified = last download/package change (or publish if never updated).
+        if ($game->contentModifiedAt() !== null) {
+            $data['dateModified'] = $game->contentModifiedAt()->toIso8601String();
         }
 
         if ($game->category?->name) {

@@ -39,7 +39,7 @@ export type LanguageOption = {
     code: string;
 };
 
-export type SortOption = 'latest' | 'oldest' | 'title' | 'views';
+export type SortOption = 'latest' | 'oldest' | 'updated' | 'title' | 'views';
 
 export type ResourceFilters = {
     q: string;
@@ -80,8 +80,9 @@ export const filterControlActiveClassName = cn(
 );
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
-    { value: 'latest', label: 'Latest' },
-    { value: 'oldest', label: 'Oldest' },
+    { value: 'latest', label: 'Newest listed' },
+    { value: 'oldest', label: 'Oldest listed' },
+    { value: 'updated', label: 'Recently updated' },
     { value: 'title', label: 'Title A–Z' },
     { value: 'views', label: 'Most viewed' },
 ];
@@ -177,7 +178,7 @@ export function SortMenu({
 }) {
     const selectedLabel =
         SORT_OPTIONS.find((option) => option.value === value)?.label ??
-        'Latest';
+        'Newest listed';
     const isActive = value !== 'latest';
 
     return (

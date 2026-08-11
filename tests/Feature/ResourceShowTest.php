@@ -369,7 +369,7 @@ test('home omits card version when no release version is filled', function () {
         );
 });
 
-test('recent resource updates are ordered by effective activity time', function () {
+test('recent resource updates only include games with download updates and order by that time', function () {
     $updatedAt = now()->subHour();
     $this->game->updateQuietly([
         'downloads_updated_at' => now()->subDays(2),
@@ -378,37 +378,34 @@ test('recent resource updates are ordered by effective activity time', function 
         'published_at' => now()->subDay(),
         'downloads_updated_at' => $updatedAt,
     ]);
-
-    $updates = app(ListRecentResourceUpdates::class)();
-
-    expect($updates[0]['id'])->toBe($newer->slug)
-        ->and($updates[0]['activityType'])->toBe('updated')
-        ->and($updates[0]['updatedAt'])->toBe($updatedAt->toIso8601String());
-});
-
-test('recent resource updates fall back to publication time without an update timestamp', function () {
-    $publishedAt = now()->subHour();
-    $this->game->updateQuietly([
-        'downloads_updated_at' => now()->subDays(2),
-    ]);
-    $published = Game::factory()->create([
-        'published_at' => $publishedAt,
+    Game::factory()->create([
+        'published_at' => now(),
         'downloads_updated_at' => null,
     ]);
 
     $updates = app(ListRecentResourceUpdates::class)();
 
-    expect($updates[0]['id'])->toBe($published->slug)
-        ->and($updates[0]['activityType'])->toBe('published')
-        ->and($updates[0]['updatedAt'])->toBe($publishedAt->toIso8601String());
+    expect($updates)->toHaveCount(2)
+        ->and($updates[0]['id'])->toBe($newer->slug)
+        ->and($updates[0]['downloadsUpdatedAt'])->toBe($updatedAt->toDateString())
+        ->and(collect($updates)->pluck('id')->all())->toBe([
+            $newer->slug,
+            $this->game->slug,
+        ]);
 });
 
-test('home does not include recent updates payload', function () {
+test('home exposes separate new listings and download-updated resources', function () {
+    $this->game->updateQuietly([
+        'downloads_updated_at' => now()->subHour(),
+    ]);
+
     $this->get(route('home'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('welcome')
-            ->missing('recentUpdates')
+            ->has('resources')
+            ->has('updatedResources')
+            ->where('updatedResources.0.id', $this->game->slug)
         );
 });
 

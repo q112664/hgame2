@@ -55,15 +55,15 @@ test('sitemap lists public pages resources and docs', function () {
 });
 
 test('sitemap lastmod stays stable after a resource is only viewed', function () {
-    $lastmod = now()->subDays(3)->startOfSecond();
+    $publishedAt = now()->subDays(3)->startOfSecond();
 
     $game = Game::factory()->create([
         'slug' => 'sitemap-lastmod-game',
         'views_count' => 5,
-        'updated_at' => $lastmod,
-        'published_at' => $lastmod->copy()->subDay(),
+        'published_at' => $publishedAt,
+        'downloads_updated_at' => null,
     ]);
-    $game->forceFill(['updated_at' => $lastmod])->saveQuietly();
+    $game->forceFill(['updated_at' => now()])->saveQuietly();
 
     $before = $this->get(route('sitemap'))->assertOk()->getContent();
 
@@ -72,11 +72,27 @@ test('sitemap lastmod stays stable after a resource is only viewed', function ()
 
     $after = $this->get(route('sitemap'))->assertOk()->getContent();
 
-    $expectedLastmod = $lastmod->toAtomString();
+    // lastmod follows contentModifiedAt (publish when no download update), not updated_at.
+    $expectedLastmod = $publishedAt->toAtomString();
 
     expect($before)->toContain($expectedLastmod)
         ->and($after)->toContain($expectedLastmod)
-        ->and($game->fresh()->updated_at?->equalTo($lastmod))->toBeTrue();
+        ->and($game->fresh()->updated_at?->equalTo($publishedAt))->toBeFalse();
+});
+
+test('sitemap lastmod uses downloads_updated_at when downloads change', function () {
+    $publishedAt = now()->subDays(10)->startOfSecond();
+    $downloadsUpdatedAt = now()->subDay()->startOfSecond();
+
+    $game = Game::factory()->create([
+        'slug' => 'sitemap-download-update-game',
+        'published_at' => $publishedAt,
+        'downloads_updated_at' => $downloadsUpdatedAt,
+    ]);
+
+    expect($this->get(route('sitemap'))->assertOk()->getContent())
+        ->toContain(route('resources.details', $game))
+        ->toContain($downloadsUpdatedAt->toAtomString());
 });
 
 test('robots txt points at the sitemap and blocks private paths', function () {

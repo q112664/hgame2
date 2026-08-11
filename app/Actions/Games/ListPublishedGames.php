@@ -16,9 +16,13 @@ class ListPublishedGames
 {
     public const PER_PAGE = 12;
 
+    /** Default catalog order: newest site listing (published_at). */
     public const SORT_LATEST = 'latest';
 
     public const SORT_OLDEST = 'oldest';
+
+    /** Opt-in: last download/package change (does not replace default listing). */
+    public const SORT_UPDATED = 'updated';
 
     public const SORT_TITLE = 'title';
 
@@ -28,6 +32,7 @@ class ListPublishedGames
     public const SORTS = [
         self::SORT_LATEST,
         self::SORT_OLDEST,
+        self::SORT_UPDATED,
         self::SORT_TITLE,
         self::SORT_VIEWS,
     ];
@@ -139,8 +144,12 @@ class ListPublishedGames
     {
         return match ($sort) {
             self::SORT_OLDEST => $query->orderBy('published_at')->orderBy('id'),
+            self::SORT_UPDATED => $query
+                ->orderByRaw('COALESCE(downloads_updated_at, published_at) DESC')
+                ->orderByDesc('id'),
             self::SORT_TITLE => $query->orderBy('title')->orderByDesc('published_at'),
             self::SORT_VIEWS => $query->orderByDesc('views_count')->orderByDesc('published_at'),
+            // Default “Latest” = newest listed on this site (not download updates).
             default => $query->latest('published_at')->orderByDesc('id'),
         };
     }

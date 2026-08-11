@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Game;
 use App\Models\GameRelease;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 
 class GamePresenter
@@ -61,47 +62,8 @@ class GamePresenter
                 : [],
             'releaseDate' => self::dateString($game->release_date),
             'publishedAt' => self::dateString($game->published_at),
+            'downloadsUpdatedAt' => self::dateString($game->downloads_updated_at),
             'views' => $game->views_count,
-        ];
-    }
-
-    /** @return array<string, mixed> */
-    public static function recentUpdate(Game $game): array
-    {
-        $updatedAt = $game->downloads_updated_at ?? $game->published_at;
-
-        return [
-            'id' => $game->slug,
-            'title' => $game->title,
-            'subtitle' => $game->subtitle,
-            'thumbnail' => self::cardThumbnailUrl($game),
-            'thumbnailFallback' => self::mediaUrl($game->cover_path ?: $game->cover_url),
-            'developer' => $game->developer ?? 'Unknown',
-            'version' => $game->releases
-                ->pluck('version')
-                ->map(fn (?string $version): ?string => filled($version) ? trim($version) : null)
-                ->filter()
-                ->first(),
-            'platforms' => $game->releases
-                ->flatMap->platforms
-                ->unique('slug')
-                ->map(fn ($platform): array => [
-                    'name' => $platform->name,
-                    'slug' => $platform->slug,
-                ])
-                ->values()
-                ->all(),
-            'languages' => $game->releases
-                ->flatMap->languages
-                ->unique('code')
-                ->map(fn ($language): array => [
-                    'name' => $language->name,
-                    'code' => $language->code,
-                ])
-                ->values()
-                ->all(),
-            'updatedAt' => self::dateTimeString($updatedAt),
-            'activityType' => $game->downloads_updated_at !== null ? 'updated' : 'published',
         ];
     }
 
@@ -134,6 +96,8 @@ class GamePresenter
             ),
             'releaseDate' => self::dateString($game->release_date),
             'downloads' => $game->downloads_count,
+            /** Unique site contributors across available release packages. */
+            'contributors' => self::resourceContributors($game),
             'screenshots' => $includeScreenshots
                 ? $game->screenshots
                     ->map(fn ($screenshot): string => self::mediaUrl($screenshot->path ?: $screenshot->url))
@@ -163,6 +127,13 @@ class GamePresenter
                         'fileSize' => $release->file_size,
                         'description' => str($release->description ?? '')->sanitizeHtml()->toString(),
                         'publishedAt' => self::dateString($release->published_at),
+                        'contributor' => $release->relationLoaded('contributor') && $release->contributor !== null
+                            ? [
+                                'id' => $release->contributor->id,
+                                'name' => $release->contributor->name,
+                                'avatar' => $release->contributor->avatar,
+                            ]
+                            : null,
                         'downloadLinks' => $release->relationLoaded('downloadLinks')
                             ? $release->downloadLinks
                                 ->map(fn ($link): array => [
@@ -178,6 +149,36 @@ class GamePresenter
                     ->all()
                 : [],
         ];
+    }
+
+    /**
+     * @return list<array{id: int, name: string, avatar: string|null}>
+     */
+    private static function resourceContributors(Game $game): array
+    {
+        if (! $game->relationLoaded('releases')) {
+            return [];
+        }
+
+        return $game->releases
+            ->map(function (GameRelease $release): ?User {
+                if (! $release->relationLoaded('contributor')) {
+                    return null;
+                }
+
+                $contributor = $release->getRelation('contributor');
+
+                return $contributor instanceof User ? $contributor : null;
+            })
+            ->filter()
+            ->unique(fn (User $user): int => $user->id)
+            ->values()
+            ->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'avatar' => $user->avatar,
+            ])
+            ->all();
     }
 
     /**
@@ -243,16 +244,5 @@ class GamePresenter
         return $date instanceof Carbon
             ? $date->toDateString()
             : Carbon::parse((string) $date)->toDateString();
-    }
-
-    private static function dateTimeString(mixed $date): ?string
-    {
-        if ($date === null || $date === '') {
-            return null;
-        }
-
-        return $date instanceof Carbon
-            ? $date->toIso8601String()
-            : Carbon::parse((string) $date)->toIso8601String();
     }
 }

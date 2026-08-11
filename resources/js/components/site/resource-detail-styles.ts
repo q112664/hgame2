@@ -99,6 +99,13 @@ export const dateBadgeClassName = cn(
     'bg-muted text-muted-foreground',
 );
 
+/** Release contributor chip in the download footer strip. */
+export const contributorBadgeClassName = cn(
+    heroBadgeClassName,
+    'bg-primary/10 text-primary',
+    'dark:bg-primary/15 dark:text-primary',
+);
+
 /**
  * Compact download CTA for release link rows — matches meta badge height rhythm
  * (h-8) so the footer bar reads as one aligned strip.

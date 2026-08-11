@@ -216,7 +216,9 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain("import { SITE_LOCALE } from '@/lib/datetime';")
         ->toContain('Intl.DateTimeFormat(SITE_LOCALE')
         ->toContain("month: 'short'")
+        ->toContain('export function formatDate')
         ->toContain('export function formatReleaseDate')
+        ->toContain('MMM/DD/YYYY')
         ->toContain('`${month}/${day}/${year}`');
 
     expect($filesystem->get(resource_path('js/lib/datetime.ts')))
@@ -553,6 +555,17 @@ test('download release items use the compact responsive layout', function () {
         ->toContain('aria-label="Download links"')
         ->toContain('CloudDownload')
         ->toContain('Download')
+        ->toContain('release.contributor')
+        ->toContain('UserAvatar')
+        ->toContain('contributorBadgeClassName')
+        ->toContain('Contributed by')
+        ->toContain('release.contributor.name')
+        ->toContain('dateBadgeClassName')
+        ->toContain('CalendarDays')
+        ->toContain('RefreshCw')
+        ->toContain('resource.downloadsUpdatedAt')
+        ->toContain('Downloads last updated')
+        ->not->toContain('link.contributor')
         ->not->toContain('link.label')
         ->not->toContain('p-3 sm:p-4')
         ->not->toContain('border-b border-border bg-muted/50 px-4 py-3.5');
@@ -563,6 +576,7 @@ test('download release items use the compact responsive layout', function () {
         ->toContain("'h-8 min-w-0 gap-1.5")
         ->toContain('bg-primary')
         ->toContain('hover:bg-primary/90')
+        ->toContain('contributorBadgeClassName')
         ->not->toContain('animate-heartbeat');
 });
 

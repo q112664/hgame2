@@ -18,18 +18,34 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property-read Game|null $game
+ * @property-read User|null $contributor
  * @property-read EloquentCollection<int, Platform> $platforms
  * @property-read EloquentCollection<int, Language> $languages
  * @property-read EloquentCollection<int, GameDownloadLink> $downloadLinks
  */
 #[Fillable([
-    'game_id', 'platform_id', 'language_id', 'title', 'version', 'file_size',
+    'game_id', 'user_id', 'platform_id', 'language_id', 'title', 'version', 'file_size',
     'description', 'published_at', 'is_active', 'sort_order',
 ])]
 class GameRelease extends Model
 {
     /** @use HasFactory<GameReleaseFactory> */
     use HasFactory;
+
+    /**
+     * Attributes that mean download/package content changed for users.
+     * Contributor (user_id) and sort_order intentionally excluded.
+     *
+     * @var list<string>
+     */
+    private const DOWNLOAD_TOUCH_ATTRIBUTES = [
+        'title',
+        'version',
+        'file_size',
+        'description',
+        'is_active',
+        'published_at',
+    ];
 
     protected function casts(): array
     {
@@ -66,8 +82,9 @@ class GameRelease extends Model
     {
         return $query
             ->available()
-            ->select(['id', 'game_id', 'version', 'sort_order'])
+            ->select(['id', 'game_id', 'user_id', 'version', 'sort_order'])
             ->with([
+                'contributor:id,name,avatar',
                 'platforms:id,name,slug',
                 'languages:id,name,code',
             ])
@@ -83,6 +100,7 @@ class GameRelease extends Model
         return $query
             ->available()
             ->with([
+                'contributor:id,name,avatar',
                 'platforms:id,name,slug',
                 'languages:id,name,code',
                 'downloadLinks' => fn ($links) => $links
@@ -96,6 +114,12 @@ class GameRelease extends Model
     public function game(): BelongsTo
     {
         return $this->belongsTo(Game::class);
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function contributor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /** @return BelongsTo<Platform, $this> */
@@ -130,11 +154,31 @@ class GameRelease extends Model
 
     protected static function booted(): void
     {
-        $touchGame = function (GameRelease $release): void {
-            $release->game?->touchDownloadsUpdatedAt();
-        };
+        static::saved(function (GameRelease $release): void {
+            if (! $release->shouldTouchGameDownloads()) {
+                return;
+            }
 
-        static::saved($touchGame);
-        static::deleted($touchGame);
+            $release->loadMissing('game');
+            $release->game?->touchDownloadsUpdatedAt();
+        });
+
+        static::deleted(function (GameRelease $release): void {
+            $release->loadMissing('game');
+            $release->game?->touchDownloadsUpdatedAt();
+        });
+    }
+
+    /**
+     * True when this save is a new package or download-facing fields changed.
+     * Assigning contributor (user_id) or reordering alone does not count.
+     */
+    public function shouldTouchGameDownloads(): bool
+    {
+        if ($this->wasRecentlyCreated) {
+            return true;
+        }
+
+        return $this->wasChanged(self::DOWNLOAD_TOUCH_ATTRIBUTES);
     }
 }

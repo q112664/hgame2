@@ -7,6 +7,7 @@ import {
     HardDrive,
     Images,
     Info,
+    RefreshCw,
 } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
@@ -15,6 +16,7 @@ import { RelatedResources } from '@/components/site/related-resources';
 import type { ResourceComment } from '@/components/site/resource-comments';
 import { ResourceComments } from '@/components/site/resource-comments';
 import {
+    contributorBadgeClassName,
     dateBadgeClassName,
     downloadButtonClassName,
     fileSizeBadgeClassName,
@@ -31,11 +33,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { UserAvatar } from '@/components/user-avatar';
 import { useImageLoadState } from '@/hooks/use-image-load-state';
 import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
 import { show as downloadLinkShow } from '@/routes/download-links';
 import { tag as resourcesTag } from '@/routes/resources';
+import { show as userShow } from '@/routes/users';
 import type { GameCard, GameDetail } from '@/types/resources';
 
 type ResourceTab = 'details' | 'downloads' | 'screenshots' | 'comments';
@@ -345,6 +349,13 @@ export function ResourceTabContent({
                         resource.releases.map((release) => {
                             const hasLinks = release.downloadLinks.length > 0;
                             const multiLinks = release.downloadLinks.length > 1;
+                            // Prefer site download-update time over package publish date.
+                            const activityDate =
+                                resource.downloadsUpdatedAt ??
+                                release.publishedAt;
+                            const activityIsUpdate = Boolean(
+                                resource.downloadsUpdatedAt,
+                            );
 
                             return (
                                 <article
@@ -380,6 +391,41 @@ export function ResourceTabContent({
                                             }
                                         >
                                             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                                {release.contributor ? (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={cn(
+                                                            contributorBadgeClassName,
+                                                            'gap-1.5 pe-2.5 ps-1',
+                                                        )}
+                                                        asChild
+                                                    >
+                                                        <Link
+                                                            href={userShow(
+                                                                release
+                                                                    .contributor
+                                                                    .id,
+                                                            )}
+                                                            prefetch
+                                                            title={`Contributed by ${release.contributor.name}`}
+                                                        >
+                                                            <UserAvatar
+                                                                user={
+                                                                    release.contributor
+                                                                }
+                                                                className="size-5"
+                                                                fallbackClassName="bg-primary/20 text-[10px] text-primary"
+                                                            />
+                                                            <span className="max-w-28 truncate font-medium">
+                                                                {
+                                                                    release
+                                                                        .contributor
+                                                                        .name
+                                                                }
+                                                            </span>
+                                                        </Link>
+                                                    </Badge>
+                                                ) : null}
                                                 {release.platforms.map(
                                                     (platform) => (
                                                         <Badge
@@ -428,17 +474,26 @@ export function ResourceTabContent({
                                                     className={
                                                         dateBadgeClassName
                                                     }
+                                                    title={
+                                                        activityIsUpdate
+                                                            ? 'Downloads last updated'
+                                                            : 'Package listed'
+                                                    }
                                                 >
-                                                    <CalendarDays data-icon="inline-start" />
+                                                    {activityIsUpdate ? (
+                                                        <RefreshCw data-icon="inline-start" />
+                                                    ) : (
+                                                        <CalendarDays data-icon="inline-start" />
+                                                    )}
                                                     <time
                                                         dateTime={
-                                                            release.publishedAt ??
+                                                            activityDate ??
                                                             undefined
                                                         }
                                                     >
-                                                        {release.publishedAt
+                                                        {activityDate
                                                             ? formatDate(
-                                                                  release.publishedAt,
+                                                                  activityDate,
                                                               )
                                                             : 'Unscheduled'}
                                                     </time>

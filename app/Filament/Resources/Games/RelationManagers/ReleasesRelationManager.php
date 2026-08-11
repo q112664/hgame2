@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Games\RelationManagers;
 
 use App\Filament\Resources\Games\Schemas\GameForm;
+use App\Models\GameRelease;
 use App\Support\MediaUpload;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -51,6 +52,7 @@ class ReleasesRelationManager extends RelationManager
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
+                GameForm::contributorSelect(),
                 MediaUpload::richEditor(
                     RichEditor::make('description'),
                     'games/content',
@@ -103,6 +105,20 @@ class ReleasesRelationManager extends RelationManager
                     ->placeholder('—')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('contributor.email')
+                    ->label('Contributor')
+                    ->formatStateUsing(function (?string $state, GameRelease $record): string {
+                        $user = $record->contributor;
+
+                        if ($user === null) {
+                            return '—';
+                        }
+
+                        return GameForm::contributorOptionLabel($user);
+                    })
+                    ->searchable()
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('download_links_count')
                     ->counts('downloadLinks')
                     ->label('Links'),

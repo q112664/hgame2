@@ -37,28 +37,22 @@ export type GameCard = {
     tags: GameTag[];
     releaseDate: string | null;
     publishedAt: string | null;
+    /** When downloads/packages last changed on this site (null if never). */
+    downloadsUpdatedAt: string | null;
     views: number;
     hasDownloadUpdate?: boolean;
-};
-
-export type GameUpdateListItem = {
-    id: string;
-    title: string;
-    subtitle: string | null;
-    thumbnail: string;
-    thumbnailFallback: string;
-    developer: string;
-    version: string | null;
-    platforms: GamePlatform[];
-    languages: GameLanguage[];
-    updatedAt: string | null;
-    activityType: 'updated' | 'published';
 };
 
 export type GameDownloadLink = {
     id: number;
     label: string;
     url: string;
+};
+
+export type GameReleaseContributor = {
+    id: number;
+    name: string;
+    avatar: string | null;
 };
 
 export type GameRelease = {
@@ -70,6 +64,8 @@ export type GameRelease = {
     fileSize: string | null;
     description: string;
     publishedAt: string | null;
+    /** Site user who contributed this release package. */
+    contributor: GameReleaseContributor | null;
     downloadLinks: GameDownloadLink[];
 };
 
@@ -87,7 +83,10 @@ export type GameDetail = GameCard & {
     detailVersions: GameDetailVersion[];
     developer: string;
     releaseDate: string | null;
+    downloadsUpdatedAt: string | null;
     downloads: number;
+    /** Unique site contributors across available download packages. */
+    contributors: GameReleaseContributor[];
     screenshots: string[];
     releases: GameRelease[];
     hasDownloads: boolean;

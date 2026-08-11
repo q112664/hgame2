@@ -46,12 +46,13 @@ class SitemapController extends Controller
             ->published()
             ->orderByDesc('published_at')
             ->orderByDesc('id')
-            ->get(['slug', 'published_at', 'updated_at']);
+            ->get(['slug', 'published_at', 'downloads_updated_at']);
 
         foreach ($games as $game) {
             $urls[] = [
                 'loc' => route('resources.details', $game),
-                'lastmod' => ($game->updated_at ?? $game->published_at)?->toAtomString(),
+                // Content lastmod: download updates, else site publish — not updated_at.
+                'lastmod' => $game->contentModifiedAt()?->toAtomString(),
                 'changefreq' => 'weekly',
                 'priority' => '0.8',
             ];

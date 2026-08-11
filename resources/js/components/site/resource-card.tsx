@@ -28,7 +28,7 @@ import type { GameCard } from '@/types/resources';
 type Props = {
     resource: GameCard;
     /** Which date to show in the card footer. Defaults to site publish time. */
-    dateField?: 'publishedAt' | 'releaseDate';
+    dateField?: 'publishedAt' | 'releaseDate' | 'downloadsUpdatedAt';
     /** Eager-load for above-the-fold cards (e.g. first grid row). */
     priority?: boolean;
 };
@@ -38,12 +38,14 @@ export function ResourceCard({
     dateField = 'publishedAt',
     priority = false,
 }: Props) {
-    const isReleaseDate = dateField === 'releaseDate';
-    const displayDate = isReleaseDate
-        ? (resource.releaseDate ?? resource.publishedAt)
-        : resource.publishedAt;
+    const displayDate =
+        dateField === 'releaseDate'
+            ? (resource.releaseDate ?? resource.publishedAt)
+            : dateField === 'downloadsUpdatedAt'
+              ? (resource.downloadsUpdatedAt ?? resource.publishedAt)
+              : resource.publishedAt;
     const formattedDate = displayDate
-        ? isReleaseDate && resource.releaseDate
+        ? dateField === 'releaseDate' && resource.releaseDate
             ? formatReleaseDate(displayDate)
             : formatDate(displayDate)
         : null;

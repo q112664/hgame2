@@ -31,21 +31,15 @@ export function formatViews(views: number): string {
     return new Intl.NumberFormat(SITE_LOCALE).format(views);
 }
 
-export function formatDate(date: string): string {
-    return new Intl.DateTimeFormat(SITE_LOCALE, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    }).format(new Date(`${date}T00:00:00`));
-}
-
 /**
- * Commercial release date for Western UI: e.g. Feb/02/2026 (MMM/DD/YYYY).
+ * Site-wide calendar date: e.g. Jul/04/2026 (MMM/DD/YYYY).
+ * Accepts YYYY-MM-DD or any Date-parseable string.
  */
-export function formatReleaseDate(date: string): string {
-    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date.trim())
-        ? new Date(`${date.trim()}T00:00:00`)
-        : new Date(date);
+export function formatDate(date: string): string {
+    const trimmed = date.trim();
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+        ? new Date(`${trimmed}T00:00:00`)
+        : new Date(trimmed);
 
     if (Number.isNaN(parsed.getTime())) {
         return date;
@@ -58,4 +52,9 @@ export function formatReleaseDate(date: string): string {
     const year = String(parsed.getFullYear());
 
     return `${month}/${day}/${year}`;
+}
+
+/** Alias of formatDate for commercial release dates. */
+export function formatReleaseDate(date: string): string {
+    return formatDate(date);
 }

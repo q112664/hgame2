@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property-read GameRelease|null $release
+ */
 #[Fillable(['game_release_id', 'label', 'url', 'is_active', 'sort_order'])]
 class GameDownloadLink extends Model
 {

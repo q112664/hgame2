@@ -490,6 +490,11 @@ class ResourceController extends Controller
                 ?->favoritedGames()
                 ->where('games.id', $game->id)
                 ->exists() ?? false,
+            'isLiked' => auth()->user()
+                ?->likedGames()
+                ->where('games.id', $game->id)
+                ->exists() ?? false,
+            'likesCount' => (int) $game->likes_count,
             'adminEditUrl' => auth()->user()?->is_admin
                 ? GameResource::getUrl('edit', ['record' => $game], panel: 'admin')
                 : null,

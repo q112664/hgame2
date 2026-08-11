@@ -91,5 +91,7 @@ export type GameDetail = GameCard & {
     releases: GameRelease[];
     hasDownloads: boolean;
     isFavorited: boolean;
+    isLiked: boolean;
+    likesCount: number;
     adminEditUrl: string | null;
 };

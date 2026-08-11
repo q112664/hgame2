@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 
 /** Shared flat badge shell — no border, soft fill, compact type. */
 export const heroBadgeClassName = cn(
-    'h-6 gap-1 rounded-md border-0 px-2.5 text-xs font-medium shadow-none no-underline',
+    'h-6 gap-1 rounded-md border-0 px-2.5 text-xs font-medium no-underline shadow-none',
     'transition-[color,background-color,box-shadow] duration-150',
     '[&>svg]:size-3.5!',
 );
@@ -94,28 +94,38 @@ export const fileSizeBadgeClassName = cn(
     'bg-success/15 text-success',
 );
 
-export const dateBadgeClassName = cn(
-    heroBadgeClassName,
-    'bg-muted text-muted-foreground',
-);
-
-/** Release contributor chip in the download footer strip. */
-export const contributorBadgeClassName = cn(
-    heroBadgeClassName,
-    'bg-primary/10 text-primary',
-    'dark:bg-primary/15 dark:text-primary',
-);
-
 /**
- * Compact download CTA for release link rows — matches meta badge height rhythm
- * (h-8) so the footer bar reads as one aligned strip.
+ * Compact download CTA for release link rows — matches contributor block height
+ * (h-8 / avatar size-8) so the footer bar reads as one aligned strip.
  * Icon + fixed “Download” label (no host/netdisk name on the button).
  */
 export const downloadButtonClassName = cn(
-    'h-8 min-w-0 gap-1.5 border border-transparent bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-none',
+    'h-8 min-w-0 gap-1.5 border border-transparent bg-primary px-3 text-sm font-medium text-primary-foreground shadow-none',
     'hover:bg-primary/90',
     'dark:border-primary/40 dark:bg-primary/90',
     'dark:hover:border-primary/50 dark:hover:bg-primary',
+);
+
+/**
+ * Like toggle beside download CTAs — same h-8 rhythm as the download button.
+ * Idle: quiet muted chip. Active: primary soft fill + filled thumb.
+ */
+export const likeButtonClassName = cn(
+    'h-8 min-w-0 gap-1.5 border-0 px-2.5 text-sm font-medium shadow-none',
+    'bg-muted text-muted-foreground',
+    'hover:bg-primary/10 hover:text-primary',
+    'dark:bg-white/10 dark:text-muted-foreground',
+    'dark:hover:bg-primary/20 dark:hover:text-primary',
+    'disabled:opacity-60 dark:disabled:opacity-50',
+);
+
+export const likeButtonActiveClassName = cn(
+    'h-8 min-w-0 gap-1.5 border-0 px-2.5 text-sm font-medium shadow-none',
+    'bg-primary/12 text-primary',
+    'hover:bg-primary/18 hover:text-primary',
+    'dark:bg-primary/22 dark:text-primary',
+    'dark:hover:bg-primary/30',
+    'disabled:opacity-60 dark:disabled:opacity-50',
 );
 
 /** Release card footer strip under the title/description. */
@@ -124,10 +134,13 @@ export const releaseFooterClassName = cn(
     'dark:bg-muted/20',
 );
 
-/** Meta badge cluster + CTA cluster layout inside the release footer. */
+/**
+ * Author block (left) + download CTAs (right).
+ * Always a single horizontal strip; py gives room so two-line meta is not clipped.
+ */
 export const releaseFooterInnerClassName = cn(
-    'flex flex-col gap-3 px-4 py-3',
-    'sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5',
+    'flex flex-row items-center justify-between gap-3 px-4 py-3',
+    'sm:gap-4 sm:px-5',
 );
 
 /** Primary download CTA on resource hero / confirm pages. */

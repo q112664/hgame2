@@ -1,23 +1,20 @@
 import { Link } from '@inertiajs/react';
 import {
-    CalendarDays,
     ChevronDown,
     ChevronUp,
     CloudDownload,
     HardDrive,
     Images,
     Info,
-    RefreshCw,
 } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
+import { LikeButton } from '@/components/site/like-button';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import { RelatedResources } from '@/components/site/related-resources';
 import type { ResourceComment } from '@/components/site/resource-comments';
 import { ResourceComments } from '@/components/site/resource-comments';
 import {
-    contributorBadgeClassName,
-    dateBadgeClassName,
     downloadButtonClassName,
     fileSizeBadgeClassName,
     languageBadgeClassName,
@@ -35,6 +32,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserAvatar } from '@/components/user-avatar';
 import { useImageLoadState } from '@/hooks/use-image-load-state';
+import { useLike } from '@/hooks/use-like';
 import { formatDate } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
 import { show as downloadLinkShow } from '@/routes/download-links';
@@ -272,6 +270,17 @@ export function ResourceTabContent({
     commentsCount = 0,
     related = [],
 }: Props) {
+    const {
+        isLiked,
+        likesCount,
+        isToggling: isTogglingLike,
+        toggleLike,
+    } = useLike({
+        resourceId: resourceId ?? resource.id,
+        initialIsLiked: resource.isLiked,
+        initialLikesCount: resource.likesCount,
+    });
+
     return (
         <div aria-busy={isTabPending || undefined}>
             {activeTab === 'details' ? (
@@ -376,56 +385,11 @@ export function ResourceTabContent({
                                             ) : null}
                                         </div>
 
-                                        {release.description ? (
-                                            <CollapsibleReleaseDescription
-                                                html={release.description}
-                                            />
-                                        ) : null}
-                                    </div>
-
-                                    {/* Footer: meta chips (left) + download CTAs (right) */}
-                                    <div className={releaseFooterClassName}>
-                                        <div
-                                            className={
-                                                releaseFooterInnerClassName
-                                            }
-                                        >
+                                        {/* Platform / language / size badges below the title */}
+                                        {release.platforms.length > 0 ||
+                                        release.languages.length > 0 ||
+                                        release.fileSize ? (
                                             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                                                {release.contributor ? (
-                                                    <Badge
-                                                        variant="outline"
-                                                        className={cn(
-                                                            contributorBadgeClassName,
-                                                            'gap-1.5 pe-2.5 ps-1',
-                                                        )}
-                                                        asChild
-                                                    >
-                                                        <Link
-                                                            href={userShow(
-                                                                release
-                                                                    .contributor
-                                                                    .id,
-                                                            )}
-                                                            prefetch
-                                                            title={`Contributed by ${release.contributor.name}`}
-                                                        >
-                                                            <UserAvatar
-                                                                user={
-                                                                    release.contributor
-                                                                }
-                                                                className="size-5"
-                                                                fallbackClassName="bg-primary/20 text-[10px] text-primary"
-                                                            />
-                                                            <span className="max-w-28 truncate font-medium">
-                                                                {
-                                                                    release
-                                                                        .contributor
-                                                                        .name
-                                                                }
-                                                            </span>
-                                                        </Link>
-                                                    </Badge>
-                                                ) : null}
                                                 {release.platforms.map(
                                                     (platform) => (
                                                         <Badge
@@ -469,27 +433,105 @@ export function ResourceTabContent({
                                                         {release.fileSize}
                                                     </Badge>
                                                 ) : null}
-                                                <Badge
-                                                    variant="outline"
-                                                    className={
-                                                        dateBadgeClassName
-                                                    }
+                                            </div>
+                                        ) : null}
+
+                                        {release.description ? (
+                                            <CollapsibleReleaseDescription
+                                                html={release.description}
+                                            />
+                                        ) : null}
+                                    </div>
+
+                                    {/* Footer: meta chips (left) + download CTAs (right) */}
+                                    <div className={releaseFooterClassName}>
+                                        <div
+                                            className={
+                                                releaseFooterInnerClassName
+                                            }
+                                        >
+                                            {/*
+                                              Compact contributor block (height ≈ download btn h-8):
+                                              [avatar]  Nickname
+                                                        ↻ Updated date
+                                            */}
+                                            {release.contributor ? (
+                                                <Link
+                                                    href={userShow(
+                                                        release.contributor.id,
+                                                    )}
+                                                    prefetch
+                                                    className={cn(
+                                                        'inline-flex max-w-[min(100%,14rem)] min-w-0 items-center gap-2',
+                                                        'rounded-md transition-opacity hover:opacity-85',
+                                                        'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                                                    )}
+                                                    title={`Contributed by ${release.contributor.name}`}
+                                                >
+                                                    <UserAvatar
+                                                        user={
+                                                            release.contributor
+                                                        }
+                                                        className="size-8"
+                                                        fallbackClassName="bg-primary/15 text-xs text-primary"
+                                                    />
+                                                    <span className="flex min-w-0 flex-col justify-center gap-0.5 py-px">
+                                                        <span className="truncate text-sm leading-4 font-medium text-foreground">
+                                                            {
+                                                                release
+                                                                    .contributor
+                                                                    .name
+                                                            }
+                                                        </span>
+                                                        <span
+                                                            className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
+                                                            title={
+                                                                activityIsUpdate
+                                                                    ? 'Downloads last updated'
+                                                                    : 'Package listed'
+                                                            }
+                                                        >
+                                                            <span className="shrink-0">
+                                                                {activityIsUpdate
+                                                                    ? 'Updated'
+                                                                    : 'Listed'}
+                                                            </span>
+                                                            <time
+                                                                dateTime={
+                                                                    activityDate ??
+                                                                    undefined
+                                                                }
+                                                                className="min-w-0 truncate tabular-nums"
+                                                            >
+                                                                {activityDate
+                                                                    ? formatDate(
+                                                                          activityDate,
+                                                                      )
+                                                                    : 'Unscheduled'}
+                                                            </time>
+                                                        </span>
+                                                    </span>
+                                                </Link>
+                                            ) : (
+                                                <span
+                                                    className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
                                                     title={
                                                         activityIsUpdate
                                                             ? 'Downloads last updated'
                                                             : 'Package listed'
                                                     }
                                                 >
-                                                    {activityIsUpdate ? (
-                                                        <RefreshCw data-icon="inline-start" />
-                                                    ) : (
-                                                        <CalendarDays data-icon="inline-start" />
-                                                    )}
+                                                    <span className="shrink-0">
+                                                        {activityIsUpdate
+                                                            ? 'Updated'
+                                                            : 'Listed'}
+                                                    </span>
                                                     <time
                                                         dateTime={
                                                             activityDate ??
                                                             undefined
                                                         }
+                                                        className="tabular-nums"
                                                     >
                                                         {activityDate
                                                             ? formatDate(
@@ -497,61 +539,64 @@ export function ResourceTabContent({
                                                               )
                                                             : 'Unscheduled'}
                                                     </time>
-                                                </Badge>
-                                            </div>
+                                                </span>
+                                            )}
 
-                                            {hasLinks ? (
-                                                <div
-                                                    className={cn(
-                                                        'flex w-full shrink-0 flex-wrap gap-2',
-                                                        'sm:w-auto sm:justify-end',
-                                                        multiLinks &&
-                                                            'grid grid-cols-1 min-[380px]:grid-cols-2 sm:flex',
-                                                    )}
-                                                    role="group"
-                                                    aria-label="Download links"
-                                                >
-                                                    {release.downloadLinks.map(
-                                                        (link, index) => (
-                                                            <Button
-                                                                key={link.id}
-                                                                asChild
-                                                                variant="default"
-                                                                size="sm"
-                                                                className={cn(
-                                                                    downloadButtonClassName,
-                                                                    multiLinks &&
-                                                                        'w-full sm:w-auto',
-                                                                )}
-                                                            >
-                                                                <Link
-                                                                    href={downloadLinkShow(
-                                                                        link.id,
-                                                                    )}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    aria-label={
-                                                                        multiLinks
-                                                                            ? `Download ${index + 1}`
-                                                                            : 'Download'
-                                                                    }
-                                                                >
-                                                                    <CloudDownload
-                                                                        data-icon="inline-start"
-                                                                        className="size-4"
-                                                                        strokeWidth={
-                                                                            2.25
-                                                                        }
-                                                                    />
-                                                                    <span className="truncate">
-                                                                        Download
-                                                                    </span>
-                                                                </Link>
-                                                            </Button>
-                                                        ),
-                                                    )}
-                                                </div>
-                                            ) : null}
+                                            <div
+                                                className={cn(
+                                                    'flex shrink-0 flex-wrap items-center justify-end gap-2',
+                                                    multiLinks &&
+                                                        'max-w-[min(100%,22rem)]',
+                                                )}
+                                                role="group"
+                                                aria-label="Package actions"
+                                            >
+                                                <LikeButton
+                                                    isLiked={isLiked}
+                                                    likesCount={likesCount}
+                                                    isToggling={isTogglingLike}
+                                                    onToggle={toggleLike}
+                                                />
+                                                {hasLinks
+                                                    ? release.downloadLinks.map(
+                                                          (link, index) => (
+                                                              <Button
+                                                                  key={link.id}
+                                                                  asChild
+                                                                  variant="default"
+                                                                  size="sm"
+                                                                  className={
+                                                                      downloadButtonClassName
+                                                                  }
+                                                              >
+                                                                  <Link
+                                                                      href={downloadLinkShow(
+                                                                          link.id,
+                                                                      )}
+                                                                      target="_blank"
+                                                                      rel="noopener noreferrer"
+                                                                      aria-label={
+                                                                          multiLinks
+                                                                              ? `Download ${index + 1}`
+                                                                              : 'Download'
+                                                                      }
+                                                                  >
+                                                                      <CloudDownload
+                                                                          data-icon="inline-start"
+                                                                          className="size-4"
+                                                                          strokeWidth={
+                                                                              2.25
+                                                                          }
+                                                                      />
+                                                                      <span className="truncate">
+                                                                          Download
+                                                                      </span>
+                                                                  </Link>
+                                                              </Button>
+                                                          ),
+                                                      )
+                                                    : null}
+                                            </div>
                                         </div>
                                     </div>
                                 </article>

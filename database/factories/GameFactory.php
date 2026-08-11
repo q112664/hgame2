@@ -34,6 +34,7 @@ class GameFactory extends Factory
             'published_at' => fake()->dateTimeBetween('-1 year'),
             'views_count' => fake()->numberBetween(0, 50000),
             'downloads_count' => fake()->numberBetween(0, 10000),
+            'likes_count' => 0,
         ];
     }
 

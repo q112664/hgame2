@@ -6,6 +6,7 @@ use App\Http\Controllers\DownloadLinkController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\GameCommentController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LikeController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\RobotsController;
@@ -82,6 +83,8 @@ Route::middleware('auth')->group(function () {
         ->name('resources.favorite');
     Route::delete('/resources/{resource}/favorite', [FavoriteController::class, 'destroy'])
         ->name('resources.favorite.destroy');
+    Route::post('/resources/{resource}/like', [LikeController::class, 'toggle'])
+        ->name('resources.like');
     Route::post('/resources/{resource}/downloads/seen', [ResourceController::class, 'markDownloadsSeen'])
         ->name('resources.downloads.seen');
     Route::post('/resources/{resource}/comments', [GameCommentController::class, 'store'])

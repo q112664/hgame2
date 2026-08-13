@@ -391,6 +391,7 @@ test('administrators can save homepage hero content', function () {
             'hero_description' => 'Find visual novels quickly.',
             'hero_browse_label' => 'Catalog',
             'hero_random_label' => 'Dice roll',
+            'hero_enabled' => false,
             'hero_show_browse' => true,
             'hero_show_random' => false,
         ])
@@ -401,6 +402,7 @@ test('administrators can save homepage hero content', function () {
     $hero = Setting::homeHero();
 
     expect($hero)->not->toHaveKey('eyebrow')
+        ->and($hero['enabled'])->toBeFalse()
         ->and($hero['title'])->toBe('Welcome board')
         ->and($hero['description'])->toBe('Find visual novels quickly.')
         ->and($hero['browseLabel'])->toBe('Catalog')

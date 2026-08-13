@@ -25,8 +25,10 @@ export default function Welcome({
     pageSeo,
 }: Props) {
     const { siteTitle } = usePage().props;
+    const heroEnabled = hero.enabled !== false;
     // Empty document title → layout shows only siteTitle (from admin Site settings).
     const documentTitle =
+        heroEnabled &&
         hero.title.trim() !== '' &&
         hero.title.trim().toLowerCase() !== siteTitle.trim().toLowerCase()
             ? hero.title.trim()
@@ -36,7 +38,7 @@ export default function Welcome({
         <SiteLayout>
             <PageSeo seo={pageSeo} title={documentTitle} />
             <div className="flex flex-col gap-8 bg-background pt-5 pb-10 sm:gap-10 sm:pt-6 sm:pb-14">
-                <HomeHero hero={hero} />
+                {heroEnabled ? <HomeHero hero={hero} /> : null}
                 <PopularResources resources={popular} />
                 <LatestResources
                     id="latest"

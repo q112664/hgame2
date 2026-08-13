@@ -322,6 +322,7 @@ class Setting extends Model
      * Homepage hero copy and controls for the public welcome page.
      *
      * @return array{
+     *     enabled: bool,
      *     backgroundUrl: string,
      *     title: string,
      *     description: string,
@@ -344,6 +345,7 @@ class Setting extends Model
         $randomLabel = trim((string) (static::get('hero_random_label') ?? ''));
 
         return [
+            'enabled' => static::boolean('hero_enabled', true),
             'backgroundUrl' => static::heroBackgroundUrl(),
             'title' => $title,
             'description' => $description !== '' ? $description : static::defaultHeroDescription(),

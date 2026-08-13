@@ -71,6 +71,7 @@ class ManageSiteSettings extends Page
             'hero_description' => Setting::get('hero_description') ?? Setting::defaultHeroDescription(),
             'hero_browse_label' => Setting::get('hero_browse_label') ?? Setting::defaultHeroBrowseLabel(),
             'hero_random_label' => Setting::get('hero_random_label') ?? Setting::defaultHeroRandomLabel(),
+            'hero_enabled' => $hero['enabled'],
             'hero_show_browse' => $hero['showBrowse'],
             'hero_show_random' => $hero['showRandom'],
             'resource_notice_enabled' => Setting::resourceNoticeEnabled(),
@@ -176,6 +177,15 @@ class ManageSiteSettings extends Page
                         Tab::make('Homepage')
                             ->icon(Heroicon::OutlinedHome)
                             ->schema([
+                                Section::make('Hero')
+                                    ->description('Show or hide the homepage hero card. Copy and buttons below stay saved when it is off.')
+                                    ->schema([
+                                        Toggle::make('hero_enabled')
+                                            ->label('Show homepage hero')
+                                            ->helperText('When off, the homepage starts with Popular.')
+                                            ->default(true)
+                                            ->inline(false),
+                                    ]),
                                 Section::make('Hero background')
                                     ->description('Wide artwork behind the homepage hero card. Clear to restore the built-in default.')
                                     ->schema([
@@ -483,6 +493,10 @@ class ManageSiteSettings extends Page
         Setting::set('hero_description', $heroDescription !== '' ? $heroDescription : null);
         Setting::set('hero_browse_label', $heroBrowseLabel !== '' ? $heroBrowseLabel : null);
         Setting::set('hero_random_label', $heroRandomLabel !== '' ? $heroRandomLabel : null);
+        Setting::setBoolean(
+            'hero_enabled',
+            filter_var($data['hero_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),
+        );
         Setting::setBoolean(
             'hero_show_browse',
             filter_var($data['hero_show_browse'] ?? true, FILTER_VALIDATE_BOOLEAN),

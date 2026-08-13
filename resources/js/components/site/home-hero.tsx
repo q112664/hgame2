@@ -9,6 +9,7 @@ import {
 } from '@/routes/resources';
 
 export type HomeHeroContent = {
+    enabled?: boolean;
     backgroundUrl: string;
     title: string;
     description: string;

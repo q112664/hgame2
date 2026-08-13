@@ -323,9 +323,21 @@ test('home uses configured hero copy from site settings', function () {
             ->where('hero.description', 'Custom description line.')
             ->where('hero.browseLabel', 'Explore')
             ->where('hero.randomLabel', 'Surprise')
+            ->where('hero.enabled', true)
             ->where('hero.showBrowse', true)
             ->where('hero.showRandom', false)
             ->missing('hero.eyebrow')
+        );
+});
+
+test('home can hide the hero module from site settings', function () {
+    Setting::setBoolean('hero_enabled', false);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('welcome')
+            ->where('hero.enabled', false)
         );
 });
 

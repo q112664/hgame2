@@ -166,6 +166,7 @@ test('search favorites settings and resources share the site page container', fu
 
     expect($filesystem->get(resource_path('js/pages/welcome.tsx')))
         ->toContain('hasMoreResources: boolean')
+        ->toContain('hero.enabled')
         ->toContain('resourcesIndex({ query: { page: 2 } }).url');
 });
 

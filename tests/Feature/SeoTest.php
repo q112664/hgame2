@@ -39,7 +39,18 @@ test('resource detail pages expose page-level seo props', function () {
             ->where('pageSeo.title', 'Senren Banka')
             ->where('pageSeo.robots', 'index,follow')
             ->where('pageSeo.canonical', route('resources.details', $game))
-            ->where('pageSeo.description', 'A published visual novel about spring.')
+            ->where(
+                'pageSeo.description',
+                fn (string $description): bool => str_starts_with($description, 'Download Senren Banka')
+                    && str_contains($description, 'Visual Novel')
+                    && str_contains(mb_strtolower($description), 'download')
+                    && mb_strlen($description) >= 80
+                    && mb_strlen($description) <= PageSeo::META_DESCRIPTION_MAX,
+            )
+            ->where(
+                'pageSeo.jsonLd.description',
+                fn (string $description): bool => str_starts_with($description, 'Download Senren Banka'),
+            )
             ->where('pageSeo.ogImageUrl', PageSeo::absoluteUrl('/storage/games/covers/senren.png'))
             ->where('pageSeo.publishedTime', $sitePublishedAt->toIso8601String())
             ->where('pageSeo.modifiedTime', $downloadsUpdatedAt->toIso8601String())
@@ -54,6 +65,28 @@ test('resource detail pages expose page-level seo props', function () {
         );
 });
 
+test('resource sub-tabs are noindex and canonicalize to the details url', function () {
+    $game = Game::factory()->create([
+        'slug' => 'tab-cluster-game',
+        'title' => 'Tab Cluster Game',
+    ]);
+
+    foreach ([
+        'resources.downloads' => 'Tab Cluster Game · Downloads',
+        'resources.screenshots' => 'Tab Cluster Game · Screenshots',
+        'resources.comments' => 'Tab Cluster Game · Comments',
+    ] as $route => $title) {
+        $this->get(route($route, $game))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('pageSeo.title', $title)
+                ->where('pageSeo.robots', 'noindex,follow')
+                ->where('pageSeo.canonical', route('resources.details', $game))
+                ->where('pageSeo.jsonLd', null)
+            );
+    }
+});
+
 test('resource catalog canonical ignores filter query strings', function () {
     $this->get(route('resources.index', ['q' => 'foo', 'sort' => 'latest']))
         ->assertOk()
@@ -61,7 +94,13 @@ test('resource catalog canonical ignores filter query strings', function () {
             ->where('pageSeo.canonical', route('resources.index'))
             ->where('pageSeo.title', 'Hentai Games & Eroge Downloads')
             ->where('pageSeo.titleSuffix', Setting::siteLogoText())
-            ->where('pageSeo.description', 'Browse hentai games and eroge by genre, platform, language and tags. Search by title or developer, then view release details and download information.')
+            ->where(
+                'pageSeo.description',
+                fn (string $description): bool => str_contains(mb_strtolower($description), 'hentai')
+                    && str_contains(mb_strtolower($description), 'download')
+                    && mb_strlen($description) >= PageSeo::META_DESCRIPTION_MIN
+                    && mb_strlen($description) <= PageSeo::META_DESCRIPTION_MAX,
+            )
             ->where('pageSeo.robots', 'noindex,follow')
         );
 });
@@ -93,6 +132,13 @@ test('genre taxonomy pages are indexable with self-canonical', function () {
             ->where('taxonomy.value', 'slg')
             ->where('filters.category', 'slg')
             ->where('pageSeo.title', 'SLG Hentai Games & Eroge')
+            ->where(
+                'pageSeo.description',
+                fn (string $description): bool => str_contains($description, 'SLG')
+                    && str_contains(mb_strtolower($description), 'download')
+                    && mb_strlen($description) >= PageSeo::META_DESCRIPTION_MIN
+                    && mb_strlen($description) <= PageSeo::META_DESCRIPTION_MAX,
+            )
             ->where('pageSeo.canonical', route('resources.genre', $category))
             ->where('pageSeo.robots', 'index,follow')
         );
@@ -159,9 +205,11 @@ test('game meta description strips synopsis labels and block-tag glue', function
             ->assertInertia(fn ($page) => $page
                 ->where(
                     'pageSeo.description',
-                    fn (string $description): bool => str_starts_with($description, $case['starts'])
+                    fn (string $description): bool => str_contains($description, $case['starts'])
+                        && str_starts_with($description, 'Download ')
                         && ! str_contains($description, 'Synopsis (AI-translated English)Play')
-                        && ! str_contains($description, 'StoryYou'),
+                        && ! str_contains($description, 'StoryYou')
+                        && ! str_ends_with($description, 'malic…'),
                 )
             );
     }
@@ -233,10 +281,11 @@ test('unfiltered resource catalog page 1 uses a clean canonical without page que
         ->assertInertia(fn ($page) => $page
             ->where('pageSeo.canonical', route('resources.index'))
             ->where('pageSeo.title', 'Hentai Games & Eroge Downloads')
+            ->where('pageSeo.robots', 'index,follow')
         );
 });
 
-test('unfiltered resource catalog deep pages self-canonicalize', function () {
+test('unfiltered resource catalog deep pages are noindex with a unique title', function () {
     // Two full pages + one item so page 2 is valid (PER_PAGE is 12).
     Game::factory()->count(ListPublishedGames::PER_PAGE + 1)->create();
 
@@ -245,6 +294,34 @@ test('unfiltered resource catalog deep pages self-canonicalize', function () {
         ->assertInertia(fn ($page) => $page
             ->where('pageSeo.canonical', route('resources.index', ['page' => 2]))
             ->where('pageSeo.title', 'Hentai Games & Eroge Downloads - Page 2')
+            ->where('pageSeo.robots', 'noindex,follow')
+            ->where(
+                'pageSeo.description',
+                fn (string $description): bool => str_contains($description, 'Page 2')
+                    && $description !== PageSeo::resourcesIndex(1)['description'],
+            )
+        );
+});
+
+test('taxonomy deep pages are noindex with a unique title', function () {
+    $category = Category::factory()->create([
+        'name' => 'SLG',
+        'slug' => 'slg',
+    ]);
+    Game::factory()->count(ListPublishedGames::PER_PAGE + 1)->create([
+        'category_id' => $category->id,
+    ]);
+
+    $this->get(route('resources.genre', ['category' => $category, 'page' => 2]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('pageSeo.title', 'SLG Hentai Games & Eroge - Page 2')
+            ->where('pageSeo.robots', 'noindex,follow')
+            ->where(
+                'pageSeo.description',
+                fn (string $description): bool => str_contains($description, 'Page 2')
+                    && str_contains($description, 'SLG'),
+            )
         );
 });
 
@@ -375,7 +452,75 @@ test('page seo plain description strips tags and limits length', function () {
         ->toBe('Hello world')
         ->and(PageSeo::plainDescription(str_repeat('a', 200)))
         ->toEndWith('…')
-        ->and(mb_strlen((string) PageSeo::plainDescription(str_repeat('a', 200))))->toBeLessThanOrEqual(161);
+        ->and(mb_strlen((string) PageSeo::plainDescription(str_repeat('a', 200))))->toBeLessThanOrEqual(PageSeo::META_DESCRIPTION_MAX);
+});
+
+test('meta descriptions stop at a sentence boundary instead of mid-word', function () {
+    $first = 'The heroine enters a labyrinth seething with lust and malice.';
+    $second = 'She must survive every trap before dawn.';
+    $text = $first.' '.$second.' '.str_repeat('More words about the dungeon. ', 8);
+
+    $limited = PageSeo::limitAtSentence($text);
+
+    expect($limited)
+        ->toEndWith('.')
+        ->not->toContain('malic…')
+        ->and(mb_strlen($limited))->toBeLessThanOrEqual(PageSeo::META_DESCRIPTION_MAX)
+        ->and(str_starts_with($limited, $first))->toBeTrue();
+});
+
+test('game meta descriptions include keywords and a download call to action', function () {
+    $category = Category::factory()->create(['name' => 'Visual Novel']);
+    $game = Game::factory()->create([
+        'title' => 'Senren Banka',
+        'developer' => 'Yuzu Soft',
+        'category_id' => $category->id,
+        'description' => '<p>The heroine enters a labyrinth seething with lust and malice. She must survive every trap.</p>',
+    ]);
+
+    $description = PageSeo::gameDescription($game);
+
+    expect($description)
+        ->toStartWith('Download Senren Banka')
+        ->toContain('Visual Novel')
+        ->toContain('Yuzu Soft')
+        ->not->toContain('malic…')
+        ->and(mb_strlen($description))->toBeGreaterThanOrEqual(80)
+        ->and(mb_strlen($description))->toBeLessThanOrEqual(PageSeo::META_DESCRIPTION_MAX);
+
+    $downloads = PageSeo::gameDescription($game, 'downloads');
+    $screenshots = PageSeo::gameDescription($game, 'screenshots');
+
+    expect($downloads)->not->toBe($description)
+        ->and($screenshots)->not->toBe($description)
+        ->and($downloads)->toContain('Download Senren Banka');
+});
+
+test('home meta description is a full-length default when the saved one is too short', function () {
+    Setting::set('seo_description', 'Free download hentai games & eroge.');
+
+    $seo = PageSeo::home();
+    $description = (string) $seo['description'];
+
+    expect($description)
+        ->toContain('Discover')
+        ->not->toBe(PageSeo::resourcesIndex()['description'])
+        ->and(mb_strlen($description))->toBeGreaterThanOrEqual(PageSeo::META_DESCRIPTION_MIN)
+        ->and(mb_strlen($description))->toBeLessThanOrEqual(PageSeo::META_DESCRIPTION_MAX)
+        ->and($seo['jsonLd']['description'] ?? null)->toBe($description);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('pageSeo.description', $description)
+        );
+});
+
+test('home and catalog meta descriptions stay distinct', function () {
+    expect(PageSeo::home()['description'])
+        ->not->toBe(PageSeo::resourcesIndex()['description'])
+        ->and(PageSeo::home()['title'])->toBeNull()
+        ->and(PageSeo::resourcesIndex()['title'])->toBe('Hentai Games & Eroge Downloads');
 });
 
 test('root blade csr fallback seo tags use data-inertia keys matching react head-key', function () {

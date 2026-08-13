@@ -25,7 +25,15 @@ use Illuminate\Support\Str;
  */
 final class PageSeo
 {
-    private const RESOURCE_CATALOG_DESCRIPTION = 'Browse hentai games and eroge by genre, platform, language and tags. Search by title or developer, then view release details and download information.';
+    public const META_DESCRIPTION_MIN = 120;
+
+    public const META_DESCRIPTION_MAX = 155;
+
+    /** Catalog /resources — transactional listing intent. */
+    private const RESOURCE_CATALOG_DESCRIPTION = 'Free hentai games and eroge downloads. Browse by genre, platform, language, or tag, then open details and grab the latest packages.';
+
+    /** Homepage — discovery/brand, kept distinct from the catalog. */
+    private const HOME_DESCRIPTION = 'Discover new hentai games and eroge. Explore popular titles and fresh listings, then open a game when you want the full story.';
 
     /**
      * @param  array<string, mixed>|list<array<string, mixed>>|null  $jsonLd
@@ -46,7 +54,7 @@ final class PageSeo
         return [
             'title' => filled($title) ? trim((string) $title) : null,
             'titleSuffix' => filled($titleSuffix) ? trim((string) $titleSuffix) : null,
-            'description' => self::plainDescription($description),
+            'description' => self::finalizeMetaDescription($description),
             'canonical' => self::absoluteUrl($canonical),
             'robots' => self::resolveRobots($robots),
             'ogType' => $ogType !== '' ? $ogType : 'website',
@@ -64,7 +72,7 @@ final class PageSeo
     {
         $siteUrl = Setting::siteUrl();
         $name = Setting::siteTitle();
-        $description = Setting::seoDescription();
+        $description = self::homeDescription();
         $searchTarget = rtrim($siteUrl, '/').'/search?q={search_term_string}';
 
         return self::make(
@@ -94,8 +102,9 @@ final class PageSeo
     /**
      * Catalog SEO: clean page 1 URL is the default.
      *
-     * - Unfiltered page ≥ 2: self-referencing canonical (?page=N) and title suffix.
-     * - Any filter/sort noise (or filtered deep pages): fold canonical to /resources.
+     * - Unfiltered page 1: indexable, canonical /resources.
+     * - Unfiltered page ≥ 2: noindex,follow (avoid near-duplicate clusters), unique title/description, self-canonical.
+     * - Any filter/sort noise: fold canonical to /resources and noindex,follow.
      * - Never emit ?page=1 in the canonical.
      *
      * @return PageSeoArray
@@ -105,18 +114,21 @@ final class PageSeo
         $page = max(1, $page);
         $title = 'Hentai Games & Eroge Downloads';
         $canonical = route('resources.index');
+        $description = self::RESOURCE_CATALOG_DESCRIPTION;
+        $isPaginated = ! $hasFilters && $page > 1;
 
-        if (! $hasFilters && $page > 1) {
+        if ($isPaginated) {
             $canonical = route('resources.index', ['page' => $page]);
             $title .= ' - Page '.$page;
+            $description = self::paginatedCatalogDescription($page);
         }
 
         return self::make(
             title: $title,
             titleSuffix: Setting::siteLogoText(),
-            description: self::RESOURCE_CATALOG_DESCRIPTION,
+            description: $description,
             canonical: $canonical,
-            robots: $hasFilters ? 'noindex,follow' : null,
+            robots: ($hasFilters || $isPaginated) ? 'noindex,follow' : null,
         );
     }
 
@@ -146,11 +158,12 @@ final class PageSeo
         $description = self::taxonomyDescription($type, $name);
 
         $canonicalParams = $params;
-        $indexable = $isPure && $isIndexable;
+        $indexable = $isPure && $isIndexable && $page === 1;
 
-        if ($indexable && $page > 1) {
+        if ($page > 1) {
             $canonicalParams['page'] = $page;
             $title .= ' - Page '.$page;
+            $description = self::paginatedTaxonomyDescription($type, $name, $page);
         }
 
         return self::make(
@@ -172,7 +185,7 @@ final class PageSeo
         return self::make(
             title: 'Game Tags',
             titleSuffix: Setting::siteLogoText(),
-            description: 'Browse hentai games and eroge by tag. Open a tag to see matching titles, platforms, and download packages.',
+            description: 'Browse hentai game tags to find eroge by theme. Open a tag for matching titles, platforms, and free download packages.',
             canonical: route('resources.tags'),
         );
     }
@@ -222,11 +235,33 @@ final class PageSeo
      */
     public static function taxonomyDescription(string $type, string $name): string
     {
+        $name = trim($name);
+
         return match ($type) {
-            'category' => "Browse {$name} hentai games and eroge. Filter by platform and language, then open release details and download links.",
-            'platform' => "Browse hentai games and eroge for {$name}. Discover titles with downloads, screenshots, and release information.",
-            'language' => "Browse {$name} hentai games and eroge with language-matched releases, downloads, and screenshots.",
-            'tag' => "Browse hentai games and eroge tagged {$name}. Find related titles, platforms, and download packages.",
+            'category' => "Download free {$name} hentai games and eroge. Filter by platform and language, then open details and grab the latest packages.",
+            'platform' => "Download free hentai games and eroge for {$name}. Browse titles with downloads, screenshots, and release details.",
+            'language' => "Download free {$name} hentai games and eroge. Browse language-matched releases, screenshots, and the latest packages.",
+            'tag' => "Download free hentai games and eroge tagged {$name}. Find related titles, platforms, and the latest download packages.",
+        };
+    }
+
+    public static function paginatedCatalogDescription(int $page): string
+    {
+        return "Page {$page} of free hentai games and eroge. Browse more visual novels by genre, platform, and language, then download the latest packages.";
+    }
+
+    /**
+     * @param  'category'|'platform'|'language'|'tag'  $type
+     */
+    public static function paginatedTaxonomyDescription(string $type, string $name, int $page): string
+    {
+        $name = trim($name);
+
+        return match ($type) {
+            'category' => "Page {$page} of {$name} hentai games and eroge. Browse more titles, then open details and download free.",
+            'platform' => "Page {$page} of hentai games and eroge for {$name}. Browse more titles with downloads and screenshots.",
+            'language' => "Page {$page} of {$name} hentai games and eroge. Browse more language-matched releases and download free.",
+            'tag' => "Page {$page} of hentai games and eroge tagged {$name}. Browse more related titles and download packages.",
         };
     }
 
@@ -257,7 +292,7 @@ final class PageSeo
             ? $game->title.' · '.$tabLabel
             : $game->title;
 
-        $description = self::gameDescription($game);
+        $description = self::gameDescription($game, $tab);
         $image = self::gameImageUrl($game);
 
         $jsonLd = $tab === 'details'
@@ -269,12 +304,16 @@ final class PageSeo
         $publishedTime = $game->sitePublishedAt()?->toIso8601String();
         $modifiedTime = $game->contentModifiedAt()?->toIso8601String();
 
+        $isPrimary = $tab === 'details';
+
         return self::make(
             title: $title,
             description: $description,
-            canonical: route($canonicalRoute, $game),
+            // Sub-tabs share one indexable URL so they do not form a 4-page cluster.
+            canonical: route('resources.details', $game),
             ogImageUrl: $image,
             ogType: 'website',
+            robots: $isPrimary ? null : 'noindex,follow',
             publishedTime: $publishedTime,
             modifiedTime: $modifiedTime,
             jsonLd: $jsonLd,
@@ -288,7 +327,7 @@ final class PageSeo
     {
         return self::make(
             title: 'Articles',
-            description: 'Guides and site documentation.',
+            description: 'Read guides for downloading hentai games and eroge. Learn how packages, platforms, and site downloads work.',
             canonical: route('docs.index'),
         );
     }
@@ -334,7 +373,7 @@ final class PageSeo
     {
         return self::make(
             title: 'Search',
-            description: 'Search published resources.',
+            description: 'Search free hentai games and eroge by title, developer, genre, or tag, then open details and download packages.',
             canonical: route('search'),
             robots: 'noindex,follow',
         );
@@ -377,7 +416,10 @@ final class PageSeo
         return $base.'/'.ltrim($url, '/');
     }
 
-    public static function plainDescription(?string $value, int $limit = 160): ?string
+    /**
+     * Strip HTML and collapse whitespace. Does not truncate.
+     */
+    public static function plainText(?string $value): ?string
     {
         if (! filled($value)) {
             return null;
@@ -404,11 +446,54 @@ final class PageSeo
         $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
         $text = trim($text);
 
-        if ($text === '') {
+        return $text === '' ? null : $text;
+    }
+
+    /**
+     * Trim a meta description to $max without cutting mid-sentence when possible.
+     * Falls back to the last word boundary, never mid-word.
+     */
+    public static function limitAtSentence(string $text, int $max = self::META_DESCRIPTION_MAX, int $min = 80): string
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', $text) ?? $text);
+
+        if ($text === '' || mb_strlen($text) <= $max) {
+            return $text;
+        }
+
+        $window = mb_substr($text, 0, $max);
+        $sentenceEnd = self::lastSentenceEndPosition($window, $min);
+
+        if ($sentenceEnd !== null) {
+            return rtrim(mb_substr($window, 0, $sentenceEnd + 1));
+        }
+
+        $space = mb_strrpos($window, ' ');
+
+        if ($space !== false && $space >= $min) {
+            return rtrim(mb_substr($window, 0, $space)).'…';
+        }
+
+        return rtrim(mb_substr($text, 0, max(1, $max - 1))).'…';
+    }
+
+    public static function finalizeMetaDescription(?string $value, int $max = self::META_DESCRIPTION_MAX): ?string
+    {
+        $text = self::plainText($value);
+
+        if ($text === null) {
             return null;
         }
 
-        return Str::limit($text, $limit, '…');
+        return self::limitAtSentence($text, $max);
+    }
+
+    /**
+     * @deprecated Use finalizeMetaDescription() for SEO payloads.
+     */
+    public static function plainDescription(?string $value, int $limit = self::META_DESCRIPTION_MAX): ?string
+    {
+        return self::finalizeMetaDescription($value, $limit);
     }
 
     private static function resolveRobots(?string $pageRobots): string
@@ -430,29 +515,77 @@ final class PageSeo
         return 'index,follow';
     }
 
-    private static function gameDescription(Game $game): ?string
+    /**
+     * Unique 120–155 character description with title keywords and a download CTA.
+     */
+    public static function gameDescription(Game $game, string $tab = 'details'): string
     {
-        $fromBody = self::plainDescription($game->description);
-        $fromBody = self::stripLeadingSynopsisLabels($fromBody);
+        $title = trim((string) $game->title);
+        $title = $title !== '' ? $title : 'this hentai game';
+        $category = filled($game->category?->name) ? trim((string) $game->category->name) : null;
+        $developer = filled($game->developer) ? trim((string) $game->developer) : null;
+        $genre = $category ?? 'hentai';
 
-        if ($fromBody !== null && mb_strlen($fromBody) >= 40) {
-            return Str::limit($fromBody, 160, '…');
+        $hook = self::firstSentence(
+            self::stripLeadingSynopsisLabels(self::plainText($game->description)) ?? '',
+        );
+
+        [$lead, $cta] = match ($tab) {
+            'downloads' => [
+                "Download {$title} — {$genre} eroge packages, file details, and the latest mirrors.",
+                ' Get the latest package now.',
+            ],
+            'screenshots' => [
+                "See screenshots of {$title}, a {$genre} hentai game. Preview scenes before you download.",
+                ' Preview scenes, then download free.',
+            ],
+            'comments' => [
+                "Read comments on {$title}, a {$genre} hentai game. See notes from players before you download.",
+                ' Join the discussion, then download.',
+            ],
+            default => [
+                'Download '.$title
+                    .', a '.$genre.' hentai game'
+                    .($developer !== null ? ' by '.$developer : '')
+                    .'.',
+                ' Free download with details and screenshots.',
+            ],
+        };
+
+        $text = $lead;
+
+        if ($tab === 'details' && $hook !== '' && ! str_contains(mb_strtolower($lead), mb_strtolower($hook))) {
+            $withHook = trim($text.' '.$hook);
+
+            if (mb_strlen($withHook) <= self::META_DESCRIPTION_MAX) {
+                $text = $withHook;
+            }
         }
 
-        $parts = array_values(array_filter([
-            $game->subtitle,
-            $game->developer ? 'by '.$game->developer : null,
-            $game->category?->name,
-        ], filled(...)));
+        if (mb_strlen($text) < self::META_DESCRIPTION_MIN) {
+            $withCta = trim($text.$cta);
 
-        $fallback = self::plainDescription(implode(' · ', $parts));
-
-        // Prefer a short cleaned body over empty; else structured fallback.
-        if ($fromBody !== null && $fromBody !== '') {
-            return Str::limit($fromBody, 160, '…');
+            if (mb_strlen($withCta) <= self::META_DESCRIPTION_MAX || mb_strlen($text) < 80) {
+                $text = $withCta;
+            }
         }
 
-        return $fallback;
+        return self::limitAtSentence($text);
+    }
+
+    public static function homeDescription(): string
+    {
+        $custom = Setting::get('seo_description');
+
+        if (is_string($custom)) {
+            $custom = trim($custom);
+
+            if ($custom !== '' && mb_strlen($custom) >= 80) {
+                return self::limitAtSentence($custom);
+            }
+        }
+
+        return self::HOME_DESCRIPTION;
     }
 
     /**
@@ -484,6 +617,39 @@ final class PageSeo
         $cleaned = trim($cleaned);
 
         return $cleaned === '' ? null : $cleaned;
+    }
+
+    /**
+     * @return int<0, max>|null Byte-less Unicode offset of the last sentence terminator.
+     */
+    private static function lastSentenceEndPosition(string $text, int $min): ?int
+    {
+        $best = null;
+
+        foreach (['.', '!', '?', '。', '！', '？'] as $mark) {
+            $pos = mb_strrpos($text, $mark);
+
+            if ($pos !== false && $pos >= $min) {
+                $best = $best === null ? $pos : max($best, $pos);
+            }
+        }
+
+        return $best;
+    }
+
+    private static function firstSentence(string $text): string
+    {
+        $text = trim($text);
+
+        if ($text === '') {
+            return '';
+        }
+
+        if (preg_match('/^(.+?[\.!?。！？])(?:\s|$)/u', $text, $matches) === 1) {
+            return trim((string) $matches[1]);
+        }
+
+        return $text;
     }
 
     private static function gameImageUrl(Game $game): ?string

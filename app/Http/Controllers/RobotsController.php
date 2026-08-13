@@ -26,6 +26,7 @@ class RobotsController extends Controller
             'Disallow: /user',
             'Disallow: /go/',
             'Disallow: /search',
+            'Disallow: /users',
             '',
             'Sitemap: '.$sitemap,
             '',

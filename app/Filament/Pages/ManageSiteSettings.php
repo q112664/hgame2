@@ -244,7 +244,7 @@ class ManageSiteSettings extends Page
                                             ->rows(3)
                                             ->maxLength(320)
                                             ->placeholder(Setting::defaultSeoDescription())
-                                            ->helperText('About 150–160 characters recommended.'),
+                                            ->helperText('Aim for 120–155 characters. Short defaults are replaced on the homepage.'),
                                         TextInput::make('seo_keywords')
                                             ->label('Meta keywords')
                                             ->maxLength(255)

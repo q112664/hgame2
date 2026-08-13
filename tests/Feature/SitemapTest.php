@@ -109,5 +109,6 @@ test('robots txt points at the sitemap and blocks private paths', function () {
         ->toContain('Disallow: /settings')
         ->toContain('Disallow: /admin')
         ->toContain('Disallow: /go/')
-        ->toContain('Disallow: /search');
+        ->toContain('Disallow: /search')
+        ->toContain('Disallow: /users');
 });

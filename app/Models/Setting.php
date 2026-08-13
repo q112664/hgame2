@@ -121,7 +121,7 @@ class Setting extends Model
 
     public static function defaultSeoDescription(): string
     {
-        return 'Browse, search, and download galgame resources.';
+        return 'Download free hentai games and eroge. Browse visual novels by genre, platform, and language, then grab the latest packages.';
     }
 
     public static function seoDescription(): string

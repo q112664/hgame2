@@ -61,7 +61,7 @@ export function LatestResources({
                 </div>
 
                 {resources.length > 0 ? (
-                    <div className="mt-3 grid grid-cols-1 gap-3 sm:mt-3.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+                    <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-3.5 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
                         {resources.map((resource, index) => (
                             <ResourceCard
                                 key={resource.id}

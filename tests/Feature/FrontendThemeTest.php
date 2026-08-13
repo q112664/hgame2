@@ -161,6 +161,7 @@ test('search favorites settings and resources share the site page container', fu
     expect($filesystem->get(resource_path('js/components/site/latest-resources.tsx')))
         ->toContain('nextPageHref?: string | null')
         ->toContain('Next page')
+        ->toContain('grid-cols-2')
         ->toContain('<ChevronRight data-icon="inline-end" />');
 
     expect($filesystem->get(resource_path('js/pages/welcome.tsx')))
@@ -293,7 +294,7 @@ test('search and favorite results use detailed card grids', function () {
     $favoriteCard = $filesystem->get(resource_path('js/components/site/favorite-resource-card.tsx'));
 
     expect($searchResults)
-        ->toContain('sm:grid-cols-2')
+        ->toContain('grid-cols-2')
         ->toContain('lg:grid-cols-3')
         ->toContain('xl:grid-cols-4')
         ->toContain('<DetailedResourceCard');

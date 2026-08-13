@@ -318,7 +318,7 @@ export default function ResourcesIndex({
                         ) : null}
                         <div
                             className={cn(
-                                'grid grid-cols-1 gap-4 transition-opacity duration-150 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+                                'grid grid-cols-2 gap-3 transition-opacity duration-150 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
                                 isPending && 'pointer-events-none opacity-50',
                             )}
                         >

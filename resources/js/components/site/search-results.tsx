@@ -13,7 +13,7 @@ export function SearchResults({ resources, isPending }: Props) {
     return (
         <ul
             className={cn(
-                'grid grid-cols-1 gap-4 transition-opacity duration-150 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+                'grid grid-cols-2 gap-3 transition-opacity duration-150 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
                 isPending ? 'opacity-50' : 'opacity-100',
             )}
             aria-busy={isPending}
@@ -35,7 +35,7 @@ export function SearchResults({ resources, isPending }: Props) {
 export function SearchResultsSkeleton() {
     return (
         <div
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
             aria-busy="true"
             aria-label="Searching"
         >

@@ -62,7 +62,8 @@ function CollapsibleReleaseDescription({
 }: CollapsibleReleaseDescriptionProps) {
     const contentRef = useRef<HTMLDivElement>(null);
     const [expanded, setExpanded] = useState(false);
-    const [overflows, setOverflows] = useState(false);
+    const [measured, setMeasured] = useState(false);
+    const [needsToggle, setNeedsToggle] = useState(false);
 
     useLayoutEffect(() => {
         const el = contentRef.current;
@@ -71,10 +72,15 @@ function CollapsibleReleaseDescription({
             return;
         }
 
+        setMeasured(false);
+        setExpanded(false);
+
         const measure = () => {
-            setOverflows(
+            // scrollHeight is full content height even when max-height is set.
+            setNeedsToggle(
                 el.scrollHeight > RELEASE_DESCRIPTION_COLLAPSED_MAX_PX + 1,
             );
+            setMeasured(true);
         };
 
         measure();
@@ -85,14 +91,18 @@ function CollapsibleReleaseDescription({
         return () => observer.disconnect();
     }, [html]);
 
+    // Clamp on first paint (!measured) and while collapsed with overflow, so long
+    // descriptions never flash fully open before the layout effect runs.
+    const isClamped = !expanded && (!measured || needsToggle);
+
     return (
         <div className="flex flex-col">
             <div className="relative">
                 <div
                     ref={contentRef}
-                    className={cn(!expanded && overflows && 'overflow-hidden')}
+                    className={cn(isClamped && 'overflow-hidden')}
                     style={
-                        !expanded && overflows
+                        isClamped
                             ? {
                                   maxHeight:
                                       RELEASE_DESCRIPTION_COLLAPSED_MAX_PX,
@@ -105,14 +115,14 @@ function CollapsibleReleaseDescription({
                         className={releaseDescriptionClassName}
                     />
                 </div>
-                {!expanded && overflows ? (
+                {isClamped && needsToggle ? (
                     <div
                         className="pointer-events-none absolute inset-x-0 bottom-0 h-7 bg-gradient-to-t from-card to-transparent"
                         aria-hidden
                     />
                 ) : null}
             </div>
-            {overflows ? (
+            {measured && needsToggle ? (
                 <button
                     type="button"
                     className={cn(

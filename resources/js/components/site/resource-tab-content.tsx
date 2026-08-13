@@ -7,7 +7,7 @@ import {
     Images,
     Info,
 } from 'lucide-react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
 import { LikeButton } from '@/components/site/like-button';
 import { PlatformIcon } from '@/components/site/platform-icon';
@@ -57,55 +57,62 @@ type CollapsibleReleaseDescriptionProps = {
     html: string;
 };
 
+/**
+ * Decide collapse from the HTML itself so SSR and the first client paint match.
+ * Measuring after paint unclamps long notes (scrollHeight ≈ 72px while clipped)
+ * and then reclamps — that is the refresh flash.
+ */
+function releaseDescriptionNeedsToggle(html: string): boolean {
+    if (/<img\b/i.test(html)) {
+        return true;
+    }
+
+    const withBreaks = html
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/(p|div|li|h[1-6]|tr|blockquote)>/gi, '\n');
+
+    const text = withBreaks
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/&#(\d+);/g, (_, code: string) =>
+            String.fromCharCode(Number(code)),
+        )
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n[ \t]+/g, '\n')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
+
+    if (text === '') {
+        return false;
+    }
+
+    const lineCount = text
+        .split('\n')
+        .filter((line) => line.trim() !== '').length;
+
+    return lineCount > 3 || text.length > 140;
+}
+
 function CollapsibleReleaseDescription({
     html,
 }: CollapsibleReleaseDescriptionProps) {
-    const contentRef = useRef<HTMLDivElement>(null);
     const [expanded, setExpanded] = useState(false);
-    const [measured, setMeasured] = useState(false);
-    const [needsToggle, setNeedsToggle] = useState(false);
-
-    useLayoutEffect(() => {
-        const el = contentRef.current;
-
-        if (!el) {
-            return;
-        }
-
-        setMeasured(false);
-        setExpanded(false);
-
-        const measure = () => {
-            // scrollHeight is full content height even when max-height is set.
-            setNeedsToggle(
-                el.scrollHeight > RELEASE_DESCRIPTION_COLLAPSED_MAX_PX + 1,
-            );
-            setMeasured(true);
-        };
-
-        measure();
-
-        const observer = new ResizeObserver(measure);
-        observer.observe(el);
-
-        return () => observer.disconnect();
-    }, [html]);
-
-    // Clamp on first paint (!measured) and while collapsed with overflow, so long
-    // descriptions never flash fully open before the layout effect runs.
-    const isClamped = !expanded && (!measured || needsToggle);
+    const needsToggle = releaseDescriptionNeedsToggle(html);
+    const isClamped = needsToggle && !expanded;
 
     return (
         <div className="flex flex-col">
             <div className="relative">
                 <div
-                    ref={contentRef}
-                    className={cn(isClamped && 'overflow-hidden')}
                     style={
                         isClamped
                             ? {
                                   maxHeight:
                                       RELEASE_DESCRIPTION_COLLAPSED_MAX_PX,
+                                  overflow: 'hidden',
                               }
                             : undefined
                     }
@@ -115,14 +122,14 @@ function CollapsibleReleaseDescription({
                         className={releaseDescriptionClassName}
                     />
                 </div>
-                {isClamped && needsToggle ? (
+                {isClamped ? (
                     <div
                         className="pointer-events-none absolute inset-x-0 bottom-0 h-7 bg-gradient-to-t from-card to-transparent"
                         aria-hidden
                     />
                 ) : null}
             </div>
-            {measured && needsToggle ? (
+            {needsToggle ? (
                 <button
                     type="button"
                     className={cn(

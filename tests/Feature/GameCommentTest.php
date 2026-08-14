@@ -2,6 +2,7 @@
 
 use App\Models\Game;
 use App\Models\GameComment;
+use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\CommentRepliedNotification;
 use Illuminate\Database\Eloquent\Factories\Sequence;
@@ -171,9 +172,34 @@ test('other resource tabs expose comments count without the full list', function
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
             ->where('activeTab', 'details')
+            ->where('commentsEnabled', true)
             ->where('comments', null)
             ->where('commentsCount', 2)
         );
+});
+
+test('disabled comments hide the tab payload and return 404', function () {
+    Setting::setBoolean('comments_enabled', false);
+    GameComment::factory()->for($this->game)->create();
+    $user = User::factory()->create();
+
+    $this->get(route('resources.details', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('resources/show')
+            ->where('commentsEnabled', false)
+            ->where('commentsCount', 0)
+        );
+
+    $this->get(route('resources.comments', $this->game->slug))->assertNotFound();
+
+    $this->actingAs($user)
+        ->post(route('resources.comments.store', $this->game->slug), [
+            'body' => 'Should not save',
+        ])
+        ->assertNotFound();
+
+    expect(GameComment::query()->count())->toBe(1);
 });
 
 test('authors can edit their own comments', function () {

@@ -367,8 +367,7 @@ class ResourceController extends Controller
         return Inertia::render('resources/show', [
             'activeTab' => 'downloads',
             'resourceNotice' => Setting::resourceNoticeHtml(),
-            'comments' => [],
-            'commentsCount' => $game->comments()->count(),
+            ...$this->commentsPageProps($game, $request, 'downloads'),
             'related' => [],
             'pageSeo' => PageSeo::forGame($game, 'downloads'),
             'resource' => $this->presentResource(
@@ -416,10 +415,7 @@ class ResourceController extends Controller
         return Inertia::render('resources/show', [
             'activeTab' => $activeTab,
             'resourceNotice' => Setting::resourceNoticeHtml(),
-            'comments' => $activeTab === 'comments'
-                ? $this->presentComments($game, $request)
-                : null,
-            'commentsCount' => $game->comments()->count(),
+            ...$this->commentsPageProps($game, $request, $activeTab),
             'related' => $includeDetails
                 ? ($this->listRelatedGames)($game)
                 : [],
@@ -498,6 +494,30 @@ class ResourceController extends Controller
             'adminEditUrl' => auth()->user()?->is_admin
                 ? GameResource::getUrl('edit', ['record' => $game], panel: 'admin')
                 : null,
+        ];
+    }
+
+    /**
+     * @return array{commentsEnabled: bool, comments: mixed, commentsCount: int}
+     */
+    private function commentsPageProps(Game $game, Request $request, string $activeTab): array
+    {
+        $enabled = Setting::commentsEnabled();
+
+        if (! $enabled) {
+            return [
+                'commentsEnabled' => false,
+                'comments' => $activeTab === 'downloads' ? [] : null,
+                'commentsCount' => 0,
+            ];
+        }
+
+        return [
+            'commentsEnabled' => true,
+            'comments' => $activeTab === 'comments'
+                ? $this->presentComments($game, $request)
+                : ($activeTab === 'downloads' ? [] : null),
+            'commentsCount' => $game->comments()->count(),
         ];
     }
 

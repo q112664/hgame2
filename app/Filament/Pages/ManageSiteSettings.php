@@ -74,6 +74,7 @@ class ManageSiteSettings extends Page
             'hero_enabled' => $hero['enabled'],
             'hero_show_browse' => $hero['showBrowse'],
             'hero_show_random' => $hero['showRandom'],
+            'comments_enabled' => Setting::commentsEnabled(),
             'resource_notice_enabled' => Setting::resourceNoticeEnabled(),
             'resource_notice_content' => Setting::get('resource_notice_content') ?? '',
             'turnstile_site_key' => Setting::get('turnstile_site_key') ?? config('services.turnstile.site_key'),
@@ -287,6 +288,15 @@ class ManageSiteSettings extends Page
                         Tab::make('Resources')
                             ->icon(Heroicon::OutlinedRectangleStack)
                             ->schema([
+                                Section::make('Comments')
+                                    ->description('Allow visitors to read and post comments on resource pages.')
+                                    ->schema([
+                                        Toggle::make('comments_enabled')
+                                            ->label('Enable comments')
+                                            ->helperText('When off, the Comments tab is hidden and comment URLs return 404. Existing comments stay in the database.')
+                                            ->default(true)
+                                            ->inline(false),
+                                    ]),
                                 Section::make('Resource page notice')
                                     ->description('Shown on the Downloads tab above download packages. Disable or clear to hide.')
                                     ->schema([
@@ -506,6 +516,10 @@ class ManageSiteSettings extends Page
             filter_var($data['hero_show_random'] ?? true, FILTER_VALIDATE_BOOLEAN),
         );
 
+        Setting::setBoolean(
+            'comments_enabled',
+            filter_var($data['comments_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),
+        );
         Setting::setBoolean(
             'resource_notice_enabled',
             filter_var($data['resource_notice_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),

@@ -79,6 +79,7 @@ type Props = {
     resourceNotice?: string;
     comments?: PaginatedData<ResourceComment>;
     commentsCount?: number;
+    commentsEnabled?: boolean;
     related?: GameCard[];
     pageSeo?: PageSeoData | null;
 };
@@ -194,6 +195,7 @@ export default function ResourceShow({
     resourceNotice = '',
     comments,
     commentsCount = 0,
+    commentsEnabled = true,
     related = [],
     pageSeo,
 }: Props) {
@@ -361,14 +363,16 @@ export default function ResourceShow({
         return beginTabNavigation(tab, navigationId);
     };
 
-    const resourceTabLinks = resourceTabs.map((tab) => ({
-        value: tab.value,
-        label:
-            tab.value === 'comments' && commentsCount > 0
-                ? `${tab.label} (${commentsCount})`
-                : tab.label,
-        href: tab.href(resource.id),
-    }));
+    const resourceTabLinks = resourceTabs
+        .filter((tab) => tab.value !== 'comments' || commentsEnabled)
+        .map((tab) => ({
+            value: tab.value,
+            label:
+                tab.value === 'comments' && commentsCount > 0
+                    ? `${tab.label} (${commentsCount})`
+                    : tab.label,
+            href: tab.href(resource.id),
+        }));
 
     const screenshotSlides = resource.screenshots.map((src, index) => ({
         src,

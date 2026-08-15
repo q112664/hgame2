@@ -24,6 +24,7 @@ class GameCommentFactory extends Factory
             'user_id' => User::factory(),
             'parent_id' => null,
             'body' => fake()->sentence(),
+            'rating' => null,
         ];
     }
 
@@ -32,6 +33,15 @@ class GameCommentFactory extends Factory
         return $this->state(fn (): array => [
             'game_id' => $parent->game_id,
             'parent_id' => $parent->parent_id ?? $parent->id,
+            'rating' => null,
+        ]);
+    }
+
+    public function rated(int $score = 5): static
+    {
+        return $this->state(fn (): array => [
+            'parent_id' => null,
+            'rating' => max(1, min(5, $score)),
         ]);
     }
 }

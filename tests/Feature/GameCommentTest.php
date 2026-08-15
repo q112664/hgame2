@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Games\RecalculateGameRatings;
 use App\Models\Game;
 use App\Models\GameComment;
 use App\Models\Setting;
@@ -511,4 +512,163 @@ test('comment updates and deletes are scoped to the resource', function () {
         ->assertNotFound();
 
     expect($comment->fresh()->body)->not->toBe('Should not update');
+});
+
+test('root comments can include an optional 1-5 star rating', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('resources.comments.store', $this->game->slug), [
+            'body' => 'Loved it',
+            'rating' => 5,
+        ])
+        ->assertRedirect();
+
+    $comment = GameComment::query()->first();
+
+    expect($comment)->not->toBeNull()
+        ->and($comment->rating)->toBe(5)
+        ->and($this->game->fresh()->ratings_count)->toBe(1)
+        ->and((float) $this->game->fresh()->ratings_avg)->toBe(5.0);
+
+    $this->get(route('resources.comments', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('ratingsCount', 1)
+            ->where('ratingsAvg', 5)
+            ->where('comments.data.0.rating', 5)
+            ->where('comments.data.0.body', 'Loved it')
+        );
+});
+
+test('replies cannot include a rating', function () {
+    $author = User::factory()->create();
+    $replier = User::factory()->create();
+    $root = GameComment::factory()->for($this->game)->for($author)->create();
+
+    $this->actingAs($replier)
+        ->from(route('resources.comments', $this->game->slug))
+        ->post(route('resources.comments.store', $this->game->slug), [
+            'body' => 'Nice take',
+            'parent_id' => $root->id,
+            'rating' => 4,
+        ])
+        ->assertSessionHasErrors('rating');
+
+    expect(GameComment::query()->where('parent_id', $root->id)->exists())->toBeFalse()
+        ->and($this->game->fresh()->ratings_count)->toBe(0);
+});
+
+test('only one active rating is kept per user per game', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('resources.comments.store', $this->game->slug), [
+            'body' => 'First take',
+            'rating' => 2,
+        ])
+        ->assertRedirect();
+
+    $first = GameComment::query()->where('body', 'First take')->first();
+
+    $this->actingAs($user)
+        ->post(route('resources.comments.store', $this->game->slug), [
+            'body' => 'Changed my mind',
+            'rating' => 5,
+        ])
+        ->assertRedirect();
+
+    $second = GameComment::query()->where('body', 'Changed my mind')->first();
+
+    expect($first->fresh()->rating)->toBeNull()
+        ->and($second->fresh()->rating)->toBe(5)
+        ->and($this->game->fresh()->ratings_count)->toBe(1)
+        ->and((float) $this->game->fresh()->ratings_avg)->toBe(5.0);
+});
+
+test('updating a root rating recalculates game aggregates', function () {
+    $alice = User::factory()->create();
+    $bob = User::factory()->create();
+
+    $aliceReview = GameComment::factory()->for($this->game)->for($alice)->rated(4)->create([
+        'body' => 'Solid',
+    ]);
+    GameComment::factory()->for($this->game)->for($bob)->rated(2)->create([
+        'body' => 'Meh',
+    ]);
+
+    app(RecalculateGameRatings::class)($this->game);
+
+    expect($this->game->fresh()->ratings_count)->toBe(2)
+        ->and((float) $this->game->fresh()->ratings_avg)->toBe(3.0);
+
+    $this->actingAs($alice)
+        ->patch(route('resources.comments.update', [
+            'resource' => $this->game->slug,
+            'comment' => $aliceReview->id,
+        ]), [
+            'body' => 'Solid',
+            'rating' => 5,
+        ])
+        ->assertRedirect();
+
+    expect($aliceReview->fresh()->rating)->toBe(5)
+        ->and($this->game->fresh()->ratings_count)->toBe(2)
+        ->and((float) $this->game->fresh()->ratings_avg)->toBe(3.5);
+});
+
+test('clearing a rating and deleting a rated review update aggregates', function () {
+    $user = User::factory()->create();
+    $comment = GameComment::factory()->for($this->game)->for($user)->rated(4)->create();
+
+    app(RecalculateGameRatings::class)($this->game);
+
+    $this->actingAs($user)
+        ->patch(route('resources.comments.update', [
+            'resource' => $this->game->slug,
+            'comment' => $comment->id,
+        ]), [
+            'body' => 'No stars this time',
+            'rating' => null,
+        ])
+        ->assertRedirect();
+
+    expect($comment->fresh()->rating)->toBeNull()
+        ->and($this->game->fresh()->ratings_count)->toBe(0)
+        ->and((float) $this->game->fresh()->ratings_avg)->toBe(0.0);
+
+    $rated = GameComment::factory()->for($this->game)->for($user)->rated(3)->create();
+    app(RecalculateGameRatings::class)($this->game);
+
+    $this->actingAs($user)
+        ->delete(route('resources.comments.destroy', [
+            'resource' => $this->game->slug,
+            'comment' => $rated->id,
+        ]))
+        ->assertRedirect();
+
+    expect($this->game->fresh()->ratings_count)->toBe(0)
+        ->and((float) $this->game->fresh()->ratings_avg)->toBe(0.0);
+});
+
+test('rating must be between 1 and 5', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->from(route('resources.comments', $this->game->slug))
+        ->post(route('resources.comments.store', $this->game->slug), [
+            'body' => 'Invalid high',
+            'rating' => 6,
+        ])
+        ->assertSessionHasErrors('rating');
+
+    $this->actingAs($user)
+        ->post(route('resources.comments.store', $this->game->slug), [
+            'body' => 'No rating',
+            'rating' => 0,
+        ])
+        ->assertRedirect();
+
+    expect(GameComment::query()->where('body', 'No rating')->value('rating'))->toBeNull()
+        ->and($this->game->fresh()->ratings_count)->toBe(0);
 });

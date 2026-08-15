@@ -498,7 +498,13 @@ class ResourceController extends Controller
     }
 
     /**
-     * @return array{commentsEnabled: bool, comments: mixed, commentsCount: int}
+     * @return array{
+     *     commentsEnabled: bool,
+     *     comments: mixed,
+     *     commentsCount: int,
+     *     ratingsAvg: float,
+     *     ratingsCount: int
+     * }
      */
     private function commentsPageProps(Game $game, Request $request, string $activeTab): array
     {
@@ -509,6 +515,8 @@ class ResourceController extends Controller
                 'commentsEnabled' => false,
                 'comments' => $activeTab === 'downloads' ? [] : null,
                 'commentsCount' => 0,
+                'ratingsAvg' => 0.0,
+                'ratingsCount' => 0,
             ];
         }
 
@@ -518,6 +526,8 @@ class ResourceController extends Controller
                 ? $this->presentComments($game, $request)
                 : ($activeTab === 'downloads' ? [] : null),
             'commentsCount' => $game->comments()->count(),
+            'ratingsAvg' => round((float) $game->ratings_avg, 2),
+            'ratingsCount' => (int) $game->ratings_count,
         ];
     }
 
@@ -535,6 +545,7 @@ class ResourceController extends Controller
             'parent_id',
             'reply_to_user_id',
             'body',
+            'rating',
             'created_at',
             'updated_at',
         ];
@@ -655,6 +666,9 @@ class ResourceController extends Controller
         return [
             'id' => $comment->id,
             'body' => $comment->body,
+            'rating' => $comment->parent_id === null && $comment->rating !== null
+                ? (int) $comment->rating
+                : null,
             'createdAt' => $comment->created_at?->toIso8601String(),
             'updatedAt' => $comment->updated_at?->toIso8601String(),
             'isEdited' => $isEdited,

@@ -29,6 +29,19 @@ class ResourceSourceController extends Controller
         ], 201);
     }
 
+    public function destroy(ResourceSource $source): JsonResponse
+    {
+        $slug = $source->slug;
+        $source->delete();
+
+        return response()->json([
+            'data' => [
+                'id' => $slug,
+                'deleted' => true,
+            ],
+        ]);
+    }
+
     /**
      * @return array{name: string, slug: string, favicon_url: string|null, host_hint: string|null, sort_order: int}
      */

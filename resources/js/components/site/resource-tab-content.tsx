@@ -261,6 +261,8 @@ type Props = {
     resourceId?: string;
     comments?: PaginatedData<ResourceComment>;
     commentsCount?: number;
+    ratingsAvg?: number;
+    ratingsCount?: number;
     related?: GameCard[];
 };
 
@@ -285,6 +287,8 @@ export function ResourceTabContent({
     resourceId,
     comments = EMPTY_COMMENTS,
     commentsCount = 0,
+    ratingsAvg = 0,
+    ratingsCount = 0,
     related = [],
 }: Props) {
     const {
@@ -303,17 +307,11 @@ export function ResourceTabContent({
             {activeTab === 'details' ? (
                 <div className="flex flex-col gap-4 sm:gap-5">
                     <section
-                        className="rounded-md border border-border bg-card p-4 sm:p-5"
-                        aria-labelledby="resource-overview-heading"
+                        className="overflow-hidden rounded-md border border-border bg-card"
+                        aria-label="Details"
                     >
-                        <h2
-                            id="resource-overview-heading"
-                            className="mb-3 font-heading text-base font-semibold tracking-tight text-foreground sm:text-lg"
-                        >
-                            Overview
-                        </h2>
                         {resource.tags.length > 0 ? (
-                            <div className="mb-4 flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-2 border-b border-border/70 bg-muted/25 px-4 py-3 sm:px-5">
                                 {resource.tags.map((tag) => (
                                     <Link
                                         key={tag.slug}
@@ -326,7 +324,9 @@ export function ResourceTabContent({
                                 ))}
                             </div>
                         ) : null}
-                        <ResourceDetailVersions resource={resource} />
+                        <div className="p-4 sm:p-5">
+                            <ResourceDetailVersions resource={resource} />
+                        </div>
                     </section>
 
                     <RelatedResources
@@ -669,6 +669,8 @@ export function ResourceTabContent({
                     resourceId={resourceId}
                     comments={comments}
                     commentsCount={commentsCount}
+                    ratingsAvg={ratingsAvg}
+                    ratingsCount={ratingsCount}
                 />
             ) : null}
         </div>

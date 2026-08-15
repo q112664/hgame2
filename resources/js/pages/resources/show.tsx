@@ -80,6 +80,8 @@ type Props = {
     comments?: PaginatedData<ResourceComment>;
     commentsCount?: number;
     commentsEnabled?: boolean;
+    ratingsAvg?: number;
+    ratingsCount?: number;
     related?: GameCard[];
     pageSeo?: PageSeoData | null;
 };
@@ -108,7 +110,7 @@ const resourceTabs: Array<{
     },
     {
         value: 'comments',
-        label: 'Comments',
+        label: 'Reviews',
         href: (resource) => resourceComments(resource).url,
     },
 ];
@@ -196,6 +198,8 @@ export default function ResourceShow({
     comments,
     commentsCount = 0,
     commentsEnabled = true,
+    ratingsAvg = 0,
+    ratingsCount = 0,
     related = [],
     pageSeo,
 }: Props) {
@@ -830,6 +834,8 @@ export default function ResourceShow({
                         resourceNotice={resourceNotice}
                         comments={comments}
                         commentsCount={commentsCount}
+                        ratingsAvg={ratingsAvg}
+                        ratingsCount={ratingsCount}
                         resourceId={resource.id}
                         related={related}
                     />

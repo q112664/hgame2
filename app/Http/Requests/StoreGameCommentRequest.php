@@ -23,6 +23,7 @@ class StoreGameCommentRequest extends FormRequest
         return [
             'body' => ['required', 'string', 'min:1', 'max:2000'],
             'parent_id' => ['nullable', 'integer', 'exists:game_comments,id'],
+            'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
         ];
     }
 
@@ -30,6 +31,11 @@ class StoreGameCommentRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $parentId = $this->input('parent_id');
+            $rating = $this->input('rating');
+
+            if ($parentId !== null && $parentId !== '' && $rating !== null) {
+                $validator->errors()->add('rating', 'Replies cannot include a rating.');
+            }
 
             if ($parentId === null || $parentId === '') {
                 return;
@@ -53,6 +59,7 @@ class StoreGameCommentRequest extends FormRequest
     {
         $body = $this->input('body');
         $parentId = $this->input('parent_id');
+        $rating = $this->input('rating');
 
         $merged = [];
 
@@ -64,6 +71,10 @@ class StoreGameCommentRequest extends FormRequest
 
         if ($parentId === '' || $parentId === '0') {
             $merged['parent_id'] = null;
+        }
+
+        if ($rating === '' || $rating === '0') {
+            $merged['rating'] = null;
         }
 
         if ($merged !== []) {

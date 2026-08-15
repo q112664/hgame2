@@ -71,6 +71,23 @@ test('api can register a reusable source with an icon url', function () {
         ->and(GameSource::present('Booth', null, null)['faviconUrl'])->toContain('/storage/');
 });
 
+test('api can delete a reusable source', function () {
+    Sanctum::actingAs($this->admin);
+
+    $source = ResourceSource::factory()->create([
+        'name' => 'Temp Shop',
+        'slug' => 'temp-shop',
+    ]);
+
+    $this->deleteJson(route('api.v1.sources.destroy', $source))
+        ->assertOk()
+        ->assertJsonPath('data.id', 'temp-shop')
+        ->assertJsonPath('data.deleted', true);
+
+    expect(ResourceSource::query()->where('slug', 'temp-shop')->exists())->toBeFalse()
+        ->and(GameSource::options())->not->toHaveKey('Temp Shop');
+});
+
 test('publishing a game can register a source icon for reuse', function () {
     Sanctum::actingAs($this->admin);
 

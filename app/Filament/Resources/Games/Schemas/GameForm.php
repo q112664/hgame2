@@ -156,7 +156,7 @@ class GameForm
 
                                 return $source->name;
                             })
-                            ->helperText('Pick an existing source, or create one with an icon. Icons are shared across games.')
+                            ->helperText('Pick an existing source, or create one with an icon. Manage or delete shared sources under Taxonomy → Sources.')
                             ->columnSpan(4),
                         TextInput::make('source_id')
                             ->label('Source ID')

@@ -9,11 +9,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['game_id', 'user_id', 'parent_id', 'reply_to_user_id', 'body'])]
+#[Fillable(['game_id', 'user_id', 'parent_id', 'reply_to_user_id', 'body', 'rating'])]
 class GameComment extends Model
 {
     /** @use HasFactory<GameCommentFactory> */
     use HasFactory;
+
+    protected function casts(): array
+    {
+        return [
+            'rating' => 'integer',
+        ];
+    }
 
     /** @return BelongsTo<Game, $this> */
     public function game(): BelongsTo

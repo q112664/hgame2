@@ -42,7 +42,8 @@ use Illuminate\Support\Facades\Notification;
     'category_id', 'title', 'subtitle', 'slug', 'description', 'developer',
     'source_name', 'source_id', 'source_url',
     'cover_url', 'cover_path',
-    'release_date', 'status', 'published_at', 'views_count', 'downloads_count', 'likes_count', 'downloads_updated_at',
+    'release_date', 'status', 'published_at', 'views_count', 'downloads_count', 'likes_count',
+    'ratings_count', 'ratings_avg', 'downloads_updated_at',
 ])]
 class Game extends Model
 {
@@ -95,6 +96,8 @@ class Game extends Model
             'status' => GameStatus::class,
             'published_at' => 'datetime',
             'downloads_updated_at' => 'datetime',
+            'ratings_count' => 'integer',
+            'ratings_avg' => 'float',
         ];
     }
 

@@ -284,7 +284,7 @@ final class PageSeo
         $tabLabel = match ($tab) {
             'downloads' => 'Downloads',
             'screenshots' => 'Screenshots',
-            'comments' => 'Comments',
+            'comments' => 'Reviews',
             default => null,
         };
 
@@ -540,8 +540,8 @@ final class PageSeo
                 ' Preview scenes, then download free.',
             ],
             'comments' => [
-                "Read comments on {$title}, a {$genre} hentai game. See notes from players before you download.",
-                ' Join the discussion, then download.',
+                "Read reviews of {$title}, a {$genre} hentai game. See ratings and notes from players before you download.",
+                ' Share your review, then download.',
             ],
             default => [
                 'Download '.$title

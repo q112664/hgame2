@@ -74,7 +74,7 @@ test('resource sub-tabs are noindex and canonicalize to the details url', functi
     foreach ([
         'resources.downloads' => 'Tab Cluster Game · Downloads',
         'resources.screenshots' => 'Tab Cluster Game · Screenshots',
-        'resources.comments' => 'Tab Cluster Game · Comments',
+        'resources.comments' => 'Tab Cluster Game · Reviews',
     ] as $route => $title) {
         $this->get(route($route, $game))
             ->assertOk()

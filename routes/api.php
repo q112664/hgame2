@@ -17,6 +17,9 @@ Route::prefix('v1')
         Route::post('sources', [ResourceSourceController::class, 'store'])
             ->name('api.v1.sources.store');
 
+        Route::delete('sources/{source:slug}', [ResourceSourceController::class, 'destroy'])
+            ->name('api.v1.sources.destroy');
+
         Route::get('games', [GameController::class, 'index'])
             ->name('api.v1.games.index');
 

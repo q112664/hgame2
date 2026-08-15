@@ -147,7 +147,10 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain("showLabel ? 'Favorite' : null");
 
     expect($filesystem->get(resource_path('js/components/site/resource-tab-content.tsx')))
-        ->toContain('resource-overview-heading')
+        ->not->toContain('resource-overview-heading')
+        ->not->toContain('Overview')
+        ->toContain('aria-label="Details"')
+        ->toContain('border-b border-border/70 bg-muted/25')
         ->toContain('resource-downloads-heading')
         ->toContain('resource-screenshots-heading')
         ->toContain('Related games');

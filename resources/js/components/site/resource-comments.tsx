@@ -1,4 +1,5 @@
 import { router, usePage } from '@inertiajs/react';
+import { Star } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
@@ -27,6 +28,7 @@ export type ResourceCommentUser = {
 export type ResourceCommentReply = {
     id: number;
     body: string;
+    rating?: number | null;
     createdAt: string | null;
     updatedAt?: string | null;
     isEdited?: boolean;
@@ -45,7 +47,108 @@ type Props = {
     resourceId: string;
     comments: PaginatedData<ResourceComment>;
     commentsCount: number;
+    ratingsAvg?: number;
+    ratingsCount?: number;
 };
+
+const RATING_MAX = 5;
+const COMMENT_PARTIALS = [
+    'comments',
+    'commentsCount',
+    'ratingsAvg',
+    'ratingsCount',
+] as const;
+
+function RatingStars({
+    value,
+    onChange,
+    size = 'md',
+    readOnly = false,
+    label = 'Rating',
+}: {
+    value: number | null;
+    onChange?: (value: number | null) => void;
+    size?: 'sm' | 'md';
+    readOnly?: boolean;
+    label?: string;
+}) {
+    const [hover, setHover] = useState<number | null>(null);
+    const display = hover ?? value ?? 0;
+    const iconClass = size === 'sm' ? 'size-3.5' : 'size-5';
+
+    if (readOnly) {
+        if (value === null || value < 1) {
+            return null;
+        }
+
+        return (
+            <span
+                className="inline-flex items-center gap-0.5"
+                aria-label={`${value} out of ${RATING_MAX} stars`}
+            >
+                {Array.from({ length: RATING_MAX }, (_, index) => {
+                    const score = index + 1;
+
+                    return (
+                        <Star
+                            key={score}
+                            className={cn(
+                                iconClass,
+                                score <= value
+                                    ? 'fill-warning text-warning'
+                                    : 'text-muted-foreground/30',
+                            )}
+                            aria-hidden
+                        />
+                    );
+                })}
+            </span>
+        );
+    }
+
+    return (
+        <div
+            className="inline-flex items-center gap-0.5"
+            role="radiogroup"
+            aria-label={label}
+            onMouseLeave={() => setHover(null)}
+        >
+            {Array.from({ length: RATING_MAX }, (_, index) => {
+                const score = index + 1;
+                const active = score <= display;
+
+                return (
+                    <button
+                        key={score}
+                        type="button"
+                        role="radio"
+                        aria-checked={value === score}
+                        aria-label={`${score} star${score === 1 ? '' : 's'}`}
+                        className={cn(
+                            'rounded-sm p-0.5 transition-colors',
+                            'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                            active
+                                ? 'text-warning'
+                                : 'text-muted-foreground/35 hover:text-warning/80',
+                        )}
+                        onMouseEnter={() => setHover(score)}
+                        onClick={() =>
+                            onChange?.(value === score ? null : score)
+                        }
+                    >
+                        <Star
+                            className={cn(
+                                iconClass,
+                                active && 'fill-warning',
+                            )}
+                            aria-hidden
+                        />
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
 
 const MAX_LENGTH = 2000;
 
@@ -214,15 +317,19 @@ export function ResourceComments({
     resourceId,
     comments,
     commentsCount,
+    ratingsAvg = 0,
+    ratingsCount = 0,
 }: Props) {
     const page = usePage();
     const { openAuthDialog } = useAuthDialog();
     const isAuthenticated = Boolean(page.props.auth.user);
     const [body, setBody] = useState('');
+    const [rating, setRating] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [deletingId, setDeletingId] = useState<number | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editBody, setEditBody] = useState('');
+    const [editRating, setEditRating] = useState<number | null>(null);
     const [isSavingEdit, setIsSavingEdit] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [editError, setEditError] = useState<string | null>(null);
@@ -337,6 +444,7 @@ export function ResourceComments({
     const postComment = ({
         content,
         parentId,
+        score,
         onStart,
         onDone,
         onFail,
@@ -344,6 +452,7 @@ export function ResourceComments({
     }: {
         content: string;
         parentId: number | null;
+        score?: number | null;
         onStart: () => void;
         onDone: () => void;
         onFail: (message: string) => void;
@@ -368,10 +477,11 @@ export function ResourceComments({
             {
                 body: trimmed,
                 parent_id: parentId,
+                rating: parentId === null ? (score ?? null) : null,
             },
             {
                 preserveScroll: true,
-                only: ['comments', 'commentsCount'],
+                only: [...COMMENT_PARTIALS],
                 onSuccess: () => {
                     onPosted();
                 },
@@ -393,11 +503,13 @@ export function ResourceComments({
                     onFail(
                         typeof errors.body === 'string'
                             ? errors.body
-                            : typeof errors.parent_id === 'string'
-                              ? errors.parent_id
-                              : parentId === null
-                                ? 'Could not post comment.'
-                                : 'Could not post reply.',
+                            : typeof errors.rating === 'string'
+                              ? errors.rating
+                              : typeof errors.parent_id === 'string'
+                                ? errors.parent_id
+                                : parentId === null
+                                  ? 'Could not post comment.'
+                                  : 'Could not post reply.',
                     );
                 },
                 onFinish: () => {
@@ -426,11 +538,13 @@ export function ResourceComments({
         postComment({
             content: body,
             parentId: null,
+            score: rating,
             onStart: () => setIsSubmitting(true),
             onDone: () => setIsSubmitting(false),
             onFail: (message) => setError(message),
             onPosted: () => {
                 setBody('');
+                setRating(null);
             },
         });
     };
@@ -461,6 +575,7 @@ export function ResourceComments({
         setEditBody(
             normalizeCommentBody(comment.body, comment.replyTo?.name ?? null),
         );
+        setEditRating(comment.rating ?? null);
         setEditError(null);
         cancelReply();
     };
@@ -468,10 +583,11 @@ export function ResourceComments({
     const cancelEdit = () => {
         setEditingId(null);
         setEditBody('');
+        setEditRating(null);
         setEditError(null);
     };
 
-    const saveEdit = (commentId: number) => {
+    const saveEdit = (commentId: number, isRoot: boolean) => {
         if (!requireAuth()) {
             return;
         }
@@ -489,16 +605,21 @@ export function ResourceComments({
 
         router.patch(
             updateComment({ resource: resourceId, comment: commentId }).url,
-            { body: trimmed },
+            {
+                body: trimmed,
+                rating: isRoot ? editRating : null,
+            },
             {
                 preserveScroll: true,
-                only: ['comments', 'commentsCount'],
+                only: [...COMMENT_PARTIALS],
                 onSuccess: () => cancelEdit(),
                 onError: (errors) => {
                     setEditError(
                         typeof errors.body === 'string'
                             ? errors.body
-                            : 'Could not update comment.',
+                            : typeof errors.rating === 'string'
+                              ? errors.rating
+                              : 'Could not update comment.',
                     );
                 },
                 onFinish: () => setIsSavingEdit(false),
@@ -525,7 +646,7 @@ export function ResourceComments({
             destroyComment({ resource: resourceId, comment: commentId }).url,
             {
                 preserveScroll: true,
-                only: ['comments', 'commentsCount'],
+                only: [...COMMENT_PARTIALS],
                 onFinish: () => setDeletingId(null),
             },
         );
@@ -609,6 +730,13 @@ export function ResourceComments({
 
                     {isEditing ? (
                         <div className="mt-1.5 flex flex-col gap-2">
+                            {!nested ? (
+                                <RatingStars
+                                    value={editRating}
+                                    onChange={setEditRating}
+                                    label="Edit rating"
+                                />
+                            ) : null}
                             <Textarea
                                 value={editBody}
                                 onChange={(event) => {
@@ -631,7 +759,7 @@ export function ResourceComments({
                                         event.key === 'Enter'
                                     ) {
                                         event.preventDefault();
-                                        saveEdit(comment.id);
+                                        saveEdit(comment.id, !nested);
                                     }
                                 }}
                                 rows={2}
@@ -655,7 +783,9 @@ export function ResourceComments({
                                     disabled={
                                         isSavingEdit || editBody.trim() === ''
                                     }
-                                    onClick={() => saveEdit(comment.id)}
+                                    onClick={() =>
+                                        saveEdit(comment.id, !nested)
+                                    }
                                 >
                                     {isSavingEdit ? 'Saving…' : 'Save'}
                                 </Button>
@@ -669,6 +799,15 @@ export function ResourceComments({
                         </div>
                     ) : (
                         <>
+                            {!nested && comment.rating ? (
+                                <div className="mt-1">
+                                    <RatingStars
+                                        value={comment.rating}
+                                        readOnly
+                                        size="sm"
+                                    />
+                                </div>
+                            ) : null}
                             <CommentBody
                                 body={comment.body}
                                 replyToName={replyToName}
@@ -787,17 +926,35 @@ export function ResourceComments({
     return (
         <section
             id="resource-comments"
-            aria-label="Comments"
+            aria-label="Reviews"
             className="rounded-md border border-border bg-card"
         >
-            <header className="flex items-baseline gap-2 border-b border-border/70 px-4 py-3 sm:px-5">
-                <h2 className="font-heading text-sm font-semibold tracking-tight text-foreground">
-                    Comments
-                </h2>
-                {totalCount > 0 ? (
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                        {totalCount}
-                    </span>
+            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-4 py-3 sm:px-5">
+                <div className="flex items-baseline gap-2">
+                    <h2 className="font-heading text-sm font-semibold tracking-tight text-foreground">
+                        Reviews
+                    </h2>
+                    {totalCount > 0 ? (
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                            {totalCount}
+                        </span>
+                    ) : null}
+                </div>
+                {ratingsCount > 0 ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <RatingStars
+                            value={Math.round(ratingsAvg)}
+                            readOnly
+                            size="sm"
+                        />
+                        <span className="tabular-nums font-medium text-foreground">
+                            {ratingsAvg.toFixed(1)}
+                        </span>
+                        <span className="tabular-nums">
+                            ({ratingsCount}{' '}
+                            {ratingsCount === 1 ? 'rating' : 'ratings'})
+                        </span>
+                    </div>
                 ) : null}
             </header>
 
@@ -834,15 +991,34 @@ export function ResourceComments({
                             >
                                 sign up
                             </button>
-                            <span> to leave a comment.</span>
+                            <span> to leave a review.</span>
                         </p>
                     ) : (
-                        <form onSubmit={submit} className="flex flex-col gap-2">
+                        <form onSubmit={submit} className="flex flex-col gap-2.5">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Your rating
+                                </span>
+                                <RatingStars
+                                    value={rating}
+                                    onChange={setRating}
+                                    label="Your rating"
+                                />
+                                {rating !== null ? (
+                                    <span className="text-xs text-muted-foreground tabular-nums">
+                                        {rating}/{RATING_MAX}
+                                    </span>
+                                ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                        Optional
+                                    </span>
+                                )}
+                            </div>
                             <label
                                 className="sr-only"
                                 htmlFor="resource-comment-body"
                             >
-                                Write a comment
+                                Write a review
                             </label>
                             <Textarea
                                 ref={composerRef}
@@ -864,7 +1040,7 @@ export function ResourceComments({
                                         event.currentTarget.form?.requestSubmit();
                                     }
                                 }}
-                                placeholder="Write a comment…"
+                                placeholder="Share your thoughts…"
                                 rows={2}
                                 maxLength={MAX_LENGTH}
                                 disabled={isSubmitting}
@@ -902,7 +1078,7 @@ export function ResourceComments({
                                         isSubmitting || body.trim() === ''
                                     }
                                 >
-                                    {isSubmitting ? 'Posting…' : 'Post'}
+                                    {isSubmitting ? 'Posting…' : 'Post review'}
                                 </Button>
                             </div>
                         </form>
@@ -911,7 +1087,7 @@ export function ResourceComments({
 
                 {commentItems.length === 0 ? (
                     <SiteEmptyState
-                        title="No comments yet"
+                        title="No reviews yet"
                         className="min-h-0 rounded-none border-0 bg-transparent py-10"
                     />
                 ) : (
@@ -951,9 +1127,15 @@ export function ResourceComments({
                                     query: { page },
                                 }).url
                             }
-                            ariaLabel="Comments pagination"
-                            itemLabel="comments"
-                            only={['comments', 'commentsCount', 'activeTab']}
+                            ariaLabel="Reviews pagination"
+                            itemLabel="reviews"
+                            only={[
+                                'comments',
+                                'commentsCount',
+                                'ratingsAvg',
+                                'ratingsCount',
+                                'activeTab',
+                            ]}
                             onSuccess={() => {
                                 document
                                     .getElementById('resource-comments')

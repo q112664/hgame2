@@ -34,6 +34,8 @@ class StoreGameRequest extends FormRequest
             'source_name' => ['nullable', 'string', 'max:255'],
             'source_id' => ['nullable', 'string', 'max:255'],
             'source_url' => ['nullable', 'url', 'max:2048'],
+            'source_icon_url' => ['nullable', 'url', 'max:2048'],
+            'source_host_hint' => ['nullable', 'string', 'max:255'],
             'release_date' => ['nullable', 'date'],
             'description' => ['nullable', 'string'],
             'detail_versions' => ['nullable', 'array', 'max:20'],

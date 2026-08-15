@@ -2,6 +2,7 @@
 
 namespace App\Actions\Games;
 
+use App\Actions\ResourceSources\UpsertResourceSource;
 use App\Filament\Resources\Games\Schemas\GameForm;
 use App\GameStatus;
 use App\Models\Category;
@@ -27,6 +28,7 @@ class SaveGameFromApi
         private DescriptionMediaImporter $descriptionMediaImporter,
         private SyncGameScreenshots $syncGameScreenshots,
         private DeleteGameMedia $deleteGameMedia,
+        private UpsertResourceSource $upsertResourceSource,
     ) {}
 
     /**
@@ -270,6 +272,8 @@ class SaveGameFromApi
                     }
                 }
 
+                $this->syncResourceSourceLibrary($data, $isUpdate);
+
                 if (! $isUpdate || array_key_exists('description', $data)) {
                     $attributes['description'] = $description;
                 }
@@ -396,6 +400,40 @@ class SaveGameFromApi
                 ]);
             }
         }
+    }
+
+    /**
+     * Register or refresh a reusable source icon/host when the game payload provides them.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function syncResourceSourceLibrary(array $data, bool $isUpdate): void
+    {
+        $name = trim((string) ($data['source_name'] ?? ''));
+
+        if ($name === '') {
+            return;
+        }
+
+        $hasIcon = array_key_exists('source_icon_url', $data) && filled($data['source_icon_url'] ?? null);
+        $hasHost = array_key_exists('source_host_hint', $data);
+
+        // Only touch the library when icon/host metadata is supplied.
+        if (! $hasIcon && ! $hasHost) {
+            return;
+        }
+
+        $payload = ['name' => $name];
+
+        if ($hasIcon) {
+            $payload['icon_url'] = (string) $data['source_icon_url'];
+        }
+
+        if ($hasHost) {
+            $payload['host_hint'] = $data['source_host_hint'];
+        }
+
+        ($this->upsertResourceSource)($payload);
     }
 
     protected function resolveContributorId(?string $email, string $errorKey): ?int

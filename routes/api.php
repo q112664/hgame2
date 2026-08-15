@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\GameController;
+use App\Http\Controllers\Api\V1\ResourceSourceController;
 use App\Http\Controllers\Api\V1\TaxonomyController;
 use Illuminate\Support\Facades\Route;
 
@@ -9,6 +10,12 @@ Route::prefix('v1')
     ->group(function (): void {
         Route::get('taxonomies', [TaxonomyController::class, 'index'])
             ->name('api.v1.taxonomies');
+
+        Route::get('sources', [ResourceSourceController::class, 'index'])
+            ->name('api.v1.sources.index');
+
+        Route::post('sources', [ResourceSourceController::class, 'store'])
+            ->name('api.v1.sources.store');
 
         Route::get('games', [GameController::class, 'index'])
             ->name('api.v1.games.index');

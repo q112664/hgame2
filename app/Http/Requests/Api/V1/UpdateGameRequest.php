@@ -45,6 +45,8 @@ class UpdateGameRequest extends FormRequest
             'source_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'source_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'source_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
+            'source_icon_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
+            'source_host_hint' => ['sometimes', 'nullable', 'string', 'max:255'],
             'release_date' => ['sometimes', 'nullable', 'date'],
             'description' => ['sometimes', 'nullable', 'string'],
             'detail_versions' => ['sometimes', 'nullable', 'array', 'max:20'],

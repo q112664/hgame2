@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Games\Schemas;
 
+use App\Actions\ResourceSources\UpsertResourceSource;
 use App\Filament\Forms\Components\ScreenshotsFileUpload;
 use App\GameStatus;
 use App\Models\User;
@@ -121,12 +122,41 @@ class GameForm
                             ->nullable()
                             ->createOptionForm([
                                 TextInput::make('name')
-                                    ->label('Custom source')
+                                    ->label('Source name')
                                     ->required()
                                     ->maxLength(255),
+                                MediaUpload::fileUpload(
+                                    FileUpload::make('icon_path')
+                                        ->label('Icon')
+                                        ->image()
+                                        ->acceptedFileTypes([
+                                            'image/png',
+                                            'image/jpeg',
+                                            'image/webp',
+                                            'image/svg+xml',
+                                            'image/x-icon',
+                                            'image/vnd.microsoft.icon',
+                                        ])
+                                        ->maxSize(512)
+                                        ->helperText('Uploaded once and reused on every game that picks this source.'),
+                                    'site/sources',
+                                ),
+                                TextInput::make('host_hint')
+                                    ->label('Host hint')
+                                    ->maxLength(255)
+                                    ->placeholder('booth.pm')
+                                    ->helperText('Optional. Match product URLs that contain this host.'),
                             ])
-                            ->createOptionUsing(fn (array $data): string => trim((string) $data['name']))
-                            ->helperText('Prefer DLsite or Steam for built-in icons. Existing custom storefront names remain editable.')
+                            ->createOptionUsing(function (array $data): string {
+                                $source = app(UpsertResourceSource::class)([
+                                    'name' => trim((string) $data['name']),
+                                    'host_hint' => $data['host_hint'] ?? null,
+                                    'icon_path' => $data['icon_path'] ?? null,
+                                ]);
+
+                                return $source->name;
+                            })
+                            ->helperText('Pick an existing source, or create one with an icon. Icons are shared across games.')
                             ->columnSpan(4),
                         TextInput::make('source_id')
                             ->label('Source ID')

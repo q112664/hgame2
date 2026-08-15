@@ -2,35 +2,19 @@
 
 namespace App\Support;
 
+use App\Models\ResourceSource;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
+
 /**
- * Helpers for external game storefronts (DLsite, Steam, etc.).
+ * Helpers for external game storefronts (DLsite, Steam, custom library entries).
  */
 class GameSource
 {
-    /**
-     * Local public assets for known storefronts (name lowercased → public path).
-     *
-     * @var array<string, string>
-     */
-    private const FAVICONS = [
-        'dlsite' => '/images/sources/dlsite.ico',
-        'dl site' => '/images/sources/dlsite.ico',
-        'steam' => '/images/sources/steam.ico',
-    ];
+    private const CACHE_KEY = 'resource_sources.catalog';
 
     /**
-     * Hosts that map to a local favicon asset (substring match on product URL host).
-     *
-     * @var array<string, string>
-     */
-    private const HOST_FAVICONS = [
-        'dlsite.com' => 'dlsite',
-        'steampowered.com' => 'steam',
-        'steamcommunity.com' => 'steam',
-    ];
-
-    /**
-     * Fallback hosts for Google s2 favicons when no official icon is known.
+     * Fallback hosts for Google s2 favicons when no library icon is known.
      *
      * @var array<string, string>
      */
@@ -53,22 +37,18 @@ class GameSource
     /**
      * Storefronts offered in admin UI and the publish API taxonomies list.
      *
-     * @return list<array{name: string, slug: string, favicon_url: string}>
+     * @return list<array{name: string, slug: string, favicon_url: string|null}>
      */
     public static function known(): array
     {
-        return [
-            [
-                'name' => 'DLsite',
-                'slug' => 'dlsite',
-                'favicon_url' => self::FAVICONS['dlsite'],
+        return array_values(array_map(
+            static fn (array $source): array => [
+                'name' => $source['name'],
+                'slug' => $source['slug'],
+                'favicon_url' => $source['favicon_url'],
             ],
-            [
-                'name' => 'Steam',
-                'slug' => 'steam',
-                'favicon_url' => self::FAVICONS['steam'],
-            ],
-        ];
+            self::catalog(),
+        ));
     }
 
     /**
@@ -76,18 +56,31 @@ class GameSource
      */
     public static function options(): array
     {
-        return collect(self::known())
+        return collect(self::catalog())
             ->mapWithKeys(fn (array $source): array => [$source['name'] => $source['name']])
             ->all();
     }
 
+    public static function forgetCache(): void
+    {
+        Cache::forget(self::CACHE_KEY);
+    }
+
     public static function faviconUrl(?string $name, ?string $url = null): ?string
     {
+        $catalog = self::catalog();
+
         if (filled($name)) {
             $key = strtolower(trim((string) $name));
 
-            if (isset(self::FAVICONS[$key])) {
-                return self::FAVICONS[$key];
+            foreach ($catalog as $source) {
+                if ($source['name_key'] === $key || $source['slug'] === $key) {
+                    if ($source['favicon_url'] !== null) {
+                        return $source['favicon_url'];
+                    }
+
+                    break;
+                }
             }
         }
 
@@ -97,9 +90,13 @@ class GameSource
             if (is_string($host) && $host !== '') {
                 $host = strtolower($host);
 
-                foreach (self::HOST_FAVICONS as $needle => $faviconKey) {
-                    if (str_contains($host, $needle)) {
-                        return self::FAVICONS[$faviconKey];
+                foreach ($catalog as $source) {
+                    if (
+                        $source['host_hint'] !== null
+                        && str_contains($host, $source['host_hint'])
+                        && $source['favicon_url'] !== null
+                    ) {
+                        return $source['favicon_url'];
                     }
                 }
             }
@@ -130,6 +127,15 @@ class GameSource
 
         $key = strtolower(trim((string) $name));
 
+        foreach (self::catalog() as $source) {
+            if (
+                ($source['name_key'] === $key || $source['slug'] === $key)
+                && $source['host_hint'] !== null
+            ) {
+                return $source['host_hint'];
+            }
+        }
+
         return self::DOMAINS[$key] ?? null;
     }
 
@@ -154,5 +160,51 @@ class GameSource
             'url' => $url,
             'faviconUrl' => static::faviconUrl($name, $url),
         ];
+    }
+
+    /**
+     * @return list<array{
+     *     name: string,
+     *     name_key: string,
+     *     slug: string,
+     *     favicon_url: string|null,
+     *     host_hint: string|null
+     * }>
+     */
+    private static function catalog(): array
+    {
+        if (! self::tableReady()) {
+            return [];
+        }
+
+        /** @var list<array{name: string, name_key: string, slug: string, favicon_url: string|null, host_hint: string|null}> */
+        return Cache::rememberForever(self::CACHE_KEY, function (): array {
+            return ResourceSource::query()
+                ->ordered()
+                ->get(['name', 'slug', 'icon_path', 'host_hint'])
+                ->map(static function (ResourceSource $source): array {
+                    $hint = filled($source->host_hint)
+                        ? strtolower(trim((string) $source->host_hint))
+                        : null;
+
+                    return [
+                        'name' => $source->name,
+                        'name_key' => strtolower(trim($source->name)),
+                        'slug' => $source->slug,
+                        'favicon_url' => $source->iconUrl(),
+                        'host_hint' => $hint !== '' ? $hint : null,
+                    ];
+                })
+                ->all();
+        });
+    }
+
+    private static function tableReady(): bool
+    {
+        try {
+            return Schema::hasTable((new ResourceSource)->getTable());
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

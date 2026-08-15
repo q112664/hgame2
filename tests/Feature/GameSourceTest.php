@@ -1,13 +1,17 @@
 <?php
 
+use App\Models\ResourceSource;
 use App\Support\GameSource;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 test('game source present returns null when empty', function () {
     expect(GameSource::present(null, null, null))->toBeNull()
         ->and(GameSource::present('  ', '', null))->toBeNull();
 });
 
-test('game source favicon uses the local dlsite icon', function () {
+test('game source favicon uses the library dlsite icon', function () {
     $source = GameSource::present('DLsite', 'RJ01123456', null);
 
     expect($source)->not->toBeNull()
@@ -17,7 +21,7 @@ test('game source favicon uses the local dlsite icon', function () {
         ->and(public_path('images/sources/dlsite.ico'))->toBeFile();
 });
 
-test('dlsite product urls use the local favicon', function () {
+test('dlsite product urls use the library favicon', function () {
     $source = GameSource::present(
         null,
         'RJ01123456',
@@ -27,7 +31,7 @@ test('dlsite product urls use the local favicon', function () {
     expect($source['faviconUrl'])->toBe('/images/sources/dlsite.ico');
 });
 
-test('game source favicon uses the local steam icon', function () {
+test('game source favicon uses the library steam icon', function () {
     $source = GameSource::present('Steam', '1234560', null);
 
     expect($source)->not->toBeNull()
@@ -37,7 +41,7 @@ test('game source favicon uses the local steam icon', function () {
         ->and(public_path('images/sources/steam.ico'))->toBeFile();
 });
 
-test('steam store product urls use the local favicon', function () {
+test('steam store product urls use the library favicon', function () {
     $source = GameSource::present(
         null,
         '1234560',
@@ -47,7 +51,7 @@ test('steam store product urls use the local favicon', function () {
     expect($source['faviconUrl'])->toBe('/images/sources/steam.ico');
 });
 
-test('known sources list dlsite and steam with local favicons', function () {
+test('known sources list library entries with icons', function () {
     $known = GameSource::known();
 
     expect($known)->toHaveCount(2)
@@ -56,7 +60,29 @@ test('known sources list dlsite and steam with local favicons', function () {
         ->and($known[1]['favicon_url'])->toBe('/images/sources/steam.ico');
 });
 
-test('game source favicon falls back to host favicon for other shops', function () {
+test('custom library sources supply reusable icons', function () {
+    ResourceSource::factory()->create([
+        'name' => 'Booth',
+        'slug' => 'booth',
+        'icon_path' => '/images/sources/dlsite.ico',
+        'host_hint' => 'booth.pm',
+        'sort_order' => 10,
+    ]);
+
+    GameSource::forgetCache();
+
+    $source = GameSource::present('Booth', 'item-1', null);
+
+    expect(GameSource::options())->toHaveKey('Booth')
+        ->and($source['faviconUrl'])->toBe('/images/sources/dlsite.ico')
+        ->and(GameSource::present(
+            null,
+            'item-1',
+            'https://booth.pm/en/items/1',
+        )['faviconUrl'])->toBe('/images/sources/dlsite.ico');
+});
+
+test('game source favicon falls back to host favicon for unknown shops', function () {
     $source = GameSource::present(
         'Custom Shop',
         'ABC-1',

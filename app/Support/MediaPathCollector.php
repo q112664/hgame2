@@ -7,6 +7,7 @@ use App\Models\Game;
 use App\Models\GameDetailTranslation;
 use App\Models\GameRelease;
 use App\Models\GameScreenshot;
+use App\Models\ResourceSource;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
@@ -91,6 +92,11 @@ final class MediaPathCollector
             $paths->push(Setting::get($key));
         }
 
+        ResourceSource::query()
+            ->whereNotNull('icon_path')
+            ->pluck('icon_path')
+            ->each(fn (mixed $path) => $paths->push($path));
+
         Game::query()
             ->whereNotNull('description')
             ->pluck('description')
@@ -143,6 +149,7 @@ final class MediaPathCollector
             || GameScreenshot::query()->where('path', $path)->exists()
             || Doc::query()->where('cover_path', $path)->exists()
             || User::query()->where('avatar', $path)->exists()
+            || ResourceSource::query()->where('icon_path', $path)->exists()
         ) {
             return true;
         }

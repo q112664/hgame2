@@ -53,7 +53,7 @@ test('resource downloads expose contributor avatar and name on releases', functi
             ->where('resource.releases.0.contributor.name', 'MirrorFox')
             ->where('resource.releases.0.contributor.avatar', null)
             ->where('resource.releases.1.contributor', null)
-            ->where('resource.contributors.0.id', $contributor->id)
+            ->where('resource.contributors.0.slug', $contributor->slug)
             ->where('resource.contributors.0.name', 'MirrorFox')
             ->missing('resource.releases.0.downloadLinks.0.contributor')
         );
@@ -88,7 +88,7 @@ test('resource hero exposes only the latest package contributor', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('resource.contributors', 1)
-            ->where('resource.contributors.0.id', $bob->id)
+            ->where('resource.contributors.0.slug', $bob->slug)
             ->where('resource.contributors.0.name', 'Bob')
         );
 });

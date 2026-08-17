@@ -601,7 +601,7 @@ export default function ResourceShow({
                                 {resource.contributors[0] ? (
                                     <Link
                                         href={userShow(
-                                            resource.contributors[0].id,
+                                            resource.contributors[0].slug,
                                         )}
                                         prefetch
                                         className={cn(

@@ -16,10 +16,10 @@ test('profile settings page is displayed', function () {
             ->component('settings/index')
             ->where('activeTab', 'profile')
             ->where('mustVerifyEmail', false)
-            ->where('requiresPasswordConfirmation', true)
-            ->missing('canManagePasskeys')
-            ->missing('canManageTwoFactor')
-            ->missing('passwordRules'),
+            ->where('requiresPasswordConfirmation', false)
+            ->has('canManagePasskeys')
+            ->has('canManageTwoFactor')
+            ->has('passwordRules'),
         );
 });
 
@@ -31,26 +31,18 @@ test('settings root redirects to the profile settings route', function () {
         ->assertRedirect(route('profile.edit'));
 });
 
-test('appearance settings page is displayed', function () {
+test('appearance settings redirect to the profile tab', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get(route('appearance.edit'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('settings/index')
-            ->where('activeTab', 'appearance')
-            ->where('requiresPasswordConfirmation', true)
-            ->missing('passwordRules')
-            ->missing('canManagePasskeys')
-            ->missing('canManageTwoFactor'),
-        );
+        ->assertRedirect(route('profile.edit'));
 });
 
-test('settings tabs include security props when password is confirmed', function (string $routeName, string $activeTab) {
+test('settings tabs include security props without a password confirmation gate', function (string $routeName, string $activeTab) {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->get(route($routeName))
         ->assertInertia(fn (Assert $page) => $page
             ->component('settings/index')
@@ -63,5 +55,5 @@ test('settings tabs include security props when password is confirmed', function
         );
 })->with([
     'profile' => ['profile.edit', 'profile'],
-    'appearance' => ['appearance.edit', 'appearance'],
+    'security' => ['security.edit', 'security'],
 ]);

@@ -2,7 +2,6 @@ import { Form, Link, usePage } from '@inertiajs/react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import SettingsController from '@/actions/App/Http/Controllers/Settings/SettingsController';
-import AppearanceTabs from '@/components/appearance-tabs';
 import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -10,8 +9,6 @@ import type { Props as ManagePasskeysProps } from '@/components/manage-passkeys'
 import ManagePasskeys from '@/components/manage-passkeys';
 import type { Props as ManageSocialAccountsProps } from '@/components/manage-social-accounts';
 import ManageSocialAccounts from '@/components/manage-social-accounts';
-import type { Props as ManageTwoFactorProps } from '@/components/manage-two-factor';
-import ManageTwoFactor from '@/components/manage-two-factor';
 import PasswordInput from '@/components/password-input';
 import { ProfileAvatarForm } from '@/components/profile-avatar-form';
 import { PageSeo } from '@/components/site/page-seo';
@@ -22,13 +19,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SiteLayout } from '@/layouts/site-layout';
-import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import { send } from '@/routes/verification';
 import type { Auth } from '@/types';
 
-type SettingsTab = 'profile' | 'security' | 'appearance';
+type SettingsTab = 'profile' | 'security';
 
 type PageProps = {
     auth: Auth;
@@ -42,8 +38,8 @@ type Props = {
     requiresPasswordConfirmation: boolean;
     status?: string;
     pageSeo?: PageSeoData | null;
+    canManageTwoFactor?: boolean;
 } & ManagePasskeysProps &
-    ManageTwoFactorProps &
     ManageSocialAccountsProps;
 
 const settingsTabs: Array<{
@@ -53,7 +49,6 @@ const settingsTabs: Array<{
 }> = [
     { value: 'profile', label: 'Profile', href: editProfile().url },
     { value: 'security', label: 'Security', href: editSecurity().url },
-    { value: 'appearance', label: 'Appearance', href: editAppearance().url },
 ];
 
 export default function Settings(props: Props) {
@@ -70,7 +65,7 @@ export default function Settings(props: Props) {
                         Settings
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Manage your profile, account security, and appearance.
+                        Manage your profile and account security.
                     </p>
                 </header>
 
@@ -176,10 +171,6 @@ export default function Settings(props: Props) {
                                         </>
                                     )}
                                 </Form>
-                            </div>
-
-                            <div className="border-t border-border pt-8">
-                                <DeleteUser />
                             </div>
                         </section>
                     ) : null}
@@ -345,33 +336,14 @@ export default function Settings(props: Props) {
                                     socialConnections={props.socialConnections}
                                 />
 
-                                <ManageTwoFactor
-                                    canManageTwoFactor={
-                                        props.canManageTwoFactor
-                                    }
-                                    requiresConfirmation={
-                                        props.requiresConfirmation
-                                    }
-                                    twoFactorEnabled={props.twoFactorEnabled}
-                                />
-
                                 <ManagePasskeys
                                     canManagePasskeys={props.canManagePasskeys}
                                     passkeys={props.passkeys}
                                 />
+
+                                <DeleteUser />
                             </section>
                         )
-                    ) : null}
-
-                    {activeTab === 'appearance' ? (
-                        <section className="space-y-6 rounded-md border border-border bg-card p-4 sm:p-5">
-                            <Heading
-                                variant="small"
-                                title="Appearance"
-                                description="Update the appearance settings for your account"
-                            />
-                            <AppearanceTabs />
-                        </section>
                     ) : null}
                 </div>
             </SitePageContainer>

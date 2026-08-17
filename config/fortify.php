@@ -164,11 +164,11 @@ return [
         Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
-        Features::twoFactorAuthentication([
-            'confirm' => true,
-            'confirmPassword' => true,
-            // 'window' => 0
-        ]),
+        // Two-factor authentication disabled. Re-enable with:
+        // Features::twoFactorAuthentication([
+        //     'confirm' => true,
+        //     'confirmPassword' => true,
+        // ]),
         // Passkeys disabled — password login only.
         // Features::passkeys([
         //     'confirmPassword' => true,

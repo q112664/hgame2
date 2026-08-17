@@ -128,11 +128,7 @@ class GamePresenter
                         'description' => str($release->description ?? '')->sanitizeHtml()->toString(),
                         'publishedAt' => self::dateString($release->published_at),
                         'contributor' => $release->relationLoaded('contributor') && $release->contributor !== null
-                            ? [
-                                'id' => $release->contributor->id,
-                                'name' => $release->contributor->name,
-                                'avatar' => $release->contributor->avatar,
-                            ]
+                            ? $release->contributor->toPublicProfile()
                             : null,
                         'downloadLinks' => $release->relationLoaded('downloadLinks')
                             ? $release->downloadLinks
@@ -156,7 +152,7 @@ class GamePresenter
      *
      * Prefers the release with the newest published_at, then created_at, then id.
      *
-     * @return list<array{id: int, name: string, avatar: string|null}>
+     * @return list<array{slug: string, name: string, avatar: string|null}>
      */
     private static function resourceContributors(Game $game): array
     {
@@ -195,11 +191,7 @@ class GamePresenter
         /** @var User $contributor */
         $contributor = $latest->getRelation('contributor');
 
-        return [[
-            'id' => $contributor->id,
-            'name' => $contributor->name,
-            'avatar' => $contributor->avatar,
-        ]];
+        return [$contributor->toPublicProfile()];
     }
 
     /**

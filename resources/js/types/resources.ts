@@ -50,7 +50,7 @@ export type GameDownloadLink = {
 };
 
 export type GameReleaseContributor = {
-    id: number;
+    slug: string;
     name: string;
     avatar: string | null;
 };

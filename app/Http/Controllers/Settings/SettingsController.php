@@ -38,15 +38,6 @@ class SettingsController extends Controller
         );
     }
 
-    public function appearance(TwoFactorAuthenticationRequest $request, GetSecuritySettings $securitySettings): Response
-    {
-        return $this->renderSettings(
-            $request,
-            'appearance',
-            $this->securitySettingsProps($request, $securitySettings),
-        );
-    }
-
     public function confirmSecurity(Request $request, ConfirmPassword $confirmPassword, StatefulGuard $guard): RedirectResponse
     {
         if (! $confirmPassword($guard, $request->user(), $request->input('password'))) {
@@ -82,7 +73,7 @@ class SettingsController extends Controller
      */
     private function securitySettingsProps(TwoFactorAuthenticationRequest $request, GetSecuritySettings $securitySettings): array
     {
-        if ($this->requiresPasswordConfirmation($request)) {
+        if ($this->requiresPasswordConfirmation()) {
             return ['requiresPasswordConfirmation' => true];
         }
 
@@ -99,16 +90,9 @@ class SettingsController extends Controller
         ];
     }
 
-    private function requiresPasswordConfirmation(Request $request): bool
+    private function requiresPasswordConfirmation(): bool
     {
-        /** @var User|null $user */
-        $user = $request->user();
-
-        // Social-only accounts have no password to confirm.
-        if ($user === null || ! $user->hasPassword()) {
-            return false;
-        }
-
-        return Date::now()->unix() - $request->session()->get('auth.password_confirmed_at', 0) > config('auth.password_timeout');
+        // Security settings are not gated behind a second password prompt.
+        return false;
     }
 }

@@ -37,9 +37,12 @@ Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'
 Route::get('/docs', [DocController::class, 'index'])->name('docs.index');
 Route::get('/docs/{doc}', [DocController::class, 'show'])->name('docs.show');
 
+Route::get('/users/{user}/favorites', [UserProfileController::class, 'favorites'])
+    ->name('users.favorites')
+    ->where('user', '[A-Za-z0-9]+');
 Route::get('/users/{user}', [UserProfileController::class, 'show'])
     ->name('users.show')
-    ->whereNumber('user');
+    ->where('user', '[A-Za-z0-9]+');
 
 Route::get('/go/{downloadLink}', [DownloadLinkController::class, 'show'])
     ->name('download-links.show')

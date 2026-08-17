@@ -28,7 +28,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('security.social.unlink')
         ->whereIn('provider', ['google', 'discord'])
         ->middleware('throttle:20,1');
-    Route::get('settings/appearance', [SettingsController::class, 'appearance'])->name('appearance.edit');
+    Route::get('settings/appearance', fn () => to_route('profile.edit'))
+        ->name('appearance.edit');
 
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 

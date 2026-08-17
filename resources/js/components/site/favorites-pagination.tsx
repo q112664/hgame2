@@ -1,6 +1,6 @@
 import { SitePagination } from '@/components/site/site-pagination';
 import type { PaginatedData } from '@/components/site/site-pagination';
-import { index as favoritesIndex } from '@/routes/favorites';
+import { favorites as userFavorites } from '@/routes/users';
 
 export type PaginatedFavorites<T = unknown> = PaginatedData<T>;
 
@@ -13,11 +13,13 @@ function scrollToFavorites() {
 
 export function FavoritesPagination({
     resources,
+    userId,
 }: {
     resources: PaginatedFavorites;
+    userId: string;
 }) {
     const pageUrl = (page: number) =>
-        favoritesIndex.url({
+        userFavorites.url(userId, {
             query: { page },
         });
 
@@ -27,7 +29,7 @@ export function FavoritesPagination({
             pageUrl={pageUrl}
             ariaLabel="Favorites pagination"
             itemLabel="favorites"
-            only={['resources', 'downloadUpdateCount']}
+            only={['favorites', 'favoritesCount', 'downloadUpdateCount']}
             onSuccess={scrollToFavorites}
         />
     );

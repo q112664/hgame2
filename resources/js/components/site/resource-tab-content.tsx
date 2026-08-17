@@ -477,7 +477,7 @@ export function ResourceTabContent({
                                                     <Link
                                                         href={userShow(
                                                             release.contributor
-                                                                .id,
+                                                                .slug,
                                                         )}
                                                         prefetch
                                                         className={cn(

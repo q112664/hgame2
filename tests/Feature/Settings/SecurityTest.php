@@ -3,52 +3,23 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Testing\AssertableInertia as Assert;
-use Laravel\Fortify\Features;
 
-test('settings page includes security settings', function () {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-
-    Features::twoFactorAuthentication([
-        'confirm' => true,
-        'confirmPassword' => true,
-    ]);
-
+test('settings page includes security settings without a password confirmation gate', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->get(route('security.edit'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('settings/index')
             ->where('activeTab', 'security')
+            ->where('requiresPasswordConfirmation', false)
             ->where('canManagePasskeys', false)
             ->where('passkeys', [])
             ->where('hasPassword', true)
             ->where('socialConnections', [])
-            ->where('canManageTwoFactor', true)
-            ->where('twoFactorEnabled', false),
-        );
-});
-
-test('security settings display an inline password confirmation form', function () {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-
-    Features::twoFactorAuthentication([
-        'confirm' => true,
-        'confirmPassword' => true,
-    ]);
-
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->get(route('security.edit'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('settings/index')
-            ->where('activeTab', 'security')
-            ->where('requiresPasswordConfirmation', true)
-            ->missing('passwordRules')
-            ->missing('canManageTwoFactor')
-            ->missing('canManagePasskeys'),
+            ->where('canManageTwoFactor', false)
+            ->missing('twoFactorEnabled')
+            ->missing('requiresConfirmation'),
         );
 });
 
@@ -72,28 +43,6 @@ test('security password confirmation rejects an incorrect password', function ()
         ->post(route('security.confirm'), ['password' => 'incorrect-password'])
         ->assertSessionHasErrors('password')
         ->assertRedirect(route('security.edit'));
-});
-
-test('settings page renders without two factor when feature is disabled', function () {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-
-    config(['fortify.features' => []]);
-
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->withSession(['auth.password_confirmed_at' => time()])
-        ->get(route('security.edit'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('settings/index')
-            ->where('activeTab', 'security')
-            ->where('canManagePasskeys', false)
-            ->where('passkeys', [])
-            ->where('canManageTwoFactor', false)
-            ->missing('twoFactorEnabled')
-            ->missing('requiresConfirmation'),
-        );
 });
 
 test('password can be updated', function () {

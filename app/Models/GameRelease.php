@@ -92,7 +92,7 @@ class GameRelease extends Model
                 'created_at',
             ])
             ->with([
-                'contributor:id,name,avatar',
+                'contributor:id,slug,name,avatar',
                 'platforms:id,name,slug',
                 'languages:id,name,code',
             ])
@@ -108,7 +108,7 @@ class GameRelease extends Model
         return $query
             ->available()
             ->with([
-                'contributor:id,name,avatar',
+                'contributor:id,slug,name,avatar',
                 'platforms:id,name,slug',
                 'languages:id,name,code',
                 'downloadLinks' => fn ($links) => $links

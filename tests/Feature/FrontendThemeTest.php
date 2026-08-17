@@ -109,7 +109,7 @@ test('search favorites settings and resources share the site page container', fu
 
     foreach ([
         'search.tsx',
-        'favorites.tsx',
+        'users/show.tsx',
         'settings/index.tsx',
         'resources/index.tsx',
         'resources/show.tsx',
@@ -273,6 +273,16 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain('resourcesTag.url');
 });
 
+test('the user menu includes a profile entry to the user center', function () {
+    $source = app(Filesystem::class)->get(resource_path('js/components/user-menu-content.tsx'));
+
+    expect($source)
+        ->toContain("import { favorites, show as userShow } from '@/routes/users'")
+        ->toContain('href={userShow(user.slug)}')
+        ->toContain('Profile')
+        ->toContain('href={favorites(user.slug)}');
+});
+
 test('docs pages use the public site shell instead of the starter kit app layout', function () {
     $filesystem = app(Filesystem::class);
     $bootstrap = $filesystem->get(resource_path('js/app.tsx'));
@@ -294,7 +304,7 @@ test('docs pages use the public site shell instead of the starter kit app layout
 test('search and favorite results use detailed card grids', function () {
     $filesystem = app(Filesystem::class);
     $searchResults = $filesystem->get(resource_path('js/components/site/search-results.tsx'));
-    $favorites = $filesystem->get(resource_path('js/pages/favorites.tsx'));
+    $favorites = $filesystem->get(resource_path('js/pages/users/show.tsx'));
     $favoriteCard = $filesystem->get(resource_path('js/components/site/favorite-resource-card.tsx'));
 
     expect($searchResults)

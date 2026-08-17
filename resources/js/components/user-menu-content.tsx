@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { Heart, LayoutDashboard, LogOut, Settings } from 'lucide-react';
+import { Heart, LayoutDashboard, LogOut, Settings, UserRound } from 'lucide-react';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -9,8 +9,8 @@ import {
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { logout } from '@/routes';
-import { index as favorites } from '@/routes/favorites';
 import { edit } from '@/routes/settings';
+import { favorites, show as userShow } from '@/routes/users';
 import type { User } from '@/types';
 
 type Props = {
@@ -38,7 +38,18 @@ export function UserMenuContent({ user }: Props) {
                 <DropdownMenuItem asChild>
                     <Link
                         className="block w-full cursor-pointer"
-                        href={favorites()}
+                        href={userShow(user.slug)}
+                        prefetch
+                        onClick={cleanup}
+                    >
+                        <UserRound className="mr-2" />
+                        Profile
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <Link
+                        className="block w-full cursor-pointer"
+                        href={favorites(user.slug)}
                         prefetch
                         onClick={cleanup}
                     >

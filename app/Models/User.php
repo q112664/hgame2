@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -24,6 +25,7 @@ use Laravel\Sanctum\NewAccessToken;
 
 /**
  * @property int $id
+ * @property string $slug
  * @property string $name
  * @property string $email
  * @property string|null $avatar
@@ -50,6 +52,62 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
 
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    public const SLUG_LENGTH = 12;
+
+    protected static function booted(): void
+    {
+        static::creating(function (User $user): void {
+            if (filled($user->slug)) {
+                return;
+            }
+
+            $user->slug = static::newUniqueSlug();
+        });
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    public function resolveRouteBinding($value, $field = null): ?static
+    {
+        $field ??= $this->getRouteKeyName();
+
+        $user = $this->where($field, $value)->first();
+
+        if ($user !== null) {
+            return $user;
+        }
+
+        if ($field === $this->getRouteKeyName() && ctype_digit((string) $value)) {
+            return $this->whereKey($value)->first();
+        }
+
+        return null;
+    }
+
+    public static function newUniqueSlug(): string
+    {
+        do {
+            $slug = Str::lower(Str::random(self::SLUG_LENGTH));
+        } while (ctype_digit($slug) || static::query()->where('slug', $slug)->exists());
+
+        return $slug;
+    }
+
+    /**
+     * @return array{slug: string, name: string, avatar: string|null}
+     */
+    public function toPublicProfile(): array
+    {
+        return [
+            'slug' => $this->slug,
+            'name' => $this->name,
+            'avatar' => $this->avatar,
+        ];
+    }
 
     /**
      * Get the attributes that should be cast.

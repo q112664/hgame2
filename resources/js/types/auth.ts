@@ -1,5 +1,6 @@
 export type User = {
     id: number;
+    slug: string;
     name: string;
     email: string;
     avatar?: string | null | undefined;

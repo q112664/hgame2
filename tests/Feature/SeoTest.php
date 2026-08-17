@@ -406,10 +406,14 @@ test('private pages send noindex page seo', function () {
 
     $this->actingAs($user)
         ->get(route('favorites.index'))
+        ->assertRedirect(route('users.favorites', $user));
+
+    $this->actingAs($user)
+        ->get(route('users.favorites', $user))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('pageSeo.robots', 'noindex,nofollow')
-            ->where('pageSeo.title', 'Favorites')
+            ->where('pageSeo.title', $user->name.' · Favorites')
         );
 
     $this->actingAs($user)

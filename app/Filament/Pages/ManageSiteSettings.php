@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Support\MediaDeletionService;
 use App\Support\MediaUpload;
 use BackedEnum;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
@@ -61,6 +62,7 @@ class ManageSiteSettings extends Page
             'seo_robots' => Setting::seoRobots(),
             'seo_og_image_path' => Setting::seoOgImagePath(),
             'seo_google_site_verification' => Setting::seoGoogleSiteVerification(),
+            'seo_gtm_container_id' => Setting::gtmContainerId(),
             'site_favicon_path' => Setting::faviconPath(),
             'site_logo_mode' => Setting::siteLogoMode(),
             'site_logo_text' => Setting::siteLogoText(),
@@ -283,6 +285,22 @@ class ManageSiteSettings extends Page
                                             ->label('Google site verification')
                                             ->maxLength(255)
                                             ->helperText('Paste only the content value from Search Console’s meta tag.'),
+                                        TextInput::make('seo_gtm_container_id')
+                                            ->label('Google Tag Manager')
+                                            ->maxLength(4000)
+                                            ->placeholder('GTM-XXXXXXX')
+                                            ->helperText('Paste the container ID (GTM-XXXXXXX) or the official install snippet. Leave empty to disable.')
+                                            ->rule(function (): Closure {
+                                                return function (string $attribute, mixed $value, Closure $fail): void {
+                                                    if (! filled($value)) {
+                                                        return;
+                                                    }
+
+                                                    if (Setting::normalizeGtmContainerId((string) $value) === null) {
+                                                        $fail('Enter a Google Tag Manager ID such as GTM-XXXXXXX.');
+                                                    }
+                                                };
+                                            }),
                                     ]),
                             ]),
                         Tab::make('Resources')
@@ -466,6 +484,9 @@ class ManageSiteSettings extends Page
         $seoKeywords = trim((string) ($data['seo_keywords'] ?? ''));
         $seoRobots = (string) ($data['seo_robots'] ?? 'index,follow');
         $seoGoogleVerification = trim((string) ($data['seo_google_site_verification'] ?? ''));
+        $gtmContainerId = Setting::normalizeGtmContainerId(
+            isset($data['seo_gtm_container_id']) ? (string) $data['seo_gtm_container_id'] : null,
+        );
         $previousOgImagePath = Setting::seoOgImagePath();
         $nextOgImagePath = $this->normalizeUploadPath($data['seo_og_image_path'] ?? null);
 
@@ -489,6 +510,7 @@ class ManageSiteSettings extends Page
             'seo_google_site_verification',
             $seoGoogleVerification !== '' ? $seoGoogleVerification : null,
         );
+        Setting::set('seo_gtm_container_id', $gtmContainerId);
         Setting::set('site_favicon_path', $nextFaviconPath);
         Setting::set('site_logo_mode', $mode);
         Setting::set('site_logo_text', $logoText);

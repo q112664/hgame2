@@ -192,6 +192,30 @@ class Setting extends Model
         return (string) (static::get('seo_google_site_verification') ?? '');
     }
 
+    public static function gtmContainerId(): ?string
+    {
+        return static::normalizeGtmContainerId(static::get('seo_gtm_container_id'));
+    }
+
+    public static function normalizeGtmContainerId(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/GTM-[A-Z0-9]+/i', $value, $matches) !== 1) {
+            return null;
+        }
+
+        return strtoupper($matches[0]);
+    }
+
     /**
      * Site-wide SEO defaults for SiteSeo (Inertia Head) and Blade CSR fallbacks.
      * Blade tags use matching data-inertia keys so hydrate does not duplicate them.

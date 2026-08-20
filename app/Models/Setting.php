@@ -192,12 +192,12 @@ class Setting extends Model
         return (string) (static::get('seo_google_site_verification') ?? '');
     }
 
-    public static function gtmContainerId(): ?string
+    public static function googleTagId(): ?string
     {
-        return static::normalizeGtmContainerId(static::get('seo_gtm_container_id'));
+        return static::normalizeGoogleTagId(static::get('seo_google_tag_id'));
     }
 
-    public static function normalizeGtmContainerId(?string $value): ?string
+    public static function normalizeGoogleTagId(?string $value): ?string
     {
         if ($value === null) {
             return null;
@@ -209,11 +209,11 @@ class Setting extends Model
             return null;
         }
 
-        if (preg_match('/GTM-[A-Z0-9]+/i', $value, $matches) !== 1) {
+        if (preg_match('/(?:^|[^A-Z0-9])(G-[A-Z0-9]+)(?:[^A-Z0-9]|$)/i', $value, $matches) !== 1) {
             return null;
         }
 
-        return strtoupper($matches[0]);
+        return strtoupper($matches[1]);
     }
 
     /**

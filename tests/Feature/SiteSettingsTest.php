@@ -249,7 +249,7 @@ test('administrators can update seo settings', function () {
             'seo_robots' => 'noindex,follow',
             'seo_og_image_path' => UploadedFile::fake()->image('og.jpg', 1200, 630),
             'seo_google_site_verification' => 'abc123verification',
-            'seo_gtm_container_id' => 'GTM-ABC1234',
+            'seo_google_tag_id' => 'G-7MN9S64J3F',
         ])
         ->call('save')
         ->assertHasNoFormErrors()
@@ -261,7 +261,7 @@ test('administrators can update seo settings', function () {
         ->and(Setting::seoKeywords())->toBe('galgame, visual novel')
         ->and(Setting::seoRobots())->toBe('noindex,follow')
         ->and(Setting::seoGoogleSiteVerification())->toBe('abc123verification')
-        ->and(Setting::gtmContainerId())->toBe('GTM-ABC1234')
+        ->and(Setting::googleTagId())->toBe('G-7MN9S64J3F')
         ->and(Setting::seoOgImagePath())->toStartWith('site/seo/')
         ->and($seo['description'])->toBe('Find galgame packages and updates.')
         ->and($seo['ogImageUrl'])->toContain('/storage/site/seo/');
@@ -285,35 +285,50 @@ test('seo description falls back to the default when empty', function () {
     expect(Setting::seoDescription())->toBe(Setting::defaultSeoDescription());
 });
 
-test('google tag manager ids are extracted from pasted snippets', function () {
-    expect(Setting::normalizeGtmContainerId('gtm-nx8k2qz'))->toBe('GTM-NX8K2QZ')
-        ->and(Setting::normalizeGtmContainerId('https://www.googletagmanager.com/gtm.js?id=GTM-ABCDEF1'))->toBe('GTM-ABCDEF1')
-        ->and(Setting::normalizeGtmContainerId('not a container'))->toBeNull()
-        ->and(Setting::normalizeGtmContainerId(''))->toBeNull();
+test('google tag ids are extracted from pasted gtag snippets', function () {
+    $snippet = <<<'HTML'
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-7MN9S64J3F"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-7MN9S64J3F');
+</script>
+HTML;
+
+    expect(Setting::normalizeGoogleTagId('g-7mn9s64j3f'))->toBe('G-7MN9S64J3F')
+        ->and(Setting::normalizeGoogleTagId($snippet))->toBe('G-7MN9S64J3F')
+        ->and(Setting::normalizeGoogleTagId('https://www.googletagmanager.com/gtag/js?id=G-ABCDEF12'))->toBe('G-ABCDEF12')
+        ->and(Setting::normalizeGoogleTagId('GTM-ABCDEF1'))->toBeNull()
+        ->and(Setting::normalizeGoogleTagId('not a tag'))->toBeNull()
+        ->and(Setting::normalizeGoogleTagId(''))->toBeNull();
 });
 
-test('administrators can save a google tag manager container from a snippet', function () {
+test('administrators can save a google tag from the official snippet', function () {
     $this->actingAs(User::factory()->admin()->create());
 
     Livewire::test(ManageSiteSettings::class)
         ->fillForm([
             'site_url' => Setting::siteUrl(),
-            'seo_gtm_container_id' => "(function(w,d,s,l,i){...})(window,document,'script','dataLayer','GTM-PASTE99');",
+            'seo_google_tag_id' => "gtag('config', 'G-7MN9S64J3F');",
         ])
         ->call('save')
         ->assertHasNoFormErrors()
         ->assertNotified();
 
-    expect(Setting::gtmContainerId())->toBe('GTM-PASTE99');
+    expect(Setting::googleTagId())->toBe('G-7MN9S64J3F');
 
     $this->get(route('home'))
         ->assertOk()
-        ->assertSee('https://www.googletagmanager.com/gtm.js?id=', false)
-        ->assertSee('GTM-PASTE99', false)
-        ->assertSee('https://www.googletagmanager.com/ns.html?id=GTM-PASTE99', false);
+        ->assertSee('https://www.googletagmanager.com/gtag/js?id=G-7MN9S64J3F', false)
+        ->assertSee("gtag('config', 'G-7MN9S64J3F')", false)
+        ->assertDontSee('gtm.js?id=', false)
+        ->assertDontSee('ns.html?id=', false);
 });
 
-test('google tag manager is omitted when no container id is set', function () {
+test('google tag is omitted when no measurement id is set', function () {
+    Setting::set('seo_google_tag_id', null);
     Setting::set('seo_gtm_container_id', null);
 
     $this->get(route('home'))
@@ -321,18 +336,18 @@ test('google tag manager is omitted when no container id is set', function () {
         ->assertDontSee('googletagmanager.com', false);
 });
 
-test('invalid google tag manager values are rejected', function () {
+test('invalid google tag values are rejected', function () {
     $this->actingAs(User::factory()->admin()->create());
 
     Livewire::test(ManageSiteSettings::class)
         ->fillForm([
             'site_url' => Setting::siteUrl(),
-            'seo_gtm_container_id' => 'UA-123456-1',
+            'seo_google_tag_id' => 'GTM-ABCDEF1',
         ])
         ->call('save')
-        ->assertHasFormErrors(['seo_gtm_container_id']);
+        ->assertHasFormErrors(['seo_google_tag_id']);
 
-    expect(Setting::gtmContainerId())->toBeNull();
+    expect(Setting::googleTagId())->toBeNull();
 });
 
 test('administrators can update turnstile settings', function () {

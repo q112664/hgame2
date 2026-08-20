@@ -62,7 +62,7 @@ class ManageSiteSettings extends Page
             'seo_robots' => Setting::seoRobots(),
             'seo_og_image_path' => Setting::seoOgImagePath(),
             'seo_google_site_verification' => Setting::seoGoogleSiteVerification(),
-            'seo_gtm_container_id' => Setting::gtmContainerId(),
+            'seo_google_tag_id' => Setting::googleTagId(),
             'site_favicon_path' => Setting::faviconPath(),
             'site_logo_mode' => Setting::siteLogoMode(),
             'site_logo_text' => Setting::siteLogoText(),
@@ -285,19 +285,19 @@ class ManageSiteSettings extends Page
                                             ->label('Google site verification')
                                             ->maxLength(255)
                                             ->helperText('Paste only the content value from Search Console’s meta tag.'),
-                                        TextInput::make('seo_gtm_container_id')
-                                            ->label('Google Tag Manager')
+                                        TextInput::make('seo_google_tag_id')
+                                            ->label('Google tag')
                                             ->maxLength(4000)
-                                            ->placeholder('GTM-XXXXXXX')
-                                            ->helperText('Paste the container ID (GTM-XXXXXXX) or the official install snippet. Leave empty to disable.')
+                                            ->placeholder('G-XXXXXXXX')
+                                            ->helperText('Paste the Google tag ID (G-XXXXXXXX) or the official gtag.js snippet. Leave empty to disable.')
                                             ->rule(function (): Closure {
                                                 return function (string $attribute, mixed $value, Closure $fail): void {
                                                     if (! filled($value)) {
                                                         return;
                                                     }
 
-                                                    if (Setting::normalizeGtmContainerId((string) $value) === null) {
-                                                        $fail('Enter a Google Tag Manager ID such as GTM-XXXXXXX.');
+                                                    if (Setting::normalizeGoogleTagId((string) $value) === null) {
+                                                        $fail('Enter a Google tag ID such as G-XXXXXXXX.');
                                                     }
                                                 };
                                             }),
@@ -484,8 +484,8 @@ class ManageSiteSettings extends Page
         $seoKeywords = trim((string) ($data['seo_keywords'] ?? ''));
         $seoRobots = (string) ($data['seo_robots'] ?? 'index,follow');
         $seoGoogleVerification = trim((string) ($data['seo_google_site_verification'] ?? ''));
-        $gtmContainerId = Setting::normalizeGtmContainerId(
-            isset($data['seo_gtm_container_id']) ? (string) $data['seo_gtm_container_id'] : null,
+        $googleTagId = Setting::normalizeGoogleTagId(
+            isset($data['seo_google_tag_id']) ? (string) $data['seo_google_tag_id'] : null,
         );
         $previousOgImagePath = Setting::seoOgImagePath();
         $nextOgImagePath = $this->normalizeUploadPath($data['seo_og_image_path'] ?? null);
@@ -510,7 +510,8 @@ class ManageSiteSettings extends Page
             'seo_google_site_verification',
             $seoGoogleVerification !== '' ? $seoGoogleVerification : null,
         );
-        Setting::set('seo_gtm_container_id', $gtmContainerId);
+        Setting::set('seo_google_tag_id', $googleTagId);
+        Setting::set('seo_gtm_container_id', null);
         Setting::set('site_favicon_path', $nextFaviconPath);
         Setting::set('site_logo_mode', $mode);
         Setting::set('site_logo_text', $logoText);

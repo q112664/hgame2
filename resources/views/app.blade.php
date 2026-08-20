@@ -4,6 +4,17 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        @php($googleTagId = \App\Models\Setting::googleTagId())
+        @if (filled($googleTagId))
+            <script async src="https://www.googletagmanager.com/gtag/js?id={{ $googleTagId }}"></script>
+            <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '{{ $googleTagId }}');
+            </script>
+        @endif
+
         {{-- Inline script so first paint matches stored preference (default: dark) --}}
         <script>
             (function() {
@@ -28,17 +39,6 @@
                 background-color: oklch(0.145 0 0);
             }
         </style>
-
-        @php($gtmContainerId = \App\Models\Setting::gtmContainerId())
-        @if (filled($gtmContainerId))
-            <script>
-                (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-                new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-                j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-                'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-                })(window,document,'script','dataLayer',@json($gtmContainerId));
-            </script>
-        @endif
 
         @fonts
 
@@ -88,12 +88,6 @@
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">
-        @if (filled($gtmContainerId))
-            <noscript>
-                <iframe src="https://www.googletagmanager.com/ns.html?id={{ $gtmContainerId }}"
-                    height="0" width="0" style="display:none;visibility:hidden"></iframe>
-            </noscript>
-        @endif
         <x-inertia::app />
     </body>
 </html>

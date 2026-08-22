@@ -89,15 +89,17 @@ test('administrators can restore the default navigation menu', function () {
     );
 });
 
-test('default navigation menu includes icons for home and games', function () {
+test('default navigation menu includes games and tags', function () {
     $menu = Setting::defaultNavigationMenu();
 
     expect(collect($menu)->firstWhere('url', '/')['icon'])->toBe('Home')
         ->and(collect($menu)->firstWhere('url', '/resources')['label'])->toBe('Games')
-        ->and(collect($menu)->firstWhere('url', '/resources')['icon'])->toBe('Gamepad2');
+        ->and(collect($menu)->firstWhere('url', '/resources')['icon'])->toBe('Gamepad2')
+        ->and(collect($menu)->firstWhere('url', '/resources/tags')['label'])->toBe('Tags')
+        ->and(collect($menu)->firstWhere('url', '/resources/tags')['icon'])->toBe('Tags');
 });
 
-test('games menu item without an icon receives a gamepad icon', function () {
+test('menu items without an icon stay without an icon', function () {
     Setting::setNavigationMenu([
         [
             'label' => 'Games',
@@ -108,7 +110,7 @@ test('games menu item without an icon receives a gamepad icon', function () {
         ],
     ]);
 
-    expect(Setting::navigationMenu()[0]['icon'])->toBe('Gamepad2');
+    expect(Setting::navigationMenu()[0]['icon'])->toBeNull();
 });
 
 test('saved resources catalog item is presented as games with a gamepad icon', function () {
@@ -140,6 +142,26 @@ test('custom catalog labels keep a custom library icon', function () {
 
     expect(Setting::navigationMenu()[0]['label'])->toBe('Catalog')
         ->and(Setting::navigationMenu()[0]['icon'])->toBe('Library');
+});
+
+test('empty navigation icons are shared with the frontend as null', function () {
+    Setting::setNavigationMenu([
+        [
+            'label' => 'Docs',
+            'url' => '/docs',
+            'icon' => null,
+            'open_in_new_tab' => false,
+            'match' => 'prefix',
+        ],
+    ]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('navigationMenu.0.label', 'Docs')
+            ->where('navigationMenu.0.url', '/docs')
+            ->where('navigationMenu.0.icon', null)
+        );
 });
 
 test('navigation menu is shared with the frontend', function () {

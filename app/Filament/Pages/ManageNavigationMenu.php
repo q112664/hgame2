@@ -95,11 +95,13 @@ class ManageNavigationMenu extends Page
                                     ->required()
                                     ->maxLength(2048)
                                     ->placeholder('/resources')
-                                    ->helperText('Relative path (/docs) or absolute http(s) URL.'),
+                                    ->helperText('Relative path (/docs, /resources/tags) or absolute http(s) URL.'),
                                 Select::make('icon')
                                     ->label('Icon')
                                     ->options(Setting::navigationMenuIconOptions())
                                     ->placeholder('None')
+                                    ->helperText('Leave empty to show the label only.')
+                                    ->nullable()
                                     ->native(false),
                                 Select::make('match')
                                     ->label('Active match')

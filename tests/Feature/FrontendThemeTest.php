@@ -256,17 +256,10 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain('resourcesTag.url')
         ->toContain('resourcesTagsIndex');
 
-    expect($filesystem->get(resource_path('js/components/site/site-taxonomy-nav.tsx')))
-        ->toContain('export function SiteTaxonomyNavDesktop')
-        ->toContain('export function SiteTaxonomyNavMobile')
-        ->toContain('resourcesTagsIndex')
-        ->not->toContain('Genres')
-        ->not->toContain('Platforms')
-        ->not->toContain('Languages');
-
     expect($filesystem->get(resource_path('js/components/site/site-header.tsx')))
-        ->toContain('SiteTaxonomyNavDesktop')
-        ->toContain('SiteTaxonomyNavMobile');
+        ->toContain('Tags')
+        ->not->toContain('SiteTaxonomyNavDesktop')
+        ->not->toContain('SiteTaxonomyNavMobile');
 
     expect($filesystem->get(resource_path('js/pages/resources/tags.tsx')))
         ->toContain('Game Tags')

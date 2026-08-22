@@ -12,6 +12,7 @@ import {
     Sparkles,
     Star,
     Sun,
+    Tags,
     XIcon,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -20,10 +21,6 @@ import { useAuthDialog } from '@/components/auth/auth-dialog';
 import type { AuthDialogView } from '@/components/auth/auth-dialog';
 import { NotificationBell } from '@/components/site/notification-bell';
 import { SiteLogo } from '@/components/site/site-logo';
-import {
-    SiteTaxonomyNavDesktop,
-    SiteTaxonomyNavMobile,
-} from '@/components/site/site-taxonomy-nav';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -61,6 +58,7 @@ const navigationIcons: Record<string, LucideIcon> = {
     Search,
     Sparkles,
     Star,
+    Tags,
 };
 
 const navLinkClassName = cn(
@@ -348,9 +346,6 @@ export function SiteHeader() {
                                 onNavigate={closeMenu}
                             />
 
-                            <Separator className="my-3 bg-border" />
-                            <SiteTaxonomyNavMobile onNavigate={closeMenu} />
-
                             {!auth.user && (
                                 <div className="mt-auto flex flex-col gap-3 pt-6">
                                     <Separator className="bg-border" />
@@ -395,7 +390,6 @@ export function SiteHeader() {
 
                     <div className="hidden min-w-0 items-center gap-1 md:flex">
                         <NavLinks />
-                        <SiteTaxonomyNavDesktop />
                     </div>
                 </div>
 

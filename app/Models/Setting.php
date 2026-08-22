@@ -436,6 +436,13 @@ class Setting extends Model
                 'match' => 'prefix',
             ],
             [
+                'label' => 'Tags',
+                'url' => '/resources/tags',
+                'icon' => 'Tags',
+                'open_in_new_tab' => false,
+                'match' => 'prefix',
+            ],
+            [
                 'label' => 'Docs',
                 'url' => '/docs',
                 'icon' => 'BookOpen',
@@ -467,6 +474,7 @@ class Setting extends Model
             'Search' => 'Search',
             'Sparkles' => 'Sparkles',
             'Star' => 'Star',
+            'Tags' => 'Tags',
         ];
     }
 
@@ -559,10 +567,6 @@ class Setting extends Model
 
         [$label, $icon] = static::presentCatalogNavigationItem($url, $label, $icon);
 
-        if ($icon === null) {
-            $icon = static::defaultNavigationIconForUrl($url);
-        }
-
         $match = $item['match'] ?? 'prefix';
 
         if (! in_array($match, ['exact', 'prefix', 'none'], true)) {
@@ -583,44 +587,9 @@ class Setting extends Model
         ];
     }
 
-    public static function defaultNavigationIconForUrl(string $url): ?string
-    {
-        $path = static::navigationMenuPath($url);
-
-        if ($path === null) {
-            return null;
-        }
-
-        if ($path === '/') {
-            return 'Home';
-        }
-
-        if ($path === '/resources/random' || str_starts_with($path, '/resources/random/')) {
-            return 'Dices';
-        }
-
-        if ($path === '/resources' || str_starts_with($path, '/resources/')) {
-            return 'Gamepad2';
-        }
-
-        if ($path === '/docs' || str_starts_with($path, '/docs/')) {
-            return 'BookOpen';
-        }
-
-        if ($path === '/search' || str_starts_with($path, '/search/')) {
-            return 'Search';
-        }
-
-        if ($path === '/favorites' || str_starts_with($path, '/favorites/')) {
-            return 'Star';
-        }
-
-        return null;
-    }
-
     /**
      * Map the stock catalog item from Resources/Library to Games/Gamepad2.
-     * Custom labels and icons on /resources are left unchanged.
+     * Custom labels and empty icons on /resources are left unchanged.
      *
      * @return array{0: string, 1: string|null}
      */
@@ -634,7 +603,7 @@ class Setting extends Model
             $label = 'Games';
         }
 
-        if ($label === 'Games' && ($icon === 'Library' || $icon === null)) {
+        if ($label === 'Games' && $icon === 'Library') {
             $icon = 'Gamepad2';
         }
 

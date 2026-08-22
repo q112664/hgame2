@@ -388,7 +388,7 @@ export default function ResourceShow({
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Home', href: home() },
-        { title: 'Resources', href: resourcesIndex() },
+        { title: 'Games', href: resourcesIndex() },
         { title: resource.title, href: resourceDetails(resource.id) },
     ];
 

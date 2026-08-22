@@ -251,7 +251,7 @@ class ManageSiteSettings extends Page
                                             ->maxLength(80)
                                             ->required()
                                             ->placeholder(Setting::defaultSiteTitle())
-                                            ->helperText('Used as the browser tab title on the homepage, and as the suffix on other pages (e.g. “Resources - Your Title”).'),
+                                            ->helperText('Used as the browser tab title on the homepage, and as the suffix on other pages (e.g. “Games - Your Title”).'),
                                         Textarea::make('seo_description')
                                             ->label('Meta description')
                                             ->rows(3)

@@ -124,7 +124,7 @@ test('search favorites settings and resources share the site page container', fu
     expect($filesystem->get(resource_path('js/pages/resources/show.tsx')))
         ->toContain("import { Breadcrumbs } from '@/components/breadcrumbs';")
         ->toContain('<Breadcrumbs breadcrumbs={breadcrumbs} />')
-        ->toContain("title: 'Resources'")
+        ->toContain("title: 'Games'")
         ->toContain('flex flex-col md:flex-row')
         ->toContain('md:aspect-auto md:h-[280px] md:w-auto md:max-w-[498px]')
         ->toContain('text-sm text-muted-foreground')

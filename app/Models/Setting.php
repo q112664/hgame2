@@ -106,7 +106,7 @@ class Setting extends Model
     }
 
     /**
-     * Browser tab title suffix (e.g. "Resources - {siteTitle}").
+     * Browser tab title suffix (e.g. "Games - {siteTitle}").
      */
     public static function siteTitle(): string
     {
@@ -429,9 +429,9 @@ class Setting extends Model
                 'match' => 'exact',
             ],
             [
-                'label' => 'Resources',
+                'label' => 'Games',
                 'url' => '/resources',
-                'icon' => 'Library',
+                'icon' => 'Gamepad2',
                 'open_in_new_tab' => false,
                 'match' => 'prefix',
             ],
@@ -461,6 +461,7 @@ class Setting extends Model
             'BookOpen' => 'Book open',
             'Dices' => 'Dices',
             'ExternalLink' => 'External link',
+            'Gamepad2' => 'Gamepad',
             'Home' => 'Home',
             'Library' => 'Library',
             'Search' => 'Search',
@@ -556,7 +557,8 @@ class Setting extends Model
             $icon = null;
         }
 
-        // Sensible defaults for built-in routes when no icon is set.
+        [$label, $icon] = static::presentCatalogNavigationItem($url, $label, $icon);
+
         if ($icon === null) {
             $icon = static::defaultNavigationIconForUrl($url);
         }
@@ -583,17 +585,11 @@ class Setting extends Model
 
     public static function defaultNavigationIconForUrl(string $url): ?string
     {
-        $path = $url;
+        $path = static::navigationMenuPath($url);
 
-        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
-            try {
-                $path = parse_url($url, PHP_URL_PATH) ?: '/';
-            } catch (Throwable) {
-                return null;
-            }
+        if ($path === null) {
+            return null;
         }
-
-        $path = '/'.ltrim($path, '/');
 
         if ($path === '/') {
             return 'Home';
@@ -604,7 +600,7 @@ class Setting extends Model
         }
 
         if ($path === '/resources' || str_starts_with($path, '/resources/')) {
-            return 'Library';
+            return 'Gamepad2';
         }
 
         if ($path === '/docs' || str_starts_with($path, '/docs/')) {
@@ -620,6 +616,44 @@ class Setting extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Map the stock catalog item from Resources/Library to Games/Gamepad2.
+     * Custom labels and icons on /resources are left unchanged.
+     *
+     * @return array{0: string, 1: string|null}
+     */
+    protected static function presentCatalogNavigationItem(string $url, string $label, ?string $icon): array
+    {
+        if (static::navigationMenuPath($url) !== '/resources') {
+            return [$label, $icon];
+        }
+
+        if ($label === 'Resources') {
+            $label = 'Games';
+        }
+
+        if ($label === 'Games' && ($icon === 'Library' || $icon === null)) {
+            $icon = 'Gamepad2';
+        }
+
+        return [$label, $icon];
+    }
+
+    protected static function navigationMenuPath(string $url): ?string
+    {
+        $path = $url;
+
+        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+            try {
+                $path = parse_url($url, PHP_URL_PATH) ?: '/';
+            } catch (Throwable) {
+                return null;
+            }
+        }
+
+        return '/'.ltrim((string) $path, '/');
     }
 
     public static function isValidNavigationMenuUrl(string $url): bool

@@ -89,17 +89,18 @@ test('administrators can restore the default navigation menu', function () {
     );
 });
 
-test('default navigation menu includes icons for home and resources', function () {
+test('default navigation menu includes icons for home and games', function () {
     $menu = Setting::defaultNavigationMenu();
 
     expect(collect($menu)->firstWhere('url', '/')['icon'])->toBe('Home')
-        ->and(collect($menu)->firstWhere('url', '/resources')['icon'])->toBe('Library');
+        ->and(collect($menu)->firstWhere('url', '/resources')['label'])->toBe('Games')
+        ->and(collect($menu)->firstWhere('url', '/resources')['icon'])->toBe('Gamepad2');
 });
 
-test('resources menu item without an icon receives a library icon', function () {
+test('games menu item without an icon receives a gamepad icon', function () {
     Setting::setNavigationMenu([
         [
-            'label' => 'Resources',
+            'label' => 'Games',
             'url' => '/resources',
             'icon' => null,
             'open_in_new_tab' => false,
@@ -107,7 +108,38 @@ test('resources menu item without an icon receives a library icon', function () 
         ],
     ]);
 
-    expect(Setting::navigationMenu()[0]['icon'])->toBe('Library');
+    expect(Setting::navigationMenu()[0]['icon'])->toBe('Gamepad2');
+});
+
+test('saved resources catalog item is presented as games with a gamepad icon', function () {
+    Setting::setNavigationMenu([
+        [
+            'label' => 'Resources',
+            'url' => '/resources',
+            'icon' => 'Library',
+            'open_in_new_tab' => false,
+            'match' => 'prefix',
+        ],
+    ]);
+
+    expect(Setting::navigationMenu()[0]['label'])->toBe('Games')
+        ->and(Setting::navigationMenu()[0]['url'])->toBe('/resources')
+        ->and(Setting::navigationMenu()[0]['icon'])->toBe('Gamepad2');
+});
+
+test('custom catalog labels keep a custom library icon', function () {
+    Setting::setNavigationMenu([
+        [
+            'label' => 'Catalog',
+            'url' => '/resources',
+            'icon' => 'Library',
+            'open_in_new_tab' => false,
+            'match' => 'prefix',
+        ],
+    ]);
+
+    expect(Setting::navigationMenu()[0]['label'])->toBe('Catalog')
+        ->and(Setting::navigationMenu()[0]['icon'])->toBe('Library');
 });
 
 test('navigation menu is shared with the frontend', function () {

@@ -258,6 +258,13 @@ test('site empty states and download buttons use primary CTAs', function () {
 
     expect($filesystem->get(resource_path('js/components/site/site-header.tsx')))
         ->toContain('Tags')
+        ->toContain('TaxonomyFlyout')
+        ->toContain('label="Genres"')
+        ->toContain('label="Languages"')
+        ->toContain('resourcesGenre.url')
+        ->toContain('resourcesLanguage.url')
+        ->not->toContain('staticGameCategories')
+        ->not->toContain('GamesCategoryMenu')
         ->not->toContain('SiteTaxonomyNavDesktop')
         ->not->toContain('SiteTaxonomyNavMobile');
 

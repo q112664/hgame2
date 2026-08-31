@@ -21,8 +21,11 @@ import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useOpenResourcesInNewWindow } from '@/hooks/use-open-resources-in-new-window';
 import { SiteLayout } from '@/layouts/site-layout';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +57,8 @@ export default function ResourcesIndex({
     pageSeo,
 }: Props) {
     const [isPending, setIsPending] = useState(false);
+    const { openInNewWindow, setOpenInNewWindow } =
+        useOpenResourcesInNewWindow();
     // Draft search text relative to the last server `filters.q` snapshot.
     // When the server filter changes (clear / sort / external visit), prefer
     // the server value without an Effect setState.
@@ -299,15 +304,21 @@ export default function ResourcesIndex({
                         aria-labelledby="resource-results-heading"
                         aria-busy={isPending || undefined}
                     >
-                        <h2
-                            id="resource-results-heading"
-                            className="font-heading text-lg font-semibold tracking-tight text-foreground sm:text-xl"
-                        >
-                            {resultsHeading}
-                            <span className="ml-2 text-sm font-normal text-muted-foreground tabular-nums">
-                                {resources.total}
-                            </span>
-                        </h2>
+                        <div className="flex items-center justify-between gap-3">
+                            <h2
+                                id="resource-results-heading"
+                                className="font-heading text-lg font-semibold tracking-tight text-foreground sm:text-xl"
+                            >
+                                {resultsHeading}
+                                <span className="ml-2 text-sm font-normal text-muted-foreground tabular-nums">
+                                    {resources.total}
+                                </span>
+                            </h2>
+                            <OpenResourcesInNewWindowToggle
+                                enabled={openInNewWindow}
+                                onEnabledChange={setOpenInNewWindow}
+                            />
+                        </div>
                         {isPending ? (
                             <div className="absolute inset-0 z-10 flex items-start justify-center pt-16">
                                 <Spinner
@@ -327,6 +338,7 @@ export default function ResourcesIndex({
                                     key={resource.id}
                                     resource={resource}
                                     priority={index < 4}
+                                    openInNewWindow={openInNewWindow}
                                 />
                             ))}
                         </div>
@@ -344,10 +356,7 @@ export default function ResourcesIndex({
                         className="scroll-mt-20"
                         aria-labelledby="resource-results-heading"
                     >
-                        <h2
-                            id="resource-results-heading"
-                            className="sr-only"
-                        >
+                        <h2 id="resource-results-heading" className="sr-only">
                             {resultsHeading}
                         </h2>
                         <SiteEmptyState
@@ -359,5 +368,29 @@ export default function ResourcesIndex({
                 )}
             </SitePageContainer>
         </SiteLayout>
+    );
+}
+
+function OpenResourcesInNewWindowToggle({
+    enabled,
+    onEnabledChange,
+}: {
+    enabled: boolean;
+    onEnabledChange: (enabled: boolean) => void;
+}) {
+    return (
+        <div className="flex shrink-0 items-center gap-2">
+            <Checkbox
+                id="open-resources-in-new-window"
+                checked={enabled}
+                onCheckedChange={(checked) => onEnabledChange(checked === true)}
+            />
+            <Label
+                htmlFor="open-resources-in-new-window"
+                className="cursor-pointer font-normal text-muted-foreground"
+            >
+                New tab
+            </Label>
+        </div>
     );
 }

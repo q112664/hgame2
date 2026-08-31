@@ -21,5 +21,20 @@ test('resource filter panel has a keyword search above label-free menus', functi
         ->toContain('<TagFilterDialog')
         ->toContain('<h1')
         ->toContain('resource-results-heading')
-        ->not->toContain('import { Label } from \'@/components/ui/label\';');
+        ->toContain('function OpenResourcesInNewWindowToggle')
+        ->toContain('openInNewWindow={openInNewWindow}')
+        ->toContain('useOpenResourcesInNewWindow')
+        ->toContain('<Checkbox')
+        ->toContain('New tab')
+        ->not->toContain('<ExternalLink')
+        ->not->toContain('New window');
+
+    expect($filesystem->get(resource_path('js/hooks/use-open-resources-in-new-window.ts')))
+        ->toContain("export const OPEN_RESOURCES_IN_NEW_WINDOW_KEY = 'resources.openInNewWindow'")
+        ->toContain('localStorage.setItem')
+        ->toContain('useSyncExternalStore');
+
+    expect($filesystem->get(resource_path('js/components/site/resource-card.tsx')))
+        ->toContain('openInNewWindow = false')
+        ->toContain("target={openInNewWindow ? '_blank' : undefined}");
 });

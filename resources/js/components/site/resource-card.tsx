@@ -31,12 +31,15 @@ type Props = {
     dateField?: 'publishedAt' | 'releaseDate' | 'downloadsUpdatedAt';
     /** Eager-load for above-the-fold cards (e.g. first grid row). */
     priority?: boolean;
+    /** Open the resource detail page in a new tab. */
+    openInNewWindow?: boolean;
 };
 
 export function ResourceCard({
     resource,
     dateField = 'publishedAt',
     priority = false,
+    openInNewWindow = false,
 }: Props) {
     const displayDate =
         dateField === 'releaseDate'
@@ -58,7 +61,9 @@ export function ResourceCard({
             <Link
                 href={resourceDetails(resource.id)}
                 className="group flex h-full flex-col"
-                prefetch
+                prefetch={!openInNewWindow}
+                target={openInNewWindow ? '_blank' : undefined}
+                rel={openInNewWindow ? 'noopener noreferrer' : undefined}
             >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-t-md bg-muted">
                     <LazyThumbnail

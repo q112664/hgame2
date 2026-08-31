@@ -1,10 +1,12 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     BookOpen,
+    ChevronDown,
     Dices,
     ExternalLink,
     Gamepad2,
     Home,
+    Languages,
     Library,
     Menu,
     Moon,
@@ -16,12 +18,17 @@ import {
     XIcon,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
 import type { AuthDialogView } from '@/components/auth/auth-dialog';
 import { NotificationBell } from '@/components/site/notification-bell';
 import { SiteLogo } from '@/components/site/site-logo';
 import { Button } from '@/components/ui/button';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -45,8 +52,15 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useAppearance } from '@/hooks/use-appearance';
 import { cn } from '@/lib/utils';
 import { home, search } from '@/routes';
+import {
+    genre as resourcesGenre,
+    language as resourcesLanguage,
+} from '@/routes/resources';
 import type { User } from '@/types';
-import type { NavigationMenuItem } from '@/types/navigation';
+import type {
+    NavigationMenuItem as SiteNavItem,
+    TaxonomyNavLink,
+} from '@/types/navigation';
 
 const navigationIcons: Record<string, LucideIcon> = {
     BookOpen,
@@ -62,10 +76,22 @@ const navigationIcons: Record<string, LucideIcon> = {
 };
 
 const navLinkClassName = cn(
-    'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium',
+    'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 py-0 text-sm font-medium',
     'text-foreground/75 transition-[color,background-color]',
     'hover:bg-primary/10 hover:text-primary',
-    'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+    'outline-none focus-visible:ring-0 focus-visible:outline-none',
+);
+
+const navLinkActiveClassName = cn(
+    'bg-primary/12 text-primary hover:bg-primary/15 hover:text-primary',
+);
+
+type NavLinksVariant = 'bar' | 'sheet';
+
+const taxonomyItemClassName = cn(
+    'flex w-full cursor-pointer items-center rounded-md px-2.5 py-1.5 text-left text-sm',
+    'text-foreground/75 no-underline outline-none',
+    'hover:bg-primary/10 hover:text-primary',
 );
 
 const softButtonClassName = cn(
@@ -98,8 +124,8 @@ function isExternalMenuUrl(url: string): boolean {
 }
 
 function isNavigationItemActive(
-    item: NavigationMenuItem,
-    items: NavigationMenuItem[],
+    item: SiteNavItem,
+    items: SiteNavItem[],
     currentPath: string,
 ): boolean {
     if (item.match === 'none' || isExternalMenuUrl(item.url)) {
@@ -109,7 +135,10 @@ function isNavigationItemActive(
     const targetPath = menuItemPath(item.url);
 
     if (item.match === 'exact' || targetPath === '/') {
-        return currentPath === targetPath || (targetPath === '/' && currentPath === '');
+        return (
+            currentPath === targetPath ||
+            (targetPath === '/' && currentPath === '')
+        );
     }
 
     const matches =
@@ -134,73 +163,290 @@ function isNavigationItemActive(
     });
 }
 
+function pathHasPrefix(path: string, prefix: string): boolean {
+    return path === prefix || path.startsWith(`${prefix}/`);
+}
+
+function navHasPathPrefix(items: SiteNavItem[], prefix: string): boolean {
+    return items.some((item) => pathHasPrefix(menuItemPath(item.url), prefix));
+}
+
+function taxonomyFlyoutInsertIndex(items: SiteNavItem[]): number {
+    const catalogIndex = items.findIndex(
+        (item) => menuItemPath(item.url) === '/resources',
+    );
+
+    if (catalogIndex !== -1) {
+        return catalogIndex + 1;
+    }
+
+    const homeIndex = items.findIndex((item) => menuItemPath(item.url) === '/');
+
+    if (homeIndex !== -1) {
+        return homeIndex + 1;
+    }
+
+    return 0;
+}
+
+function TaxonomyFlyout({
+    menuKey,
+    label,
+    icon: Icon,
+    items,
+    hrefFor,
+    currentPath,
+    activePrefix,
+    variant,
+    openKey,
+    onOpenKeyChange,
+    onNavigate,
+}: {
+    menuKey: string;
+    label: string;
+    icon: LucideIcon;
+    items: TaxonomyNavLink[];
+    hrefFor: (item: TaxonomyNavLink) => string;
+    currentPath: string;
+    activePrefix: string;
+    variant: NavLinksVariant;
+    openKey: string | null;
+    onOpenKeyChange: (key: string | null) => void;
+    onNavigate?: () => void;
+}) {
+    const open = openKey === menuKey;
+    const active = pathHasPrefix(currentPath, activePrefix);
+    const triggerClassName = cn(
+        navLinkClassName,
+        'group cursor-pointer outline-none focus-visible:ring-0',
+        variant === 'sheet' && 'h-10 w-full justify-start px-3',
+    );
+
+    const links = items.map((item) => {
+        const href = hrefFor(item);
+        const itemActive = currentPath === menuItemPath(href);
+        const itemClassName =
+            variant === 'sheet'
+                ? cn(
+                      navLinkClassName,
+                      'h-10 w-full justify-start px-3 font-normal',
+                  )
+                : taxonomyItemClassName;
+
+        return (
+            <Link
+                key={item.value}
+                href={href}
+                role={variant === 'sheet' ? undefined : 'menuitem'}
+                className={itemClassName}
+                aria-current={itemActive ? 'page' : undefined}
+                prefetch
+                onClick={() => {
+                    onOpenKeyChange(null);
+                    onNavigate?.();
+                }}
+            >
+                <span className="truncate">{item.name}</span>
+            </Link>
+        );
+    });
+
+    if (variant === 'sheet') {
+        return (
+            <Collapsible
+                defaultOpen={active}
+                className="flex w-full flex-col gap-1"
+            >
+                <CollapsibleTrigger className={triggerClassName}>
+                    <Icon className="size-3.5 shrink-0" />
+                    {label}
+                    <ChevronDown className="ml-auto size-3 shrink-0 text-muted-foreground transition-transform group-aria-expanded:rotate-180 group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="flex flex-col gap-1 pl-3">
+                    {links}
+                </CollapsibleContent>
+            </Collapsible>
+        );
+    }
+
+    return (
+        <div className="relative">
+            <button
+                type="button"
+                className={triggerClassName}
+                aria-expanded={open}
+                aria-haspopup="menu"
+                onClick={() => onOpenKeyChange(open ? null : menuKey)}
+            >
+                <Icon className="size-3.5 shrink-0" />
+                {label}
+                <ChevronDown className="size-3 shrink-0 text-muted-foreground transition-transform group-aria-expanded:rotate-180" />
+            </button>
+            {open ? (
+                <div
+                    role="menu"
+                    className="absolute top-full left-0 mt-2 max-h-80 min-w-44 overflow-y-auto rounded-md bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-border/80"
+                >
+                    {links}
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
 function NavLinks({
     className,
     onNavigate,
+    variant = 'bar',
 }: {
     className?: string;
     onNavigate?: () => void;
+    variant?: NavLinksVariant;
 }) {
     const { url, props } = usePage();
     const currentPath = url.split('?')[0] || '/';
     const navItems = props.navigationMenu ?? [];
+    const genres = props.taxonomyNav?.categories ?? [];
+    const languages = props.taxonomyNav?.languages ?? [];
+    const [openKey, setOpenKey] = useState<string | null>(null);
+    const navRef = useRef<HTMLElement>(null);
+
+    useEffect(() => {
+        if (variant === 'sheet' || openKey === null) {
+            return;
+        }
+
+        const closeOnOutsidePointer = (event: PointerEvent) => {
+            if (
+                navRef.current &&
+                !navRef.current.contains(event.target as Node)
+            ) {
+                setOpenKey(null);
+            }
+        };
+
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setOpenKey(null);
+            }
+        };
+
+        document.addEventListener('pointerdown', closeOnOutsidePointer);
+        document.addEventListener('keydown', closeOnEscape);
+
+        return () => {
+            document.removeEventListener('pointerdown', closeOnOutsidePointer);
+            document.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [openKey, variant]);
+
+    const flyouts: ReactNode[] = [];
+
+    if (genres.length > 0 && !navHasPathPrefix(navItems, '/resources/genre')) {
+        flyouts.push(
+            <TaxonomyFlyout
+                key="genres-nav"
+                menuKey="genres"
+                label="Genres"
+                icon={Library}
+                items={genres}
+                hrefFor={(item) => resourcesGenre.url(item.value)}
+                currentPath={currentPath}
+                activePrefix="/resources/genre"
+                variant={variant}
+                openKey={openKey}
+                onOpenKeyChange={setOpenKey}
+                onNavigate={onNavigate}
+            />,
+        );
+    }
+
+    if (
+        languages.length > 0 &&
+        !navHasPathPrefix(navItems, '/resources/language')
+    ) {
+        flyouts.push(
+            <TaxonomyFlyout
+                key="languages-nav"
+                menuKey="languages"
+                label="Languages"
+                icon={Languages}
+                items={languages}
+                hrefFor={(item) => resourcesLanguage.url(item.value)}
+                currentPath={currentPath}
+                activePrefix="/resources/language"
+                variant={variant}
+                openKey={openKey}
+                onOpenKeyChange={setOpenKey}
+                onNavigate={onNavigate}
+            />,
+        );
+    }
+
+    const insertAt = taxonomyFlyoutInsertIndex(navItems);
+    const nodes: ReactNode[] = [];
+
+    navItems.forEach((item, index) => {
+        if (index === insertAt) {
+            nodes.push(...flyouts);
+        }
+
+        const Icon = item.icon ? navigationIcons[item.icon] : undefined;
+        const active = isNavigationItemActive(item, navItems, currentPath);
+        const external = isExternalMenuUrl(item.url) || item.openInNewTab;
+        const content = (
+            <>
+                {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
+                {item.label}
+            </>
+        );
+        const itemClassName = cn(
+            navLinkClassName,
+            active && navLinkActiveClassName,
+        );
+
+        if (external) {
+            nodes.push(
+                <a
+                    key={`${item.label}-${item.url}`}
+                    href={item.url}
+                    className={itemClassName}
+                    onClick={onNavigate}
+                    target={item.openInNewTab ? '_blank' : undefined}
+                    rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
+                    aria-current={active ? 'page' : undefined}
+                >
+                    {content}
+                </a>,
+            );
+
+            return;
+        }
+
+        nodes.push(
+            <Link
+                key={`${item.label}-${item.url}`}
+                href={item.url}
+                className={itemClassName}
+                onClick={onNavigate}
+                aria-current={active ? 'page' : undefined}
+                prefetch={item.match === 'none' ? false : undefined}
+            >
+                {content}
+            </Link>,
+        );
+    });
+
+    if (insertAt >= navItems.length) {
+        nodes.push(...flyouts);
+    }
 
     return (
-        <nav className={cn('flex items-center gap-1.5', className)}>
-            {navItems.map((item) => {
-                const Icon = item.icon ? navigationIcons[item.icon] : undefined;
-                const active = isNavigationItemActive(
-                    item,
-                    navItems,
-                    currentPath,
-                );
-                const external = isExternalMenuUrl(item.url) || item.openInNewTab;
-                const content = (
-                    <>
-                        {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
-                        {item.label}
-                    </>
-                );
-                const itemClassName = cn(
-                    navLinkClassName,
-                    active &&
-                        'bg-primary/12 text-primary hover:bg-primary/15 hover:text-primary',
-                );
-
-                if (external) {
-                    return (
-                        <a
-                            key={`${item.label}-${item.url}`}
-                            href={item.url}
-                            className={itemClassName}
-                            onClick={onNavigate}
-                            target={item.openInNewTab ? '_blank' : undefined}
-                            rel={
-                                item.openInNewTab
-                                    ? 'noopener noreferrer'
-                                    : undefined
-                            }
-                            aria-current={active ? 'page' : undefined}
-                        >
-                            {content}
-                        </a>
-                    );
-                }
-
-                return (
-                    <Link
-                        key={`${item.label}-${item.url}`}
-                        href={item.url}
-                        className={itemClassName}
-                        onClick={onNavigate}
-                        aria-current={active ? 'page' : undefined}
-                        // One-shot links (match: none) must not be prefetched.
-                        prefetch={item.match === 'none' ? false : undefined}
-                    >
-                        {content}
-                    </Link>
-                );
-            })}
+        <nav
+            ref={navRef}
+            className={cn('flex items-center gap-1.5', className)}
+        >
+            {nodes}
         </nav>
     );
 }
@@ -256,7 +502,7 @@ function UserAvatarMenu({ user }: { user: User }) {
                         className="size-8"
                         fallbackClassName="rounded-full bg-accent text-[11px] text-accent-foreground"
                     />
-                    <span className="hidden max-w-28 truncate text-sm font-medium leading-none text-foreground md:inline">
+                    <span className="hidden max-w-28 truncate text-sm leading-none font-medium text-foreground md:inline">
                         {user.name}
                     </span>
                 </button>
@@ -308,7 +554,10 @@ export function SiteHeader() {
                             )}
                             aria-label="Open menu"
                         >
-                            <Menu className="size-4 shrink-0" strokeWidth={1.75} />
+                            <Menu
+                                className="size-4 shrink-0"
+                                strokeWidth={1.75}
+                            />
                         </button>
                     </SheetTrigger>
                     <SheetContent
@@ -342,6 +591,7 @@ export function SiteHeader() {
 
                         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4">
                             <NavLinks
+                                variant="sheet"
                                 className="flex-col items-stretch gap-1 [&>a]:h-10 [&>a]:justify-start [&>a]:px-3"
                                 onNavigate={closeMenu}
                             />

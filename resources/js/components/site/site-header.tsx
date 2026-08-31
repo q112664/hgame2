@@ -6,7 +6,6 @@ import {
     ExternalLink,
     Gamepad2,
     Home,
-    Languages,
     Library,
     Menu,
     Moon,
@@ -192,7 +191,6 @@ function taxonomyFlyoutInsertIndex(items: SiteNavItem[]): number {
 function TaxonomyFlyout({
     menuKey,
     label,
-    icon: Icon,
     items,
     hrefFor,
     currentPath,
@@ -204,7 +202,6 @@ function TaxonomyFlyout({
 }: {
     menuKey: string;
     label: string;
-    icon: LucideIcon;
     items: TaxonomyNavLink[];
     hrefFor: (item: TaxonomyNavLink) => string;
     currentPath: string;
@@ -258,7 +255,6 @@ function TaxonomyFlyout({
                 className="flex w-full flex-col gap-1"
             >
                 <CollapsibleTrigger className={triggerClassName}>
-                    <Icon className="size-3.5 shrink-0" />
                     {label}
                     <ChevronDown className="ml-auto size-3 shrink-0 text-muted-foreground transition-transform group-aria-expanded:rotate-180 group-data-[state=open]:rotate-180" />
                 </CollapsibleTrigger>
@@ -278,7 +274,6 @@ function TaxonomyFlyout({
                 aria-haspopup="menu"
                 onClick={() => onOpenKeyChange(open ? null : menuKey)}
             >
-                <Icon className="size-3.5 shrink-0" />
                 {label}
                 <ChevronDown className="size-3 shrink-0 text-muted-foreground transition-transform group-aria-expanded:rotate-180" />
             </button>
@@ -348,7 +343,6 @@ function NavLinks({
                 key="genres-nav"
                 menuKey="genres"
                 label="Genres"
-                icon={Library}
                 items={genres}
                 hrefFor={(item) => resourcesGenre.url(item.value)}
                 currentPath={currentPath}
@@ -370,7 +364,6 @@ function NavLinks({
                 key="languages-nav"
                 menuKey="languages"
                 label="Languages"
-                icon={Languages}
                 items={languages}
                 hrefFor={(item) => resourcesLanguage.url(item.value)}
                 currentPath={currentPath}

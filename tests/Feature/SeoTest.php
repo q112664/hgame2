@@ -48,15 +48,14 @@ test('resource detail pages expose page-level seo props', function () {
             ->where('pageSeo.canonical', route('resources.show', $game))
             ->where(
                 'pageSeo.description',
-                fn (string $description): bool => str_starts_with($description, 'Download Senren Banka')
+                fn (string $description): bool => str_starts_with($description, 'A published visual novel about spring.')
                     && str_contains($description, 'Visual Novel')
-                    && str_contains(mb_strtolower($description), 'download')
-                    && mb_strlen($description) >= 80
+                    && ! str_starts_with($description, 'Download ')
                     && mb_strlen($description) <= PageSeo::META_DESCRIPTION_MAX,
             )
             ->where(
                 'pageSeo.jsonLd.@graph.0.description',
-                fn (string $description): bool => str_starts_with($description, 'Download Senren Banka'),
+                fn (string $description): bool => str_starts_with($description, 'A published visual novel about spring.'),
             )
             ->where('pageSeo.ogImageUrl', PageSeo::absoluteUrl('/storage/games/covers/senren.png'))
             ->where('pageSeo.publishedTime', $sitePublishedAt->toIso8601String())
@@ -332,8 +331,8 @@ test('game meta description strips synopsis labels and block-tag glue', function
             ->assertInertia(fn ($page) => $page
                 ->where(
                     'pageSeo.description',
-                    fn (string $description): bool => str_contains($description, $case['starts'])
-                        && str_starts_with($description, 'Download ')
+                    fn (string $description): bool => str_starts_with($description, $case['starts'])
+                        && ! str_starts_with($description, 'Download ')
                         && ! str_contains($description, 'Synopsis (AI-translated English)Play')
                         && ! str_contains($description, 'StoryYou')
                         && ! str_ends_with($description, 'malic…'),
@@ -600,31 +599,72 @@ test('meta descriptions stop at a sentence boundary instead of mid-word', functi
         ->and(str_starts_with($limited, $first))->toBeTrue();
 });
 
-test('game meta descriptions include keywords and a download call to action', function () {
-    $category = Category::factory()->create(['name' => 'Visual Novel']);
+test('game meta descriptions lead with the synopsis then genre platform and language', function () {
+    $category = Category::factory()->create(['name' => 'RPG']);
     $game = Game::factory()->create([
-        'title' => 'Senren Banka',
-        'developer' => 'Yuzu Soft',
+        'title' => 'The Trembling Female Teacher That Want to Escape',
+        'developer' => 'rask',
         'category_id' => $category->id,
-        'description' => '<p>The heroine enters a labyrinth seething with lust and malice. She must survive every trap.</p>',
+        'description' => '<p>A cowardly female teacher enters the old school building crawling with tentacles to save her students...!!</p><p>The occult research club advisor heads into the old school building at night.</p>',
+    ]);
+    $windows = Platform::factory()->create(['name' => 'Windows', 'slug' => 'windows']);
+    $japanese = Language::factory()->create(['name' => 'Japanese', 'code' => 'jp']);
+    $english = Language::factory()->create(['name' => 'English', 'code' => 'en']);
+    $release = GameRelease::factory()->for($game)->create([
+        'platform_id' => $windows->id,
+        'language_id' => $japanese->id,
+    ]);
+    $release->languages()->sync([$japanese->id, $english->id]);
+    GameDownloadLink::factory()->for($release, 'release')->create();
+
+    $description = PageSeo::gameDescription($game->fresh(['category', 'releases.platforms', 'releases.languages']));
+
+    expect($description)
+        ->toStartWith('A cowardly female teacher enters the old school building crawling with tentacles to save her students')
+        ->toContain('RPG')
+        ->toContain('Windows')
+        ->toContain('JP/EN')
+        ->not->toStartWith('Download ')
+        ->not->toContain('rask')
+        ->and(mb_strlen($description))->toBeLessThanOrEqual(PageSeo::META_DESCRIPTION_MAX);
+
+    $jsonLd = PageSeo::gameJsonLdDescription($game->fresh());
+
+    expect($jsonLd)
+        ->toStartWith('A cowardly female teacher enters the old school building crawling with tentacles to save her students')
+        ->toContain('occult research club advisor')
+        ->not->toStartWith('Download ');
+});
+
+test('game meta descriptions skip bonus copy and unlocked labels', function () {
+    $category = Category::factory()->create(['name' => 'ACT']);
+    $game = Game::factory()->create([
+        'title' => 'CelSector',
+        'category_id' => $category->id,
+        'description' => '<p>Unlocked.</p><p>The heavy cell door swings open into the silence.</p><p>The facility has fallen.</p>',
     ]);
 
     $description = PageSeo::gameDescription($game);
 
     expect($description)
-        ->toStartWith('Download Senren Banka')
-        ->toContain('Visual Novel')
-        ->toContain('Yuzu Soft')
-        ->not->toContain('malic…')
-        ->and(mb_strlen($description))->toBeGreaterThanOrEqual(80)
-        ->and(mb_strlen($description))->toBeLessThanOrEqual(PageSeo::META_DESCRIPTION_MAX);
+        ->toStartWith('The heavy cell door swings open into the silence.')
+        ->toContain('ACT')
+        ->not->toContain('Unlocked')
+        ->not->toStartWith('Download ');
 
-    $downloads = PageSeo::gameDescription($game, 'downloads');
-    $screenshots = PageSeo::gameDescription($game, 'screenshots');
+    $bonus = Game::factory()->create([
+        'title' => 'Open at Nine',
+        'category_id' => $category->id,
+        'description' => '<p>By purchasing the main game, you can enjoy the following bonuses at no additional charge.</p><p>【Bonus content】 Digital Art Book.</p>',
+    ]);
 
-    expect($downloads)->not->toBe($description)
-        ->and($screenshots)->not->toBe($description)
-        ->and($downloads)->toContain('Download Senren Banka');
+    $bonusDescription = PageSeo::gameDescription($bonus);
+
+    expect($bonusDescription)
+        ->not->toContain('By purchasing')
+        ->not->toContain('no additional charge')
+        ->not->toStartWith('Download ')
+        ->toContain('ACT');
 });
 
 test('home meta description is a full-length default when the saved one is too short', function () {

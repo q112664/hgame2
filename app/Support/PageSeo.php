@@ -276,6 +276,7 @@ final class PageSeo
 
         $description = self::gameDescription($game);
         $image = self::gameImageUrl($game);
+        $jsonLdDescription = self::gameJsonLdDescription($game);
         $isPaginatedComments = $commentsPage > 1;
 
         // Site listing time vs download-update time — never commercial release_date,
@@ -297,7 +298,7 @@ final class PageSeo
                 : [
                     '@context' => 'https://schema.org',
                     '@graph' => [
-                        self::gameJsonLd($game, $description, $image),
+                        self::gameJsonLd($game, $jsonLdDescription, $image),
                         self::gameBreadcrumbList($game),
                     ],
                 ],
@@ -500,61 +501,48 @@ final class PageSeo
     }
 
     /**
-     * Unique 120–155 character description with title keywords and a download CTA.
+     * SERP snippet: usable synopsis sentence, then genre / platform / language.
      */
-    public static function gameDescription(Game $game, string $tab = 'details'): string
+    public static function gameDescription(Game $game): string
     {
-        $title = trim((string) $game->title);
-        $title = $title !== '' ? $title : 'this hentai game';
-        $category = filled($game->category?->name) ? trim((string) $game->category->name) : null;
-        $developer = filled($game->developer) ? trim((string) $game->developer) : null;
-        $genre = $category ?? 'hentai';
+        $hook = self::synopsisHook($game);
+        $facts = self::gameFactLine($game);
+        $cta = 'Free download on Eroga.me.';
 
-        $hook = self::firstSentence(
-            self::stripLeadingSynopsisLabels(self::plainText($game->description)) ?? '',
-        );
+        $text = '';
 
-        [$lead, $cta] = match ($tab) {
-            'downloads' => [
-                "Download {$title} — {$genre} eroge packages, file details, and the latest mirrors.",
-                ' Get the latest package now.',
-            ],
-            'screenshots' => [
-                "See screenshots of {$title}, a {$genre} hentai game. Preview scenes before you download.",
-                ' Preview scenes, then download free.',
-            ],
-            'comments' => [
-                "Read reviews of {$title}, a {$genre} hentai game. See ratings and notes from players before you download.",
-                ' Share your review, then download.',
-            ],
-            default => [
-                'Download '.$title
-                    .', a '.$genre.' hentai game'
-                    .($developer !== null ? ' by '.$developer : '')
-                    .'.',
-                ' Free download with details and screenshots.',
-            ],
-        };
-
-        $text = $lead;
-
-        if ($tab === 'details' && $hook !== '' && ! str_contains(mb_strtolower($lead), mb_strtolower($hook))) {
-            $withHook = trim($text.' '.$hook);
-
-            if (mb_strlen($withHook) <= self::META_DESCRIPTION_MAX) {
-                $text = $withHook;
-            }
+        if ($hook !== '') {
+            $withFacts = $facts !== '' ? $hook.' '.$facts : $hook;
+            $text = mb_strlen($withFacts) <= self::META_DESCRIPTION_MAX ? $withFacts : $hook;
+        } elseif ($facts !== '') {
+            $text = $facts;
         }
 
         if (mb_strlen($text) < self::META_DESCRIPTION_MIN) {
-            $withCta = trim($text.$cta);
+            $withCta = trim($text.' '.$cta);
 
-            if (mb_strlen($withCta) <= self::META_DESCRIPTION_MAX || mb_strlen($text) < 80) {
+            if ($text === '') {
+                $text = $cta;
+            } elseif (mb_strlen($withCta) <= self::META_DESCRIPTION_MAX || mb_strlen($text) < 80) {
                 $text = $withCta;
             }
         }
 
         return self::limitAtSentence($text);
+    }
+
+    /**
+     * Same facts as the meta snippet, allowing a slightly longer synopsis.
+     */
+    public static function gameJsonLdDescription(Game $game): string
+    {
+        $sentences = self::usableSynopsisSentences($game, 2);
+
+        if ($sentences === []) {
+            return self::gameDescription($game);
+        }
+
+        return self::limitAtSentence(implode(' ', $sentences), 300, 40);
     }
 
     public static function homeDescription(): string
@@ -603,6 +591,213 @@ final class PageSeo
         return $cleaned === '' ? null : $cleaned;
     }
 
+    private static function synopsisHook(Game $game): string
+    {
+        $sentences = self::usableSynopsisSentences($game, 1);
+
+        return $sentences[0] ?? '';
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function usableSynopsisSentences(Game $game, int $limit): array
+    {
+        $plain = self::stripLeadingSynopsisLabels(self::plainText($game->description));
+
+        if ($plain === null || $plain === '') {
+            return [];
+        }
+
+        $usable = [];
+        $rest = $plain;
+
+        while ($rest !== '' && count($usable) < $limit) {
+            [$sentence, $rest] = self::splitOffSentence($rest);
+
+            if (self::isUsableSynopsisSentence($sentence)) {
+                $usable[] = $sentence;
+            }
+        }
+
+        return $usable;
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private static function splitOffSentence(string $text): array
+    {
+        $text = trim($text);
+
+        if ($text === '') {
+            return ['', ''];
+        }
+
+        if (preg_match('/^(.+?[\.!?。！？]+)(?:\s+|$)/u', $text, $matches) === 1) {
+            $sentence = trim((string) $matches[1]);
+
+            return [$sentence, trim(mb_substr($text, mb_strlen($sentence)))];
+        }
+
+        return [$text, ''];
+    }
+
+    private static function isUsableSynopsisSentence(string $sentence): bool
+    {
+        $normalized = trim(preg_replace('/\s+/u', ' ', $sentence) ?? $sentence);
+        $stripped = trim((string) preg_replace('/[\s.!?。！？…]+$/u', '', $normalized));
+
+        if (mb_strlen($stripped) < 24) {
+            return false;
+        }
+
+        if (preg_match('/^(unlocked|locked|demo|trial|dlc|bonus|english|japanese|chinese)(\s+version)?$/iu', $stripped) === 1) {
+            return false;
+        }
+
+        if (preg_match('/^(by purchasing|purchasing the main game|bonus content|digital art book|original soundtrack|bonuses can be)\b/iu', $stripped) === 1) {
+            return false;
+        }
+
+        if (str_starts_with($normalized, '【')) {
+            return false;
+        }
+
+        return preg_match('/(no additional charge|art book|original soundtrack|特典|おまけ)/iu', $stripped) !== 1;
+    }
+
+    private static function gameFactLine(Game $game): string
+    {
+        $bits = [];
+        $genre = filled($game->category?->name) ? trim((string) $game->category->name) : '';
+
+        if ($genre !== '' && strcasecmp($genre, 'Uncategorized') !== 0) {
+            $bits[] = $genre;
+        }
+
+        $platforms = self::gamePlatformNames($game);
+
+        if ($platforms !== []) {
+            $bits[] = implode('/', $platforms);
+        }
+
+        $languages = self::gameLanguageLabels($game);
+
+        if ($languages !== []) {
+            $bits[] = implode('/', $languages);
+        }
+
+        if ($bits === []) {
+            return '';
+        }
+
+        return implode(', ', $bits).'.';
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function gamePlatformNames(Game $game): array
+    {
+        self::ensureReleaseSeoRelations($game);
+
+        if (! $game->relationLoaded('releases')) {
+            return [];
+        }
+
+        return $game->releases
+            ->flatMap(function ($release) {
+                if ($release->relationLoaded('platforms') && $release->platforms->isNotEmpty()) {
+                    return $release->platforms->pluck('name');
+                }
+
+                $name = $release->platform?->name;
+
+                return $name ? [$name] : [];
+            })
+            ->map(fn (mixed $name): string => trim((string) $name))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function gameLanguageLabels(Game $game): array
+    {
+        self::ensureReleaseSeoRelations($game);
+
+        if (! $game->relationLoaded('releases')) {
+            return [];
+        }
+
+        $labels = $game->releases
+            ->flatMap(function ($release) {
+                if ($release->relationLoaded('languages') && $release->languages->isNotEmpty()) {
+                    return $release->languages->pluck('code');
+                }
+
+                $code = $release->language?->code;
+
+                return $code ? [$code] : [];
+            })
+            ->map(fn (mixed $code): string => self::languageSnippetLabel((string) $code))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $rank = ['JP' => 0, 'EN' => 1, 'ZH' => 2, 'KO' => 3];
+
+        usort($labels, function (string $left, string $right) use ($rank): int {
+            return ($rank[$left] ?? 10) <=> ($rank[$right] ?? 10) ?: strcmp($left, $right);
+        });
+
+        return $labels;
+    }
+
+    private static function languageSnippetLabel(string $code): string
+    {
+        $code = strtolower(str_replace('_', '-', trim($code)));
+
+        return match ($code) {
+            'ja', 'jp', 'jpn' => 'JP',
+            'en', 'eng' => 'EN',
+            'zh', 'cn', 'zh-cn', 'chs', 'zh-hans' => 'ZH',
+            'zh-tw', 'cht', 'zh-hant' => 'ZH',
+            'ko', 'kr', 'kor' => 'KO',
+            default => $code === '' ? '' : strtoupper($code),
+        };
+    }
+
+    private static function ensureReleaseSeoRelations(Game $game): void
+    {
+        if ($game->relationLoaded('releases')) {
+            $game->releases->loadMissing([
+                'platforms:id,name,slug',
+                'languages:id,name,code',
+                'platform:id,name,slug',
+                'language:id,name,code',
+            ]);
+
+            return;
+        }
+
+        $game->load([
+            'releases' => fn ($releases) => $releases
+                ->available()
+                ->with([
+                    'platforms:id,name,slug',
+                    'languages:id,name,code',
+                    'platform:id,name,slug',
+                    'language:id,name,code',
+                ]),
+        ]);
+    }
+
     /**
      * @return int<0, max>|null Byte-less Unicode offset of the last sentence terminator.
      */
@@ -619,21 +814,6 @@ final class PageSeo
         }
 
         return $best;
-    }
-
-    private static function firstSentence(string $text): string
-    {
-        $text = trim($text);
-
-        if ($text === '') {
-            return '';
-        }
-
-        if (preg_match('/^(.+?[\.!?。！？])(?:\s|$)/u', $text, $matches) === 1) {
-            return trim((string) $matches[1]);
-        }
-
-        return $text;
     }
 
     private static function gameImageUrl(Game $game): ?string

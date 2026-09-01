@@ -10,7 +10,7 @@ test('random resource redirects to a published game details page', function () {
     Game::factory()->draft()->create(['slug' => 'hidden-draft']);
 
     $this->get(route('resources.random'))
-        ->assertRedirect(route('resources.details', $game))
+        ->assertRedirect(route('resources.show', $game))
         ->assertHeader('Cache-Control', 'no-store, private');
 });
 
@@ -26,5 +26,5 @@ test('random resource only selects published games', function () {
     Game::factory()->draft()->create(['slug' => 'draft-skip']);
 
     $this->get(route('resources.random'))
-        ->assertRedirect(route('resources.details', $published));
+        ->assertRedirect(route('resources.show', $published));
 });

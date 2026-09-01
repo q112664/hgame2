@@ -94,8 +94,8 @@ class ManageNavigationMenu extends Page
                                     ->label('URL')
                                     ->required()
                                     ->maxLength(2048)
-                                    ->placeholder('/resources')
-                                    ->helperText('Relative path (/docs, /resources/tags) or absolute http(s) URL.'),
+                                    ->placeholder('/games')
+                                    ->helperText('Relative path (/docs, /games/tags) or absolute http(s) URL.'),
                                 Select::make('icon')
                                     ->label('Icon')
                                     ->options(Setting::navigationMenuIconOptions())

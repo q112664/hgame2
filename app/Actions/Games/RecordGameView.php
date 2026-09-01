@@ -85,7 +85,7 @@ class RecordGameView
         $path = rawurldecode($path);
 
         return (bool) preg_match(
-            '#^/resources/'.preg_quote($game->slug, '#').'(?:/|$)#',
+            '#^/(?:games|resources)/'.preg_quote($game->slug, '#').'(?:/|$)#',
             $path,
         );
     }

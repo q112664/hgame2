@@ -15,10 +15,8 @@ import { SitePagination } from '@/components/site/site-pagination';
 import type { PaginatedData } from '@/components/site/site-pagination';
 import { UserAvatar } from '@/components/user-avatar';
 import { SiteLayout } from '@/layouts/site-layout';
-import {
-    details as resourceDetails,
-    downloads as resourceDownloads,
-} from '@/routes/resources';
+import { resourceTabHref } from '@/lib/resource-tabs';
+import { show as resourceDetails } from '@/routes/resources';
 import { destroy as destroyFavorite } from '@/routes/resources/favorite';
 import { favorites as userFavorites, show as userShow } from '@/routes/users';
 import type { GameCard } from '@/types/resources';
@@ -208,9 +206,10 @@ export default function UserProfileShow({
                                                 resource={resource}
                                                 href={
                                                     resource.hasDownloadUpdate
-                                                        ? resourceDownloads(
+                                                        ? resourceTabHref(
                                                               resource.id,
-                                                          ).url
+                                                              'downloads',
+                                                          )
                                                         : resourceDetails(
                                                               resource.id,
                                                           ).url

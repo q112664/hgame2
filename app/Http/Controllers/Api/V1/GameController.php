@@ -129,7 +129,7 @@ class GameController extends Controller
                 : (string) $status,
             'category' => $game->category?->name,
             'developer' => $game->developer,
-            'url' => route('resources.details', $game),
+            'url' => route('resources.show', $game),
             'cover_url' => Media::url($game->cover_path ?: $game->cover_url),
             'published_at' => $game->published_at?->toIso8601String(),
             'screenshots_count' => $game->screenshots_count
@@ -181,7 +181,7 @@ class GameController extends Controller
                 : [],
             'cover_url' => Media::url($game->cover_path ?: $game->cover_url),
             'published_at' => $game->published_at?->toIso8601String(),
-            'url' => route('resources.details', $game),
+            'url' => route('resources.show', $game),
             'screenshots' => $game->screenshots
                 ->map(fn ($screenshot): string => Media::url($screenshot->path ?: $screenshot->url))
                 ->values()

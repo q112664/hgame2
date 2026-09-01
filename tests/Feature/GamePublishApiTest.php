@@ -96,7 +96,7 @@ test('an administrator can publish a complete game via the api', function () {
         ->assertJsonPath('data.screenshots_count', 2)
         ->assertJsonPath('data.releases_count', 1);
 
-    expect($response->json('data.url'))->toBe(route('resources.details', 'senren-banka'));
+    expect($response->json('data.url'))->toBe(route('resources.show', 'senren-banka'));
 
     $game = Game::query()->where('slug', 'senren-banka')->firstOrFail();
 
@@ -116,7 +116,7 @@ test('an administrator can publish a complete game via the api', function () {
     Storage::disk(Media::diskName())->assertExists($game->cover_path);
     Storage::disk(Media::diskName())->assertExists($game->screenshots->first()->path);
 
-    $this->get(route('resources.details', $game->slug))
+    $this->get(route('resources.show', $game->slug))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('resource.source.name', 'DLsite')
@@ -243,7 +243,7 @@ test('publishing a steam-sourced game uses the local steam favicon', function ()
         ->assertJsonPath('data.source.id', '1234560')
         ->assertJsonPath('data.source.faviconUrl', '/images/sources/steam.ico');
 
-    $this->get(route('resources.details', 'steam-demo-game'))
+    $this->get(route('resources.show', 'steam-demo-game'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('resource.source.name', 'Steam')

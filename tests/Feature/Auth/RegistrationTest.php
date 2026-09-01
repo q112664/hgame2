@@ -30,9 +30,9 @@ test('new users return to the modal redirect after registering', function () {
         'email' => 'modal@example.com',
         'password' => 'password1',
         'password_confirmation' => 'password1',
-        'redirect' => '/resources/senren-banka/details',
+        'redirect' => '/games/senren-banka',
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(url('/resources/senren-banka/details'));
+    $response->assertRedirect(url('/games/senren-banka'));
 });

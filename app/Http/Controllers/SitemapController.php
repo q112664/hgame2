@@ -50,7 +50,7 @@ class SitemapController extends Controller
 
         foreach ($games as $game) {
             $urls[] = [
-                'loc' => route('resources.details', $game),
+                'loc' => route('resources.show', $game),
                 // Content lastmod: download updates, else site publish — not updated_at.
                 'lastmod' => $game->contentModifiedAt()?->toAtomString(),
                 'changefreq' => 'weekly',

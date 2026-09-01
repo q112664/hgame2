@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\GameComment;
+use App\Support\ResourceShowUrl;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Str;
 
@@ -52,9 +53,7 @@ class CommentRepliedNotification extends Notification
                 'name' => $actorName,
             ]),
             'body' => Str::limit($this->comment->body, 140),
-            'url' => route('resources.comments', $game->slug, absolute: false)
-                .'?focus='.$this->comment->id
-                .'#comment-'.$this->comment->id,
+            'url' => ResourceShowUrl::comment($game->slug, $this->comment->id),
             'actor' => [
                 'id' => $actor->id,
                 'name' => $actorName,

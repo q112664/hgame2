@@ -30,26 +30,22 @@ test('details tab includes up to four related resources', function () {
         'views_count' => 999,
     ]);
 
-    $this->get(route('resources.details', $current))
+    $this->get(route('resources.show', $current))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
-            ->where('activeTab', 'details')
             ->has('related', 4)
             ->where('related.0.id', 'related-0')
             ->where('related.3.id', 'related-3')
         );
 });
 
-test('downloads tab does not load related resources', function () {
+test('legacy downloads urls redirect instead of rendering a separate tab page', function () {
     $game = Game::factory()->create();
 
     $this->get(route('resources.downloads', $game))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('activeTab', 'downloads')
-            ->where('related', [])
-        );
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $game).'#downloads');
 });
 
 test('list related games excludes the current game and prefers same category', function () {

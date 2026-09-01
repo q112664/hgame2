@@ -29,7 +29,7 @@ test('visiting a resource page records a view on every full page load', function
         'views_count' => 10,
     ]);
 
-    $this->get(route('resources.details', $game->slug))
+    $this->get(route('resources.show', $game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resource.views', 11)
@@ -37,7 +37,7 @@ test('visiting a resource page records a view on every full page load', function
 
     expect($game->fresh()->views_count)->toBe(11);
 
-    $this->get(route('resources.details', $game->slug))->assertOk();
+    $this->get(route('resources.show', $game->slug))->assertOk();
 
     expect($game->fresh()->views_count)->toBe(12);
 });
@@ -55,7 +55,7 @@ test('recording a view does not bump game updated_at for sitemap lastmod', funct
     // Force the timestamp so factory/create side effects cannot skew the check.
     $game->forceFill(['updated_at' => $frozen])->saveQuietly();
 
-    $this->get(route('resources.details', $game->slug))->assertOk();
+    $this->get(route('resources.show', $game->slug))->assertOk();
 
     $fresh = $game->fresh();
 
@@ -63,43 +63,37 @@ test('recording a view does not bump game updated_at for sitemap lastmod', funct
         ->and($fresh->updated_at?->equalTo($frozen))->toBeTrue();
 });
 
-test('inertia tab switches within the same resource do not record a view', function () {
+test('legacy tab urls redirect without recording a view', function () {
     $game = Game::factory()->create([
         'slug' => 'tab-switch-game',
         'views_count' => 3,
     ]);
 
-    $this->withHeaders(inertiaHeaders([
-        RecordGameView::TabNavigationHeader => '1',
-    ]))
-        ->from(route('resources.details', $game->slug))
-        ->get(route('resources.downloads', $game->slug))
-        ->assertOk();
+    $this->get(route('resources.downloads', $game->slug))
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $game->slug).'#downloads');
 
     expect($game->fresh()->views_count)->toBe(3);
 
-    $this->withHeaders(inertiaHeaders([
-        RecordGameView::TabNavigationHeader => '1',
-    ]))
-        ->from(route('resources.downloads', $game->slug))
-        ->get(route('resources.screenshots', $game->slug))
-        ->assertOk();
+    $this->get(route('resources.screenshots', $game->slug))
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $game->slug).'#screenshots');
 
     expect($game->fresh()->views_count)->toBe(3);
 });
 
-test('inertia tab switches still skip counting when only the referer fallback is present', function () {
+test('inertia comment pagination on the same resource does not record a view', function () {
     $game = Game::factory()->create([
         'slug' => 'referer-tab-game',
         'views_count' => 3,
     ]);
 
     $request = Request::create(
-        route('resources.downloads', $game->slug),
+        route('resources.show', ['resource' => $game->slug, 'page' => 2]),
         'GET',
         server: [
             'HTTP_X_INERTIA' => 'true',
-            'HTTP_REFERER' => route('resources.details', $game->slug),
+            'HTTP_REFERER' => route('resources.show', $game->slug),
         ],
     );
 
@@ -116,20 +110,21 @@ test('inertia navigation from another page still records a view', function () {
 
     $this->withHeaders(inertiaHeaders())
         ->from(route('resources.index'))
-        ->get(route('resources.details', $game->slug))
+        ->get(route('resources.show', $game->slug))
         ->assertOk();
 
     expect($game->fresh()->views_count)->toBe(1);
 });
 
-test('redirecting from the resource show route does not record a view', function () {
+test('redirecting from the legacy details route does not record a view', function () {
     $game = Game::factory()->create([
         'slug' => 'redirect-game',
         'views_count' => 5,
     ]);
 
-    $this->get(route('resources.show', $game->slug))
-        ->assertRedirect(route('resources.details', $game->slug));
+    $this->get(route('resources.details', $game->slug))
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $game->slug));
 
     expect($game->fresh()->views_count)->toBe(5);
 });

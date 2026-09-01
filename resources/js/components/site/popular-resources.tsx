@@ -5,7 +5,7 @@ import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { Button } from '@/components/ui/button';
 import { formatViews } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
-import { details as resourceDetails } from '@/routes/resources';
+import { show as resourceDetails } from '@/routes/resources';
 import type { GameCard } from '@/types/resources';
 
 type Props = {

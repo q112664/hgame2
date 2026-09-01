@@ -22,7 +22,7 @@ test('resource downloads expose the release title above description content', fu
     ]);
     GameDownloadLink::factory()->for($release, 'release')->create();
 
-    $this->get(route('resources.downloads', $game->slug))
+    $this->get(route('resources.show', $game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')

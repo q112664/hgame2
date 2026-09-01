@@ -90,15 +90,6 @@ class GameCommentController extends Controller
             'createdCommentId' => $comment->id,
         ]);
 
-        $commentsUrl = route('resources.comments', $resource, absolute: false);
-        $previousPath = parse_url($request->headers->get('referer', ''), PHP_URL_PATH);
-
-        if ($previousPath === parse_url($commentsUrl, PHP_URL_PATH)) {
-            return redirect()->to(
-                $commentsUrl.'?focus='.$comment->id.'#comment-'.$comment->id,
-            );
-        }
-
         return back();
     }
 

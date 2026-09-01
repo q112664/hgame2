@@ -26,7 +26,7 @@ test('users can authenticate using the login screen', function () {
 test('users return to the previous page after logging in', function () {
     $user = User::factory()->create();
 
-    $this->get('/login?redirect=/resources/senren-banka/details')
+    $this->get('/login?redirect=/games/senren-banka')
         ->assertOk();
 
     $response = $this->post(route('login.store'), [
@@ -35,7 +35,7 @@ test('users return to the previous page after logging in', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(url('/resources/senren-banka/details'));
+    $response->assertRedirect(url('/games/senren-banka'));
 });
 
 test('users return to the modal redirect after logging in', function () {
@@ -44,11 +44,11 @@ test('users return to the modal redirect after logging in', function () {
     $response = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
-        'redirect' => '/resources/senren-banka/details',
+        'redirect' => '/games/senren-banka',
     ]);
 
     $this->assertAuthenticatedAs($user);
-    $response->assertRedirect(url('/resources/senren-banka/details'));
+    $response->assertRedirect(url('/games/senren-banka'));
 });
 
 test('guest pages share the authentication modal configuration', function () {

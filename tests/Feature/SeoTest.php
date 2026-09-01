@@ -4,9 +4,16 @@ use App\Actions\Games\ListPublishedGames;
 use App\Models\Category;
 use App\Models\Doc;
 use App\Models\Game;
+use App\Models\GameComment;
+use App\Models\GameDownloadLink;
+use App\Models\GameRelease;
+use App\Models\GameScreenshot;
+use App\Models\Language;
+use App\Models\Platform;
 use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\User;
+use App\Support\Media;
 use App\Support\PageSeo;
 use App\Support\TaxonomyDirectory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,13 +39,13 @@ test('resource detail pages expose page-level seo props', function () {
     // Eloquent updated_at must not drive SEO modified time.
     $game->forceFill(['updated_at' => now()])->saveQuietly();
 
-    $this->get(route('resources.details', $game))
+    $this->get(route('resources.show', $game))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('resources/show')
             ->where('pageSeo.title', 'Senren Banka')
             ->where('pageSeo.robots', 'index,follow')
-            ->where('pageSeo.canonical', route('resources.details', $game))
+            ->where('pageSeo.canonical', route('resources.show', $game))
             ->where(
                 'pageSeo.description',
                 fn (string $description): bool => str_starts_with($description, 'Download Senren Banka')
@@ -48,43 +55,144 @@ test('resource detail pages expose page-level seo props', function () {
                     && mb_strlen($description) <= PageSeo::META_DESCRIPTION_MAX,
             )
             ->where(
-                'pageSeo.jsonLd.description',
+                'pageSeo.jsonLd.@graph.0.description',
                 fn (string $description): bool => str_starts_with($description, 'Download Senren Banka'),
             )
             ->where('pageSeo.ogImageUrl', PageSeo::absoluteUrl('/storage/games/covers/senren.png'))
             ->where('pageSeo.publishedTime', $sitePublishedAt->toIso8601String())
             ->where('pageSeo.modifiedTime', $downloadsUpdatedAt->toIso8601String())
-            ->where('pageSeo.jsonLd.@type', 'SoftwareApplication')
-            ->where('pageSeo.jsonLd.name', 'Senren Banka')
+            ->where('pageSeo.jsonLd.@graph.0.@type', 'SoftwareApplication')
+            ->where('pageSeo.jsonLd.@graph.0.name', 'Senren Banka')
+            ->where('pageSeo.jsonLd.@graph.0.alternateName', 'A spring tale')
+            ->missing('pageSeo.jsonLd.@graph.0.aggregateRating')
+            ->missing('pageSeo.jsonLd.@graph.0.screenshot')
             // Crawlers use site publish time, not commercial release_date.
-            ->where('pageSeo.jsonLd.datePublished', $sitePublishedAt->toIso8601String())
-            ->where('pageSeo.jsonLd.dateModified', $downloadsUpdatedAt->toIso8601String())
+            ->where('pageSeo.jsonLd.@graph.0.datePublished', $sitePublishedAt->toIso8601String())
+            ->where('pageSeo.jsonLd.@graph.0.dateModified', $downloadsUpdatedAt->toIso8601String())
+            ->where('pageSeo.jsonLd.@graph.1.@type', 'BreadcrumbList')
+            ->where('pageSeo.jsonLd.@graph.1.itemListElement.0.name', 'Home')
+            ->where('pageSeo.jsonLd.@graph.1.itemListElement.1.name', 'Games')
+            ->where('pageSeo.jsonLd.@graph.1.itemListElement.2.name', 'Visual Novel')
+            ->where(
+                'pageSeo.jsonLd.@graph.1.itemListElement.2.item',
+                route('resources.genre', $category),
+            )
+            ->where('pageSeo.jsonLd.@graph.1.itemListElement.3.name', 'Senren Banka')
+            ->where(
+                'pageSeo.jsonLd.@graph.1.itemListElement.3.item',
+                route('resources.show', $game),
+            )
             ->where('resource.publishedAt', $sitePublishedAt->toDateString())
             ->where('resource.downloadsUpdatedAt', $downloadsUpdatedAt->toDateString())
             ->where('resource.releaseDate', $commercialRelease)
         );
 });
 
-test('resource sub-tabs are noindex and canonicalize to the details url', function () {
+test('resource detail json-ld includes screenshots languages ratings and genre breadcrumbs', function () {
+    $category = Category::factory()->create([
+        'name' => 'SLG',
+        'slug' => 'slg',
+    ]);
+    $game = Game::factory()->create([
+        'title' => 'Schema Game',
+        'slug' => 'schema-game',
+        'subtitle' => 'スキーマゲーム',
+        'category_id' => $category->id,
+        'cover_path' => 'games/covers/schema.png',
+        'ratings_count' => 4,
+        'ratings_avg' => 4.5,
+    ]);
+    $windows = Platform::factory()->create(['name' => 'Windows', 'slug' => 'windows']);
+    $japanese = Language::factory()->create(['name' => 'Japanese', 'code' => 'ja']);
+    $english = Language::factory()->create(['name' => 'English', 'code' => 'en']);
+    $release = GameRelease::factory()->for($game)->create([
+        'platform_id' => $windows->id,
+        'language_id' => $japanese->id,
+    ]);
+    $release->languages()->sync([$japanese->id, $english->id]);
+    GameDownloadLink::factory()->for($release, 'release')->create();
+    GameScreenshot::factory()->for($game)->create([
+        'path' => 'games/screenshots/one.jpg',
+        'url' => '',
+        'sort_order' => 0,
+    ]);
+
+    $this->get(route('resources.show', $game))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('pageSeo.jsonLd.@graph.0.@type', 'SoftwareApplication')
+            ->where('pageSeo.jsonLd.@graph.0.alternateName', 'スキーマゲーム')
+            ->where('pageSeo.jsonLd.@graph.0.genre', 'SLG')
+            ->where('pageSeo.jsonLd.@graph.0.operatingSystem', 'Windows')
+            ->where(
+                'pageSeo.jsonLd.@graph.0.inLanguage',
+                fn ($codes): bool => collect($codes)->sort()->values()->all() === ['en', 'ja'],
+            )
+            ->where('pageSeo.jsonLd.@graph.0.screenshot', [
+                Media::url('games/screenshots/one.jpg'),
+            ])
+            ->where('pageSeo.jsonLd.@graph.0.aggregateRating.@type', 'AggregateRating')
+            ->where('pageSeo.jsonLd.@graph.0.aggregateRating.ratingValue', 4.5)
+            ->where('pageSeo.jsonLd.@graph.0.aggregateRating.ratingCount', 4)
+            ->where('pageSeo.jsonLd.@graph.0.aggregateRating.bestRating', 5)
+            ->where('pageSeo.jsonLd.@graph.0.aggregateRating.worstRating', 1)
+            ->where('pageSeo.jsonLd.@graph.1.@type', 'BreadcrumbList')
+            ->has('pageSeo.jsonLd.@graph.1.itemListElement', 4)
+            ->where('pageSeo.jsonLd.@graph.1.itemListElement.2.name', 'SLG')
+            ->where(
+                'pageSeo.jsonLd.@graph.1.itemListElement.2.item',
+                route('resources.genre', $category),
+            )
+            ->where('pageSeo.jsonLd.@graph.1.itemListElement.3.name', 'Schema Game')
+        );
+});
+
+test('legacy details urls permanently redirect to the canonical resource url', function () {
+    $game = Game::factory()->create(['slug' => 'legacy-details-game']);
+
+    $this->get(route('resources.details', $game))
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $game));
+});
+
+test('legacy resource tab urls permanently redirect to the canonical resource url', function () {
     $game = Game::factory()->create([
         'slug' => 'tab-cluster-game',
         'title' => 'Tab Cluster Game',
     ]);
 
     foreach ([
-        'resources.downloads' => 'Tab Cluster Game · Downloads',
-        'resources.screenshots' => 'Tab Cluster Game · Screenshots',
-        'resources.comments' => 'Tab Cluster Game · Reviews',
-    ] as $route => $title) {
+        'resources.downloads' => 'downloads',
+        'resources.screenshots' => 'screenshots',
+        'resources.comments' => 'comments',
+    ] as $route => $fragment) {
         $this->get(route($route, $game))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->where('pageSeo.title', $title)
-                ->where('pageSeo.robots', 'noindex,follow')
-                ->where('pageSeo.canonical', route('resources.details', $game))
-                ->where('pageSeo.jsonLd', null)
-            );
+            ->assertStatus(301)
+            ->assertRedirect(route('resources.show', $game).'#'.$fragment);
     }
+});
+
+test('paginated comments on the details page are noindex and canonical to details', function () {
+    $game = Game::factory()->create([
+        'slug' => 'paged-comments-game',
+        'title' => 'Paged Comments Game',
+    ]);
+    $user = User::factory()->create();
+    GameComment::factory()
+        ->count(21)
+        ->for($game)
+        ->for($user)
+        ->create();
+
+    $this->get(route('resources.show', ['resource' => $game, 'page' => 2]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('pageSeo.title', 'Paged Comments Game')
+            ->where('pageSeo.robots', 'noindex,follow')
+            ->where('pageSeo.canonical', route('resources.show', $game))
+            ->where('pageSeo.jsonLd', null)
+            ->where('comments.current_page', 2)
+        );
 });
 
 test('resource catalog canonical ignores filter query strings', function () {
@@ -112,7 +220,26 @@ test('single category query redirects to genre taxonomy path', function () {
     ]);
 
     $this->get(route('resources.index', ['category' => $category->slug]))
+        ->assertStatus(301)
         ->assertRedirect(route('resources.genre', $category));
+});
+
+test('legacy /resources category query permanently redirects in one hop', function () {
+    $category = Category::factory()->create([
+        'name' => 'SLG',
+        'slug' => 'slg',
+    ]);
+
+    $this->get('/resources?category='.$category->slug)
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.genre', $category));
+
+    $this->get('/resources?category='.$category->slug.'&page=2')
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.genre', [
+            'category' => $category,
+            'page' => 2,
+        ]));
 });
 
 test('genre taxonomy pages are indexable with self-canonical', function () {
@@ -200,7 +327,7 @@ test('game meta description strips synopsis labels and block-tag glue', function
             'description' => $case['html'],
         ]);
 
-        $this->get(route('resources.details', $game))
+        $this->get(route('resources.show', $game))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where(
@@ -348,7 +475,7 @@ test('public pages inherit the site-wide robots setting', function () {
     $publicPages = [
         route('home'),
         route('resources.index'),
-        route('resources.details', $game),
+        route('resources.show', $game),
         route('docs.index'),
         route('docs.show', $doc),
     ];

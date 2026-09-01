@@ -43,7 +43,7 @@ test('administrators can save the public navigation menu', function () {
     expect(Setting::navigationMenu())->toMatchArray([
         [
             'label' => 'Catalog',
-            'url' => '/resources',
+            'url' => '/games',
             'icon' => 'Library',
             'openInNewTab' => false,
             'match' => 'prefix',
@@ -93,17 +93,17 @@ test('default navigation menu includes games and tags', function () {
     $menu = Setting::defaultNavigationMenu();
 
     expect(collect($menu)->firstWhere('url', '/')['icon'])->toBe('Home')
-        ->and(collect($menu)->firstWhere('url', '/resources')['label'])->toBe('Games')
-        ->and(collect($menu)->firstWhere('url', '/resources')['icon'])->toBe('Gamepad2')
-        ->and(collect($menu)->firstWhere('url', '/resources/tags')['label'])->toBe('Tags')
-        ->and(collect($menu)->firstWhere('url', '/resources/tags')['icon'])->toBe('Tags');
+        ->and(collect($menu)->firstWhere('url', '/games')['label'])->toBe('Games')
+        ->and(collect($menu)->firstWhere('url', '/games')['icon'])->toBe('Gamepad2')
+        ->and(collect($menu)->firstWhere('url', '/games/tags')['label'])->toBe('Tags')
+        ->and(collect($menu)->firstWhere('url', '/games/tags')['icon'])->toBe('Tags');
 });
 
 test('menu items without an icon stay without an icon', function () {
     Setting::setNavigationMenu([
         [
             'label' => 'Games',
-            'url' => '/resources',
+            'url' => '/games',
             'icon' => null,
             'open_in_new_tab' => false,
             'match' => 'prefix',
@@ -125,7 +125,7 @@ test('saved resources catalog item is presented as games with a gamepad icon', f
     ]);
 
     expect(Setting::navigationMenu()[0]['label'])->toBe('Games')
-        ->and(Setting::navigationMenu()[0]['url'])->toBe('/resources')
+        ->and(Setting::navigationMenu()[0]['url'])->toBe('/games')
         ->and(Setting::navigationMenu()[0]['icon'])->toBe('Gamepad2');
 });
 
@@ -133,7 +133,7 @@ test('custom catalog labels keep a custom library icon', function () {
     Setting::setNavigationMenu([
         [
             'label' => 'Catalog',
-            'url' => '/resources',
+            'url' => '/games',
             'icon' => 'Library',
             'open_in_new_tab' => false,
             'match' => 'prefix',
@@ -168,7 +168,7 @@ test('navigation menu is shared with the frontend', function () {
     Setting::setNavigationMenu([
         [
             'label' => 'Browse',
-            'url' => '/resources',
+            'url' => '/games',
             'icon' => 'Library',
             'open_in_new_tab' => false,
             'match' => 'prefix',
@@ -180,7 +180,7 @@ test('navigation menu is shared with the frontend', function () {
         ->assertInertia(fn ($page) => $page
             ->has('navigationMenu', 1)
             ->where('navigationMenu.0.label', 'Browse')
-            ->where('navigationMenu.0.url', '/resources')
+            ->where('navigationMenu.0.url', '/games')
             ->where('navigationMenu.0.icon', 'Library')
             ->where('navigationMenu.0.openInNewTab', false)
             ->where('navigationMenu.0.match', 'prefix')

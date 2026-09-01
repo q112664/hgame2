@@ -18,6 +18,8 @@ type Props<Value extends string> = {
     listRef?: RefObject<HTMLElement | null>;
     tabRefs?: MutableRefObject<Partial<Record<Value, HTMLElement | null>>>;
     onClick?: (event: React.MouseEvent, value: Value) => void;
+    /** Client-side tab switching: skip Inertia visits and call this instead. */
+    onSelect?: (value: Value) => void;
     onStart?: (value: Value, navigationId: number) => void;
     onSuccess?: (value: Value, navigationId: number | null) => void;
     onError?: (value: Value, navigationId: number | null) => void;
@@ -37,6 +39,7 @@ export function RouteTabs<Value extends string>({
     listRef,
     tabRefs: externalTabRefs,
     onClick,
+    onSelect,
     onStart,
     onSuccess,
     onError,
@@ -89,32 +92,72 @@ export function RouteTabs<Value extends string>({
             >
                 {tabs.map((tab) => {
                     const isActive = effectiveDisplayedValue === tab.value;
+                    const className = cn(
+                        'relative inline-flex shrink-0 items-center justify-center border-b-2 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap',
+                        'transition-[color,border-color] duration-200',
+                        'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
+                        'motion-reduce:transition-none',
+                        isActive
+                            ? 'border-primary text-foreground'
+                            : 'border-transparent text-muted-foreground hover:text-foreground/85',
+                    );
+                    const assignRef = (node: HTMLElement | null) => {
+                        tabRefs.current[tab.value] = node;
+
+                        if (externalTabRefs) {
+                            externalTabRefs.current[tab.value] = node;
+                        }
+                    };
+
+                    if (onSelect) {
+                        return (
+                            <a
+                                key={tab.value}
+                                ref={assignRef}
+                                href={tab.href}
+                                aria-current={
+                                    activeValue === tab.value
+                                        ? 'page'
+                                        : undefined
+                                }
+                                className={className}
+                                onClick={(event) => {
+                                    onClick?.(event, tab.value);
+
+                                    if (
+                                        event.defaultPrevented ||
+                                        event.button !== 0 ||
+                                        event.metaKey ||
+                                        event.ctrlKey ||
+                                        event.shiftKey ||
+                                        event.altKey
+                                    ) {
+                                        return;
+                                    }
+
+                                    event.preventDefault();
+
+                                    if (activeValue !== tab.value) {
+                                        onSelect(tab.value);
+                                    }
+                                }}
+                            >
+                                {tab.label}
+                            </a>
+                        );
+                    }
 
                     return (
                         <Link
                             key={tab.value}
                             ref={(node) => {
-                                tabRefs.current[tab.value] =
-                                    node as HTMLElement | null;
-
-                                if (externalTabRefs) {
-                                    externalTabRefs.current[tab.value] =
-                                        node as HTMLElement | null;
-                                }
+                                assignRef(node as HTMLElement | null);
                             }}
                             href={tab.href}
                             aria-current={
                                 activeValue === tab.value ? 'page' : undefined
                             }
-                            className={cn(
-                                'relative inline-flex shrink-0 items-center justify-center border-b-2 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap',
-                                'transition-[color,border-color] duration-200',
-                                'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                                'motion-reduce:transition-none',
-                                isActive
-                                    ? 'border-primary text-foreground'
-                                    : 'border-transparent text-muted-foreground hover:text-foreground/85',
-                            )}
+                            className={className}
                             headers={{ 'X-Resource-Tab-Nav': '1' }}
                             preserveState
                             preserveScroll

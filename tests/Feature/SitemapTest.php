@@ -47,10 +47,10 @@ test('sitemap lists public pages resources and docs', function () {
         ->assertSee(route('resources.tags'), false)
         ->assertSee(route('resources.genre', $category), false)
         ->assertSee(route('resources.tag', $thickTag), false)
-        ->assertSee(route('resources.details', $game), false)
+        ->assertSee(route('resources.show', $game), false)
         ->assertSee(route('docs.show', $doc), false)
         ->assertDontSee(route('resources.tag', $thinTag), false)
-        ->assertDontSee(route('resources.details', $draft), false)
+        ->assertDontSee(route('resources.show', $draft), false)
         ->assertDontSee(route('resources.genre', $emptyCategory), false);
 });
 
@@ -67,7 +67,7 @@ test('sitemap lastmod stays stable after a resource is only viewed', function ()
 
     $before = $this->get(route('sitemap'))->assertOk()->getContent();
 
-    $this->get(route('resources.details', $game))->assertOk();
+    $this->get(route('resources.show', $game))->assertOk();
     expect($game->fresh()->views_count)->toBe(6);
 
     $after = $this->get(route('sitemap'))->assertOk()->getContent();
@@ -91,7 +91,7 @@ test('sitemap lastmod uses downloads_updated_at when downloads change', function
     ]);
 
     expect($this->get(route('sitemap'))->assertOk()->getContent())
-        ->toContain(route('resources.details', $game))
+        ->toContain(route('resources.show', $game))
         ->toContain($downloadsUpdatedAt->toAtomString());
 });
 

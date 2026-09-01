@@ -46,7 +46,7 @@ test('replying to a comment notifies the parent author', function () {
                 && $data['actor']['id'] === $bob->id
                 && str_contains($data['body'], 'Nice take')
                 && str_contains((string) $data['url'], '#comment-')
-                && str_contains((string) $data['url'], '/comments');
+                && str_contains((string) $data['url'], '/games/');
         },
     );
 });
@@ -129,7 +129,7 @@ test('users can mark a notification as read and open its target', function () {
         ->from(route('notifications.index'))
         ->post(route('notifications.read', $notificationId), ['open' => 1])
         ->assertRedirect(
-            route('resources.comments', 'demo-game').'?focus='.$reply->id.'#comment-'.$reply->id,
+            route('resources.show', 'demo-game').'?focus='.$reply->id.'#comment-'.$reply->id,
         );
 
     expect($alice->fresh()->unreadNotifications()->count())->toBe(0);
@@ -142,7 +142,7 @@ test('opening a stale comment notification returns with an info toast', function
         'id' => (string) Str::uuid(),
         'type' => 'comment.replied',
         'data' => [
-            'url' => route('resources.comments', $game->slug, absolute: false)
+            'url' => route('resources.show', $game->slug, absolute: false)
                 .'?focus=999#comment-999',
             'comment_id' => 999,
         ],
@@ -311,7 +311,7 @@ test('reading a favorite download notification marks downloads as seen', functio
     $this->actingAs($user)
         ->from(route('notifications.index', ['tab' => 'favorites']))
         ->post(route('notifications.read', $notificationId), ['open' => 1])
-        ->assertRedirect(route('resources.downloads', 'seen-from-notification'));
+        ->assertRedirect(route('resources.show', 'seen-from-notification').'#downloads');
 
     expect($user->fresh()->unreadNotifications()->count())->toBe(0);
 

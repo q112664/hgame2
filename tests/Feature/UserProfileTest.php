@@ -161,7 +161,7 @@ test('resource downloads expose contributor slugs for profile links', function (
     ]);
     GameDownloadLink::factory()->for($release, 'release')->create();
 
-    $this->get(route('resources.downloads', $game->slug))
+    $this->get(route('resources.show', $game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resource.releases.0.contributor.slug', $user->slug)

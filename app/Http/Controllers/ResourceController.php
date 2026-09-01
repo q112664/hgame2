@@ -39,7 +39,7 @@ class ResourceController extends Controller
         ListResourcesRequest $request,
         ListPublishedGames $listPublishedGames,
     ): Response|RedirectResponse {
-        if ($redirect = $this->singleTaxonomyRedirect($request)) {
+        if ($redirect = $this->taxonomyPathForFilters($request->filters(), $request->catalogPage())) {
             return redirect()->to($redirect, 301);
         }
 
@@ -135,7 +135,7 @@ class ResourceController extends Controller
 
         $response = $game === null
             ? to_route('resources.index')
-            : to_route('resources.details', $game);
+            : to_route('resources.show', $game);
 
         return $response->withHeaders([
             'Cache-Control' => 'no-store, private',
@@ -258,11 +258,11 @@ class ResourceController extends Controller
 
     /**
      * 301 single-dimension query filters to path-based taxonomy URLs.
+     *
+     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}  $filters
      */
-    private function singleTaxonomyRedirect(ListResourcesRequest $request): ?string
+    private function taxonomyPathForFilters(array $filters, int $page = 1): ?string
     {
-        $filters = $request->filters();
-
         if ($filters['q'] !== '' || $filters['sort'] !== ListPublishedGames::SORT_LATEST) {
             return null;
         }
@@ -281,7 +281,6 @@ class ResourceController extends Controller
             return null;
         }
 
-        $page = $request->catalogPage();
         $query = $page > 1 ? ['page' => $page] : [];
 
         if ($hasCategory) {
@@ -309,6 +308,43 @@ class ResourceController extends Controller
             'tag' => $filters['tags'][0],
             ...$query,
         ]);
+    }
+
+    /**
+     * @return array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}
+     */
+    private function filtersFromQuery(Request $request): array
+    {
+        $tags = $request->query('tags');
+
+        if (is_string($tags)) {
+            $tags = preg_split('/[,\s]+/', $tags, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        }
+
+        if (! is_array($tags)) {
+            $tags = [];
+        }
+
+        $filled = static function (mixed $value): ?string {
+            if (! is_string($value)) {
+                return null;
+            }
+
+            $value = trim($value);
+
+            return $value === '' ? null : $value;
+        };
+
+        return [
+            'q' => trim((string) $request->query('q', '')),
+            'category' => $filled($request->query('category')),
+            'platform' => $filled($request->query('platform')),
+            'language' => $filled($request->query('language')),
+            'tags' => array_values(array_unique(array_filter(
+                array_map(fn (mixed $tag): string => is_string($tag) ? trim($tag) : '', $tags),
+            ))),
+            'sort' => $filled($request->query('sort')) ?? ListPublishedGames::SORT_LATEST,
+        ];
     }
 
     /**
@@ -341,43 +377,99 @@ class ResourceController extends Controller
         };
     }
 
-    public function show(Game $resource): RedirectResponse
+    public function show(Request $request, Game $resource): Response
     {
-        return to_route('resources.details', ['resource' => $resource]);
-    }
-
-    public function details(Request $request, Game $resource): Response
-    {
-        return $this->renderResource($request, $resource, 'details');
-    }
-
-    public function downloads(
-        Request $request,
-        Game $resource,
-    ): Response {
         $game = $this->findGame(
             $resource,
-            includeScreenshots: false,
+            includeScreenshots: true,
             includeDownloadLinks: true,
-            includeTags: false,
-            includeDetailTranslations: false,
+            includeTags: true,
+            includeDetailTranslations: true,
         );
         ($this->recordGameView)($request, $game);
 
+        $commentsProps = $this->commentsPageProps($game, $request);
+        $paginatorPage = $commentsProps['comments'] instanceof LengthAwarePaginator
+            ? $commentsProps['comments']->currentPage()
+            : 1;
+        $commentsPage = max(1, $request->integer('page', 1), $paginatorPage);
+
         return Inertia::render('resources/show', [
-            'activeTab' => 'downloads',
             'resourceNotice' => Setting::resourceNoticeHtml(),
-            ...$this->commentsPageProps($game, $request, 'downloads'),
-            'related' => [],
-            'pageSeo' => PageSeo::forGame($game, 'downloads'),
+            ...$commentsProps,
+            'related' => ($this->listRelatedGames)($game),
+            'pageSeo' => PageSeo::forGame($game, $commentsPage),
             'resource' => $this->presentResource(
                 $game,
-                includeScreenshots: false,
+                includeScreenshots: true,
                 includeReleases: true,
-                includeDescription: false,
-                includeTags: false,
+                includeDescription: true,
+                includeTags: true,
             ),
         ]);
+    }
+
+    public function details(Request $request, Game $resource): RedirectResponse
+    {
+        return to_route('resources.show', [
+            'resource' => $resource,
+            ...$this->queryWithoutResource($request),
+        ], 301);
+    }
+
+    public function legacy(Request $request, ?string $path = null): RedirectResponse
+    {
+        $path = trim((string) $path, '/');
+        $query = $this->queryWithoutResource($request);
+
+        if (preg_match('#^([^/]+)/details$#', $path, $matches) === 1) {
+            return to_route('resources.show', [
+                'resource' => $matches[1],
+                ...$query,
+            ], 301);
+        }
+
+        if (preg_match('#^([^/]+)/(downloads|screenshots|comments)$#', $path, $matches) === 1) {
+            $fragment = $matches[2];
+
+            if ($fragment === 'comments') {
+                $focusId = (int) ($query['focus'] ?? 0);
+
+                if ($focusId > 0) {
+                    $fragment = 'comment-'.$focusId;
+                }
+            }
+
+            return to_route('resources.show', [
+                'resource' => $matches[1],
+                ...$query,
+            ], 301)->withFragment($fragment);
+        }
+
+        if ($path === '') {
+            $taxonomyUrl = $this->taxonomyPathForFilters(
+                $this->filtersFromQuery($request),
+                max(1, $request->integer('page', 1)),
+            );
+
+            if ($taxonomyUrl !== null) {
+                return redirect()->to($taxonomyUrl, 301);
+            }
+        }
+
+        $target = '/games'.($path !== '' ? '/'.$path : '');
+        $queryString = $request->getQueryString();
+
+        if ($queryString !== null && $queryString !== '') {
+            $target .= '?'.$queryString;
+        }
+
+        return redirect($target, 301);
+    }
+
+    public function downloads(Request $request, Game $resource): RedirectResponse
+    {
+        return $this->redirectToResourceTab($resource, 'downloads', $request);
     }
 
     public function markDownloadsSeen(
@@ -390,44 +482,50 @@ class ResourceController extends Controller
         return response()->noContent();
     }
 
-    public function screenshots(Request $request, Game $resource): Response
+    public function screenshots(Request $request, Game $resource): RedirectResponse
     {
-        return $this->renderResource($request, $resource, 'screenshots');
+        return $this->redirectToResourceTab($resource, 'screenshots', $request);
     }
 
-    public function comments(Request $request, Game $resource): Response
+    public function comments(Request $request, Game $resource): RedirectResponse
     {
-        return $this->renderResource($request, $resource, 'comments');
+        return $this->redirectToResourceTab($resource, 'comments', $request);
     }
 
-    private function renderResource(Request $request, Game $resource, string $activeTab): Response
-    {
-        $includeDetails = $activeTab === 'details';
-        $game = $this->findGame(
-            $resource,
-            includeScreenshots: $activeTab === 'screenshots',
-            includeDownloadLinks: $activeTab === 'downloads',
-            includeTags: $includeDetails,
-            includeDetailTranslations: $includeDetails,
-        );
-        ($this->recordGameView)($request, $game);
+    /**
+     * @param  'downloads'|'screenshots'|'comments'  $tab
+     */
+    private function redirectToResourceTab(
+        Game $resource,
+        string $tab,
+        Request $request,
+    ): RedirectResponse {
+        $query = $this->queryWithoutResource($request);
+        $fragment = $tab;
 
-        return Inertia::render('resources/show', [
-            'activeTab' => $activeTab,
-            'resourceNotice' => Setting::resourceNoticeHtml(),
-            ...$this->commentsPageProps($game, $request, $activeTab),
-            'related' => $includeDetails
-                ? ($this->listRelatedGames)($game)
-                : [],
-            'pageSeo' => PageSeo::forGame($game, $activeTab),
-            'resource' => $this->presentResource(
-                $game,
-                includeScreenshots: $activeTab === 'screenshots',
-                includeReleases: $activeTab === 'downloads',
-                includeDescription: $includeDetails,
-                includeTags: $includeDetails,
-            ),
-        ]);
+        if ($tab === 'comments') {
+            $focusId = (int) ($query['focus'] ?? 0);
+
+            if ($focusId > 0) {
+                $fragment = 'comment-'.$focusId;
+            }
+        }
+
+        return to_route('resources.show', [
+            'resource' => $resource,
+            ...$query,
+        ], 301)->withFragment($fragment);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function queryWithoutResource(Request $request): array
+    {
+        $query = $request->query();
+        unset($query['resource']);
+
+        return $query;
     }
 
     private function findGame(
@@ -506,14 +604,14 @@ class ResourceController extends Controller
      *     ratingsCount: int
      * }
      */
-    private function commentsPageProps(Game $game, Request $request, string $activeTab): array
+    private function commentsPageProps(Game $game, Request $request): array
     {
         $enabled = Setting::commentsEnabled();
 
         if (! $enabled) {
             return [
                 'commentsEnabled' => false,
-                'comments' => $activeTab === 'downloads' ? [] : null,
+                'comments' => null,
                 'commentsCount' => 0,
                 'ratingsAvg' => 0.0,
                 'ratingsCount' => 0,
@@ -522,9 +620,7 @@ class ResourceController extends Controller
 
         return [
             'commentsEnabled' => true,
-            'comments' => $activeTab === 'comments'
-                ? $this->presentComments($game, $request)
-                : ($activeTab === 'downloads' ? [] : null),
+            'comments' => $this->presentComments($game, $request),
             'commentsCount' => $game->comments()->count(),
             'ratingsAvg' => round((float) $game->ratings_avg, 2),
             'ratingsCount' => (int) $game->ratings_count,

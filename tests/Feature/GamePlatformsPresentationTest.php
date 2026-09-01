@@ -38,17 +38,10 @@ test('home and resource pages expose platform name and slug for icon mapping', f
             ->where('resources.0.platforms', $expectedPlatforms)
         );
 
-    $this->get(route('resources.details', $game->slug))
+    $this->get(route('resources.show', $game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resource.platforms', $expectedPlatforms)
-            ->where('resource.releases', [])
-            ->where('resource.hasDownloads', true)
-        );
-
-    $this->get(route('resources.downloads', $game->slug))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
             ->where('resource.releases.0.platforms', $expectedPlatforms)
             ->where('resource.hasDownloads', true)
         );
@@ -66,16 +59,10 @@ test('future-dated releases are hidden from resource pages', function () {
     ]);
     GameDownloadLink::factory()->for($release, 'release')->create();
 
-    $this->get(route('resources.details', $game->slug))
+    $this->get(route('resources.show', $game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resource.platforms', [])
-            ->where('resource.hasDownloads', false)
-        );
-
-    $this->get(route('resources.downloads', $game->slug))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
             ->where('resource.releases', [])
             ->where('resource.hasDownloads', false)
         );

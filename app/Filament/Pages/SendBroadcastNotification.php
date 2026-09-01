@@ -82,7 +82,7 @@ class SendBroadcastNotification extends Page
                             ->label('Link URL')
                             ->maxLength(500)
                             ->placeholder('/docs/getting-started')
-                            ->helperText('Optional. Absolute URL or site path (e.g. /resources). Opened when the user taps the notification.'),
+                            ->helperText('Optional. Absolute URL or site path (e.g. /games). Opened when the user taps the notification.'),
                     ]),
             ]);
     }

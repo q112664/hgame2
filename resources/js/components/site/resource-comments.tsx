@@ -15,8 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { UserAvatar } from '@/components/user-avatar';
 import { formatAbsoluteDateTime, formatRelativeTime } from '@/lib/datetime';
+import { commentsPageUrl } from '@/lib/resource-tabs';
 import { cn } from '@/lib/utils';
-import { comments as resourceCommentsRoute } from '@/routes/resources';
 
 export type ResourceCommentUser = {
     id: number;
@@ -49,6 +49,7 @@ type Props = {
     commentsCount: number;
     ratingsAvg?: number;
     ratingsCount?: number;
+    isVisible?: boolean;
 };
 
 const RATING_MAX = 5;
@@ -137,10 +138,7 @@ function RatingStars({
                         }
                     >
                         <Star
-                            className={cn(
-                                iconClass,
-                                active && 'fill-warning',
-                            )}
+                            className={cn(iconClass, active && 'fill-warning')}
                             aria-hidden
                         />
                     </button>
@@ -319,6 +317,7 @@ export function ResourceComments({
     commentsCount,
     ratingsAvg = 0,
     ratingsCount = 0,
+    isVisible = true,
 }: Props) {
     const page = usePage();
     const { openAuthDialog } = useAuthDialog();
@@ -404,6 +403,31 @@ export function ResourceComments({
             cancelPendingScrollRef.current?.();
         };
     }, []);
+
+    useEffect(() => {
+        if (!isVisible) {
+            return;
+        }
+
+        const hashMatch = /^#comment-(\d+)$/.exec(window.location.hash);
+        const focusFromHash = hashMatch ? Number(hashMatch[1]) : null;
+        const focusFromQuery = Number(
+            new URLSearchParams(window.location.search).get('focus') ?? '',
+        );
+        const id =
+            focusFromHash ??
+            (Number.isInteger(focusFromQuery) && focusFromQuery > 0
+                ? focusFromQuery
+                : null);
+
+        if (id === null) {
+            return;
+        }
+
+        return scheduleScrollToComment(id, () => {
+            flashHighlight(id);
+        });
+    }, [isVisible, comments]);
 
     const requireAuth = (): boolean => {
         if (isAuthenticated) {
@@ -830,12 +854,8 @@ export function ResourceComments({
                                     {comment.canDelete ? (
                                         <CommentActionButton
                                             destructive
-                                            disabled={
-                                                deletingId === comment.id
-                                            }
-                                            onClick={() =>
-                                                remove(comment.id)
-                                            }
+                                            disabled={deletingId === comment.id}
+                                            onClick={() => remove(comment.id)}
                                         >
                                             {deletingId === comment.id
                                                 ? 'Deleting…'
@@ -947,7 +967,7 @@ export function ResourceComments({
                             readOnly
                             size="sm"
                         />
-                        <span className="tabular-nums font-medium text-foreground">
+                        <span className="font-medium text-foreground tabular-nums">
                             {ratingsAvg.toFixed(1)}
                         </span>
                         <span className="tabular-nums">
@@ -994,7 +1014,10 @@ export function ResourceComments({
                             <span> to leave a review.</span>
                         </p>
                     ) : (
-                        <form onSubmit={submit} className="flex flex-col gap-2.5">
+                        <form
+                            onSubmit={submit}
+                            className="flex flex-col gap-2.5"
+                        >
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-xs font-medium text-muted-foreground">
                                     Your rating
@@ -1123,9 +1146,7 @@ export function ResourceComments({
                         <SitePagination
                             pagination={comments}
                             pageUrl={(page) =>
-                                resourceCommentsRoute(resourceId, {
-                                    query: { page },
-                                }).url
+                                commentsPageUrl(resourceId, page)
                             }
                             ariaLabel="Reviews pagination"
                             itemLabel="reviews"
@@ -1134,7 +1155,6 @@ export function ResourceComments({
                                 'commentsCount',
                                 'ratingsAvg',
                                 'ratingsCount',
-                                'activeTab',
                             ]}
                             onSuccess={() => {
                                 document

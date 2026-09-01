@@ -172,7 +172,7 @@ function navHasPathPrefix(items: SiteNavItem[], prefix: string): boolean {
 
 function taxonomyFlyoutInsertIndex(items: SiteNavItem[]): number {
     const catalogIndex = items.findIndex(
-        (item) => menuItemPath(item.url) === '/resources',
+        (item) => menuItemPath(item.url) === '/games',
     );
 
     if (catalogIndex !== -1) {
@@ -216,6 +216,8 @@ function TaxonomyFlyout({
     const triggerClassName = cn(
         navLinkClassName,
         'group cursor-pointer outline-none focus-visible:ring-0',
+        'aria-expanded:bg-primary/12 aria-expanded:text-primary',
+        'aria-expanded:hover:bg-primary/15 aria-expanded:hover:text-primary',
         variant === 'sheet' && 'h-10 w-full justify-start px-3',
     );
 
@@ -337,7 +339,7 @@ function NavLinks({
 
     const flyouts: ReactNode[] = [];
 
-    if (genres.length > 0 && !navHasPathPrefix(navItems, '/resources/genre')) {
+    if (genres.length > 0 && !navHasPathPrefix(navItems, '/games/genre')) {
         flyouts.push(
             <TaxonomyFlyout
                 key="genres-nav"
@@ -346,7 +348,7 @@ function NavLinks({
                 items={genres}
                 hrefFor={(item) => resourcesGenre.url(item.value)}
                 currentPath={currentPath}
-                activePrefix="/resources/genre"
+                activePrefix="/games/genre"
                 variant={variant}
                 openKey={openKey}
                 onOpenKeyChange={setOpenKey}
@@ -357,7 +359,7 @@ function NavLinks({
 
     if (
         languages.length > 0 &&
-        !navHasPathPrefix(navItems, '/resources/language')
+        !navHasPathPrefix(navItems, '/games/language')
     ) {
         flyouts.push(
             <TaxonomyFlyout
@@ -367,7 +369,7 @@ function NavLinks({
                 items={languages}
                 hrefFor={(item) => resourcesLanguage.url(item.value)}
                 currentPath={currentPath}
-                activePrefix="/resources/language"
+                activePrefix="/games/language"
                 variant={variant}
                 openKey={openKey}
                 onOpenKeyChange={setOpenKey}

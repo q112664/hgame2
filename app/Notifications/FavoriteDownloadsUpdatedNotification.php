@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Game;
+use App\Support\ResourceShowUrl;
 use Illuminate\Notifications\Notification;
 
 class FavoriteDownloadsUpdatedNotification extends Notification
@@ -39,7 +40,7 @@ class FavoriteDownloadsUpdatedNotification extends Notification
                 'title' => $this->game->title,
             ]),
             'body' => __('A resource you favorited has new or updated downloads.'),
-            'url' => route('resources.downloads', $this->game->slug, absolute: false),
+            'url' => ResourceShowUrl::tab($this->game->slug, 'downloads', absolute: false),
             'game_id' => $this->game->id,
             'game_slug' => $this->game->slug,
             'game_title' => $this->game->title,

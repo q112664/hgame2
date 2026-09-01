@@ -430,14 +430,14 @@ class Setting extends Model
             ],
             [
                 'label' => 'Games',
-                'url' => '/resources',
+                'url' => '/games',
                 'icon' => 'Gamepad2',
                 'open_in_new_tab' => false,
                 'match' => 'prefix',
             ],
             [
                 'label' => 'Tags',
-                'url' => '/resources/tags',
+                'url' => '/games/tags',
                 'icon' => 'Tags',
                 'open_in_new_tab' => false,
                 'match' => 'prefix',
@@ -451,7 +451,7 @@ class Setting extends Model
             ],
             [
                 'label' => 'Random',
-                'url' => '/resources/random',
+                'url' => '/games/random',
                 'icon' => 'Dices',
                 'open_in_new_tab' => false,
                 'match' => 'none',
@@ -552,7 +552,7 @@ class Setting extends Model
         }
 
         $label = trim((string) ($item['label'] ?? ''));
-        $url = trim((string) ($item['url'] ?? ''));
+        $url = static::rewriteLegacyCatalogUrl(trim((string) ($item['url'] ?? '')));
 
         if ($label === '' || $url === '' || ! static::isValidNavigationMenuUrl($url)) {
             return null;
@@ -589,13 +589,13 @@ class Setting extends Model
 
     /**
      * Map the stock catalog item from Resources/Library to Games/Gamepad2.
-     * Custom labels and empty icons on /resources are left unchanged.
+     * Custom labels and empty icons on the catalog URL are left unchanged.
      *
      * @return array{0: string, 1: string|null}
      */
     protected static function presentCatalogNavigationItem(string $url, string $label, ?string $icon): array
     {
-        if (static::navigationMenuPath($url) !== '/resources') {
+        if (! in_array(static::navigationMenuPath($url), ['/games', '/resources'], true)) {
             return [$label, $icon];
         }
 
@@ -623,6 +623,32 @@ class Setting extends Model
         }
 
         return '/'.ltrim((string) $path, '/');
+    }
+
+    /**
+     * Fold stored /resources catalog paths onto /games without a second hop.
+     */
+    protected static function rewriteLegacyCatalogUrl(string $url): string
+    {
+        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+            return $url;
+        }
+
+        $query = '';
+        $path = $url;
+
+        if (str_contains($url, '?')) {
+            $query = substr($url, (int) strpos($url, '?'));
+            $path = strstr($url, '?', true) ?: $url;
+        }
+
+        $normalized = '/'.ltrim($path, '/');
+
+        if ($normalized === '/resources' || str_starts_with($normalized, '/resources/')) {
+            return '/games'.substr($normalized, strlen('/resources')).$query;
+        }
+
+        return $url;
     }
 
     public static function isValidNavigationMenuUrl(string $url): bool

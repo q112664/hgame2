@@ -26,7 +26,11 @@ test('the site header wires independent genre and language flyouts', function ()
         ->not->toContain('staticGameCategories')
         ->not->toContain('function GamesCategoryMenu')
         ->not->toContain('onPointerEnter={openMenu}')
-        ->not->toContain('aria-expanded:bg-primary/12');
+        ->toContain('aria-expanded:bg-primary/12')
+        ->toContain('aria-expanded:text-primary')
+        ->toContain("menuItemPath(item.url) === '/games'")
+        ->toContain('activePrefix="/games/genre"')
+        ->toContain('activePrefix="/games/language"');
 });
 
 test('published genres and languages are shared for the header flyouts', function () {

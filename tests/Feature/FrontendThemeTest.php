@@ -125,6 +125,7 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain("import { Breadcrumbs } from '@/components/breadcrumbs';")
         ->toContain('<Breadcrumbs breadcrumbs={breadcrumbs} />')
         ->toContain("title: 'Games'")
+        ->toContain('resource.categorySlug')
         ->toContain('flex flex-col md:flex-row')
         ->toContain('md:aspect-auto md:h-[280px] md:w-auto md:max-w-[498px]')
         ->toContain('text-sm text-muted-foreground')
@@ -149,7 +150,9 @@ test('search favorites settings and resources share the site page container', fu
     expect($filesystem->get(resource_path('js/components/site/resource-tab-content.tsx')))
         ->not->toContain('resource-overview-heading')
         ->not->toContain('Overview')
-        ->toContain('aria-label="Details"')
+        ->toContain('id="resource-about-heading"')
+        ->toContain('aria-labelledby="resource-about-heading"')
+        ->toContain('About')
         ->toContain('border-b border-border/70 bg-muted/25')
         ->toContain('resource-downloads-heading')
         ->toContain('resource-screenshots-heading')
@@ -216,6 +219,13 @@ test('site empty states and download buttons use primary CTAs', function () {
     expect($filesystem->get(resource_path('js/components/site/resource-tab-content.tsx')))
         ->not->toContain('motion/react')
         ->not->toContain('motion.div');
+
+    expect($filesystem->get(resource_path('js/lib/resource-tabs.ts')))
+        ->toContain('export function nextResourceTabUrl')
+        ->toContain("url.searchParams.delete('page')")
+        ->toContain("url.searchParams.delete('focus')")
+        ->toContain('window.history.pushState(window.history.state')
+        ->not->toContain('new PopStateEvent');
 
     expect($filesystem->get(resource_path('js/lib/resource-formatters.ts')))
         ->toContain("import { SITE_LOCALE } from '@/lib/datetime';")

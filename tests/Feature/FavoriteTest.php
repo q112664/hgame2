@@ -26,9 +26,9 @@ test('an authenticated user can favorite and unfavorite a published game', funct
     $game = Game::factory()->create();
 
     $this->actingAs($user)
-        ->from(route('resources.details', $game->slug))
+        ->from(route('resources.show', $game->slug))
         ->post(route('resources.favorite', $game->slug))
-        ->assertRedirect(route('resources.details', $game->slug))
+        ->assertRedirect(route('resources.show', $game->slug))
         ->assertInertiaFlash('toast', [
             'type' => 'success',
             'message' => __('Added to favorites.'),
@@ -37,16 +37,16 @@ test('an authenticated user can favorite and unfavorite a published game', funct
     expect($user->favoritedGames()->where('games.id', $game->id)->exists())->toBeTrue();
 
     $this->actingAs($user)
-        ->get(route('resources.details', $game->slug))
+        ->get(route('resources.show', $game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resource.isFavorited', true)
         );
 
     $this->actingAs($user)
-        ->from(route('resources.details', $game->slug))
+        ->from(route('resources.show', $game->slug))
         ->post(route('resources.favorite', $game->slug))
-        ->assertRedirect(route('resources.details', $game->slug))
+        ->assertRedirect(route('resources.show', $game->slug))
         ->assertInertiaFlash('toast', [
             'type' => 'success',
             'message' => __('Removed from favorites.'),
@@ -170,7 +170,7 @@ test('favorites page notifies when favorited game downloads are updated', functi
         );
 
     $this->actingAs($user)
-        ->get(route('resources.downloads', $game->slug))
+        ->get(route('resources.show', $game->slug))
         ->assertOk();
 
     $this->actingAs($user)

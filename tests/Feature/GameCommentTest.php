@@ -30,11 +30,11 @@ test('authenticated users can post a comment', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)
-        ->from(route('resources.details', $this->game->slug))
+        ->from(route('resources.show', $this->game->slug))
         ->post(route('resources.comments.store', $this->game->slug), [
             'body' => '  Great game!  ',
         ])
-        ->assertRedirect(route('resources.details', $this->game->slug));
+        ->assertRedirect(route('resources.show', $this->game->slug));
 
     $comment = GameComment::query()->first();
 
@@ -58,7 +58,7 @@ test('comment body is stripped of html and required', function () {
     expect(GameComment::query()->value('body'))->toBe('Nice');
 
     $this->actingAs($user)
-        ->from(route('resources.details', $this->game->slug))
+        ->from(route('resources.show', $this->game->slug))
         ->post(route('resources.comments.store', $this->game->slug), [
             'body' => '   ',
         ])
@@ -81,11 +81,10 @@ test('comments tab lists comments newest first with ownership flags', function (
     ]);
 
     $this->actingAs($viewer)
-        ->get(route('resources.comments', $this->game->slug))
+        ->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
-            ->where('activeTab', 'comments')
             ->where('commentsCount', 2)
             ->has('comments.data', 2)
             ->where('comments.data.0.body', 'Newer comment')
@@ -116,7 +115,7 @@ test('comments mark admin authors with an admin title flag', function () {
         'updated_at' => now()->subMinute(),
     ]);
 
-    $this->get(route('resources.comments', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
@@ -142,7 +141,7 @@ test('comments tab returns every comment in stable newest-first order', function
         ])
         ->create();
 
-    $this->get(route('resources.comments', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('commentsCount', 301)
@@ -152,7 +151,7 @@ test('comments tab returns every comment in stable newest-first order', function
             ->where('comments.data.0.body', 'Comment 300')
         );
 
-    $this->get(route('resources.comments', [
+    $this->get(route('resources.show', [
         'resource' => $this->game->slug,
         'page' => 16,
     ]))
@@ -164,27 +163,26 @@ test('comments tab returns every comment in stable newest-first order', function
         );
 });
 
-test('other resource tabs expose comments count without the full list', function () {
+test('the details page includes the comments list', function () {
     GameComment::factory()->for($this->game)->create();
     GameComment::factory()->for($this->game)->create();
 
-    $this->get(route('resources.details', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
-            ->where('activeTab', 'details')
             ->where('commentsEnabled', true)
-            ->where('comments', null)
+            ->has('comments.data', 2)
             ->where('commentsCount', 2)
         );
 });
 
-test('disabled comments hide the tab payload and return 404', function () {
+test('disabled comments hide the tab payload and reject writes', function () {
     Setting::setBoolean('comments_enabled', false);
     GameComment::factory()->for($this->game)->create();
     $user = User::factory()->create();
 
-    $this->get(route('resources.details', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
@@ -192,7 +190,9 @@ test('disabled comments hide the tab payload and return 404', function () {
             ->where('commentsCount', 0)
         );
 
-    $this->get(route('resources.comments', $this->game->slug))->assertNotFound();
+    $this->get(route('resources.comments', $this->game->slug))
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug).'#comments');
 
     $this->actingAs($user)
         ->post(route('resources.comments.store', $this->game->slug), [
@@ -210,14 +210,14 @@ test('authors can edit their own comments', function () {
     ]);
 
     $this->actingAs($user)
-        ->from(route('resources.comments', $this->game->slug))
+        ->from(route('resources.show', $this->game->slug))
         ->patch(route('resources.comments.update', [
             'resource' => $this->game->slug,
             'comment' => $comment->id,
         ]), [
             'body' => 'Updated text',
         ])
-        ->assertRedirect(route('resources.comments', $this->game->slug));
+        ->assertRedirect(route('resources.show', $this->game->slug));
 
     expect($comment->fresh()->body)->toBe('Updated text');
 });
@@ -280,7 +280,7 @@ test('users can reply to a comment with nested threading', function () {
         ->and($nested->parent_id)->toBe($root->id)
         ->and($nested->reply_to_user_id)->toBe($bob->id);
 
-    $this->get(route('resources.comments', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('comments.data', 1)
@@ -298,7 +298,7 @@ test('replies must target a comment on the same resource', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->from(route('resources.comments', $this->game->slug))
+        ->from(route('resources.show', $this->game->slug))
         ->post(route('resources.comments.store', $this->game->slug), [
             'body' => 'Cross post',
             'parent_id' => $foreign->id,
@@ -322,7 +322,7 @@ test('comments tab returns every reply in its thread', function () {
         ])
         ->create();
 
-    $this->get(route('resources.comments', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('commentsCount', 302)
@@ -354,7 +354,7 @@ test('focus loads the page containing a reply thread', function () {
         'body' => 'Focused reply',
     ]);
 
-    $this->get(route('resources.comments', [
+    $this->get(route('resources.show', [
         'resource' => $this->game->slug,
         'focus' => $reply->id,
     ]))
@@ -372,12 +372,12 @@ test('authors can delete their own comments', function () {
     $comment = GameComment::factory()->for($this->game)->for($user)->create();
 
     $this->actingAs($user)
-        ->from(route('resources.details', $this->game->slug))
+        ->from(route('resources.show', $this->game->slug))
         ->delete(route('resources.comments.destroy', [
             'resource' => $this->game->slug,
             'comment' => $comment->id,
         ]))
-        ->assertRedirect(route('resources.details', $this->game->slug));
+        ->assertRedirect(route('resources.show', $this->game->slug));
 
     expect(GameComment::query()->whereKey($comment->id)->exists())->toBeFalse();
 });
@@ -416,7 +416,7 @@ test('comments pagination clamps after deleting the last item on a page', functi
         ])
         ->create();
     $lastRoot = $roots->first();
-    $pageTwoUrl = route('resources.comments', [
+    $pageTwoUrl = route('resources.show', [
         'resource' => $this->game->slug,
         'page' => 2,
     ]);
@@ -531,7 +531,7 @@ test('root comments can include an optional 1-5 star rating', function () {
         ->and($this->game->fresh()->ratings_count)->toBe(1)
         ->and((float) $this->game->fresh()->ratings_avg)->toBe(5.0);
 
-    $this->get(route('resources.comments', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('ratingsCount', 1)
@@ -547,7 +547,7 @@ test('replies cannot include a rating', function () {
     $root = GameComment::factory()->for($this->game)->for($author)->create();
 
     $this->actingAs($replier)
-        ->from(route('resources.comments', $this->game->slug))
+        ->from(route('resources.show', $this->game->slug))
         ->post(route('resources.comments.store', $this->game->slug), [
             'body' => 'Nice take',
             'parent_id' => $root->id,
@@ -655,7 +655,7 @@ test('rating must be between 1 and 5', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->from(route('resources.comments', $this->game->slug))
+        ->from(route('resources.show', $this->game->slug))
         ->post(route('resources.comments.store', $this->game->slug), [
             'body' => 'Invalid high',
             'rating' => 6,

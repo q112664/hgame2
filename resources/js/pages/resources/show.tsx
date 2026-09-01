@@ -1,4 +1,4 @@
-import { Link, router, useHttp, usePage } from '@inertiajs/react';
+import { Link, useHttp, usePage } from '@inertiajs/react';
 import {
     Building2,
     CalendarCheck,
@@ -55,17 +55,16 @@ import {
     formatReleaseDate,
     formatViews,
 } from '@/lib/resource-formatters';
+import type { ResourceTab } from '@/lib/resource-tabs';
+import { resourceTabHref, useResourceTab } from '@/lib/resource-tabs';
 import { cn } from '@/lib/utils';
 import { home } from '@/routes';
 import {
-    details as resourceDetails,
-    downloads as resourceDownloads,
+    show as resourceDetails,
     genre as resourcesGenre,
     index as resourcesIndex,
     language as resourcesLanguage,
     platform as resourcesPlatform,
-    comments as resourceComments,
-    screenshots as resourceScreenshots,
 } from '@/routes/resources';
 import { seen as markDownloadsSeen } from '@/routes/resources/downloads';
 import { show as userShow } from '@/routes/users';
@@ -73,11 +72,10 @@ import type { BreadcrumbItem } from '@/types';
 import type { GameCard, GameDetail } from '@/types/resources';
 
 type Props = {
-    activeTab: ResourceTab;
     resource: GameDetail;
     /** Site-wide notice HTML from admin (empty string when disabled). */
     resourceNotice?: string;
-    comments?: PaginatedData<ResourceComment>;
+    comments?: PaginatedData<ResourceComment> | null;
     commentsCount?: number;
     commentsEnabled?: boolean;
     ratingsAvg?: number;
@@ -86,32 +84,25 @@ type Props = {
     pageSeo?: PageSeoData | null;
 };
 
-type ResourceTab = 'details' | 'downloads' | 'screenshots' | 'comments';
-
 const resourceTabs: Array<{
     value: ResourceTab;
     label: string;
-    href: (resource: string) => string;
 }> = [
     {
         value: 'details',
         label: 'Details',
-        href: (resource) => resourceDetails(resource).url,
     },
     {
         value: 'downloads',
         label: 'Downloads',
-        href: (resource) => resourceDownloads(resource).url,
     },
     {
         value: 'screenshots',
         label: 'Screenshots',
-        href: (resource) => resourceScreenshots(resource).url,
     },
     {
         value: 'comments',
         label: 'Reviews',
-        href: (resource) => resourceComments(resource).url,
     },
 ];
 
@@ -192,7 +183,6 @@ function ResourceHeroCover({
 }
 
 export default function ResourceShow({
-    activeTab,
     resource,
     resourceNotice = '',
     comments,
@@ -204,7 +194,7 @@ export default function ResourceShow({
     pageSeo,
 }: Props) {
     const shouldReduceMotion = useReducedMotion();
-    const [pendingTab, setPendingTab] = useState<ResourceTab | null>(null);
+    const { activeTab, selectTab } = useResourceTab(commentsEnabled);
     const {
         isFavorited: isFavorite,
         isToggling: isTogglingFavorite,
@@ -224,14 +214,6 @@ export default function ResourceShow({
     const tabRefs = useRef<Partial<Record<ResourceTab, HTMLElement | null>>>(
         {},
     );
-    const shouldScrollToDownloads = useRef(false);
-    const navigationSequence = useRef(0);
-    const pendingNavigation = useRef<{
-        id: number;
-        tab: ResourceTab;
-    } | null>(null);
-    const isTabPending = pendingTab !== null;
-    const displayedTab = pendingTab ?? activeTab;
 
     useEffect(() => {
         if (activeTab !== 'downloads' || authUserId === undefined) {
@@ -241,130 +223,16 @@ export default function ResourceShow({
         void postDownloadsSeen(markDownloadsSeen(resource.id).url);
     }, [activeTab, authUserId, postDownloadsSeen, resource.id]);
 
-    useEffect(() => {
-        const pending = pendingNavigation.current;
+    const openDownloadsTab = () => {
+        selectTab('downloads');
 
-        if (pending?.tab !== activeTab) {
-            if (pending) {
-                pendingNavigation.current = null;
-                setPendingTab(null);
-                shouldScrollToDownloads.current = false;
-            }
-
-            return;
-        }
-
-        pendingNavigation.current = null;
-        setPendingTab(null);
-    }, [activeTab]);
-
-    useEffect(() => {
-        const resetPendingNavigation = () => {
-            const pending = pendingNavigation.current;
-
-            if (!pending) {
-                return;
-            }
-
-            pendingNavigation.current = null;
-            setPendingTab(null);
-            shouldScrollToDownloads.current = false;
-        };
-
-        const removeHttpExceptionListener = router.on(
-            'httpException',
-            resetPendingNavigation,
-        );
-        const removeNetworkErrorListener = router.on(
-            'networkError',
-            resetPendingNavigation,
-        );
-
-        return () => {
-            removeHttpExceptionListener();
-            removeNetworkErrorListener();
-        };
-    }, []);
-
-    useEffect(() => {
-        if (activeTab !== 'downloads' || !shouldScrollToDownloads.current) {
-            return;
-        }
-
-        shouldScrollToDownloads.current = false;
-
-        const frame = window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
             tabsListRef.current?.scrollIntoView({
                 behavior: shouldReduceMotion ? 'auto' : 'smooth',
                 block: 'start',
             });
             tabRefs.current.downloads?.focus({ preventScroll: true });
         });
-
-        return () => window.cancelAnimationFrame(frame);
-    }, [activeTab, shouldReduceMotion]);
-
-    const beginTabNavigation = (
-        tab: ResourceTab,
-        navigationId?: number,
-    ): number => {
-        const id = navigationId ?? navigationSequence.current + 1;
-        navigationSequence.current = Math.max(navigationSequence.current, id);
-        pendingNavigation.current = { id, tab };
-        setPendingTab(tab);
-
-        return id;
-    };
-
-    const settleTabNavigation = (id: number | null, tab: ResourceTab) => {
-        const pending = pendingNavigation.current;
-
-        if (
-            !pending ||
-            (id !== null && pending.id !== id) ||
-            (id === null && pending.tab !== tab)
-        ) {
-            return;
-        }
-
-        if (activeTab !== tab) {
-            return;
-        }
-
-        pendingNavigation.current = null;
-        setPendingTab(null);
-    };
-
-    const rollbackTabNavigation = (id: number | null, tab?: ResourceTab) => {
-        const pending = pendingNavigation.current;
-
-        if (
-            !pending ||
-            (id !== null && pending.id !== id) ||
-            (id === null && tab !== undefined && pending.tab !== tab)
-        ) {
-            return;
-        }
-
-        pendingNavigation.current = null;
-        setPendingTab(null);
-        shouldScrollToDownloads.current = false;
-    };
-
-    const handleTabStart = (
-        tab: ResourceTab,
-        scrollToDownloads = false,
-        navigationId?: number,
-    ): number | null => {
-        if (scrollToDownloads) {
-            shouldScrollToDownloads.current = true;
-        }
-
-        if (tab === activeTab && pendingNavigation.current === null) {
-            return null;
-        }
-
-        return beginTabNavigation(tab, navigationId);
     };
 
     const resourceTabLinks = resourceTabs
@@ -375,7 +243,7 @@ export default function ResourceShow({
                 tab.value === 'comments' && commentsCount > 0
                     ? `${tab.label} (${commentsCount})`
                     : tab.label,
-            href: tab.href(resource.id),
+            href: resourceTabHref(resource.id, tab.value),
         }));
 
     const screenshotSlides = resource.screenshots.map((src, index) => ({
@@ -389,6 +257,14 @@ export default function ResourceShow({
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Home', href: home() },
         { title: 'Games', href: resourcesIndex() },
+        ...(resource.categorySlug
+            ? [
+                  {
+                      title: resource.category,
+                      href: resourcesGenre.url(resource.categorySlug),
+                  },
+              ]
+            : []),
         { title: resource.title, href: resourceDetails(resource.id) },
     ];
 
@@ -605,7 +481,7 @@ export default function ResourceShow({
                                         )}
                                         prefetch
                                         className={cn(
-                                            'inline-flex min-w-0 max-w-40 items-center gap-1.5 rounded-sm',
+                                            'inline-flex max-w-40 min-w-0 items-center gap-1.5 rounded-sm',
                                             'text-foreground/90 transition-colors hover:text-foreground',
                                             'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
                                         )}
@@ -687,71 +563,10 @@ export default function ResourceShow({
                                             className={
                                                 downloadHeroButtonClassName
                                             }
-                                            asChild
+                                            onClick={openDownloadsTab}
                                         >
-                                            <Link
-                                                href={
-                                                    resourceDownloads(
-                                                        resource.id,
-                                                    ).url
-                                                }
-                                                headers={{
-                                                    'X-Resource-Tab-Nav': '1',
-                                                }}
-                                                preserveState
-                                                preserveScroll
-                                                onClick={(event) => {
-                                                    if (
-                                                        activeTab ===
-                                                            'downloads' &&
-                                                        pendingNavigation.current ===
-                                                            null
-                                                    ) {
-                                                        event.preventDefault();
-                                                        tabsListRef.current?.scrollIntoView(
-                                                            {
-                                                                behavior:
-                                                                    shouldReduceMotion
-                                                                        ? 'auto'
-                                                                        : 'smooth',
-                                                                block: 'start',
-                                                            },
-                                                        );
-                                                        tabRefs.current.downloads?.focus(
-                                                            {
-                                                                preventScroll: true,
-                                                            },
-                                                        );
-                                                    }
-                                                }}
-                                                onStart={() =>
-                                                    handleTabStart(
-                                                        'downloads',
-                                                        true,
-                                                    )
-                                                }
-                                                onSuccess={() =>
-                                                    settleTabNavigation(
-                                                        null,
-                                                        'downloads',
-                                                    )
-                                                }
-                                                onError={() => {
-                                                    rollbackTabNavigation(
-                                                        null,
-                                                        'downloads',
-                                                    );
-                                                }}
-                                                onCancel={() =>
-                                                    rollbackTabNavigation(
-                                                        null,
-                                                        'downloads',
-                                                    )
-                                                }
-                                            >
-                                                <Download data-icon="inline-start" />
-                                                Download
-                                            </Link>
+                                            <Download data-icon="inline-start" />
+                                            Download
                                         </Button>
                                     ) : (
                                         <Button
@@ -807,28 +622,15 @@ export default function ResourceShow({
                     <RouteTabs
                         tabs={resourceTabLinks}
                         activeValue={activeTab}
-                        displayedValue={displayedTab}
                         ariaLabel={`${resource.title} sections`}
                         listRef={tabsListRef}
                         tabRefs={tabRefs}
-                        onStart={(tab, navigationId) =>
-                            handleTabStart(tab, false, navigationId)
-                        }
-                        onSuccess={(tab, navigationId) =>
-                            settleTabNavigation(navigationId, tab)
-                        }
-                        onError={(tab, navigationId) =>
-                            rollbackTabNavigation(navigationId, tab)
-                        }
-                        onCancel={(tab, navigationId) =>
-                            rollbackTabNavigation(navigationId, tab)
-                        }
+                        onSelect={selectTab}
                     />
 
                     <ResourceTabContent
                         resource={resource}
                         activeTab={activeTab}
-                        isTabPending={isTabPending}
                         screenshotSlides={screenshotSlides}
                         onOpenLightbox={openLightbox}
                         resourceNotice={resourceNotice}

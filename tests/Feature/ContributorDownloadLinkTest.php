@@ -46,7 +46,7 @@ test('resource downloads expose contributor avatar and name on releases', functi
     GameDownloadLink::factory()->for($withContributor, 'release')->create();
     GameDownloadLink::factory()->for($withoutContributor, 'release')->create();
 
-    $this->get(route('resources.downloads', $game->slug))
+    $this->get(route('resources.show', $game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
@@ -84,7 +84,7 @@ test('resource hero exposes only the latest package contributor', function () {
     GameDownloadLink::factory()->for($second, 'release')->create();
     GameDownloadLink::factory()->for($duplicate, 'release')->create();
 
-    $this->get(route('resources.details', $game->slug))
+    $this->get(route('resources.show', $game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('resource.contributors', 1)

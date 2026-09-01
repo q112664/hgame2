@@ -13,9 +13,9 @@ import { TurnstileWidget } from '@/components/turnstile-widget';
 import { Button } from '@/components/ui/button';
 import { useTurnstileGate } from '@/hooks/use-turnstile-gate';
 import { SiteLayout } from '@/layouts/site-layout';
+import { resourceTabHref } from '@/lib/resource-tabs';
 import { cn } from '@/lib/utils';
 import { continueMethod } from '@/routes/download-links';
-import { downloads as resourceDownloads } from '@/routes/resources';
 
 type Props = {
     resource: {
@@ -54,7 +54,7 @@ function ActionFooter({
                 className="h-10 w-full justify-center text-muted-foreground sm:w-auto sm:justify-start"
                 asChild
             >
-                <Link href={resourceDownloads(resourceId)} prefetch>
+                <Link href={resourceTabHref(resourceId, 'downloads')} prefetch>
                     <ArrowLeft data-icon="inline-start" />
                     Back
                 </Link>
@@ -179,10 +179,7 @@ export default function DownloadLinkShow({ resource, link, pageSeo }: Props) {
 
     return (
         <SiteLayout>
-            <PageSeo
-                seo={pageSeo}
-                title={`Download — ${resource.title}`}
-            />
+            <PageSeo seo={pageSeo} title={`Download — ${resource.title}`} />
 
             <SitePageContainer className="max-w-md gap-0 py-8 sm:py-12">
                 <div

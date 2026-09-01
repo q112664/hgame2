@@ -45,12 +45,12 @@ beforeEach(function () {
     GameScreenshot::factory()->for($this->game)->create();
 });
 
-test('resource tab pages share hero metadata without shipping every tab payload', function (string $routeName, string $activeTab) {
-    $this->get(route($routeName, $this->game->slug))
+test('the resource details page includes hero metadata and every tab payload', function () {
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
-            ->where('activeTab', $activeTab)
+            ->missing('activeTab')
             ->where('resource.id', $this->game->slug)
             ->where('resource.title', $this->game->title)
             ->where('resource.subtitle', 'A warm countryside love story')
@@ -58,9 +58,7 @@ test('resource tab pages share hero metadata without shipping every tab payload'
             ->where('resource.releaseDate', $this->game->release_date?->toDateString())
             ->where(
                 'resource.description',
-                $activeTab === 'details'
-                    ? fn (string $description): bool => str_contains($description, '<strong>Rich details</strong>') && ! str_contains($description, '<script>')
-                    : '',
+                fn (string $description): bool => str_contains($description, '<strong>Rich details</strong>') && ! str_contains($description, '<script>'),
             )
             ->where('resource.platforms', [
                 ['name' => 'Windows', 'slug' => 'windows'],
@@ -72,12 +70,11 @@ test('resource tab pages share hero metadata without shipping every tab payload'
             ->where('resource.adminEditUrl', null)
             ->where('resource.hasDownloads', true)
             ->where('resourceNotice', '')
+            ->has('resource.screenshots', 1)
+            ->has('resource.releases', 1)
+            ->has('comments.data')
         );
-})->with([
-    'details' => ['resources.details', 'details'],
-    'downloads' => ['resources.downloads', 'downloads'],
-    'screenshots' => ['resources.screenshots', 'screenshots'],
-]);
+});
 
 test('resource pages expose a sanitized site notice above downloads when enabled', function () {
     Setting::setBoolean('resource_notice_enabled', true);
@@ -86,7 +83,7 @@ test('resource pages expose a sanitized site notice above downloads when enabled
         '<p>Please use <strong>official mirrors</strong><script>alert(1)</script>.</p>',
     );
 
-    $this->get(route('resources.details', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
@@ -103,7 +100,7 @@ test('resource pages hide the site notice when it is disabled', function () {
     Setting::setBoolean('resource_notice_enabled', false);
     Setting::set('resource_notice_content', '<p>Hidden notice</p>');
 
-    $this->get(route('resources.details', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('resources/show')
@@ -111,32 +108,46 @@ test('resource pages hide the site notice when it is disabled', function () {
         );
 });
 
-test('resource tab endpoints keep the active tab contract for direct navigation', function () {
-    foreach ([
-        'details' => 'resources.details',
-        'downloads' => 'resources.downloads',
-        'screenshots' => 'resources.screenshots',
-        'comments' => 'resources.comments',
-    ] as $activeTab => $routeName) {
-        $this->get(route($routeName, $this->game->slug))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('resources/show')
-                ->where('activeTab', $activeTab)
-            );
-    }
+test('legacy resource tab urls permanently redirect to the details page', function (string $routeName, string $fragment) {
+    $this->get(route($routeName, $this->game->slug))
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug).'#'.$fragment);
+})->with([
+    'downloads' => ['resources.downloads', 'downloads'],
+    'screenshots' => ['resources.screenshots', 'screenshots'],
+    'comments' => ['resources.comments', 'comments'],
+]);
+
+test('legacy tab redirects ignore a resource query override', function () {
+    $this->get('/games/'.$this->game->slug.'/downloads?resource=other-slug')
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug).'#downloads');
 });
 
-test('details tab omits screenshots and full release download payloads', function () {
-    $this->get(route('resources.details', $this->game->slug))
+test('legacy comments urls keep pagination and focus on the details redirect', function () {
+    $this->get(route('resources.comments', [
+        'resource' => $this->game->slug,
+        'page' => 2,
+        'focus' => 9,
+    ]))
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', [
+            'resource' => $this->game->slug,
+            'page' => 2,
+            'focus' => 9,
+        ]).'#comment-9');
+});
+
+test('details includes sanitized description versions with screenshots and releases', function () {
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resource.description', fn (string $description): bool => str_contains($description, '<strong>Rich details</strong>') && ! str_contains($description, '<script>'))
             ->has('resource.detailVersions', 1)
             ->where('resource.detailVersions.0.code', 'original')
             ->where('resource.detailVersions.0.isDefault', true)
-            ->where('resource.screenshots', [])
-            ->where('resource.releases', [])
+            ->has('resource.screenshots', 1)
+            ->has('resource.releases', 1)
         );
 });
 
@@ -157,7 +168,7 @@ test('details tab exposes sanitized language versions in configured order', func
         ],
     ]);
 
-    $this->get(route('resources.details', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('resource.detailVersions', 3)
@@ -193,7 +204,7 @@ test('details hero uses a card thumbnail while cover stays full size', function 
         'cover_url' => '',
     ]);
 
-    $this->get(route('resources.details', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where(
@@ -207,13 +218,11 @@ test('details hero uses a card thumbnail while cover stays full size', function 
         );
 });
 
-test('downloads tab includes releases and download links without screenshots', function () {
-    $this->get(route('resources.downloads', $this->game->slug))
+test('details includes releases, download links, and screenshots together', function () {
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('resource.description', '')
-            ->where('resource.detailVersions', [])
-            ->where('resource.screenshots', [])
+            ->has('resource.screenshots', 1)
             ->has('resource.releases', 1)
             ->where('resource.releases.0.title', 'Official release')
             ->where('resource.releases.0.platforms', [
@@ -231,20 +240,9 @@ test('downloads tab includes releases and download links without screenshots', f
         );
 });
 
-test('screenshots tab includes screenshots without release download payloads', function () {
-    $this->get(route('resources.screenshots', $this->game->slug))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('resource.description', '')
-            ->where('resource.detailVersions', [])
-            ->has('resource.screenshots', 1)
-            ->where('resource.releases', [])
-        );
-});
-
 test('administrators receive an edit url on the resource page', function () {
     $this->actingAs(User::factory()->admin()->create())
-        ->get(route('resources.details', $this->game->slug))
+        ->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where(
@@ -256,23 +254,59 @@ test('administrators receive an edit url on the resource page', function () {
 
 test('regular users do not receive an admin edit url on the resource page', function () {
     $this->actingAs(User::factory()->create())
-        ->get(route('resources.details', $this->game->slug))
+        ->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('resource.adminEditUrl', null)
         );
 });
 
-test('resource show redirects to the details route', function () {
-    $this->get(route('resources.show', $this->game->slug))
-        ->assertRedirect(route('resources.details', $this->game->slug));
+test('legacy details urls permanently redirect to the resource page', function () {
+    $this->get(route('resources.details', $this->game->slug))
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug));
+});
+
+test('legacy /resources urls permanently redirect to /games', function () {
+    $this->get('/resources')
+        ->assertStatus(301)
+        ->assertRedirect('/games');
+
+    $this->get('/resources/'.$this->game->slug)
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug));
+
+    $this->get('/resources/'.$this->game->slug.'/details')
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug));
+
+    $this->get('/resources/'.$this->game->slug.'/downloads')
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug).'#downloads');
+
+    $this->get('/resources/'.$this->game->slug.'/screenshots')
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug).'#screenshots');
+
+    $this->get('/resources/'.$this->game->slug.'/comments')
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug).'#comments');
+});
+
+test('legacy /resources comments urls keep focus as a fragment', function () {
+    $this->get('/resources/'.$this->game->slug.'/comments?focus=9')
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', [
+            'resource' => $this->game->slug,
+            'focus' => 9,
+        ]).'#comment-9');
 });
 
 test('resource routes return not found for unknown or unpublished games', function () {
     $draft = Game::factory()->draft()->create();
 
-    $this->get(route('resources.details', 'missing-resource'))->assertNotFound();
-    $this->get(route('resources.details', $draft->slug))->assertNotFound();
+    $this->get(route('resources.show', 'missing-resource'))->assertNotFound();
+    $this->get(route('resources.show', $draft->slug))->assertNotFound();
 });
 
 test('home receives only published games', function () {
@@ -426,10 +460,11 @@ test('inactive releases or releases without download links do not advertise a pl
 
     $emptyRelease = GameRelease::factory()->for($this->game)->create(['is_active' => true]);
 
-    $this->get(route('resources.details', $this->game->slug))
+    $this->get(route('resources.show', $this->game->slug))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('resource.releases', [])
+            ->has('resource.releases', 1)
+            ->where('resource.releases.0.title', 'Official release')
             ->where('resource.platforms', [
                 ['name' => 'Windows', 'slug' => 'windows'],
             ])

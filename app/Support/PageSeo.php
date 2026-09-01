@@ -29,7 +29,7 @@ final class PageSeo
 
     public const META_DESCRIPTION_MAX = 155;
 
-    /** Catalog /resources — transactional listing intent. */
+    /** Catalog /games — transactional listing intent. */
     private const RESOURCE_CATALOG_DESCRIPTION = 'Free hentai games and eroge downloads. Browse by genre, platform, language, or tag, then open details and grab the latest packages.';
 
     /** Homepage — discovery/brand, kept distinct from the catalog. */
@@ -102,9 +102,9 @@ final class PageSeo
     /**
      * Catalog SEO: clean page 1 URL is the default.
      *
-     * - Unfiltered page 1: indexable, canonical /resources.
+     * - Unfiltered page 1: indexable, canonical /games.
      * - Unfiltered page ≥ 2: noindex,follow (avoid near-duplicate clusters), unique title/description, self-canonical.
-     * - Any filter/sort noise: fold canonical to /resources and noindex,follow.
+     * - Any filter/sort noise: fold canonical to /games and noindex,follow.
      * - Never emit ?page=1 in the canonical.
      *
      * @return PageSeoArray
@@ -176,7 +176,7 @@ final class PageSeo
     }
 
     /**
-     * Dedicated tag directory page (/resources/tags).
+     * Dedicated tag directory page (/games/tags).
      *
      * @return PageSeoArray
      */
@@ -268,55 +268,39 @@ final class PageSeo
     /**
      * @return PageSeoArray
      */
-    public static function forGame(Game $game, string $tab = 'details'): array
+    public static function forGame(Game $game, int $commentsPage = 1): array
     {
         if (! $game->relationLoaded('category')) {
             $game->load('category:id,name,slug');
         }
 
-        $canonicalRoute = match ($tab) {
-            'downloads' => 'resources.downloads',
-            'screenshots' => 'resources.screenshots',
-            'comments' => 'resources.comments',
-            default => 'resources.details',
-        };
-
-        $tabLabel = match ($tab) {
-            'downloads' => 'Downloads',
-            'screenshots' => 'Screenshots',
-            'comments' => 'Reviews',
-            default => null,
-        };
-
-        $title = $tabLabel !== null
-            ? $game->title.' · '.$tabLabel
-            : $game->title;
-
-        $description = self::gameDescription($game, $tab);
+        $description = self::gameDescription($game);
         $image = self::gameImageUrl($game);
-
-        $jsonLd = $tab === 'details'
-            ? self::gameJsonLd($game, $description, $image)
-            : null;
+        $isPaginatedComments = $commentsPage > 1;
 
         // Site listing time vs download-update time — never commercial release_date,
         // never Eloquent updated_at (views/metadata must not fake freshness).
         $publishedTime = $game->sitePublishedAt()?->toIso8601String();
         $modifiedTime = $game->contentModifiedAt()?->toIso8601String();
 
-        $isPrimary = $tab === 'details';
-
         return self::make(
-            title: $title,
+            title: $game->title,
             description: $description,
-            // Sub-tabs share one indexable URL so they do not form a 4-page cluster.
-            canonical: route('resources.details', $game),
+            canonical: route('resources.show', $game),
             ogImageUrl: $image,
             ogType: 'website',
-            robots: $isPrimary ? null : 'noindex,follow',
+            robots: $isPaginatedComments ? 'noindex,follow' : null,
             publishedTime: $publishedTime,
             modifiedTime: $modifiedTime,
-            jsonLd: $jsonLd,
+            jsonLd: $isPaginatedComments
+                ? null
+                : [
+                    '@context' => 'https://schema.org',
+                    '@graph' => [
+                        self::gameJsonLd($game, $description, $image),
+                        self::gameBreadcrumbList($game),
+                    ],
+                ],
         );
     }
 
@@ -675,15 +659,20 @@ final class PageSeo
      */
     private static function gameJsonLd(Game $game, ?string $description, ?string $image): array
     {
-        $url = self::absoluteUrl(route('resources.details', $game));
+        $url = self::absoluteUrl(route('resources.show', $game));
 
         $data = [
-            '@context' => 'https://schema.org',
             '@type' => 'SoftwareApplication',
             'name' => $game->title,
             'url' => $url,
             'applicationCategory' => 'GameApplication',
         ];
+
+        $subtitle = trim((string) $game->subtitle);
+
+        if ($subtitle !== '' && strcasecmp($subtitle, trim((string) $game->title)) !== 0) {
+            $data['alternateName'] = $subtitle;
+        }
 
         if ($game->relationLoaded('releases')) {
             $platforms = $game->releases
@@ -698,6 +687,22 @@ final class PageSeo
             if ($platforms !== []) {
                 $data['operatingSystem'] = implode(', ', $platforms);
             }
+
+            $languageCodes = $game->releases
+                ->flatMap(fn ($release) => $release->relationLoaded('languages')
+                    ? $release->languages->pluck('code')
+                    : collect())
+                ->map(fn (mixed $code): string => strtolower(trim((string) $code)))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if (count($languageCodes) === 1) {
+                $data['inLanguage'] = $languageCodes[0];
+            } elseif ($languageCodes !== []) {
+                $data['inLanguage'] = $languageCodes;
+            }
         }
 
         if ($description !== null) {
@@ -708,6 +713,12 @@ final class PageSeo
 
         if ($absoluteImage !== null) {
             $data['image'] = $absoluteImage;
+        }
+
+        $screenshots = self::gameScreenshotUrls($game);
+
+        if ($screenshots !== []) {
+            $data['screenshot'] = $screenshots;
         }
 
         if (filled($game->developer)) {
@@ -731,6 +742,86 @@ final class PageSeo
             $data['genre'] = $game->category->name;
         }
 
+        $ratingsCount = (int) $game->ratings_count;
+        $ratingsAvg = round((float) $game->ratings_avg, 2);
+
+        if ($ratingsCount > 0 && $ratingsAvg > 0) {
+            $data['aggregateRating'] = [
+                '@type' => 'AggregateRating',
+                'ratingValue' => $ratingsAvg,
+                'ratingCount' => $ratingsCount,
+                'bestRating' => 5,
+                'worstRating' => 1,
+            ];
+        }
+
         return $data;
+    }
+
+    /**
+     * JSON-LD crumbs must match the visible trail on the game page.
+     *
+     * @return array<string, mixed>
+     */
+    private static function gameBreadcrumbList(Game $game): array
+    {
+        $items = [
+            [
+                'name' => 'Home',
+                'item' => self::absoluteUrl(route('home')),
+            ],
+            [
+                'name' => 'Games',
+                'item' => self::absoluteUrl(route('resources.index')),
+            ],
+        ];
+
+        if (filled($game->category?->slug) && filled($game->category?->name)) {
+            $items[] = [
+                'name' => $game->category->name,
+                'item' => self::absoluteUrl(route('resources.genre', $game->category)),
+            ];
+        }
+
+        $items[] = [
+            'name' => $game->title,
+            'item' => self::absoluteUrl(route('resources.show', $game)),
+        ];
+
+        return [
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => collect($items)
+                ->values()
+                ->map(fn (array $item, int $index): array => [
+                    '@type' => 'ListItem',
+                    'position' => $index + 1,
+                    'name' => $item['name'],
+                    'item' => $item['item'],
+                ])
+                ->all(),
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function gameScreenshotUrls(Game $game): array
+    {
+        if (! $game->relationLoaded('screenshots')) {
+            return [];
+        }
+
+        return $game->screenshots
+            ->map(function ($screenshot): ?string {
+                $raw = filled($screenshot->path)
+                    ? Media::url((string) $screenshot->path)
+                    : (string) ($screenshot->url ?? '');
+
+                return self::absoluteUrl($raw !== '' ? $raw : null);
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 }

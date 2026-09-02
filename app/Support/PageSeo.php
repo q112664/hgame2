@@ -29,6 +29,9 @@ final class PageSeo
 
     public const META_DESCRIPTION_MAX = 155;
 
+    /** Full document title including " | {logo}". */
+    public const GAME_DOCUMENT_TITLE_MAX = 60;
+
     /** Catalog /games — transactional listing intent. */
     private const RESOURCE_CATALOG_DESCRIPTION = 'Free hentai games and eroge downloads. Browse by genre, platform, language, or tag, then open details and grab the latest packages.';
 
@@ -285,7 +288,8 @@ final class PageSeo
         $modifiedTime = $game->contentModifiedAt()?->toIso8601String();
 
         return self::make(
-            title: $game->title,
+            title: self::gameTitle($game),
+            titleSuffix: Setting::siteLogoText(),
             description: $description,
             canonical: route('resources.show', $game),
             ogImageUrl: $image,
@@ -498,6 +502,58 @@ final class PageSeo
         }
 
         return 'index,follow';
+    }
+
+    /**
+     * English name, then a DLsite work code, then Download — drop extras that
+     * would overflow the document title with the site suffix.
+     */
+    public static function gameTitle(Game $game): string
+    {
+        $name = trim((string) $game->title);
+        $name = $name !== '' ? $name : 'Game';
+        $budget = self::GAME_DOCUMENT_TITLE_MAX - mb_strlen(' | '.Setting::siteLogoText());
+
+        if ($budget < 1) {
+            return $name;
+        }
+
+        $title = $name;
+        $code = self::dlsiteWorkCode($game);
+
+        if ($code !== null && ! str_contains(mb_strtoupper($name), $code)) {
+            $withCode = $name.' ('.$code.')';
+
+            if (mb_strlen($withCode) <= $budget) {
+                $title = $withCode;
+            }
+        }
+
+        $withDownload = $title.' Download';
+
+        if (mb_strlen($withDownload) <= $budget) {
+            return $withDownload;
+        }
+
+        return $title;
+    }
+
+    /**
+     * DLsite-style work codes only (RJ/VJ/BJ/RE + digits), never Steam-style ids.
+     */
+    private static function dlsiteWorkCode(Game $game): ?string
+    {
+        foreach ([$game->source_id, $game->source_url] as $value) {
+            if (! is_string($value) || trim($value) === '') {
+                continue;
+            }
+
+            if (preg_match('/\b(RJ|VJ|BJ|RE)(\d{6,10})\b/i', $value, $matches) === 1) {
+                return strtoupper($matches[1].$matches[2]);
+            }
+        }
+
+        return null;
     }
 
     /**

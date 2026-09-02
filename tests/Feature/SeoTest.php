@@ -43,7 +43,8 @@ test('resource detail pages expose page-level seo props', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('resources/show')
-            ->where('pageSeo.title', 'Senren Banka')
+            ->where('pageSeo.title', 'Senren Banka Download')
+            ->where('pageSeo.titleSuffix', Setting::siteLogoText())
             ->where('pageSeo.robots', 'index,follow')
             ->where('pageSeo.canonical', route('resources.show', $game))
             ->where(
@@ -186,7 +187,7 @@ test('paginated comments on the details page are noindex and canonical to detail
     $this->get(route('resources.show', ['resource' => $game, 'page' => 2]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('pageSeo.title', 'Paged Comments Game')
+            ->where('pageSeo.title', 'Paged Comments Game Download')
             ->where('pageSeo.robots', 'noindex,follow')
             ->where('pageSeo.canonical', route('resources.show', $game))
             ->where('pageSeo.jsonLd', null)
@@ -597,6 +598,50 @@ test('meta descriptions stop at a sentence boundary instead of mid-word', functi
         ->not->toContain('malic…')
         ->and(mb_strlen($limited))->toBeLessThanOrEqual(PageSeo::META_DESCRIPTION_MAX)
         ->and(str_starts_with($limited, $first))->toBeTrue();
+});
+
+test('game titles add a dlsite work code and download when they fit', function () {
+    $short = Game::factory()->create([
+        'title' => 'Open at Nine',
+        'source_id' => 'RJ01692862',
+    ]);
+
+    expect(PageSeo::gameTitle($short))->toBe('Open at Nine (RJ01692862) Download');
+
+    $fromUrl = Game::factory()->create([
+        'title' => 'CelSector',
+        'source_id' => null,
+        'source_url' => 'https://www.dlsite.com/maniax/work/=/product_id/RJ01123456.html',
+    ]);
+
+    expect(PageSeo::gameTitle($fromUrl))->toBe('CelSector (RJ01123456) Download');
+
+    $steam = Game::factory()->create([
+        'title' => 'CelSector',
+        'source_id' => '1234560',
+        'source_url' => 'https://store.steampowered.com/app/1234560/',
+    ]);
+
+    expect(PageSeo::gameTitle($steam))->toBe('CelSector Download');
+
+    $alreadyNamed = Game::factory()->create([
+        'title' => 'Open at Nine RJ01692862',
+        'source_id' => 'RJ01692862',
+    ]);
+
+    expect(PageSeo::gameTitle($alreadyNamed))
+        ->toBe('Open at Nine RJ01692862 Download')
+        ->not->toContain('(RJ01692862)');
+
+    $long = Game::factory()->create([
+        'title' => 'The Trembling Female Teacher That Want to Escape',
+        'source_id' => 'RJ01692862',
+    ]);
+
+    expect(PageSeo::gameTitle($long))
+        ->toBe('The Trembling Female Teacher That Want to Escape')
+        ->not->toContain('RJ')
+        ->not->toContain('Download');
 });
 
 test('game meta descriptions lead with the synopsis then genre platform and language', function () {

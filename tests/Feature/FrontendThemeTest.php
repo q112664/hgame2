@@ -546,7 +546,9 @@ test('resource catalog keeps seo metadata out of the visible interface', functio
 
     expect($app)
         ->toContain('resolvePageTitleSuffix')
-        ->toContain('`${title} | ${pageTitleSuffix}`');
+        ->toContain('`${title} | ${pageTitleSuffix}`')
+        ->toContain('`${title} | ${siteTitle}`')
+        ->not->toContain('`${title} - ${siteTitle}`');
 });
 
 test('site pagination uses a compact page window instead of listing every page', function () {

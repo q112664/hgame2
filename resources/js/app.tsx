@@ -73,7 +73,7 @@ createInertiaApp({
 
         const siteTitle = resolveSiteTitle(page);
 
-        return title ? `${title} - ${siteTitle}` : siteTitle;
+        return title ? `${title} | ${siteTitle}` : siteTitle;
     },
     layout: (name) => {
         switch (true) {

@@ -346,6 +346,7 @@ test('home page exposes WebSite JSON-LD with SearchAction', function () {
     $this->get(route('home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
+            ->where('pageSeo.titleSuffix', Setting::siteLogoText())
             ->where('pageSeo.jsonLd.@type', 'WebSite')
             ->where('pageSeo.jsonLd.potentialAction.@type', 'SearchAction')
             ->where(

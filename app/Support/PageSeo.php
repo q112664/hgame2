@@ -56,7 +56,9 @@ final class PageSeo
     ): array {
         return [
             'title' => filled($title) ? trim((string) $title) : null,
-            'titleSuffix' => filled($titleSuffix) ? trim((string) $titleSuffix) : null,
+            'titleSuffix' => filled($titleSuffix)
+                ? trim((string) $titleSuffix)
+                : Setting::siteLogoText(),
             'description' => self::finalizeMetaDescription($description),
             'canonical' => self::absoluteUrl($canonical),
             'robots' => self::resolveRobots($robots),

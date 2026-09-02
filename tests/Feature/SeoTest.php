@@ -713,6 +713,34 @@ test('game meta descriptions skip bonus copy and unlocked labels', function () {
         ->toContain('ACT');
 });
 
+test('game meta descriptions jump to story and skip engine prefixes', function () {
+    $category = Category::factory()->create(['name' => 'RPG']);
+
+    $featured = Game::factory()->create([
+        'title' => 'Kendo Dojo',
+        'category_id' => $category->id,
+        'description' => '<p>Features:</p><p>・High-quality pixel-art graphics.</p><p>Story:</p><p>Kato Ryuichi had always been defiant. From a young age, he clashed with his father.</p>',
+    ]);
+
+    expect(PageSeo::gameDescription($featured))
+        ->toStartWith('Kato Ryuichi had always been defiant.')
+        ->toContain('RPG')
+        ->not->toStartWith('Features')
+        ->not->toContain('pixel-art graphics');
+
+    $engine = Game::factory()->create([
+        'title' => 'Heim',
+        'category_id' => $category->id,
+        'description' => '<p>This game was made with Unreal Engine 5.</p><p>Please test the demo before purchasing.</p>',
+    ]);
+
+    expect(PageSeo::gameDescription($engine))
+        ->not->toContain('Unreal Engine')
+        ->not->toContain('before purchasing')
+        ->toContain('RPG')
+        ->toContain('Free download on Eroga.me.');
+});
+
 test('home meta description is a full-length default when the saved one is too short', function () {
     Setting::set('seo_description', 'Free download hentai games & eroge.');
 

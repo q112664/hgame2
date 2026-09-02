@@ -563,7 +563,7 @@ final class PageSeo
      */
     public static function gameDescription(Game $game): string
     {
-        $hook = self::synopsisHook($game);
+        $hook = GameSynopsis::hook($game->description);
         $facts = self::gameFactLine($game);
         $cta = 'Free download on Eroga.me.';
 
@@ -594,7 +594,7 @@ final class PageSeo
      */
     public static function gameJsonLdDescription(Game $game): string
     {
-        $sentences = self::usableSynopsisSentences($game, 2);
+        $sentences = GameSynopsis::sentences($game->description, 2);
 
         if ($sentences === []) {
             return self::gameDescription($game);
@@ -616,113 +616,6 @@ final class PageSeo
         }
 
         return self::HOME_DESCRIPTION;
-    }
-
-    /**
-     * Drop common pseudo-headings glued to AI/import synopsis blocks.
-     */
-    private static function stripLeadingSynopsisLabels(?string $text): ?string
-    {
-        if ($text === null || $text === '') {
-            return $text;
-        }
-
-        $patterns = [
-            // Synopsis (AI-translated English) …
-            '/^(?:synopsis|story|game\s*story|game\s*description|description|overview|plot|summary)(?:\s*\([^)]*\))?\s*[:：\-–—]?\s*/iu',
-        ];
-
-        $cleaned = $text;
-
-        foreach ($patterns as $pattern) {
-            $next = preg_replace($pattern, '', $cleaned, 1);
-
-            if (is_string($next) && $next !== $cleaned) {
-                $cleaned = trim($next);
-            }
-        }
-
-        // Leading decorative markers again after label strip.
-        $cleaned = preg_replace('/^[\s◆★■●▪◦•·‧]+/u', '', $cleaned) ?? $cleaned;
-        $cleaned = trim($cleaned);
-
-        return $cleaned === '' ? null : $cleaned;
-    }
-
-    private static function synopsisHook(Game $game): string
-    {
-        $sentences = self::usableSynopsisSentences($game, 1);
-
-        return $sentences[0] ?? '';
-    }
-
-    /**
-     * @return list<string>
-     */
-    private static function usableSynopsisSentences(Game $game, int $limit): array
-    {
-        $plain = self::stripLeadingSynopsisLabels(self::plainText($game->description));
-
-        if ($plain === null || $plain === '') {
-            return [];
-        }
-
-        $usable = [];
-        $rest = $plain;
-
-        while ($rest !== '' && count($usable) < $limit) {
-            [$sentence, $rest] = self::splitOffSentence($rest);
-
-            if (self::isUsableSynopsisSentence($sentence)) {
-                $usable[] = $sentence;
-            }
-        }
-
-        return $usable;
-    }
-
-    /**
-     * @return array{0: string, 1: string}
-     */
-    private static function splitOffSentence(string $text): array
-    {
-        $text = trim($text);
-
-        if ($text === '') {
-            return ['', ''];
-        }
-
-        if (preg_match('/^(.+?[\.!?。！？]+)(?:\s+|$)/u', $text, $matches) === 1) {
-            $sentence = trim((string) $matches[1]);
-
-            return [$sentence, trim(mb_substr($text, mb_strlen($sentence)))];
-        }
-
-        return [$text, ''];
-    }
-
-    private static function isUsableSynopsisSentence(string $sentence): bool
-    {
-        $normalized = trim(preg_replace('/\s+/u', ' ', $sentence) ?? $sentence);
-        $stripped = trim((string) preg_replace('/[\s.!?。！？…]+$/u', '', $normalized));
-
-        if (mb_strlen($stripped) < 24) {
-            return false;
-        }
-
-        if (preg_match('/^(unlocked|locked|demo|trial|dlc|bonus|english|japanese|chinese)(\s+version)?$/iu', $stripped) === 1) {
-            return false;
-        }
-
-        if (preg_match('/^(by purchasing|purchasing the main game|bonus content|digital art book|original soundtrack|bonuses can be)\b/iu', $stripped) === 1) {
-            return false;
-        }
-
-        if (str_starts_with($normalized, '【')) {
-            return false;
-        }
-
-        return preg_match('/(no additional charge|art book|original soundtrack|特典|おまけ)/iu', $stripped) !== 1;
     }
 
     private static function gameFactLine(Game $game): string

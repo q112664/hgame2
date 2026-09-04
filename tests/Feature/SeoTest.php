@@ -768,6 +768,14 @@ test('home and catalog meta descriptions stay distinct', function () {
         ->and(PageSeo::resourcesIndex()['title'])->toBe('Hentai Games & Eroge Downloads');
 });
 
+test('public pages declare rta and adult rating meta tags', function () {
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('name="rating"', false)
+        ->assertSee('RTA-5042-1996-1400-1577-RTA', false)
+        ->assertSee('content="adult"', false);
+});
+
 test('root blade csr fallback seo tags use data-inertia keys matching react head-key', function () {
     $blade = file_get_contents(resource_path('views/app.blade.php'));
     $site = file_get_contents(resource_path('js/components/site/site-seo.tsx'));
@@ -787,6 +795,8 @@ test('root blade csr fallback seo tags use data-inertia keys matching react head
         'description',
         'keywords',
         'robots',
+        'rating',
+        'rating-adult',
         'og:site_name',
         'og:type',
         'og:title',
@@ -825,6 +835,9 @@ test('site and page seo components share stable head-keys for inertia dedupe', f
         ->toContain('head-key="apple-touch-icon"')
         ->toContain('head-key="description"')
         ->toContain('head-key="robots"')
+        ->toContain('head-key="rating"')
+        ->toContain('head-key="rating-adult"')
+        ->toContain('RTA-5042-1996-1400-1577-RTA')
         ->toContain('head-key="og:image"')
         ->toContain('head-key="og:title"')
         ->toContain('head-key="twitter:title"')

@@ -41,6 +41,12 @@ export function SiteSeo() {
             ) : null}
             <meta head-key="robots" name="robots" content={seo.robots} />
             <meta
+                head-key="rating"
+                name="rating"
+                content="RTA-5042-1996-1400-1577-RTA"
+            />
+            <meta head-key="rating-adult" name="rating" content="adult" />
+            <meta
                 head-key="og:site_name"
                 property="og:site_name"
                 content={siteTitle}

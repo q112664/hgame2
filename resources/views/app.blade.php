@@ -65,6 +65,8 @@
                 <meta data-inertia="keywords" name="keywords" content="{{ $seo['keywords'] }}">
             @endif
             <meta data-inertia="robots" name="robots" content="{{ $seo['robots'] }}">
+            <meta data-inertia="rating" name="rating" content="RTA-5042-1996-1400-1577-RTA">
+            <meta data-inertia="rating-adult" name="rating" content="adult">
             <meta data-inertia="og:site_name" property="og:site_name" content="{{ $siteTitle }}">
             <meta data-inertia="og:type" property="og:type" content="website">
             <meta data-inertia="og:title" property="og:title" content="{{ $siteTitle }}">

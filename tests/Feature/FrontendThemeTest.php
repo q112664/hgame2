@@ -190,7 +190,9 @@ test('resource language detail tabs keep inactive versions mounted', function ()
         resource_path('js/components/site/resource-tab-content.tsx'),
     );
 
-    expect($source)->toMatch('/<TabsContent[\s\S]*?\bforceMount\b/');
+    expect($source)
+        ->toMatch('/<TabsContent[\s\S]*?\bforceMount\b/')
+        ->toContain('data-[state=inactive]:hidden');
 });
 
 test('site empty states and download buttons use primary CTAs', function () {

@@ -241,7 +241,7 @@ function ResourceDetailVersions({ resource }: ResourceDetailVersionsProps) {
                 </TabsList>
             </div>
             {versions.map((version) => (
-                <TabsContent key={version.code} value={version.code}>
+                <TabsContent key={version.code} value={version.code} forceMount>
                     <RichHtml html={version.html} />
                 </TabsContent>
             ))}

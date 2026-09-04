@@ -185,6 +185,14 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('resourcesIndex({ query: { page: 2 } }).url');
 });
 
+test('resource language detail tabs keep inactive versions mounted', function () {
+    $source = app(Filesystem::class)->get(
+        resource_path('js/components/site/resource-tab-content.tsx'),
+    );
+
+    expect($source)->toMatch('/<TabsContent[\s\S]*?\bforceMount\b/');
+});
+
 test('site empty states and download buttons use primary CTAs', function () {
     $filesystem = app(Filesystem::class);
 

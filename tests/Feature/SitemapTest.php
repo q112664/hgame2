@@ -3,6 +3,9 @@
 use App\Models\Category;
 use App\Models\Doc;
 use App\Models\Game;
+use App\Models\GameRelease;
+use App\Models\Language;
+use App\Models\Platform;
 use App\Models\Tag;
 use App\Support\TaxonomyDirectory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -95,6 +98,80 @@ test('sitemap lastmod uses downloads_updated_at when downloads change', function
         ->toContain($downloadsUpdatedAt->toAtomString());
 });
 
+test('sitemap lastmod is present for home catalog taxonomy and docs', function () {
+    $olderPublishedAt = now()->subDays(10)->startOfSecond();
+    $newerPublishedAt = now()->subDay()->startOfSecond();
+    $downloadsUpdatedAt = now()->subHours(3)->startOfSecond();
+    $docUpdatedAt = now()->subHours(6)->startOfSecond();
+
+    $rpg = Category::factory()->create(['name' => 'RPG', 'slug' => 'rpg']);
+    $slg = Category::factory()->create(['name' => 'SLG', 'slug' => 'slg']);
+    $windows = Platform::factory()->create(['name' => 'Windows', 'slug' => 'windows']);
+    $english = Language::factory()->create(['name' => 'English', 'code' => 'en']);
+
+    $older = Game::factory()->create([
+        'slug' => 'older-listed-game',
+        'category_id' => $rpg->id,
+        'published_at' => $olderPublishedAt,
+        'downloads_updated_at' => null,
+    ]);
+    $newer = Game::factory()->create([
+        'slug' => 'newer-listed-game',
+        'category_id' => $slg->id,
+        'published_at' => $newerPublishedAt,
+        'downloads_updated_at' => $downloadsUpdatedAt,
+    ]);
+
+    GameRelease::factory()->for($older)->create([
+        'platform_id' => $windows->id,
+        'language_id' => $english->id,
+    ]);
+    GameRelease::factory()->for($newer)->create([
+        'platform_id' => $windows->id,
+        'language_id' => $english->id,
+    ]);
+
+    Game::query()->whereKey($older->id)->update([
+        'published_at' => $olderPublishedAt,
+        'downloads_updated_at' => null,
+    ]);
+    Game::query()->whereKey($newer->id)->update([
+        'published_at' => $newerPublishedAt,
+        'downloads_updated_at' => $downloadsUpdatedAt,
+    ]);
+
+    $tag = Tag::factory()->create(['name' => 'Romance', 'slug' => 'romance']);
+    $tagGames = Game::factory()->count(TaxonomyDirectory::MinPublishedGamesForIndex)->create([
+        'category_id' => $rpg->id,
+        'published_at' => $olderPublishedAt,
+        'downloads_updated_at' => null,
+    ]);
+    $tag->games()->attach($tagGames->pluck('id')->push($newer->id));
+
+    $doc = Doc::factory()->create([
+        'slug' => 'listed-guide',
+        'published_at' => $olderPublishedAt,
+        'updated_at' => $docUpdatedAt,
+    ]);
+    $doc->forceFill(['updated_at' => $docUpdatedAt])->saveQuietly();
+
+    $xml = $this->get(route('sitemap'))->assertOk()->getContent();
+    $catalogLastmod = $downloadsUpdatedAt->toAtomString();
+
+    expect(sitemapLastmod($xml, route('home')))->toBe($catalogLastmod)
+        ->and(sitemapLastmod($xml, route('resources.index')))->toBe($catalogLastmod)
+        ->and(sitemapLastmod($xml, route('resources.tags')))->toBe($catalogLastmod)
+        ->and(sitemapLastmod($xml, route('resources.genre', $rpg)))->toBe($olderPublishedAt->toAtomString())
+        ->and(sitemapLastmod($xml, route('resources.genre', $slg)))->toBe($catalogLastmod)
+        ->and(sitemapLastmod($xml, route('resources.platform', $windows)))->toBe($catalogLastmod)
+        ->and(sitemapLastmod($xml, route('resources.language', $english)))->toBe($catalogLastmod)
+        ->and(sitemapLastmod($xml, route('resources.tag', $tag)))->toBe($catalogLastmod)
+        ->and(sitemapLastmod($xml, route('docs.index')))->toBe($docUpdatedAt->toAtomString())
+        ->and(sitemapLastmod($xml, route('docs.show', $doc)))->toBe($docUpdatedAt->toAtomString());
+
+    expect(sitemapUrlsMissingLastmod($xml))->toBe([]);
+});
+
 test('robots txt points at the sitemap and blocks private paths', function () {
     $response = $this->get(route('robots'))
         ->assertOk()
@@ -112,3 +189,36 @@ test('robots txt points at the sitemap and blocks private paths', function () {
         ->toContain('Disallow: /search')
         ->toContain('Disallow: /users');
 });
+
+function sitemapLastmod(string $xml, string $loc): ?string
+{
+    $quoted = preg_quote($loc, '#');
+
+    if (preg_match('#<loc>'.$quoted.'</loc>\s*(?:<lastmod>([^<]*)</lastmod>)?#', $xml, $matches) !== 1) {
+        return null;
+    }
+
+    return isset($matches[1]) && $matches[1] !== '' ? $matches[1] : null;
+}
+
+/**
+ * @return list<string>
+ */
+function sitemapUrlsMissingLastmod(string $xml): array
+{
+    preg_match_all('#<url>(.*?)</url>#s', $xml, $blocks);
+
+    $missing = [];
+
+    foreach ($blocks[1] as $block) {
+        if (str_contains($block, '<lastmod>')) {
+            continue;
+        }
+
+        if (preg_match('#<loc>([^<]+)</loc>#', $block, $loc) === 1) {
+            $missing[] = $loc[1];
+        }
+    }
+
+    return $missing;
+}

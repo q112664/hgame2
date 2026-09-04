@@ -56,6 +56,15 @@ test('warm red theme uses oklch tokens and default radius', function () {
         ->not->toContain('#f4f5f7');
 });
 
+test('instrument sans only preloads regular and semibold latin faces', function () {
+    $config = app(Filesystem::class)->get(base_path('vite.config.ts'));
+
+    expect($config)
+        ->toContain("bunny('Instrument Sans'")
+        ->toContain("subsets: ['latin']")
+        ->toContain('preload: [{ weight: 400 }, { weight: 600 }]');
+});
+
 test('auth forms use the flat auth button variant', function () {
     $filesystem = app(Filesystem::class);
     $button = $filesystem->get(resource_path('js/components/ui/button.tsx'));

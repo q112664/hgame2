@@ -246,7 +246,36 @@ test('updating releases replaces the previous set', function () {
         ->and($game->releases->first()->title)->toBe('Mac Chinese package')
         ->and($game->releases->first()->user_id)->toBe($contributor->id)
         ->and($game->releases->first()->downloadLinks)->toHaveCount(1)
-        ->and($game->releases->first()->downloadLinks->first()->url)->toBe('https://example.com/game-v2.zip');
+        ->and($game->releases->first()->downloadLinks->first()->url)->toBe('https://example.com/game-v2.zip')
+        ->and($game->downloads_updated_at)->toBeNull();
+});
+
+test('updating a game bumps downloads only when touch_downloads is true', function () {
+    Sanctum::actingAs($this->admin);
+
+    $slug = createGameViaApi();
+    $game = Game::query()->where('slug', $slug)->firstOrFail();
+
+    expect($game->downloads_updated_at)->toBeNull();
+
+    $this->patchJson("/api/v1/games/{$slug}", [
+        'touch_downloads' => false,
+        'releases' => [[
+            'title' => 'Windows Chinese package',
+            'platforms' => ['Windows'],
+            'languages' => ['Chinese'],
+            'version' => '1.1',
+            'download_links' => ['https://example.com/game-v1-1.zip'],
+        ]],
+    ])->assertOk();
+
+    expect($game->fresh()->downloads_updated_at)->toBeNull();
+
+    $this->patchJson("/api/v1/games/{$slug}", [
+        'touch_downloads' => true,
+    ])->assertOk();
+
+    expect($game->fresh()->downloads_updated_at)->not->toBeNull();
 });
 
 test('updating screenshots replaces previous screenshots', function () {

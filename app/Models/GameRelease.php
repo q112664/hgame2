@@ -32,21 +32,6 @@ class GameRelease extends Model
     /** @use HasFactory<GameReleaseFactory> */
     use HasFactory;
 
-    /**
-     * Attributes that mean download/package content changed for users.
-     * Contributor (user_id) and sort_order intentionally excluded.
-     *
-     * @var list<string>
-     */
-    private const DOWNLOAD_TOUCH_ATTRIBUTES = [
-        'title',
-        'version',
-        'file_size',
-        'description',
-        'is_active',
-        'published_at',
-    ];
-
     protected function casts(): array
     {
         return [
@@ -158,35 +143,5 @@ class GameRelease extends Model
     public function downloadLinks(): HasMany
     {
         return $this->hasMany(GameDownloadLink::class)->orderBy('sort_order');
-    }
-
-    protected static function booted(): void
-    {
-        static::saved(function (GameRelease $release): void {
-            if (! $release->shouldTouchGameDownloads()) {
-                return;
-            }
-
-            $release->loadMissing('game');
-            $release->game?->touchDownloadsUpdatedAt();
-        });
-
-        static::deleted(function (GameRelease $release): void {
-            $release->loadMissing('game');
-            $release->game?->touchDownloadsUpdatedAt();
-        });
-    }
-
-    /**
-     * True when this save is a new package or download-facing fields changed.
-     * Assigning contributor (user_id) or reordering alone does not count.
-     */
-    public function shouldTouchGameDownloads(): bool
-    {
-        if ($this->wasRecentlyCreated) {
-            return true;
-        }
-
-        return $this->wasChanged(self::DOWNLOAD_TOUCH_ATTRIBUTES);
     }
 }

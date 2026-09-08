@@ -1,8 +1,6 @@
 <?php
 
 use App\Models\Game;
-use App\Models\GameDownloadLink;
-use App\Models\GameRelease;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -152,11 +150,7 @@ test('favorites page notifies when favorited game downloads are updated', functi
         'updated_at' => now()->subDay(),
     ]);
 
-    $release = GameRelease::factory()->for($game)->create([
-        'title' => 'New package',
-        'version' => '2.0',
-    ]);
-    GameDownloadLink::factory()->for($release, 'release')->create();
+    $game->touchDownloadsUpdatedAt();
 
     expect($game->fresh()->downloads_updated_at)->not->toBeNull();
 

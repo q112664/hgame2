@@ -72,6 +72,7 @@ class UpdateGameRequest extends FormRequest
             'releases.*.contributor' => ['nullable', 'email', 'max:255'],
             'releases.*.download_links' => ['required', 'array', 'min:1'],
             'releases.*.download_links.*' => ['url', 'max:2048'],
+            'touch_downloads' => ['sometimes', 'boolean'],
         ];
     }
 }

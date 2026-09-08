@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Actions\Games\DeleteGameMedia;
+use App\Actions\Seo\SubmitGameToIndexNow;
 use App\GameStatus;
 use App\Jobs\GenerateCoverThumbnail;
 use App\Notifications\FavoriteDownloadsUpdatedNotification;
@@ -56,6 +57,10 @@ class Game extends Model
     protected static function booted(): void
     {
         static::saved(function (Game $game): void {
+            if ($game->shouldSubmitIndexNowOnSave()) {
+                app(SubmitGameToIndexNow::class)($game);
+            }
+
             if (blank($game->cover_path)) {
                 return;
             }
@@ -199,6 +204,45 @@ class Game extends Model
         ])->saveQuietly();
 
         $this->notifyFavoritersOfDownloadUpdate();
+        app(SubmitGameToIndexNow::class)($this);
+    }
+
+    public function isListedOnSite(): bool
+    {
+        if ($this->status !== GameStatus::Published) {
+            return false;
+        }
+
+        return $this->published_at !== null && $this->published_at->lte(now());
+    }
+
+    public function shouldSubmitIndexNowOnSave(): bool
+    {
+        return $this->isListedOnSite() && ! $this->wasListedOnSite();
+    }
+
+    private function wasListedOnSite(): bool
+    {
+        $status = $this->getOriginal('status');
+        $status = $status instanceof GameStatus
+            ? $status
+            : GameStatus::tryFrom((string) $status);
+
+        if ($status !== GameStatus::Published) {
+            return false;
+        }
+
+        $publishedAt = $this->getOriginal('published_at');
+
+        if ($publishedAt === null || $publishedAt === '') {
+            return false;
+        }
+
+        $publishedAt = $publishedAt instanceof CarbonInterface
+            ? $publishedAt
+            : Carbon::parse((string) $publishedAt);
+
+        return $publishedAt->lte(now());
     }
 
     /**

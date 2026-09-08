@@ -337,6 +337,10 @@ class SaveGameFromApi
                 $this->deleteGameMedia->deletePaths($game, array_values(array_unique($obsoletePaths)));
             }
 
+            if ($isUpdate && filter_var($data['touch_downloads'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $game->touchDownloadsUpdatedAt();
+            }
+
             return $game;
         } catch (Throwable $exception) {
             foreach ($uploadedPaths as $path) {

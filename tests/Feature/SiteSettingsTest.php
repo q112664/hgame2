@@ -17,6 +17,43 @@ test('administrators can view the site settings page', function () {
         ->assertOk();
 });
 
+test('administrators can enable indexnow from site settings', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'indexnow_enabled' => true,
+            'indexnow_key' => 'siteindexnowkey1',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    expect(Setting::boolean('indexnow_enabled'))->toBeTrue()
+        ->and(Setting::get('indexnow_key'))->toBe('siteindexnowkey1');
+});
+
+test('saving site settings while indexnow is off does not clear the key', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Setting::setBoolean('indexnow_enabled', true);
+    Setting::set('indexnow_key', 'persistedindexnowk');
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => 'http://hgame.test',
+            'indexnow_enabled' => false,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    expect(Setting::boolean('indexnow_enabled'))->toBeFalse()
+        ->and(Setting::get('indexnow_key'))->toBe('persistedindexnowk')
+        ->and(Setting::get('site_url'))->toBe('http://hgame.test');
+});
+
 test('administrators can update the site url', function () {
     $this->actingAs(User::factory()->admin()->create());
 

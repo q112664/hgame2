@@ -3,13 +3,16 @@
 namespace App\Filament\Resources\Games\RelationManagers;
 
 use App\Filament\Resources\Games\Schemas\GameForm;
+use App\Models\Game;
 use App\Models\GameRelease;
 use App\Support\MediaUpload;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
@@ -25,6 +28,8 @@ use Filament\Tables\Table;
 class ReleasesRelationManager extends RelationManager
 {
     protected static string $relationship = 'releases';
+
+    private bool $pendingDownloadUpdate = false;
 
     public function form(Schema $schema): Schema
     {
@@ -79,6 +84,12 @@ class ReleasesRelationManager extends RelationManager
                     })
                     ->columnSpanFull(),
                 Hidden::make('published_at')->default(now()),
+                Checkbox::make('mark_as_download_update')
+                    ->label('This is a download update')
+                    ->helperText('Shows Updated on the public page and notifies people who favorited this game. Leave unchecked when fixing notes, size, or links without a new package.')
+                    ->default(false)
+                    ->dehydrated(false)
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -144,10 +155,18 @@ class ReleasesRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()
+                    ->mutateDataUsing(fn (array $data, CreateAction $action): array => $this->rememberDownloadUpdateFlag($data, $action))
+                    ->after(function (): void {
+                        $this->touchOwnerDownloadsIfMarked();
+                    }),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->mutateDataUsing(fn (array $data, EditAction $action): array => $this->rememberDownloadUpdateFlag($data, $action))
+                    ->after(function (): void {
+                        $this->touchOwnerDownloadsIfMarked();
+                    }),
                 DeleteAction::make(),
             ])
             ->toolbarActions([
@@ -156,5 +175,36 @@ class ReleasesRelationManager extends RelationManager
                 ]),
             ])
             ->reorderable('sort_order');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function rememberDownloadUpdateFlag(array $data, Action $action): array
+    {
+        $this->pendingDownloadUpdate = filter_var(
+            $action->getRawData()['mark_as_download_update'] ?? $data['mark_as_download_update'] ?? false,
+            FILTER_VALIDATE_BOOLEAN,
+        );
+
+        unset($data['mark_as_download_update']);
+
+        return $data;
+    }
+
+    private function touchOwnerDownloadsIfMarked(): void
+    {
+        if (! $this->pendingDownloadUpdate) {
+            return;
+        }
+
+        $this->pendingDownloadUpdate = false;
+
+        $game = $this->getOwnerRecord();
+
+        if ($game instanceof Game) {
+            $game->touchDownloadsUpdatedAt();
+        }
     }
 }

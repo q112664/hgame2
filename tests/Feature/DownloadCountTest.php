@@ -48,7 +48,6 @@ test('recording a download does not bump game updated_at', function () {
     $game = $link->release->game;
 
     $frozen = now()->subDay()->startOfSecond();
-    // Freeze after link creation — saved links touch downloads_updated_at on the game.
     $game->forceFill([
         'created_at' => $frozen,
         'updated_at' => $frozen,

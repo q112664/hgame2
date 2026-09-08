@@ -19,7 +19,6 @@ test('assigning only a release contributor does not bump downloads_updated_at', 
     ]);
     GameDownloadLink::factory()->for($release, 'release')->create();
 
-    // Creating the link bumps downloads_updated_at — freeze it for the assertion.
     $frozen = now()->subDay()->startOfSecond();
     $game->forceFill(['downloads_updated_at' => $frozen])->saveQuietly();
 
@@ -31,25 +30,32 @@ test('assigning only a release contributor does not bump downloads_updated_at', 
         ->and($game->fresh()->downloads_updated_at?->equalTo($frozen))->toBeTrue();
 });
 
-test('changing download-facing release fields still bumps downloads_updated_at', function () {
-    Carbon::setTestNow(now()->startOfSecond());
-
+test('editing release notes version size or download url does not bump downloads_updated_at', function () {
     $game = Game::factory()->create([
         'downloads_updated_at' => null,
     ]);
     $release = GameRelease::factory()->for($game)->create([
+        'title' => 'Windows package',
         'version' => '1.0',
+        'file_size' => '1 GB',
+        'description' => '<p>Notes</p>',
+    ]);
+    $link = GameDownloadLink::factory()->for($release, 'release')->create([
+        'url' => 'https://example.com/old.zip',
     ]);
 
-    $before = $game->fresh()->downloads_updated_at;
-    Carbon::setTestNow(now()->addMinute());
+    expect($game->fresh()->downloads_updated_at)->toBeNull();
 
-    $release->update(['version' => '2.0']);
+    $release->update([
+        'title' => 'Windows package v2',
+        'version' => '2.0',
+        'file_size' => '2 GB',
+        'description' => '<p>MD5: abc</p>',
+    ]);
+    $link->update(['url' => 'https://example.com/new.zip']);
+    $release->delete();
 
-    expect($game->fresh()->downloads_updated_at)->not->toBeNull()
-        ->and($game->fresh()->downloads_updated_at?->equalTo($before))->toBeFalse();
-
-    Carbon::setTestNow();
+    expect($game->fresh()->downloads_updated_at)->toBeNull();
 });
 
 test('artisan command bulk assigns contributor without touching downloads_updated_at', function () {
@@ -67,7 +73,6 @@ test('artisan command bulk assigns contributor without touching downloads_update
         'user_id' => User::factory()->create()->id,
     ]);
 
-    // Freeze after release creation (creates touch downloads_updated_at).
     $frozen = now()->subDays(3)->startOfSecond();
     $game->forceFill(['downloads_updated_at' => $frozen])->saveQuietly();
 

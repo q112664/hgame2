@@ -32,14 +32,6 @@ class GameDownloadLink extends Model
                 $link->label = is_string($host) && $host !== '' ? $host : 'Download';
             }
         });
-
-        $touchGame = function (GameDownloadLink $link): void {
-            $link->loadMissing('release.game');
-            $link->release?->game?->touchDownloadsUpdatedAt();
-        };
-
-        static::saved($touchGame);
-        static::deleted($touchGame);
     }
 
     /** @return BelongsTo<GameRelease, $this> */

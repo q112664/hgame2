@@ -6,14 +6,19 @@ use App\Filament\Resources\Games\Pages\ListGames;
 use App\Filament\Resources\Games\RelationManagers\ReleasesRelationManager;
 use App\GameStatus;
 use App\Models\Game;
+use App\Models\GameDownloadLink;
+use App\Models\GameRelease;
 use App\Models\GameScreenshot;
 use App\Models\Language;
 use App\Models\Platform;
 use App\Models\User;
+use App\Notifications\FavoriteDownloadsUpdatedNotification;
 use App\Support\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -258,4 +263,116 @@ test('games list defaults to newest created first', function () {
     Livewire::test(ListGames::class)
         ->assertSuccessful()
         ->assertCanSeeTableRecords([$newest, $newer, $older], inOrder: true);
+});
+
+test('creating a download package does not bump updates unless marked', function () {
+    Notification::fake();
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    $game = Game::factory()->create(['downloads_updated_at' => null]);
+    $fan = User::factory()->create();
+    $fan->favoritedGames()->attach($game->id, [
+        'downloads_seen_at' => now()->subDay(),
+    ]);
+    $platform = Platform::factory()->create();
+    $language = Language::factory()->create();
+
+    $createPackage = function (Game $game, string $title, string $url, bool $markUpdate) use ($platform, $language) {
+        $component = Livewire::test(ReleasesRelationManager::class, [
+            'ownerRecord' => $game,
+            'pageClass' => EditGame::class,
+        ]);
+
+        $component->mountTableAction('create');
+
+        $linkItems = $component->instance()->mountedActions[0]['data']['downloadLinks'] ?? [];
+        $linkKey = array_key_first($linkItems) ?: (string) Str::uuid();
+
+        $component
+            ->setTableActionData([
+                'platforms' => [$platform->id],
+                'languages' => [$language->id],
+                'title' => $title,
+                'is_active' => true,
+                'downloadLinks' => [
+                    $linkKey => ['url' => $url],
+                ],
+                'mark_as_download_update' => $markUpdate,
+            ])
+            ->callMountedTableAction()
+            ->assertHasNoTableActionErrors();
+    };
+
+    $createPackage($game, 'Windows package', 'https://example.com/game.zip', false);
+
+    expect($game->fresh()->downloads_updated_at)->toBeNull()
+        ->and($game->releases()->count())->toBe(1);
+
+    Notification::assertNothingSent();
+
+    $createPackage($game, 'Windows package v2', 'https://example.com/game-v2.zip', true);
+
+    expect($game->fresh()->downloads_updated_at)->not->toBeNull()
+        ->and($game->releases()->count())->toBe(2);
+
+    Notification::assertSentTo($fan, FavoriteDownloadsUpdatedNotification::class);
+});
+
+test('editing a download package bumps updates only when marked', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    $game = Game::factory()->create(['downloads_updated_at' => null]);
+    $platform = Platform::factory()->create();
+    $language = Language::factory()->create();
+    $release = GameRelease::factory()->for($game)->create([
+        'title' => 'Windows package',
+        'version' => '1.0',
+    ]);
+    $release->platforms()->sync([$platform->id]);
+    $release->languages()->sync([$language->id]);
+    GameDownloadLink::factory()->for($release, 'release')->create([
+        'url' => 'https://example.com/old.zip',
+    ]);
+
+    Livewire::test(ReleasesRelationManager::class, [
+        'ownerRecord' => $game,
+        'pageClass' => EditGame::class,
+    ])
+        ->callTableAction('edit', $release, [
+            'platforms' => [$platform->id],
+            'languages' => [$language->id],
+            'title' => 'Windows package',
+            'version' => '1.1',
+            'is_active' => true,
+            'downloadLinks' => [
+                (string) Str::uuid() => [
+                    'url' => 'https://example.com/new.zip',
+                ],
+            ],
+        ])
+        ->assertHasNoTableActionErrors();
+
+    expect($game->fresh()->downloads_updated_at)->toBeNull();
+
+    Livewire::test(ReleasesRelationManager::class, [
+        'ownerRecord' => $game,
+        'pageClass' => EditGame::class,
+    ])
+        ->callTableAction('edit', $release, [
+            'platforms' => [$platform->id],
+            'languages' => [$language->id],
+            'title' => 'Windows package',
+            'version' => '2.0',
+            'is_active' => true,
+            'downloadLinks' => [
+                (string) Str::uuid() => [
+                    'url' => 'https://example.com/v2.zip',
+                ],
+            ],
+            'mark_as_download_update' => true,
+        ])
+        ->assertHasNoTableActionErrors();
+
+    expect($game->fresh()->downloads_updated_at)->not->toBeNull();
 });

@@ -2,8 +2,6 @@
 
 use App\Models\Game;
 use App\Models\GameComment;
-use App\Models\GameDownloadLink;
-use App\Models\GameRelease;
 use App\Models\User;
 use App\Notifications\CommentRepliedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -269,11 +267,7 @@ test('favorited users are notified when downloads are updated', function () {
         'updated_at' => now()->subDay(),
     ]);
 
-    $release = GameRelease::factory()->for($game)->create([
-        'title' => 'New package',
-        'version' => '2.0',
-    ]);
-    GameDownloadLink::factory()->for($release, 'release')->create();
+    $game->touchDownloadsUpdatedAt();
 
     expect($user->fresh()->unreadNotifications()->count())->toBe(1)
         ->and($user->notifications()->first()->type)->toBe('favorite.downloads_updated');

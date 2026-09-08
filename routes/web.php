@@ -6,6 +6,7 @@ use App\Http\Controllers\DownloadLinkController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\GameCommentController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\IndexNowKeyController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ResourceController;
@@ -18,6 +19,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/robots.txt', RobotsController::class)->name('robots');
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
+Route::get('/{indexNowKey}.txt', IndexNowKeyController::class)
+    ->where('indexNowKey', '[A-Za-z0-9-]{8,128}')
+    ->name('indexnow.key');
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/search', SearchController::class)->name('search');

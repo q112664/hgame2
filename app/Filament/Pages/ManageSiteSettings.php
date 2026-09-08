@@ -24,8 +24,10 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Str;
 use UnitEnum;
 
 /**
@@ -76,6 +78,8 @@ class ManageSiteSettings extends Page
             'hero_enabled' => $hero['enabled'],
             'hero_show_browse' => $hero['showBrowse'],
             'hero_show_random' => $hero['showRandom'],
+            'indexnow_enabled' => Setting::boolean('indexnow_enabled', false),
+            'indexnow_key' => Setting::get('indexnow_key') ?? '',
             'comments_enabled' => Setting::commentsEnabled(),
             'resource_notice_enabled' => Setting::resourceNoticeEnabled(),
             'resource_notice_content' => Setting::get('resource_notice_content') ?? '',
@@ -302,6 +306,39 @@ class ManageSiteSettings extends Page
                                                 };
                                             }),
                                     ]),
+                                Section::make('IndexNow')
+                                    ->description('Notify Bing and other IndexNow search engines when a game is published or its downloads are marked as updated. Google is not part of IndexNow.')
+                                    ->schema([
+                                        Toggle::make('indexnow_enabled')
+                                            ->label('Enable IndexNow')
+                                            ->helperText('When on, newly published games and download updates are submitted automatically.')
+                                            ->live()
+                                            ->inline(false),
+                                        TextInput::make('indexnow_key')
+                                            ->label('API key')
+                                            ->maxLength(128)
+                                            ->rule('regex:/^[A-Za-z0-9-]{8,128}$/')
+                                            ->required(fn (Get $get): bool => (bool) $get('indexnow_enabled'))
+                                            ->helperText(function (Get $get): string {
+                                                $key = trim((string) $get('indexnow_key'));
+
+                                                if ($key !== '' && preg_match('/^[A-Za-z0-9-]{8,128}$/', $key) === 1) {
+                                                    return 'Key file is served at '.rtrim(Setting::siteUrl(), '/').'/'.$key.'.txt';
+                                                }
+
+                                                return '8–128 characters (letters, numbers, hyphens). The site will serve /{key}.txt automatically.';
+                                            })
+                                            ->suffixAction(
+                                                Action::make('generateIndexNowKey')
+                                                    ->label('Generate')
+                                                    ->icon(Heroicon::OutlinedSparkles)
+                                                    ->action(function (Set $set): void {
+                                                        $set('indexnow_key', str_replace('-', '', (string) Str::uuid()));
+                                                    }),
+                                            )
+                                            ->dehydratedWhenHidden()
+                                            ->visible(fn (Get $get): bool => (bool) $get('indexnow_enabled')),
+                                    ]),
                             ]),
                         Tab::make('Resources')
                             ->icon(Heroicon::OutlinedRectangleStack)
@@ -511,6 +548,14 @@ class ManageSiteSettings extends Page
             $seoGoogleVerification !== '' ? $seoGoogleVerification : null,
         );
         Setting::set('seo_google_tag_id', $googleTagId);
+        Setting::setBoolean(
+            'indexnow_enabled',
+            filter_var($data['indexnow_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
+        );
+        if (array_key_exists('indexnow_key', $data)) {
+            $indexNowKey = trim((string) $data['indexnow_key']);
+            Setting::set('indexnow_key', $indexNowKey !== '' ? $indexNowKey : null);
+        }
         Setting::set('seo_gtm_container_id', null);
         Setting::set('site_favicon_path', $nextFaviconPath);
         Setting::set('site_logo_mode', $mode);

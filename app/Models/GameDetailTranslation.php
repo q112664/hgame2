@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['game_id', 'language_id', 'description', 'sort_order'])]
 class GameDetailTranslation extends Model
 {
+    public const int MaxPerGame = 20;
+
     /** @use HasFactory<GameDetailTranslationFactory> */
     use HasFactory;
 

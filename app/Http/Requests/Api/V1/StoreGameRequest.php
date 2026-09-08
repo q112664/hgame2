@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Api\V1;
 
 use App\GameStatus;
+use App\Models\GameDetailTranslation;
+use App\Models\GameScreenshot;
 use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -38,14 +40,14 @@ class StoreGameRequest extends FormRequest
             'source_host_hint' => ['nullable', 'string', 'max:255'],
             'release_date' => ['nullable', 'date'],
             'description' => ['nullable', 'string'],
-            'detail_versions' => ['nullable', 'array', 'max:20'],
+            'detail_versions' => ['nullable', 'array', 'max:'.GameDetailTranslation::MaxPerGame],
             'detail_versions.*.language' => ['required', 'string', 'max:255'],
             'detail_versions.*.description' => ['nullable', 'string'],
             'detail_versions.*.sort_order' => ['nullable', 'integer', 'min:0'],
             'cover_url' => ['required', 'url', 'max:2048'],
             'status' => ['nullable', Rule::enum(GameStatus::class)],
             'published_at' => ['nullable', 'date'],
-            'screenshots' => ['nullable', 'array', 'max:50'],
+            'screenshots' => ['nullable', 'array', 'max:'.GameScreenshot::MaxPerGame],
             'screenshots.*' => ['url', 'max:2048'],
             'releases' => ['nullable', 'array'],
             'releases.*.title' => ['required', 'string', 'max:255'],

@@ -7,10 +7,9 @@ use App\Filament\Resources\Games\Schemas\GameForm;
 use App\GameStatus;
 use App\Models\Category;
 use App\Models\Game;
-use App\Models\Language;
-use App\Models\Platform;
-use App\Models\User;
+use App\Support\DescriptionHtmlPaths;
 use App\Support\DescriptionMediaImporter;
+use App\Support\GameApiPayload;
 use App\Support\MediaDeletionService;
 use App\Support\MediaThumbnail;
 use App\Support\RemoteMediaDownloader;
@@ -22,6 +21,8 @@ use Throwable;
 
 class SaveGameFromApi
 {
+    use ResolvesPublishApiTaxonomy;
+
     public function __construct(
         private TagImporter $tagImporter,
         private RemoteMediaDownloader $mediaDownloader,
@@ -145,7 +146,7 @@ class SaveGameFromApi
                 if ($isUpdate) {
                     $obsoletePaths = [
                         ...$obsoletePaths,
-                        ...$this->orphanedDescriptionPaths(
+                        ...DescriptionHtmlPaths::orphaned(
                             (string) ($existing->description ?? ''),
                             (string) ($description ?? ''),
                         ),
@@ -166,7 +167,7 @@ class SaveGameFromApi
                     foreach ($existing->detailTranslations as $oldTranslation) {
                         $obsoletePaths = [
                             ...$obsoletePaths,
-                            ...$this->pathsFromDescription((string) ($oldTranslation->description ?? '')),
+                            ...DescriptionHtmlPaths::extract((string) ($oldTranslation->description ?? '')),
                         ];
                     }
                 }
@@ -214,7 +215,7 @@ class SaveGameFromApi
                     foreach ($existing->releases as $oldRelease) {
                         $obsoletePaths = [
                             ...$obsoletePaths,
-                            ...$this->pathsFromDescription((string) ($oldRelease->description ?? '')),
+                            ...DescriptionHtmlPaths::extract((string) ($oldRelease->description ?? '')),
                         ];
                     }
                 }
@@ -321,16 +322,7 @@ class SaveGameFromApi
                     $game->forceFill(['downloads_updated_at' => null])->saveQuietly();
                 }
 
-                return $game->fresh([
-                    'category',
-                    'tags',
-                    'screenshots',
-                    'detailTranslations.language',
-                    'releases.contributor',
-                    'releases.platforms',
-                    'releases.languages',
-                    'releases.downloadLinks',
-                ]) ?? $game;
+                return GameApiPayload::reload($game);
             });
 
             if ($obsoletePaths !== []) {
@@ -440,25 +432,6 @@ class SaveGameFromApi
         ($this->upsertResourceSource)($payload);
     }
 
-    protected function resolveContributorId(?string $email, string $errorKey): ?int
-    {
-        if ($email === null || trim($email) === '') {
-            return null;
-        }
-
-        $user = User::query()
-            ->whereRaw('lower(email) = ?', [Str::lower(trim($email))])
-            ->first();
-
-        if ($user === null) {
-            throw ValidationException::withMessages([
-                $errorKey => "Unknown contributor email [{$email}].",
-            ]);
-        }
-
-        return $user->id;
-    }
-
     /**
      * @param  list<array{language_id: int, description: string|null, sort_order: int}>  $translations
      */
@@ -487,42 +460,6 @@ class SaveGameFromApi
         return $category;
     }
 
-    protected function resolvePlatform(string $value): Platform
-    {
-        $platform = Platform::query()
-            ->where(function ($query) use ($value): void {
-                $query->where('slug', $value)
-                    ->orWhereRaw('lower(name) = ?', [Str::lower($value)]);
-            })
-            ->first();
-
-        if ($platform === null) {
-            throw ValidationException::withMessages([
-                'releases' => "Unknown platform [{$value}].",
-            ]);
-        }
-
-        return $platform;
-    }
-
-    protected function resolveLanguage(string $value, string $errorKey = 'releases'): Language
-    {
-        $language = Language::query()
-            ->where(function ($query) use ($value): void {
-                $query->where('code', $value)
-                    ->orWhereRaw('lower(name) = ?', [Str::lower($value)]);
-            })
-            ->first();
-
-        if ($language === null) {
-            throw ValidationException::withMessages([
-                $errorKey => "Unknown language [{$value}].",
-            ]);
-        }
-
-        return $language;
-    }
-
     protected function uniqueSlug(string $base): string
     {
         $slug = $base;
@@ -534,40 +471,5 @@ class SaveGameFromApi
         }
 
         return $slug;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function orphanedDescriptionPaths(string $oldHtml, string $newHtml): array
-    {
-        $oldPaths = $this->pathsFromDescription($oldHtml);
-        $newPaths = $this->pathsFromDescription($newHtml);
-
-        return array_values(array_diff($oldPaths, $newPaths));
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function pathsFromDescription(string $description): array
-    {
-        if ($description === '') {
-            return [];
-        }
-
-        preg_match_all(
-            '#(?:/storage/|https?://[^"\'>\s]+/)(games/(?:covers|screenshots|content)/[^"\'>\s?]+)#i',
-            $description,
-            $matches,
-        );
-
-        $paths = [];
-
-        foreach ($matches[1] as $path) {
-            $paths[] = ltrim($path, '/');
-        }
-
-        return array_values(array_unique($paths));
     }
 }

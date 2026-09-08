@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['game_id', 'url', 'path', 'alt', 'sort_order'])]
 class GameScreenshot extends Model
 {
+    public const int MaxPerGame = 50;
+
     /** @use HasFactory<GameScreenshotFactory> */
     use HasFactory;
 

@@ -1,10 +1,10 @@
-# Game Resource API — Agent Guide
+# Game Publish API — agent spec
 
-Use this document to **create, list, inspect, update, and delete** game resources on **hgame** via JSON API.
+Feed this entire document to an agent as the source of truth for creating and editing games on this site.
 
-On this site, public “resources” are games. There is no separate resource type in the API yet.
+Public “resources” are games. There is no separate resource type.
 
-No multipart uploads: send publicly reachable image URLs; the server downloads them.
+No multipart uploads. Send publicly reachable HTTP(S) image URLs; the server downloads them.
 
 ## Base URL
 
@@ -13,11 +13,11 @@ No multipart uploads: send publicly reachable image URLs; the server downloads t
 | Local (Herd) | `http://hgame.test` |
 | API prefix | `/api/v1` |
 
-Full endpoint base: `http://hgame.test/api/v1`
+Full endpoint root: `{origin}/api/v1`
 
 ## Authentication
 
-All endpoints require:
+Every request:
 
 ```http
 Authorization: Bearer {TOKEN}
@@ -26,32 +26,129 @@ Content-Type: application/json
 ```
 
 - Token must belong to a user with `is_admin = true`.
-- Mint a token in **Admin → Settings → API tokens** (listed and copyable anytime), or via CLI:
+- Mint a token in **Admin → Settings → API tokens**, or: `php artisan game:token {admin-email-or-id} --name=game-publish`
+- Rate limit: **60 requests / minute** per token.
+- Missing/invalid token → `401`. Non-admin → `403`.
 
-```bash
-php artisan game:token {admin-email-or-id} --name=game-publish
+## How to choose an endpoint
+
+| Goal | Call |
+|------|------|
+| Create a game in one shot | `POST /games` with the full body |
+| Change title, cover, status, synopsis, source, category | `PATCH /games/{slug}` with only those keys |
+| Replace **all** tags / screenshots / detail versions / releases | `PATCH /games/{slug}` with that array (omit keys you must not touch) |
+| Add / replace / delete **one** screenshot | nested `/screenshots` |
+| Add tags without dropping existing ones / detach one tag | nested `/tags` |
+| Add or edit **one** language’s details | `PUT` or `PATCH /detail-versions/{language}` |
+| Delete one language’s details | `DELETE /detail-versions/{language}` |
+| Add / edit / delete **one** download package | nested `/releases` |
+| Inspect current ids | `GET /games/{slug}` |
+
+**Never send a collection on `PATCH /games/{slug}` unless you intend to replace that whole collection.** Nested routes exist so you can edit one item.
+
+`id` on the game object is the **slug**. Nested routes do **not** all take integer ids:
+
+- `/screenshots/{id}` and `/releases/{id}` — integer ids from `screenshot_items[]` / `releases[]`
+- `/detail-versions/{language}` — taxonomy language **code or name** (`en`, `ja`, `Chinese`), not `detail_versions[].id`
+- Download links have no nested route. Change them with `PATCH /releases/{id}` and a full `download_links` array for that package. `download_link_items[].id` is display-only.
+
+## Recommended workflows
+
+**New game**
+
+1. `GET /taxonomies`
+2. Host cover, screenshots, and any HTML `<img>` files on public HTTP URLs (JPEG/PNG/WebP/GIF, ≤ 20MB).
+3. `POST /games` with everything you know.
+4. Open `data.url` for the public page.
+
+**Edit one screenshot**
+
+1. `GET /games/{slug}` → read `screenshot_items[]`.
+2. `POST /games/{slug}/screenshots` to append, or `PATCH /games/{slug}/screenshots/{id}` to change URL/order, or `DELETE` that id.
+
+**Edit one download package**
+
+1. `GET /games/{slug}` → read `releases[].id`.
+2. `POST /games/{slug}/releases` to add a package.
+3. `PATCH /games/{slug}/releases/{id}` with only the fields that change. If you change links, send the **full** `download_links` array for **that package only**.
+4. Pass `"touch_downloads": true` only when this change should show as a download update on the site (Updated chip, favorite notifications, IndexNow if enabled).
+
+## Game object (detail)
+
+Returned by create, show, update, and every nested write.
+
+```json
+{
+  "id": "senren-banka",
+  "title": "Senren Banka",
+  "subtitle": "A spring tale",
+  "status": "published",
+  "category": "Visual Novel",
+  "tags": ["Romance", "Slice of Life"],
+  "developer": "Yuzu Soft",
+  "source_name": "DLsite",
+  "source_id": "RJ01123456",
+  "source_url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01123456.html",
+  "source": {
+    "name": "DLsite",
+    "id": "RJ01123456",
+    "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01123456.html",
+    "faviconUrl": "/images/sources/dlsite.ico"
+  },
+  "release_date": "2016-07-29",
+  "description": "<p>English synopsis HTML.</p>",
+  "detail_versions": [
+    {
+      "id": 10,
+      "language": { "name": "English", "code": "en" },
+      "description": "<p>English details.</p>",
+      "sort_order": 0
+    }
+  ],
+  "cover_url": "http://hgame.test/storage/games/covers/....png",
+  "published_at": "2026-07-29T12:00:00+00:00",
+  "url": "http://hgame.test/games/senren-banka",
+  "screenshots": ["http://hgame.test/storage/games/screenshots/....png"],
+  "screenshot_items": [
+    { "id": 5, "url": "http://hgame.test/storage/games/screenshots/....png", "sort_order": 0 }
+  ],
+  "releases": [
+    {
+      "id": 12,
+      "title": "Windows Chinese package",
+      "platforms": ["Windows"],
+      "languages": ["Chinese"],
+      "version": "1.0",
+      "file_size": "5.4 GB",
+      "description": null,
+      "is_active": true,
+      "published_at": "2026-07-29T12:00:00+00:00",
+      "contributor": { "name": "Uploader", "email": "uploader@example.com" },
+      "download_links": ["https://example.com/game.zip"],
+      "download_link_items": [{ "id": 44, "url": "https://example.com/game.zip" }]
+    }
+  ],
+  "screenshots_count": 1,
+  "releases_count": 1
+}
 ```
 
-- Rate limit: **60 requests / minute** per token.
-- Non-admin → `403`. Missing/invalid token → `401`.
+Notes:
 
-## Recommended workflow
+- Game `id` is the slug. Use it in every nested path.
+- `screenshots` stays an array of URL strings (compat). Use `screenshot_items` when you need ids.
+- `download_links` stays an array of URL strings. Use `download_link_items` when you need link ids. Nested APIs do **not** PATCH a single link by id; send the package’s full `download_links` list.
+- `description` is the English synopsis on the game itself. Other languages live in `detail_versions`.
+- Public page is visible when `status=published` and `published_at <= now`.
+- A release is shown on the site when `is_active=true` and it has at least one download link.
 
-1. `GET /api/v1/taxonomies` — load allowed categories, platforms, languages.
-2. Host cover, screenshot, and any detail/release body images somewhere HTTP-accessible (JPEG/PNG/WebP/GIF, ≤ 20MB each).
-3. `POST /api/v1/games` — create the game in one request (detail `<img src>` URLs are ingested automatically).
-4. `GET /api/v1/games` or `GET /api/v1/games/{slug}` — list or inspect.
-5. `PATCH /api/v1/games/{slug}` — partial edit (only send fields that change).
-6. `DELETE /api/v1/games/{slug}` — remove when needed.
-7. Open `data.url` in responses for the public details page.
+---
 
-## Endpoints
+## GET `/api/v1/taxonomies`
 
-### GET `/api/v1/taxonomies`
+Allowed categories, platforms, languages, and known sources. **Do not invent** category / platform / language names.
 
-Returns existing taxonomies. **Do not invent** category / platform / language names; match these values (name or slug/code).
-
-**Response `200`:**
+**Response `200`**
 
 ```json
 {
@@ -67,71 +164,39 @@ Returns existing taxonomies. **Do not invent** category / platform / language na
 }
 ```
 
-Resolution rules when saving:
+Resolution when saving:
 
-| Field | Match against |
-|-------|----------------|
-| `category` | category `name` or `slug` (case-insensitive name) |
-| `releases[].platforms[]` | platform `name` or `slug` |
-| `releases[].languages[]` | language `name` or `code` |
-| `source_name` | Prefer a `sources[].name` from taxonomies (`DLsite` or `Steam`) for the local storefront icon |
-| `tags[]` | created if missing (multi-word tags OK as one array item) |
+| Field | Match |
+|-------|--------|
+| `category` | category `name` or `slug` (name case-insensitive) |
+| `releases[].platforms[]` / nested `platforms[]` | platform `name` or `slug` |
+| `releases[].languages[]` / nested `languages[]` / `{language}` path | language `name` or `code` |
+| `source_name` | Prefer `sources[].name` (`DLsite` or `Steam`) for the storefront icon |
+| `tags[]` | created if missing |
 
 ---
 
-### GET `/api/v1/games`
+## GET `/api/v1/games`
 
-List games (all statuses; admin catalog, not only public published ones).
+Admin catalog (all statuses).
 
-**Query parameters:**
-
-| Param | Notes |
+| Query | Notes |
 |-------|--------|
 | `q` | Search title, subtitle, developer, category, tags, platforms, languages |
 | `status` | `draft` \| `published` \| `unlisted` |
 | `category` | Category name or slug |
-| `page` | Page number (default 1) |
-| `per_page` | 1–100 (default 20) |
+| `page` | Default 1 |
+| `per_page` | 1–100, default 20 |
 
-**Response `200`:**
-
-```json
-{
-  "data": [
-    {
-      "id": "senren-banka",
-      "title": "Senren Banka",
-      "subtitle": "A spring tale",
-      "status": "published",
-      "category": "Visual Novel",
-      "developer": "Yuzu Soft",
-      "url": "http://hgame.test/resources/senren-banka/details",
-      "cover_url": "http://hgame.test/storage/games/covers/....png",
-      "published_at": "2026-07-29T12:00:00+00:00",
-      "screenshots_count": 2,
-      "releases_count": 1
-    }
-  ],
-  "meta": {
-    "current_page": 1,
-    "last_page": 1,
-    "per_page": 20,
-    "total": 1
-  }
-}
-```
+List items are summaries (`id`, `title`, `subtitle`, `status`, `category`, `developer`, `url`, `cover_url`, `published_at`, `screenshots_count`, `releases_count`). They do **not** include screenshot/release ids. Call show for those.
 
 ---
 
-### POST `/api/v1/games`
+## POST `/api/v1/games`
 
-Create a game with optional screenshots and releases.
+Create a game. Success `201` with the detail object. Validation / media errors `422`.
 
-**Success:** `201`  
-**Validation / media errors:** `422` with `errors` object  
-**Auth errors:** `401` / `403`
-
-#### Minimal body
+### Minimal body
 
 ```json
 {
@@ -140,7 +205,7 @@ Create a game with optional screenshots and releases.
 }
 ```
 
-#### Full body (recommended for agents)
+### Full body
 
 ```json
 {
@@ -154,7 +219,11 @@ Create a game with optional screenshots and releases.
   "source_id": "RJ01123456",
   "source_url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01123456.html",
   "release_date": "2016-07-29",
-  "description": "<p>Short HTML synopsis is allowed.</p><p><img src=\"https://cdn.example.com/detail-1.png\" alt=\"Scene\"></p>",
+  "description": "<p>Short HTML synopsis.</p><p><img src=\"https://cdn.example.com/detail-1.png\" alt=\"Scene\"></p>",
+  "detail_versions": [
+    { "language": "en", "description": "<p>English details.</p>" },
+    { "language": "ja", "description": "<p>日本語</p>" }
+  ],
   "cover_url": "https://cdn.example.com/cover.png",
   "status": "published",
   "screenshots": [
@@ -168,37 +237,38 @@ Create a game with optional screenshots and releases.
       "languages": ["Chinese"],
       "version": "1.0",
       "file_size": "5.4 GB",
-      "description": "<p>Optional release notes with <img src=\"https://cdn.example.com/patch-notes.png\"></p>",
-      "download_links": [
-        "https://example.com/game.zip"
-      ]
+      "description": "<p>Optional notes.</p>",
+      "download_links": ["https://example.com/game.zip"]
     }
   ]
 }
 ```
 
-#### Field reference (create)
+### Create fields
 
 | Field | Required | Notes |
 |-------|----------|--------|
 | `title` | yes | max 255 |
-| `cover_url` | yes | Absolute URL; server downloads image |
+| `cover_url` | yes | Absolute URL; server downloads the image |
 | `subtitle` | no | max 255 |
 | `slug` | no | `alpha_dash`, unique; auto from title if omitted |
-| `category` | no | Must already exist (name or slug) |
-| `tags` | no | Array of strings; created if missing |
-| `developer` | no | max 255 |
-| `source_name` | no | Prefer **`DLsite`** or **`Steam`** (see `/taxonomies` → `sources`). Local favicon icons are used for both. |
-| `source_id` | no | Work ID, e.g. DLsite `RJ01123456` or Steam App ID `1234560` |
-| `source_url` | no | Absolute product page URL (e.g. DLsite work page or `https://store.steampowered.com/app/…`) |
-| `release_date` | no | Date string, e.g. `2016-07-29` |
-| `description` | no | HTML string; remote `<img src>` are downloaded (see Images) |
+| `category` | no | Must already exist |
+| `tags` | no | String array; created if missing |
+| `developer` | no | |
+| `source_name` | no | Prefer `DLsite` or `Steam` |
+| `source_id` | no | e.g. `RJ01123456` or Steam app id |
+| `source_url` | no | Absolute product URL |
+| `source_icon_url` | no | Upserts the reusable source icon library when `source_name` is set |
+| `source_host_hint` | no | Same as above for host hint |
+| `release_date` | no | `YYYY-MM-DD` |
+| `description` | no | HTML; remote `<img src>` ingested |
+| `detail_versions` | no | Max 20. Each needs `language`. Duplicate languages → `422` |
 | `status` | no | `draft` \| `published` \| `unlisted` (default **`published`**) |
 | `published_at` | no | Default `now()` when status is not `draft` |
-| `screenshots` | no | Array of image URLs, max 50 |
-| `releases` | no | Array of release objects |
+| `screenshots` | no | Image URLs, max 50 |
+| `releases` | no | Array of packages |
 
-**Each release:**
+**Each release on create / bulk replace**
 
 | Field | Required | Notes |
 |-------|----------|--------|
@@ -208,129 +278,216 @@ Create a game with optional screenshots and releases.
 | `download_links` | yes | ≥1 absolute URLs |
 | `version` | no | |
 | `file_size` | no | Display string, e.g. `"5.4 GB"` |
-| `description` | no | HTML; remote `<img src>` are downloaded like game details |
+| `description` | no | HTML |
 | `is_active` | no | default `true` |
 | `published_at` | no | default `now()` |
+| `contributor` | no | Existing user **email** |
 
-Download link labels are derived from the URL host automatically.
+Download link labels are derived from the URL host.
 
-#### Success response `201` / detail shape
+First publish does **not** set `downloads_updated_at`. The public “Updated” chip stays hidden until a later explicit `touch_downloads: true`.
+
+---
+
+## GET `/api/v1/games/{slug}`
+
+Full detail. `200` / `404`.
+
+---
+
+## PUT / PATCH `/api/v1/games/{slug}`
+
+Partial update of **top-level fields**. Only keys present in the JSON are changed.
+
+If you send a collection key, that collection is **replaced in full**:
+
+| Body | Effect |
+|------|--------|
+| omit `tags` | tags unchanged |
+| `"tags": ["Romance"]` | tags become exactly that list (empty array clears) |
+| omit `screenshots` | screenshots unchanged |
+| `"screenshots": ["https://..."]` | screenshots become exactly that list |
+| omit `detail_versions` | localized details unchanged |
+| `"detail_versions": [...]` | localized details become exactly that list |
+| omit `releases` | download packages unchanged |
+| `"releases": [...]` | **delete all packages and recreate** from the array (new integer ids). Empty array clears. |
+
+Use nested routes instead of sending `releases` / `screenshots` when you only want to change one item.
+
+Other examples:
+
+- Metadata: `{ "title": "New title", "status": "draft" }`
+- Cover: `{ "cover_url": "https://cdn.example.com/new-cover.png" }`
+- Mark a download update without changing files: `{ "touch_downloads": true }`
+
+`touch_downloads` (boolean, optional): when true, sets `downloads_updated_at` now (Updated chip, favorite notifications, IndexNow if enabled in site settings). Does nothing on first create.
+
+Success `200` with full detail. `422` / `404`.
+
+Field rules match create, except every field is optional (`sometimes`). `cover_url` if sent must be a valid URL. `slug` if sent must stay unique.
+
+---
+
+## DELETE `/api/v1/games/{slug}`
+
+Permanently deletes the game, related rows, and unreferenced media.
+
+```json
+{ "data": { "id": "senren-banka", "deleted": true } }
+```
+
+---
+
+## Nested writes
+
+All nested writes return the **full game detail** (same `data` shape as show). `POST` is `201`; `PUT`/`PATCH`/`DELETE` are `200`.
+
+Child `{id}` values that belong to another game → `404`.
+
+### Screenshots
+
+Max **50** per game.
+
+**POST `/games/{slug}/screenshots`** — append one image.
+
+```json
+{ "url": "https://cdn.example.com/shot-3.png" }
+```
+
+**PATCH `/games/{slug}/screenshots/{id}`** — change that row. Send `url` and/or `sort_order`. The integer `id` is kept when the URL changes.
+
+```json
+{ "url": "https://cdn.example.com/shot-3b.png" }
+```
+
+```json
+{ "sort_order": 0 }
+```
+
+`sort_order` is a 0-based position in the gallery (clamped).
+
+**DELETE `/games/{slug}/screenshots/{id}`** — remove that image only.
+
+### Tags
+
+Tags are strings. Identity is the name (or slug). Detach does **not** delete the global tag.
+
+**POST `/games/{slug}/tags`** — attach; existing tags stay.
+
+```json
+{ "tags": ["Drama", "Slice of Life"] }
+```
+
+**DELETE `/games/{slug}/tags/{tag}`** — detach one. `{tag}` is the slug (`slice-of-life`) or the name (URL-encode spaces: `Slice%20of%20Life`). Unknown tag → `404`. Detaching a tag the game does not have still returns `200`.
+
+### Localized details
+
+`{language}` is a language **code or name** from `/taxonomies` (`en`, `ja`, `Chinese`, …), matched case-insensitively. Unknown language → `422`. English synopsis on the game (`description`) is separate and is not this resource. Do not put `detail_versions[].id` in this path.
+
+**PUT or PATCH `/games/{slug}/detail-versions/{language}`** — create or overwrite that language only. Other languages stay. `{language}` is matched case-insensitively (`JA` and `ja` are the same).
+
+```json
+{ "description": "<p>日本語の詳細</p>", "sort_order": 1 }
+```
+
+`description` may be null. `sort_order` optional (append on create, keep on update). Max **20** languages per game.
+
+**DELETE `/games/{slug}/detail-versions/{language}`** — remove that language only. Missing translation → `404`.
+
+### Releases (download packages)
+
+**POST `/games/{slug}/releases`** — add one package. Existing packages stay. Same fields as a create-time release object, plus optional `touch_downloads`.
 
 ```json
 {
-  "data": {
-    "id": "senren-banka",
-    "title": "Senren Banka",
-    "subtitle": "A spring tale",
-    "status": "published",
-    "category": "Visual Novel",
-    "tags": ["Romance", "Slice of Life"],
-    "developer": "Yuzu Soft",
-    "source_name": "DLsite",
-    "source_id": "RJ01123456",
-    "source_url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01123456.html",
-    "source": {
-      "name": "DLsite",
-      "id": "RJ01123456",
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01123456.html",
-      "faviconUrl": "/images/sources/dlsite.ico"
-    },
-    "release_date": "2016-07-29",
-    "description": "<p>Short HTML synopsis is allowed.</p>...",
-    "cover_url": "http://hgame.test/storage/games/covers/....png",
-    "published_at": "2026-07-29T12:00:00+00:00",
-    "url": "http://hgame.test/resources/senren-banka/details",
-    "screenshots": [
-      "http://hgame.test/storage/games/screenshots/....png"
-    ],
-    "releases": [
-      {
-        "title": "Windows Chinese package",
-        "platforms": ["Windows"],
-        "languages": ["Chinese"],
-        "version": "1.0",
-        "file_size": "5.4 GB",
-        "description": null,
-        "is_active": true,
-        "published_at": "2026-07-29T12:00:00+00:00",
-        "download_links": ["https://example.com/game.zip"]
-      }
-    ],
-    "screenshots_count": 2,
-    "releases_count": 1
-  }
+  "title": "Mac English package",
+  "platforms": ["Mac"],
+  "languages": ["English"],
+  "version": "1.0",
+  "file_size": "5.4 GB",
+  "download_links": ["https://example.com/mac.zip"],
+  "touch_downloads": true
 }
 ```
 
-- `id` is the **slug** (use it for list/show/update/delete).
-- Public page shows the game when `status=published` and `published_at <= now`.
-- Releases appear on the site only if `is_active=true` and they have at least one download link.
+**PATCH `/games/{slug}/releases/{id}`** — update that package in place. Send only keys that change. Omitted keys (including `published_at` and `contributor`) are kept. The integer `id` is kept.
 
----
-
-### GET `/api/v1/games/{slug}`
-
-Full detail for one game (same `data` shape as create/update).
-
-**Response `200`** / **`404`** if slug missing.
-
----
-
-### PUT / PATCH `/api/v1/games/{slug}`
-
-Partial update. **Only fields present in the JSON body are changed.**
-
-Examples:
-
-- Metadata only: `{ "title": "New title", "status": "draft" }`
-- Replace cover: `{ "cover_url": "https://cdn.example.com/new-cover.png" }`
-- Replace all tags: `{ "tags": ["Romance"] }` (empty array clears tags)
-- Replace all screenshots: `{ "screenshots": ["https://..."] }` (empty array clears)
-- Replace **all** releases: `{ "releases": [ ... ] }` (empty array clears)
-
-When `releases` is sent, existing releases are deleted and recreated from the payload (full replace).
-
-**Success:** `200` with full detail payload.  
-**Validation:** `422`. **Not found:** `404`.
-
-Field rules match create, except:
-
-| Field | Notes |
-|-------|--------|
-| All fields | optional (`sometimes`) — omit to leave unchanged |
-| `cover_url` | if sent, must be a valid URL (downloads new cover, drops old) |
-| `slug` | if sent, must stay unique |
-
----
-
-### DELETE `/api/v1/games/{slug}`
-
-Permanently deletes the game, related releases/links/screenshots, and unreferenced media files.
-
-**Response `200`:**
+If `download_links` is sent, it **replaces all links on this package only**. Other packages are untouched.
 
 ```json
 {
-  "data": {
-    "id": "senren-banka",
-    "deleted": true
-  }
+  "version": "1.1",
+  "download_links": ["https://example.com/game-v1-1.zip"],
+  "touch_downloads": true
 }
 ```
 
-**Not found:** `404`.
+Empty body → `422`. At least one of: `title`, `platforms`, `languages`, `version`, `file_size`, `description`, `is_active`, `published_at`, `contributor`, `download_links`, `touch_downloads`.
 
-## Images (important)
+**DELETE `/games/{slug}/releases/{id}`** — delete that package only. Does **not** set `touch_downloads`.
 
-- **No** `multipart/form-data` file upload in v1.
-- Pass `cover_url` and `screenshots[]` as **HTTPS/HTTP URLs** the server can fetch.
-- **Details / release HTML images:** put remote URLs in `<img src="https://...">` inside `description` (or `releases[].description`). The server downloads each unique remote image into `games/content` and rewrites `src` to a local `/storage/...` path (same as admin RichEditor attachments).
-- Already-local paths (`/storage/games/...` or full site URLs pointing at them) are left unchanged.
+There is no nested download-link route. Change links by PATCHing the package.
+
+---
+
+## Images
+
+- No `multipart/form-data` in v1.
+- `cover_url` and screenshot `url` values must be http(s) URLs the server can fetch.
+- HTML in `description` / `detail_versions` / `releases[].description`: remote `<img src="https://...">` are downloaded into `games/content` and rewritten to local `/storage/...` paths.
+- Already-local `/storage/games/...` (or site URLs pointing at them) are left unchanged.
 - `data:` URIs are rejected.
 - Max remote images per HTML field: **30**.
-- Allowed types: `image/jpeg`, `image/png`, `image/webp`, `image/gif`.
-- Max size per file: **20MB**.
-- Failed download / wrong type → `422` with `errors.media`, `errors.description`, or `errors.releases.N.description`.
+- Types: `image/jpeg`, `image/png`, `image/webp`, `image/gif`.
+- Max size: **20MB**.
+- Failed download → `422` on `media`, `description`, `url`, or `releases.N.description`.
+
+---
+
+## Updated signal and IndexNow
+
+`downloads_updated_at` drives the public Updated chip, favorite “downloads updated” notifications, catalog `sort=updated`, sitemap lastmod, and (if enabled in Admin → Site settings → SEO) IndexNow.
+
+| Action | Bumps Updated? |
+|--------|----------------|
+| `POST /games` (first publish) | no |
+| Nested or bulk edit without `touch_downloads` | no |
+| `"touch_downloads": true` on `PATCH /games/{slug}` or nested release create/update | yes |
+| Delete a package / screenshot / tag | no |
+
+Do not set `touch_downloads` for typo fixes, title edits, or adding a screenshot. Set it when the downloadable files actually changed.
+
+IndexNow is configured in the admin UI (enable + generate key). Agents do not call IndexNow themselves. Google does not use IndexNow.
+
+---
+
+## Source library (optional)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/sources` | List known sources |
+| POST | `/sources` | Upsert `{ name, slug?, host_hint?, icon_url?, sort_order? }` |
+| DELETE | `/sources/{slug}` | Remove a library source |
+
+Games still store `source_name` / `source_id` / `source_url` on the game itself.
+
+---
+
+## Errors
+
+| Status | Meaning | What to do |
+|--------|---------|------------|
+| `401` | Bad/missing token | Re-mint `php artisan game:token ...` |
+| `403` | User not admin | Use an admin account |
+| `404` | Unknown slug, nested id, or tag | `GET` the game; check `screenshot_items` / `releases` |
+| `422` `slug` | Slug taken | Change or omit `slug` |
+| `422` `category` | Unknown category | Use `/taxonomies` |
+| `422` `releases` / `platforms` / `languages` | Unknown platform or language | Use `/taxonomies` |
+| `422` `language` | Unknown language on detail-versions | Use `/taxonomies` |
+| `422` `url` / `cover_url` / `media` / `description` | Bad image | Public http(s), allowed MIME, ≤ 20MB |
+| `429` | Rate limited | Wait; max 60/min |
+
+---
 
 ## cURL examples
 
@@ -338,11 +495,11 @@ Permanently deletes the game, related releases/links/screenshots, and unreferenc
 TOKEN="your-token-here"
 BASE="http://hgame.test/api/v1"
 
-# 1) Taxonomies
+# Taxonomies
 curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
   "$BASE/taxonomies"
 
-# 2) Create
+# Create
 curl -sS -X POST "$BASE/games" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Accept: application/json" \
@@ -350,7 +507,7 @@ curl -sS -X POST "$BASE/games" \
   -d '{
     "title": "Senren Banka",
     "category": "Visual Novel",
-    "tags": ["Romance", "Slice of Life"],
+    "tags": ["Romance"],
     "developer": "Yuzu Soft",
     "cover_url": "https://cdn.example.com/cover.png",
     "screenshots": ["https://cdn.example.com/shot-1.png"],
@@ -362,56 +519,68 @@ curl -sS -X POST "$BASE/games" \
     }]
   }'
 
-# 3) List
-curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
-  "$BASE/games?q=senren&status=published"
-
-# 4) Show
+# Show (read integer ids)
 curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
   "$BASE/games/senren-banka"
 
-# 5) Partial update
-curl -sS -X PATCH "$BASE/games/senren-banka" \
+# Append a screenshot
+curl -sS -X POST "$BASE/games/senren-banka/screenshots" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Accept: application/json" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Senren Banka (Updated)","status":"unlisted"}'
+  -d '{"url":"https://cdn.example.com/shot-2.png"}'
 
-# 6) Delete
-curl -sS -X DELETE "$BASE/games/senren-banka" \
+# Replace one screenshot by id
+curl -sS -X PATCH "$BASE/games/senren-banka/screenshots/5" \
   -H "Authorization: Bearer $TOKEN" \
-  -H "Accept: application/json"
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://cdn.example.com/shot-2b.png"}'
+
+# Attach tags
+curl -sS -X POST "$BASE/games/senren-banka/tags" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"tags":["Drama"]}'
+
+# Detach one tag
+curl -sS -X DELETE "$BASE/games/senren-banka/tags/romance" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+
+# Upsert Japanese details only (PUT or PATCH; language code is case-insensitive)
+curl -sS -X PUT "$BASE/games/senren-banka/detail-versions/ja" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"description":"<p>日本語</p>"}'
+
+# Patch one download package and mark it as a file update
+curl -sS -X PATCH "$BASE/games/senren-banka/releases/12" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"version":"1.1","download_links":["https://example.com/game-v1-1.zip"],"touch_downloads":true}'
 ```
 
-## Common errors
-
-| Status | Meaning | What to do |
-|--------|---------|------------|
-| `401` | Bad/missing token | Re-mint with `php artisan game:token ...` |
-| `403` | User not admin | Use an admin account |
-| `404` | Unknown slug | List games or check `id` from create |
-| `422` `slug` | Slug already taken | Change `slug` or omit it |
-| `422` `category` | Unknown category | Use a name/slug from `/taxonomies` |
-| `422` `releases` | Unknown platform/language | Use values from `/taxonomies` |
-| `422` `cover_url` / `media` / `description` | Bad or unreachable image | Fix URL; ensure public access and image MIME |
-| `429` | Rate limited | Wait; max 60/min |
+---
 
 ## Out of scope (do not attempt)
 
 - Multipart binary image upload
 - Auto-creating categories, platforms, or languages
+- Merging / renaming / deleting global tags from this API
 - Unauthenticated public JSON catalog
 - Docs / non-game content via this API
+- Calling IndexNow yourself
 
 ## Agent checklist
 
-- [ ] Have admin Bearer token
+- [ ] Admin Bearer token
 - [ ] Called `/taxonomies` and mapped names
-- [ ] Cover image URL is public and ≤ 20MB
-- [ ] Screenshot URLs (if any) are public images
-- [ ] Detail/release `<img src>` (if any) are public image URLs (not data URIs)
-- [ ] Each release has platforms, languages, and ≥1 download link
-- [ ] POST `/games` → expect `201` and `data.url`
-- [ ] GET `/games` or GET `/games/{id}` to verify
-- [ ] PATCH `/games/{id}` for edits (send only changed fields)
-- [ ] DELETE `/games/{id}` when removing a resource
+- [ ] Cover / screenshot / HTML image URLs are public and ≤ 20MB
+- [ ] For edits: `GET` the game; use integer ids for `/screenshots/{id}` and `/releases/{id}`; use language code/name for `/detail-versions/{language}`
+- [ ] Do not send `screenshots` / `releases` / `tags` / `detail_versions` on `PATCH /games/{slug}` unless replacing the whole list
+- [ ] Each new release has platforms, languages, and ≥1 download link
+- [ ] `touch_downloads: true` only when downloadable files actually changed
+- [ ] `POST /games` or nested write → expect `data.url`; screenshot and release rows keep stable integer `id`s

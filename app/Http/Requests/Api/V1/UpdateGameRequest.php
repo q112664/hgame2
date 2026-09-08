@@ -4,6 +4,8 @@ namespace App\Http\Requests\Api\V1;
 
 use App\GameStatus;
 use App\Models\Game;
+use App\Models\GameDetailTranslation;
+use App\Models\GameScreenshot;
 use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -49,14 +51,14 @@ class UpdateGameRequest extends FormRequest
             'source_host_hint' => ['sometimes', 'nullable', 'string', 'max:255'],
             'release_date' => ['sometimes', 'nullable', 'date'],
             'description' => ['sometimes', 'nullable', 'string'],
-            'detail_versions' => ['sometimes', 'nullable', 'array', 'max:20'],
+            'detail_versions' => ['sometimes', 'nullable', 'array', 'max:'.GameDetailTranslation::MaxPerGame],
             'detail_versions.*.language' => ['required', 'string', 'max:255'],
             'detail_versions.*.description' => ['nullable', 'string'],
             'detail_versions.*.sort_order' => ['nullable', 'integer', 'min:0'],
             'cover_url' => ['sometimes', 'required', 'url', 'max:2048'],
             'status' => ['sometimes', 'nullable', Rule::enum(GameStatus::class)],
             'published_at' => ['sometimes', 'nullable', 'date'],
-            'screenshots' => ['sometimes', 'nullable', 'array', 'max:50'],
+            'screenshots' => ['sometimes', 'nullable', 'array', 'max:'.GameScreenshot::MaxPerGame],
             'screenshots.*' => ['url', 'max:2048'],
             'releases' => ['sometimes', 'nullable', 'array'],
             'releases.*.title' => ['required', 'string', 'max:255'],

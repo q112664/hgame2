@@ -51,6 +51,32 @@ test('users return to the modal redirect after logging in', function () {
     $response->assertRedirect(url('/games/senren-banka'));
 });
 
+test('users return to the tab they were on after logging in', function () {
+    $user = User::factory()->create();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+        'redirect' => '/games/senren-banka#downloads',
+    ]);
+
+    $this->assertAuthenticatedAs($user);
+    $response->assertRedirect(url('/games/senren-banka#downloads'));
+});
+
+test('modal redirects keep only plain tab fragments', function () {
+    $user = User::factory()->create();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+        'redirect' => '/games/senren-banka#<script>alert(1)</script>',
+    ]);
+
+    $this->assertAuthenticatedAs($user);
+    $response->assertRedirect(url('/games/senren-banka'));
+});
+
 test('guest pages share the authentication modal configuration', function () {
     $this->get(route('home'))
         ->assertOk()

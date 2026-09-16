@@ -10,7 +10,7 @@ test('the shared theme defines light and dark semantic tokens', function () {
     expect($stylesheet)
         ->toContain(':root')
         ->toContain('.dark')
-        ->toContain('bIkeymG');
+        ->toContain('Gallery Dark');
 
     foreach (
         [
@@ -34,21 +34,19 @@ test('the shared theme defines light and dark semantic tokens', function () {
     }
 });
 
-test('warm red theme uses oklch tokens and default radius', function () {
+test('gallery dark theme uses warm oklch tokens and default radius', function () {
     $stylesheet = app(Filesystem::class)->get(resource_path('css/app.css'));
 
     expect($stylesheet)
-        ->toContain('Fakku-inspired warm red')
-        ->toContain('--background: oklch(0.97 0 0);')
-        ->toContain('--card: oklch(1 0 0);')
-        ->toContain('--primary: oklch(0.58 0.19 25);')
-        ->toContain('--auth: oklch(0.58 0.19 25);')
-        ->toContain('--accent: oklch(0.96 0.015 25);')
+        ->toContain('Gallery Dark')
+        ->toContain('--background: oklch(0.975 0.004 60);')
+        ->toContain('--card: oklch(0.995 0.002 60);')
+        ->toContain('--primary: oklch(0.565 0.185 27);')
+        ->toContain('--accent: oklch(0.955 0.015 30);')
         ->toContain('--radius: 0.625rem;')
-        ->toContain('--background: oklch(0.13 0 0);')
-        ->toContain('--primary: oklch(0.66 0.18 25);')
-        ->toContain('--auth: oklch(0.66 0.18 25);')
-        ->toContain('--accent: oklch(0.28 0.04 25);')
+        ->toContain('--background: oklch(0.145 0.008 45);')
+        ->toContain('--primary: oklch(0.62 0.175 27);')
+        ->toContain('--accent: oklch(0.28 0.035 27);')
         ->toContain("--font-sans: 'Inter Variable', sans-serif;")
         ->toContain('--radius-sm: calc(var(--radius) - 4px);')
         ->not->toContain('#3498db')
@@ -56,13 +54,64 @@ test('warm red theme uses oklch tokens and default radius', function () {
         ->not->toContain('#f4f5f7');
 });
 
-test('instrument sans only preloads regular and semibold latin faces', function () {
+test('brand and auth alias the primary accent instead of duplicating it', function () {
+    $stylesheet = app(Filesystem::class)->get(resource_path('css/app.css'));
+
+    expect($stylesheet)
+        ->toContain('--brand: var(--primary);')
+        ->toContain('--auth: var(--primary);')
+        ->toContain('--brand-foreground: var(--primary-foreground);')
+        ->toContain('--auth-foreground: var(--primary-foreground);')
+        // The old preset hardcoded the same accent three separate times.
+        ->not->toContain('--brand: oklch(')
+        ->not->toContain('--auth: oklch(');
+});
+
+test('headings use the preloaded instrument sans face', function () {
+    $stylesheet = app(Filesystem::class)->get(resource_path('css/app.css'));
+
+    expect($stylesheet)->toContain(
+        "--font-heading: 'Instrument Sans', 'Inter Variable', sans-serif;",
+    );
+});
+
+test('the inertia progress bar follows the theme primary color', function () {
+    $app = app(Filesystem::class)->get(resource_path('js/app.tsx'));
+
+    // A literal gray here would ignore the warm accent defined in app.css.
+    expect($app)
+        ->toContain("color: 'var(--primary)'")
+        ->not->toContain('#4B5563');
+});
+
+test('the image lightbox is code-split instead of loaded on every detail view', function () {
+    $source = app(Filesystem::class)->get(
+        resource_path('js/pages/resources/show.tsx'),
+    );
+
+    // Static value import would pull the ~76 KB lightbox vendor into the
+    // detail-page chunk for every visitor, whether or not they open a screenshot.
+    expect($source)
+        ->not->toContain("import { ImageLightbox } from '@/components/site/image-lightbox';")
+        ->toContain("import type { LightboxSlide } from '@/components/site/image-lightbox';")
+        ->toContain('lazy(loadImageLightbox)')
+        ->toContain("import('@/components/site/image-lightbox')")
+        ->toContain('<Suspense fallback={null}>')
+        // Rendered only once an index is set, so SSR emits no lightbox markup.
+        ->toContain('{lightboxIndex >= 0 ? (');
+});
+
+test('instrument sans declares latin faces without preloading them', function () {
     $config = app(Filesystem::class)->get(base_path('vite.config.ts'));
 
+    // The plugin declares a legacy `woff` face after each `woff2` one with the
+    // same unicode-range, so the browser renders the woff and preloading the
+    // woff2 only added downloads that nothing ever used.
     expect($config)
         ->toContain("bunny('Instrument Sans'")
         ->toContain("subsets: ['latin']")
-        ->toContain('preload: [{ weight: 400 }, { weight: 600 }]');
+        ->toContain('weights: [400, 500, 600]')
+        ->toContain('preload: false');
 });
 
 test('auth forms use the flat auth button variant', function () {
@@ -193,6 +242,60 @@ test('resource language detail tabs keep inactive versions mounted', function ()
     expect($source)
         ->toMatch('/<TabsContent[\s\S]*?\bforceMount\b/')
         ->toContain('data-[state=inactive]:hidden');
+});
+
+test('detail page mutations preserve the tab fragment across the redirect back', function () {
+    $filesystem = app(Filesystem::class);
+
+    // Favorites, likes and comments all redirect `back()` to the detail page,
+    // and a browser never sends the URL fragment in the Referer, so Inertia
+    // would rewrite the address bar without #downloads / #comments and the
+    // active tab would snap back to details.
+    foreach (
+        [
+            'hooks/use-favorite.ts',
+            'hooks/use-like.ts',
+            'components/site/resource-comments.tsx',
+        ] as $file
+    ) {
+        expect($filesystem->get(resource_path("js/{$file}")))
+            ->toContain('preserveUrl: true');
+    }
+});
+
+test('auth redirects carry the tab fragment instead of the hashless inertia url', function () {
+    $filesystem = app(Filesystem::class);
+
+    // `usePage().url` has no fragment (the tab is written with raw pushState), so
+    // signing in from #downloads used to land the user back on the default tab.
+    expect($filesystem->get(resource_path('js/lib/current-url.ts')))
+        ->toContain('window.location.hash');
+
+    foreach (
+        [
+            'components/site/resource-comments.tsx',
+            'components/site/site-header.tsx',
+            'hooks/use-favorite.ts',
+            'hooks/use-like.ts',
+        ] as $file
+    ) {
+        expect($filesystem->get(resource_path("js/{$file}")))
+            ->toContain('currentUrl()')
+            ->not->toContain('redirect: page.url');
+    }
+});
+
+test('the active tab survives visits that rewrite the url', function () {
+    $source = app(Filesystem::class)->get(
+        resource_path('js/lib/resource-tabs.ts'),
+    );
+
+    // Sign-in and other framework-owned redirects replace the address bar with
+    // the redirect target, so the tab has to be remembered and put back.
+    expect($source)
+        ->toContain("router.on('navigate'")
+        ->toContain('adoptUrl()')
+        ->toContain('nextResourceTabUrl(window.location.href, activeTab)');
 });
 
 test('site empty states and download buttons use primary CTAs', function () {
@@ -549,6 +652,17 @@ test('resource card thumbnails fade in with lazy loading', function () {
         ->toContain('ref={imageRef}')
         ->toContain('onLoad={markLoaded}')
         ->toContain('onError={markLoaded}');
+});
+
+test('the home hero background is marked as the lcp candidate', function () {
+    $hero = app(Filesystem::class)->get(
+        resource_path('js/components/site/home-hero.tsx'),
+    );
+
+    expect($hero)
+        ->toContain('loading="eager"')
+        ->toContain('decoding="async"')
+        ->toContain('fetchPriority="high"');
 });
 
 test('resource catalog keeps seo metadata out of the visible interface', function () {

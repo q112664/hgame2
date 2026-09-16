@@ -14,6 +14,18 @@ final class MediaImageOptimizer
     public const int CoverMaxDimension = 1600;
 
     /**
+     * The header logo renders at most 144x32 CSS px (`site-logo.tsx`), so 320 px
+     * still covers high-density displays without storing the uploaded original.
+     */
+    public const int LogoMaxDimension = 320;
+
+    /** Longest allowed edge per managed directory, matched by path prefix. */
+    private const array MAX_DIMENSIONS = [
+        'games/screenshots/' => self::ScreenshotMaxDimension,
+        'site/logo/' => self::LogoMaxDimension,
+    ];
+
+    /**
      * @return array{
      *     binary: string,
      *     source_size: int,
@@ -132,6 +144,33 @@ final class MediaImageOptimizer
             : $directory.'/'.$target;
     }
 
+    /** Longest edge allowed for the directory that [{$path}] belongs to. */
+    public function maxDimensionFor(string $path): int
+    {
+        foreach (self::MAX_DIMENSIONS as $prefix => $maxDimension) {
+            if (str_starts_with($path, $prefix)) {
+                return $maxDimension;
+            }
+        }
+
+        return self::CoverMaxDimension;
+    }
+
+    /**
+     * Size probe that reads the dimensions without decoding the pixels, so an
+     * upload that needs no work can be stored untouched.
+     */
+    public function exceedsMaxDimension(string $binary, string $path): bool
+    {
+        $size = @getimagesizefromstring($binary);
+
+        if ($size === false) {
+            throw new RuntimeException("Image [{$path}] could not be inspected.");
+        }
+
+        return max((int) $size[0], (int) $size[1]) > $this->maxDimensionFor($path);
+    }
+
     /**
      * @param  int<1, max>  $width
      * @param  int<1, max>  $height
@@ -139,9 +178,7 @@ final class MediaImageOptimizer
      */
     private function targetDimensions(string $path, int $width, int $height): array
     {
-        $maxDimension = str_starts_with($path, 'games/screenshots/')
-            ? self::ScreenshotMaxDimension
-            : self::CoverMaxDimension;
+        $maxDimension = $this->maxDimensionFor($path);
         $longestEdge = max($width, $height);
 
         if ($longestEdge <= $maxDimension) {

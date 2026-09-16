@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useMemo, useState } from 'react';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
+import { currentUrl } from '@/lib/current-url';
 import { favorite as toggleFavorite } from '@/routes/resources';
 
 type UseFavoriteOptions = {
@@ -54,7 +55,7 @@ export function useFavorite({
 
     const toggleFavoriteState = useCallback(() => {
         if (!page.props.auth.user) {
-            openAuthDialog('login', { redirect: redirectPath ?? page.url });
+            openAuthDialog('login', { redirect: redirectPath ?? currentUrl() });
 
             return;
         }
@@ -73,6 +74,10 @@ export function useFavorite({
             {
                 preserveScroll: true,
                 preserveState: true,
+                // The toggle redirects back to this URL and Inertia rewrites the
+                // address bar from the redirect target, which drops the tab
+                // fragment (e.g. #downloads) and snaps the page back to details.
+                preserveUrl: true,
                 only,
                 onError: () => {
                     setOptimistic({
@@ -89,7 +94,6 @@ export function useFavorite({
         only,
         openAuthDialog,
         page.props.auth.user,
-        page.url,
         redirectPath,
         resourceId,
     ]);

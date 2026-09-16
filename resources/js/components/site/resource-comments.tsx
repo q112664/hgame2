@@ -14,6 +14,7 @@ import type { PaginatedData } from '@/components/site/site-pagination';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { UserAvatar } from '@/components/user-avatar';
+import { currentUrl } from '@/lib/current-url';
 import { formatAbsoluteDateTime, formatRelativeTime } from '@/lib/datetime';
 import { commentsPageUrl } from '@/lib/resource-tabs';
 import { cn } from '@/lib/utils';
@@ -434,7 +435,7 @@ export function ResourceComments({
             return true;
         }
 
-        openAuthDialog('login', { redirect: page.url });
+        openAuthDialog('login', { redirect: currentUrl() });
 
         return false;
     };
@@ -505,6 +506,9 @@ export function ResourceComments({
             },
             {
                 preserveScroll: true,
+                // Keep the #comments fragment: the redirect back from the
+                // comment endpoints rewrites the URL without it.
+                preserveUrl: true,
                 only: [...COMMENT_PARTIALS],
                 onSuccess: () => {
                     onPosted();
@@ -635,6 +639,7 @@ export function ResourceComments({
             },
             {
                 preserveScroll: true,
+                preserveUrl: true,
                 only: [...COMMENT_PARTIALS],
                 onSuccess: () => cancelEdit(),
                 onError: (errors) => {
@@ -670,6 +675,7 @@ export function ResourceComments({
             destroyComment({ resource: resourceId, comment: commentId }).url,
             {
                 preserveScroll: true,
+                preserveUrl: true,
                 only: [...COMMENT_PARTIALS],
                 onFinish: () => setDeletingId(null),
             },
@@ -991,7 +997,7 @@ export function ResourceComments({
                                 className="font-medium text-foreground underline-offset-4 hover:underline"
                                 onClick={() =>
                                     openAuthDialog('login', {
-                                        redirect: page.url,
+                                        redirect: currentUrl(),
                                     })
                                 }
                             >
@@ -1005,7 +1011,7 @@ export function ResourceComments({
                                 className="font-medium text-foreground underline-offset-4 hover:underline"
                                 onClick={() =>
                                     openAuthDialog('register', {
-                                        redirect: page.url,
+                                        redirect: currentUrl(),
                                     })
                                 }
                             >

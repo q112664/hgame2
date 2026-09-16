@@ -16,10 +16,15 @@ export default defineConfig({
             ],
             refresh: true,
             fonts: [
+                // Preloading every weight would ship ~47 kB of woff2 that is never
+                // rendered: the plugin declares a legacy `woff` face after each
+                // `woff2` one with the same unicode-range, so the browser always
+                // picks the woff. Faces stay declared for the weights in use, they
+                // are simply fetched on demand instead of preloaded.
                 bunny('Instrument Sans', {
                     weights: [400, 500, 600],
                     subsets: ['latin'],
-                    preload: [{ weight: 400 }, { weight: 600 }],
+                    preload: false,
                 }),
             ],
         }),

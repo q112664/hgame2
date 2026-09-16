@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react';
 import { useSyncExternalStore } from 'react';
 import { show as resourceDetails } from '@/routes/resources';
 
@@ -5,11 +6,7 @@ export type ResourceTab = 'details' | 'downloads' | 'screenshots' | 'comments';
 
 const RESOURCE_TAB_LOCATION_EVENT = 'resource-tab-location';
 
-export function parseResourceTab(
-    hash: string,
-    search = '',
-    commentsEnabled = true,
-): ResourceTab {
+export function parseResourceTab(hash: string, search = ''): ResourceTab {
     const value = hash.startsWith('#') ? hash.slice(1) : hash;
     let tab: ResourceTab = 'details';
 
@@ -35,10 +32,6 @@ export function parseResourceTab(
                 tab = 'comments';
             }
         }
-    }
-
-    if (!commentsEnabled && tab === 'comments') {
-        return 'details';
     }
 
     return tab;
@@ -71,51 +64,102 @@ export function commentsPageUrl(resourceId: string, page: number): string {
     return `${url}#comments`;
 }
 
+const isServer = typeof window === 'undefined';
+
+/**
+ * The active tab is remembered here instead of being re-derived from the URL on
+ * every render, because Inertia rewrites the address bar from the redirect target
+ * on any visit that redirects back — favourites, likes, comments, sign-in — and a
+ * browser never sends the fragment in the Referer. Without that memory
+ * `#downloads` would silently disappear and the page would snap back to details.
+ *
+ * The URL stays the mirror: it is adopted whenever the browser itself moved, and
+ * repaired whenever a visit dropped the fragment.
+ */
+let activeTab: ResourceTab = isServer
+    ? 'details'
+    : parseResourceTab(window.location.hash, window.location.search);
+let pagePath = isServer ? '' : window.location.pathname;
+
+/** The URL wins whenever the browser (back/forward, edited hash) moved. */
+function adoptUrl(): void {
+    activeTab = parseResourceTab(window.location.hash, window.location.search);
+    pagePath = window.location.pathname;
+}
+
 function subscribeResourceLocation(onChange: () => void): () => void {
-    window.addEventListener('hashchange', onChange);
-    window.addEventListener('popstate', onChange);
+    const handleBrowserNavigation = () => {
+        adoptUrl();
+        onChange();
+    };
+
+    const handleVisit = () => {
+        if (window.location.pathname !== pagePath) {
+            // Another page: the URL is the only source of truth.
+            handleBrowserNavigation();
+
+            return;
+        }
+
+        if (activeTab !== 'details' && window.location.hash === '') {
+            // The visit landed back here without the tab fragment, so put it
+            // back rather than letting the URL and the tab disagree.
+            window.history.replaceState(
+                window.history.state,
+                '',
+                nextResourceTabUrl(window.location.href, activeTab),
+            );
+        }
+
+        onChange();
+    };
+
+    window.addEventListener('hashchange', handleBrowserNavigation);
+    window.addEventListener('popstate', handleBrowserNavigation);
     window.addEventListener(RESOURCE_TAB_LOCATION_EVENT, onChange);
 
+    const stopWatchingVisits = router.on('navigate', handleVisit);
+
     return () => {
-        window.removeEventListener('hashchange', onChange);
-        window.removeEventListener('popstate', onChange);
+        window.removeEventListener('hashchange', handleBrowserNavigation);
+        window.removeEventListener('popstate', handleBrowserNavigation);
         window.removeEventListener(RESOURCE_TAB_LOCATION_EVENT, onChange);
+        stopWatchingVisits();
     };
 }
 
-function resourceLocationSnapshot(): string {
-    return `${window.location.hash}\0${window.location.search}`;
+function resourceLocationSnapshot(): ResourceTab {
+    return activeTab;
 }
 
-function resourceLocationServerSnapshot(): string {
-    return '';
+function resourceLocationServerSnapshot(): ResourceTab {
+    return 'details';
 }
 
 export function useResourceTab(commentsEnabled = true): {
     activeTab: ResourceTab;
     selectTab: (tab: ResourceTab) => void;
 } {
-    const snapshot = useSyncExternalStore(
+    const tab = useSyncExternalStore(
         subscribeResourceLocation,
         resourceLocationSnapshot,
         resourceLocationServerSnapshot,
     );
-    const separator = snapshot.indexOf('\0');
-    const hash = separator === -1 ? snapshot : snapshot.slice(0, separator);
-    const search = separator === -1 ? '' : snapshot.slice(separator + 1);
-    const activeTab = parseResourceTab(hash, search, commentsEnabled);
+    const resolvedTab: ResourceTab =
+        !commentsEnabled && tab === 'comments' ? 'details' : tab;
 
-    const selectTab = (tab: ResourceTab) => {
-        const next = nextResourceTabUrl(window.location.href, tab);
+    const selectTab = (next: ResourceTab) => {
+        const target = nextResourceTabUrl(window.location.href, next);
         const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
-        if (next === current) {
-            return;
+        activeTab = next;
+
+        if (target !== current) {
+            window.history.pushState(window.history.state, '', target);
         }
 
-        window.history.pushState(window.history.state, '', next);
         window.dispatchEvent(new Event(RESOURCE_TAB_LOCATION_EVENT));
     };
 
-    return { activeTab, selectTab };
+    return { activeTab: resolvedTab, selectTab };
 }

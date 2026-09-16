@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Dices, Library } from 'lucide-react';
+import { Dices, Gamepad2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -46,6 +46,7 @@ export function HomeHero({ hero, sidePanel }: Props) {
                 className="absolute inset-0 size-full object-cover object-center"
                 loading="eager"
                 decoding="async"
+                fetchPriority="high"
             />
 
             <div
@@ -101,7 +102,7 @@ export function HomeHero({ hero, sidePanel }: Props) {
                                 asChild
                             >
                                 <Link href={resourcesIndex()} prefetch>
-                                    <Library data-icon="inline-start" />
+                                    <Gamepad2 data-icon="inline-start" />
                                     {hero.browseLabel}
                                 </Link>
                             </Button>

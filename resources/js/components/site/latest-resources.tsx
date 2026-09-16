@@ -67,7 +67,9 @@ export function LatestResources({
                                 key={resource.id}
                                 resource={resource}
                                 dateField={dateField}
-                                priority={index < 4}
+                                // Only the first grid row is near the fold; the rest
+                                // start off-screen and must not compete with the hero.
+                                priority={index < 2}
                             />
                         ))}
                     </div>

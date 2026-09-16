@@ -334,7 +334,7 @@ class Setting extends Model
 
     public static function defaultHeroBrowseLabel(): string
     {
-        return 'Browse';
+        return 'Games';
     }
 
     public static function defaultHeroRandomLabel(): string

@@ -9,6 +9,7 @@ use App\Support\MediaImageOptimizer;
 use App\Support\MediaPathCollector;
 use App\Support\MediaReferenceRewriter;
 use App\Support\MediaStorageManager;
+use App\Support\MediaUpload;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
@@ -33,6 +34,39 @@ test('optimizer converts jpeg to validated webp and limits screenshot dimensions
         ->and($result['target_checksum'])->toBe(hash('sha256', $result['binary']));
 
     imagedestroy($decoded);
+});
+
+test('optimizer shrinks site logos to the header display size', function (): void {
+    $logo = makeWebpImage(900, 900);
+    $optimizer = app(MediaImageOptimizer::class);
+
+    expect($optimizer->exceedsMaxDimension($logo, 'site/logo/upload.webp'))->toBeTrue()
+        ->and($optimizer->exceedsMaxDimension($logo, 'games/covers/upload.webp'))->toBeFalse();
+
+    $decoded = imagecreatefromstring($optimizer->optimizeBinary($logo, 'site/logo/upload.webp')['binary']);
+
+    expect($decoded)->not->toBeFalse()
+        ->and(imagesx($decoded))->toBe(MediaImageOptimizer::LogoMaxDimension)
+        ->and(imagesy($decoded))->toBe(MediaImageOptimizer::LogoMaxDimension);
+
+    imagedestroy($decoded);
+});
+
+test('oversized webp uploads are downscaled while small ones keep their bytes', function (): void {
+    $oversized = makeWebpImage(900, 900);
+    $stored = app(MediaUpload::class)->storeBinary($oversized, 'image/webp', 'site/logo');
+    $decoded = imagecreatefromstring(Storage::disk('public')->get($stored));
+
+    expect($stored)->toEndWith('.webp')
+        ->and(imagesx($decoded))->toBe(MediaImageOptimizer::LogoMaxDimension)
+        ->and(imagesy($decoded))->toBe(MediaImageOptimizer::LogoMaxDimension);
+
+    imagedestroy($decoded);
+
+    $small = makeWebpImage(300, 300);
+    $untouched = app(MediaUpload::class)->storeBinary($small, 'image/webp', 'site/logo');
+
+    expect(Storage::disk('public')->get($untouched))->toBe($small);
 });
 
 test('optimizer reserves distinct targets for same-basename image paths', function (): void {
@@ -213,6 +247,22 @@ function makeJpegImage(int $width, int $height): string
 
     ob_start();
     imagejpeg($image, null, 95);
+    $binary = ob_get_clean();
+    imagedestroy($image);
+
+    return is_string($binary) ? $binary : '';
+}
+
+function makeWebpImage(int $width, int $height): string
+{
+    $image = imagecreatetruecolor($width, $height);
+    $background = imagecolorallocate($image, 238, 240, 245);
+    $accent = imagecolorallocate($image, 24, 120, 180);
+    imagefilledrectangle($image, 0, 0, $width, $height, $background);
+    imagefilledellipse($image, (int) ($width / 2), (int) ($height / 2), (int) ($width / 2), (int) ($height / 2), $accent);
+
+    ob_start();
+    imagewebp($image, null, 95);
     $binary = ob_get_clean();
     imagedestroy($image);
 

@@ -73,6 +73,22 @@ class IntendedUrl
 
         $query = isset($parts['query']) ? '?'.$parts['query'] : '';
 
-        return url($path.$query);
+        return url($path.$query).self::fragment($parts['fragment'] ?? null);
+    }
+
+    /**
+     * Keep content anchors (`#downloads`, `#comments`, `#comment-9`) so a deep
+     * link survives the login redirect, but drop anything else: the value is
+     * attacker-controlled and is replayed as a redirect target.
+     */
+    private static function fragment(?string $fragment): string
+    {
+        if ($fragment === null || $fragment === '') {
+            return '';
+        }
+
+        return preg_match('/^[A-Za-z0-9_-]{1,64}$/', $fragment) === 1
+            ? '#'.$fragment
+            : '';
     }
 }

@@ -49,6 +49,7 @@ import {
 import { UserAvatar } from '@/components/user-avatar';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useAppearance } from '@/hooks/use-appearance';
+import { currentUrl } from '@/lib/current-url';
 import { cn } from '@/lib/utils';
 import { home, search } from '@/routes';
 import {
@@ -516,7 +517,7 @@ export function SiteHeader() {
     const [open, setOpen] = useState(false);
     const closeMenu = () => setOpen(false);
     const openAuth = (view: AuthDialogView) => {
-        openAuthDialog(view, { redirect: page.url });
+        openAuthDialog(view, { redirect: currentUrl() });
     };
     const openMobileAuth = (view: AuthDialogView) => {
         closeMenu();

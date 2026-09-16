@@ -69,16 +69,23 @@ final class MediaUpload
         $normalizedMimeType = strtolower(trim(strtok($mimeType, ';') ?: $mimeType));
         $extension = $this->extensionForMimeType($normalizedMimeType);
 
-        if (
-            in_array($normalizedMimeType, ['image/jpeg', 'image/png'], true)
-            && ! in_array($directory, ['site/favicon', 'site/seo'], true)
-        ) {
-            $optimized = $this->imageOptimizer->optimizeBinary(
-                $binary,
-                ($directory !== '' ? $directory.'/' : '').'upload.'.$extension,
-            );
+        $probePath = ($directory !== '' ? $directory.'/' : '').'upload.'.$extension;
+        $isOptimizable = ! in_array($directory, ['site/favicon', 'site/seo'], true);
+
+        if ($isOptimizable && in_array($normalizedMimeType, ['image/jpeg', 'image/png'], true)) {
+            $optimized = $this->imageOptimizer->optimizeBinary($binary, $probePath);
             $binary = $optimized['binary'];
             $extension = 'webp';
+        } elseif (
+            $isOptimizable
+            && $normalizedMimeType === 'image/webp'
+            && $this->imageOptimizer->exceedsMaxDimension($binary, $probePath)
+        ) {
+            // WebP uploads used to skip the optimizer entirely, so an oversized
+            // logo or cover was stored at its original resolution. Assets already
+            // within the limit keep their exact bytes.
+            $optimized = $this->imageOptimizer->optimizeBinary($binary, $probePath);
+            $binary = $optimized['binary'];
         }
 
         $filename = Str::ulid()->toString().'.'.$extension;

@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useMemo, useState } from 'react';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
+import { currentUrl } from '@/lib/current-url';
 import { like as toggleLikeRoute } from '@/routes/resources';
 
 type UseLikeOptions = {
@@ -42,7 +43,7 @@ export function useLike({
 
     const toggleLike = useCallback(() => {
         if (!page.props.auth.user) {
-            openAuthDialog('login', { redirect: redirectPath ?? page.url });
+            openAuthDialog('login', { redirect: redirectPath ?? currentUrl() });
 
             return;
         }
@@ -64,6 +65,9 @@ export function useLike({
             {
                 preserveScroll: true,
                 preserveState: true,
+                // Same as favorites: keep the tab fragment across the redirect
+                // back from the toggle endpoint.
+                preserveUrl: true,
                 only,
                 onError: () => {
                     setOptimistic({
@@ -87,7 +91,6 @@ export function useLike({
         only,
         openAuthDialog,
         page.props.auth.user,
-        page.url,
         redirectPath,
         resourceId,
     ]);

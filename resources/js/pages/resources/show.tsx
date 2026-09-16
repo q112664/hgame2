@@ -9,11 +9,9 @@ import {
     RefreshCw,
     XIcon,
 } from 'lucide-react';
-import { useReducedMotion } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { FavoriteButton } from '@/components/site/favorite-button';
-import { ImageLightbox } from '@/components/site/image-lightbox';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
 import type { PageSeoData } from '@/components/site/page-seo';
 import { PageSeo } from '@/components/site/page-seo';
@@ -49,6 +47,7 @@ import {
 import { UserAvatar } from '@/components/user-avatar';
 import { useFavorite } from '@/hooks/use-favorite';
 import { useImageLoadState } from '@/hooks/use-image-load-state';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { SiteLayout } from '@/layouts/site-layout';
 import {
     formatDate,
@@ -70,6 +69,22 @@ import { seen as markDownloadsSeen } from '@/routes/resources/downloads';
 import { show as userShow } from '@/routes/users';
 import type { BreadcrumbItem } from '@/types';
 import type { GameCard, GameDetail } from '@/types/resources';
+
+/**
+ * Lightbox lives behind a dynamic import: its vendor bundle (~76 KB) plus
+ * styles are only needed once a screenshot is opened, not on every detail view.
+ */
+const loadImageLightbox = () =>
+    import('@/components/site/image-lightbox').then((module) => ({
+        default: module.ImageLightbox,
+    }));
+
+const ImageLightbox = lazy(loadImageLightbox);
+
+/** Warm the chunk on intent so the first open is not a stall. */
+const preloadImageLightbox = () => {
+    void loadImageLightbox();
+};
 
 type Props = {
     resource: GameDetail;
@@ -223,6 +238,13 @@ export default function ResourceShow({
         void postDownloadsSeen(markDownloadsSeen(resource.id).url);
     }, [activeTab, authUserId, postDownloadsSeen, resource.id]);
 
+    // Viewing screenshots is the strongest signal the lightbox is wanted next.
+    useEffect(() => {
+        if (activeTab === 'screenshots') {
+            preloadImageLightbox();
+        }
+    }, [activeTab]);
+
     const openDownloadsTab = () => {
         selectTab('downloads');
 
@@ -285,12 +307,16 @@ export default function ResourceShow({
         <SiteLayout>
             <PageSeo seo={pageSeo} title={resource.title} />
 
-            <ImageLightbox
-                slides={lightboxSlides}
-                index={lightboxIndex}
-                onClose={closeLightbox}
-                onIndexChange={setLightboxIndex}
-            />
+            {lightboxIndex >= 0 ? (
+                <Suspense fallback={null}>
+                    <ImageLightbox
+                        slides={lightboxSlides}
+                        index={lightboxIndex}
+                        onClose={closeLightbox}
+                        onIndexChange={setLightboxIndex}
+                    />
+                </Suspense>
+            ) : null}
 
             <Dialog open={coverDialogOpen} onOpenChange={setCoverDialogOpen}>
                 <DialogContent

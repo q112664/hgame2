@@ -309,6 +309,10 @@ class Game extends Model
     /**
      * Match title, subtitle, developer, category, tags, platforms, or languages.
      *
+     * Uses whereLike() so the match is case-insensitive on every driver: plain
+     * LIKE is case-sensitive on PostgreSQL (production), which SQLite (local and
+     * tests) does not reproduce.
+     *
      * @param  Builder<Game>  $query
      * @return Builder<Game>
      */
@@ -318,30 +322,30 @@ class Game extends Model
 
         return $query->where(function (Builder $builder) use ($like): void {
             $builder
-                ->where('title', 'like', $like)
-                ->orWhere('subtitle', 'like', $like)
-                ->orWhere('developer', 'like', $like)
+                ->whereLike('title', $like)
+                ->orWhereLike('subtitle', $like)
+                ->orWhereLike('developer', $like)
                 ->orWhereHas(
                     'category',
                     fn (Builder $category): Builder => $category
-                        ->where('name', 'like', $like)
-                        ->orWhere('slug', 'like', $like),
+                        ->whereLike('name', $like)
+                        ->orWhereLike('slug', $like),
                 )
                 ->orWhereHas(
                     'tags',
-                    fn (Builder $tags): Builder => $tags->where('name', 'like', $like),
+                    fn (Builder $tags): Builder => $tags->whereLike('name', $like),
                 )
                 ->orWhereHas(
                     'releases.platforms',
                     fn (Builder $platforms): Builder => $platforms
-                        ->where('name', 'like', $like)
-                        ->orWhere('slug', 'like', $like),
+                        ->whereLike('name', $like)
+                        ->orWhereLike('slug', $like),
                 )
                 ->orWhereHas(
                     'releases.languages',
                     fn (Builder $languages): Builder => $languages
-                        ->where('name', 'like', $like)
-                        ->orWhere('code', 'like', $like),
+                        ->whereLike('name', $like)
+                        ->orWhereLike('code', $like),
                 );
         });
     }

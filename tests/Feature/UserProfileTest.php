@@ -133,11 +133,7 @@ test('owners see download update badges on their favorites tab', function () {
         'updated_at' => now()->subDay(),
     ]);
 
-    $release = GameRelease::factory()->for($game)->create([
-        'title' => 'New package',
-        'version' => '2.0',
-    ]);
-    GameDownloadLink::factory()->for($release, 'release')->create();
+    $game->touchDownloadsUpdatedAt();
 
     $this->actingAs($user)
         ->get(route('users.favorites', $user))

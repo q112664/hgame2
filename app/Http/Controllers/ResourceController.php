@@ -167,6 +167,7 @@ class ResourceController extends Controller
                     'language' => $filters['language'],
                     'tags' => $filters['tags'],
                     'sort' => $filters['sort'],
+                    'dir' => $filters['dir'],
                 ],
                 'platform' => [
                     'q' => $filters['q'],
@@ -175,6 +176,7 @@ class ResourceController extends Controller
                     'language' => $filters['language'],
                     'tags' => $filters['tags'],
                     'sort' => $filters['sort'],
+                    'dir' => $filters['dir'],
                 ],
                 'language' => [
                     'q' => $filters['q'],
@@ -183,6 +185,7 @@ class ResourceController extends Controller
                     'language' => $taxonomy['value'],
                     'tags' => $filters['tags'],
                     'sort' => $filters['sort'],
+                    'dir' => $filters['dir'],
                 ],
                 'tag' => [
                     'q' => $filters['q'],
@@ -191,6 +194,7 @@ class ResourceController extends Controller
                     'language' => $filters['language'],
                     'tags' => [$taxonomy['value']],
                     'sort' => $filters['sort'],
+                    'dir' => $filters['dir'],
                 ],
             };
         }
@@ -259,11 +263,12 @@ class ResourceController extends Controller
     /**
      * 301 single-dimension query filters to path-based taxonomy URLs.
      *
-     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}  $filters
+     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string, dir: string}  $filters
      */
     private function taxonomyPathForFilters(array $filters, int $page = 1): ?string
     {
-        if ($filters['q'] !== '' || $filters['sort'] !== ListPublishedGames::SORT_LATEST) {
+        if ($filters['q'] !== ''
+            || $filters['sort'] !== ListPublishedGames::SORT_LATEST) {
             return null;
         }
 
@@ -311,7 +316,7 @@ class ResourceController extends Controller
     }
 
     /**
-     * @return array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}
+     * @return array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string, dir: string}
      */
     private function filtersFromQuery(Request $request): array
     {
@@ -335,6 +340,11 @@ class ResourceController extends Controller
             return $value === '' ? null : $value;
         };
 
+        $ordering = ListPublishedGames::normalizeSort(
+            $filled($request->query('sort')),
+            $filled($request->query('dir')),
+        );
+
         return [
             'q' => trim((string) $request->query('q', '')),
             'category' => $filled($request->query('category')),
@@ -343,17 +353,19 @@ class ResourceController extends Controller
             'tags' => array_values(array_unique(array_filter(
                 array_map(fn (mixed $tag): string => is_string($tag) ? trim($tag) : '', $tags),
             ))),
-            'sort' => $filled($request->query('sort')) ?? ListPublishedGames::SORT_LATEST,
+            'sort' => $ordering['sort'],
+            'dir' => $ordering['dir'],
         ];
     }
 
     /**
-     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}  $filters
+     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string, dir: string}  $filters
      * @param  'category'|'platform'|'language'|'tag'  $type
      */
     private function isPureTaxonomyFilters(array $filters, string $type): bool
     {
-        if ($filters['q'] !== '' || $filters['sort'] !== ListPublishedGames::SORT_LATEST) {
+        if ($filters['q'] !== ''
+            || $filters['sort'] !== ListPublishedGames::SORT_LATEST) {
             return false;
         }
 

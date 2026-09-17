@@ -225,6 +225,8 @@ test('search favorites settings and resources share the site page container', fu
     expect($filesystem->get(resource_path('js/components/site/latest-resources.tsx')))
         ->toContain('nextPageHref?: string | null')
         ->toContain('Next page')
+        // Cards stack one per row on phones.
+        ->toContain('grid grid-cols-1')
         ->toContain('grid-cols-2')
         ->toContain('<ChevronRight data-icon="inline-end" />');
 
@@ -438,15 +440,25 @@ test('search and favorite results use detailed card grids', function () {
     $searchResults = $filesystem->get(resource_path('js/components/site/search-results.tsx'));
     $favorites = $filesystem->get(resource_path('js/pages/users/show.tsx'));
     $favoriteCard = $filesystem->get(resource_path('js/components/site/favorite-resource-card.tsx'));
+    $catalog = $filesystem->get(resource_path('js/pages/resources/index.tsx'));
 
     expect($searchResults)
+        // Cards stack one per row on phones.
+        ->toContain('grid grid-cols-1')
         ->toContain('grid-cols-2')
         ->toContain('lg:grid-cols-3')
         ->toContain('xl:grid-cols-4')
         ->toContain('<DetailedResourceCard');
 
+    expect($catalog)
+        ->toContain('grid grid-cols-1 gap-3')
+        ->toContain('sm:grid-cols-2')
+        ->toContain('lg:grid-cols-3')
+        ->toContain('xl:grid-cols-4');
+
     expect($favorites)
         ->toContain('md:grid-cols-2')
+        ->toContain('grid grid-cols-1')
         ->toContain('<FavoriteResourceCard')
         ->not->toContain('lg:grid-cols-3')
         ->not->toContain('xl:grid-cols-4');
@@ -478,6 +490,9 @@ test('resource and detailed cards share frosted thumbnail overlay chips', functi
         ->toContain('resourceCardTitleClassName')
         ->toContain('bg-black/40')
         ->toContain('backdrop-blur-[2px]')
+        // The update cue rides inside the meta line, so it stays chromeless.
+        ->toContain('resourceCardUpdateBadgeClassName')
+        ->not->toContain('bg-info')
         ->toContain('font-semibold tracking-tight text-foreground');
 
     expect($resourceCard)

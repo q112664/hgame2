@@ -6,9 +6,13 @@ import { ResourceCard } from '@/components/site/resource-card';
 import {
     DEFAULT_FILTERS,
     FilterMenu,
-    SortMenu,
+    SortDirectionButton,
+    SortFieldMenu,
     TagFilterDialog,
+    countActiveFilters,
     filterControlClassName,
+    sortFieldOf,
+    sortSelection,
     visitFilters,
 } from '@/components/site/resource-filter-controls';
 import type {
@@ -69,6 +73,7 @@ export default function ResourcesIndex({
     const searchQuery =
         searchDraft.source === filters.q ? searchDraft.value : filters.q;
 
+    // Selected tags are echoed under the controls, like the other filter rows.
     const selectedTagNames = useMemo(() => {
         const bySlug = new Map(
             filterOptions.tags.map((tag) => [tag.slug, tag.name]),
@@ -81,11 +86,7 @@ export default function ResourcesIndex({
     }, [filterOptions.tags, filters.tags]);
 
     const hasActiveFilters =
-        filters.q.trim() !== '' ||
-        Boolean(filters.category) ||
-        Boolean(filters.platform) ||
-        Boolean(filters.language) ||
-        filters.tags.length > 0;
+        filters.q.trim() !== '' || countActiveFilters(filters) > 0;
 
     const applyFilters = (next: ResourceFilters) => {
         setIsPending(true);
@@ -185,14 +186,9 @@ export default function ResourcesIndex({
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <FilterMenu
                             label="Category"
-                            value={filters.category}
                             allLabel="All categories"
-                            options={filterOptions.categories.map(
-                                (category) => ({
-                                    value: category.slug,
-                                    label: category.name,
-                                }),
-                            )}
+                            value={filters.category}
+                            options={filterOptions.categories}
                             onChange={(category) =>
                                 applyFilters({ ...filters, category })
                             }
@@ -200,14 +196,9 @@ export default function ResourcesIndex({
 
                         <FilterMenu
                             label="Platform"
-                            value={filters.platform}
                             allLabel="All platforms"
-                            options={filterOptions.platforms.map(
-                                (platform) => ({
-                                    value: platform.slug,
-                                    label: platform.name,
-                                }),
-                            )}
+                            value={filters.platform}
+                            options={filterOptions.platforms}
                             onChange={(platform) =>
                                 applyFilters({ ...filters, platform })
                             }
@@ -215,12 +206,12 @@ export default function ResourcesIndex({
 
                         <FilterMenu
                             label="Language"
-                            value={filters.language}
                             allLabel="All languages"
+                            value={filters.language}
                             options={filterOptions.languages.map(
                                 (language) => ({
-                                    value: language.code,
-                                    label: language.name,
+                                    name: language.name,
+                                    slug: language.code,
                                 }),
                             )}
                             onChange={(language) =>
@@ -281,16 +272,35 @@ export default function ResourcesIndex({
                                     applyFilters({
                                         ...DEFAULT_FILTERS,
                                         sort: filters.sort,
+                                        dir: filters.dir,
                                     });
                                 }}
                             >
                                 <RotateCcw className="size-4 text-muted-foreground/80" />
                                 Clear
                             </Button>
-                            <SortMenu
-                                value={filters.sort}
-                                onChange={(sort) =>
-                                    applyFilters({ ...filters, sort })
+
+                            <SortFieldMenu
+                                value={sortFieldOf(filters.sort)}
+                                onChange={(field) =>
+                                    applyFilters({
+                                        ...filters,
+                                        ...sortSelection(field, filters.dir),
+                                    })
+                                }
+                            />
+
+                            <SortDirectionButton
+                                field={sortFieldOf(filters.sort)}
+                                value={filters.dir}
+                                onChange={(dir) =>
+                                    applyFilters({
+                                        ...filters,
+                                        ...sortSelection(
+                                            sortFieldOf(filters.sort),
+                                            dir,
+                                        ),
+                                    })
                                 }
                             />
                         </div>
@@ -329,7 +339,7 @@ export default function ResourcesIndex({
                         ) : null}
                         <div
                             className={cn(
-                                'grid grid-cols-2 gap-3 transition-opacity duration-150 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
+                                'grid grid-cols-1 gap-3 transition-opacity duration-150 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
                                 isPending && 'pointer-events-none opacity-50',
                             )}
                         >
@@ -337,6 +347,11 @@ export default function ResourcesIndex({
                                 <ResourceCard
                                     key={resource.id}
                                     resource={resource}
+                                    dateField={
+                                        sortFieldOf(filters.sort) === 'updated'
+                                            ? 'downloadsUpdatedAt'
+                                            : 'publishedAt'
+                                    }
                                     priority={index < 4}
                                     openInNewWindow={openInNewWindow}
                                 />

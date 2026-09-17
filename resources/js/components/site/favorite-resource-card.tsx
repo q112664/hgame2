@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Download, Eye, X } from 'lucide-react';
+import { Eye, RefreshCw, X } from 'lucide-react';
 import type { DetailedResource } from '@/components/site/detailed-resource-card';
 import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { PlatformIcon } from '@/components/site/platform-icon';
@@ -81,13 +81,21 @@ export function FavoriteResourceCard({
                 </div>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 sm:gap-2.5 sm:p-3.5">
-                    <div className={cn('flex min-w-0 flex-col gap-1.5', onRemove && 'pr-7')}>
+                    <div
+                        className={cn(
+                            'flex min-w-0 flex-col gap-1.5',
+                            onRemove && 'pr-7',
+                        )}
+                    >
                         <h3 className={resourceCardTitleClassName}>
                             {resource.title}
                         </h3>
                         {resource.hasDownloadUpdate ? (
                             <span className={resourceCardUpdateBadgeClassName}>
-                                <Download className="size-3" />
+                                <RefreshCw
+                                    className="size-3 shrink-0"
+                                    aria-hidden
+                                />
                                 Updated
                             </span>
                         ) : null}

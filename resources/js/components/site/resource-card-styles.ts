@@ -19,11 +19,14 @@ export const resourceCardSubtitleClassName = cn(
 
 /** Date / views footer row. */
 export const resourceCardMetaClassName = cn(
-    'text-xs tabular-nums text-muted-foreground',
+    'text-xs text-muted-foreground tabular-nums',
 );
 
-/** Compact “Updated” status chip for download freshness. */
+/**
+ * Download freshness cue for the card meta line. Deliberately chromeless so the
+ * extra date reads as part of the date line instead of a second badge.
+ */
 export const resourceCardUpdateBadgeClassName = cn(
-    'inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-sm bg-info/12 px-1.5',
-    'text-[11px] leading-none font-medium text-info',
+    'inline-flex h-5 w-fit shrink-0 items-center gap-1',
+    'text-[11px] leading-none font-medium text-info/90',
 );

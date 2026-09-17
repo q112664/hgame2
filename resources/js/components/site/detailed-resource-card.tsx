@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Download, Eye, X } from 'lucide-react';
+import { Eye, RefreshCw, X } from 'lucide-react';
 import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
@@ -131,7 +131,10 @@ export function DetailedResourceCard({
 
                     {resource.hasDownloadUpdate ? (
                         <span className={resourceCardUpdateBadgeClassName}>
-                            <Download className="size-3.5" />
+                            <RefreshCw
+                                className="size-3.5 shrink-0"
+                                aria-hidden
+                            />
                             Updated
                         </span>
                     ) : null}
@@ -170,7 +173,7 @@ export function DetailedResourceCard({
                                 overlayChipClassName,
                                 'absolute top-1.5 right-1.5 z-10 size-5 px-0',
                                 'transition-[opacity,background-color] hover:bg-black/55 hover:text-white',
-                                'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
+                                'opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100',
                                 'focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
                                 'disabled:pointer-events-none disabled:opacity-50',
                                 isRemoving && 'opacity-100',

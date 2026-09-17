@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Eye } from 'lucide-react';
+import { Eye, RefreshCw } from 'lucide-react';
 import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
@@ -17,6 +17,7 @@ import {
 import {
     abbreviateCategory,
     abbreviateVersion,
+    formatCompactDate,
     formatDate,
     formatReleaseDate,
     formatViews,
@@ -52,6 +53,17 @@ export function ResourceCard({
             ? formatReleaseDate(displayDate)
             : formatDate(displayDate)
         : null;
+
+    // Packages replaced after the resource was listed here. The listed date is
+    // already on screen, so the badge only adds the part that is new.
+    const updatedAt = resource.downloadsUpdatedAt;
+    /** `updated` ordering puts the download update date in the primary slot. */
+    const showsUpdateDate =
+        dateField === 'downloadsUpdatedAt' && updatedAt !== null;
+    const hasLaterUpdate =
+        !showsUpdateDate &&
+        updatedAt !== null &&
+        (resource.publishedAt === null || updatedAt > resource.publishedAt);
 
     return (
         <Card
@@ -105,13 +117,33 @@ export function ResourceCard({
                     </div>
 
                     <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-1.5">
-                        {resource.version ? (
-                            <span className={overlayChipClassName}>
-                                {abbreviateVersion(resource.version)}
-                            </span>
-                        ) : (
-                            <span />
-                        )}
+                        <div className="flex min-w-0 flex-wrap items-center gap-1">
+                            {resource.version ? (
+                                <span className={overlayChipClassName}>
+                                    {abbreviateVersion(resource.version)}
+                                </span>
+                            ) : null}
+                            {hasLaterUpdate && updatedAt ? (
+                                <span
+                                    className={cn(
+                                        overlayChipClassName,
+                                        // Accent tint marks it as a status, not
+                                        // another taxonomy chip.
+                                        'gap-1 bg-info/85 text-info-foreground ring-info/30',
+                                    )}
+                                    title={`Downloads last updated ${formatDate(updatedAt)}`}
+                                >
+                                    <RefreshCw
+                                        className="size-3 shrink-0"
+                                        aria-hidden
+                                    />
+                                    {formatCompactDate(updatedAt)}
+                                    <span className="sr-only">
+                                        Downloads last updated
+                                    </span>
+                                </span>
+                            ) : null}
+                        </div>
                         <ResourceOverlayLanguageGroup
                             languages={resource.languages}
                         />
@@ -126,14 +158,27 @@ export function ResourceCard({
 
                 <CardContent
                     className={cn(
-                        'mt-auto flex items-center justify-between gap-2 pt-2 pb-3',
+                        'mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-2 pb-3',
                         resourceCardMetaClassName,
                     )}
                 >
-                    <time dateTime={displayDate ?? undefined}>
-                        {formattedDate ?? 'Unscheduled'}
-                    </time>
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-flex min-w-0 items-center gap-1.5">
+                        {showsUpdateDate ? (
+                            <span
+                                className="inline-flex shrink-0 items-center text-info/90"
+                                title="Downloads last updated"
+                            >
+                                <RefreshCw className="size-3" aria-hidden />
+                                <span className="sr-only">
+                                    Downloads last updated
+                                </span>
+                            </span>
+                        ) : null}
+                        <time dateTime={displayDate ?? undefined}>
+                            {formattedDate ?? 'Unscheduled'}
+                        </time>
+                    </span>
+                    <span className="inline-flex shrink-0 items-center gap-1">
                         <Eye className="size-3.5 shrink-0 opacity-70" />
                         {formatViews(resource.views)}
                     </span>

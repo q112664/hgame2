@@ -1,5 +1,12 @@
 import { router } from '@inertiajs/react';
-import { ArrowUpDown, ChevronDown, Search, Tags } from 'lucide-react';
+import {
+    ArrowUpDown,
+    ArrowDownWideNarrow,
+    ArrowUpNarrowWide,
+    ChevronDown,
+    Search,
+    Tags,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -39,7 +46,13 @@ export type LanguageOption = {
     code: string;
 };
 
+/** Orderings only — filters are what change the result set. */
 export type SortOption = 'latest' | 'oldest' | 'updated' | 'title' | 'views';
+
+/** Sort fields offered in the UI. `title` is reachable from legacy links only. */
+export type SortField = 'published' | 'updated' | 'views' | 'title';
+
+export type SortDirection = 'asc' | 'desc';
 
 export type ResourceFilters = {
     q: string;
@@ -48,6 +61,7 @@ export type ResourceFilters = {
     language: string | null;
     tags: string[];
     sort: SortOption;
+    dir: SortDirection;
 };
 
 export type FilterOptions = {
@@ -56,8 +70,6 @@ export type FilterOptions = {
     languages: LanguageOption[];
     tags: FilterOption[];
 };
-
-const ALL_VALUE = '__all__';
 
 /** Shared inset field surface for filter controls inside the filter panel. */
 export const filterControlClassName = cn(
@@ -79,13 +91,17 @@ export const filterControlActiveClassName = cn(
     'dark:focus-visible:border-primary/30',
 );
 
-const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
-    { value: 'latest', label: 'Newest listed' },
-    { value: 'oldest', label: 'Oldest listed' },
-    { value: 'updated', label: 'Recently updated' },
-    { value: 'title', label: 'Title A–Z' },
-    { value: 'views', label: 'Most viewed' },
+const SORT_FIELDS: Array<{ value: SortField; label: string }> = [
+    { value: 'published', label: 'Published date' },
+    { value: 'updated', label: 'Last updated' },
+    { value: 'views', label: 'Views' },
 ];
+
+/** Legacy ordering from old links; shown only while it is the active sort. */
+const LEGACY_TITLE_FIELD: { value: SortField; label: string } = {
+    value: 'title',
+    label: 'Title A–Z',
+};
 
 export const DEFAULT_FILTERS: ResourceFilters = {
     q: '',
@@ -94,26 +110,186 @@ export const DEFAULT_FILTERS: ResourceFilters = {
     language: null,
     tags: [],
     sort: 'latest',
+    dir: 'desc',
 };
 
+/** Sort field behind a canonical sort value. */
+export function sortFieldOf(sort: SortOption): SortField {
+    if (sort === 'updated' || sort === 'views' || sort === 'title') {
+        return sort;
+    }
+
+    return 'published';
+}
+
+/** Direction a sort value uses when the URL omits `dir`. */
+export function defaultDirectionForSort(sort: SortOption): SortDirection {
+    return sort === 'oldest' || sort === 'title' ? 'asc' : 'desc';
+}
+
+/** Direction a field starts on, so the toggle only highlights real changes. */
+export function defaultDirectionForField(field: SortField): SortDirection {
+    return field === 'title' ? 'asc' : 'desc';
+}
+
+/**
+ * Canonical ordering for a field + direction pair, so equivalent URLs
+ * (`published` descending and `latest`) collapse into one URL shape.
+ */
+export function sortSelection(
+    field: SortField,
+    direction: SortDirection,
+): { sort: SortOption; dir: SortDirection } {
+    if (field === 'published') {
+        return direction === 'asc'
+            ? { sort: 'oldest', dir: 'asc' }
+            : { sort: 'latest', dir: 'desc' };
+    }
+
+    return { sort: field, dir: direction };
+}
+
+/** Dimensions that narrow the result set (sort and search excluded). */
+export function countActiveFilters(filters: ResourceFilters): number {
+    return (
+        (filters.category ? 1 : 0) +
+        (filters.platform ? 1 : 0) +
+        (filters.language ? 1 : 0) +
+        filters.tags.length
+    );
+}
+
+export function SortFieldMenu({
+    value,
+    onChange,
+}: {
+    value: SortField;
+    onChange: (field: SortField) => void;
+}) {
+    const options =
+        value === 'title' ? [LEGACY_TITLE_FIELD, ...SORT_FIELDS] : SORT_FIELDS;
+    const selectedLabel =
+        options.find((option) => option.value === value)?.label ??
+        'Published date';
+    const isActive = value !== 'published';
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    aria-label="Sort resources"
+                    className={cn(
+                        'gap-2 px-3',
+                        filterControlClassName,
+                        isActive && filterControlActiveClassName,
+                    )}
+                >
+                    <ArrowUpDown className="size-4 text-muted-foreground/80" />
+                    <span
+                        className={cn(
+                            'truncate',
+                            isActive
+                                ? 'text-foreground'
+                                : 'text-muted-foreground',
+                        )}
+                    >
+                        {selectedLabel}
+                    </span>
+                    <ChevronDown className="size-4 shrink-0 text-muted-foreground/80" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-44">
+                <DropdownMenuRadioGroup
+                    value={value}
+                    onValueChange={(next) => onChange(next as SortField)}
+                >
+                    {options.map((option) => (
+                        <DropdownMenuRadioItem
+                            key={option.value}
+                            value={option.value}
+                        >
+                            {option.label}
+                        </DropdownMenuRadioItem>
+                    ))}
+                </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
+/**
+ * Direction toggle; it sits next to the field menu because they are one order.
+ * The label is abbreviated so the control stays compact next to the field menu.
+ */
+export function SortDirectionButton({
+    field,
+    value,
+    onChange,
+}: {
+    field: SortField;
+    value: SortDirection;
+    onChange: (direction: SortDirection) => void;
+}) {
+    const ascending = value === 'asc';
+    const label = ascending ? 'Ascending' : 'Descending';
+    const Icon = ascending ? ArrowUpNarrowWide : ArrowDownWideNarrow;
+    const isActive = value !== defaultDirectionForField(field);
+
+    return (
+        <Button
+            type="button"
+            variant="outline"
+            aria-label={`Sort direction: ${label.toLowerCase()}`}
+            title={label}
+            className={cn(
+                'gap-2 px-3',
+                filterControlClassName,
+                isActive && filterControlActiveClassName,
+                'focus-visible:border-border/70 focus-visible:ring-0 focus-visible:outline-none',
+                'dark:focus-visible:border-foreground/12',
+            )}
+            onClick={() => onChange(ascending ? 'desc' : 'asc')}
+        >
+            <Icon className="size-4 text-muted-foreground/80" />
+            <span
+                className={cn(
+                    isActive ? 'text-foreground' : 'text-muted-foreground',
+                )}
+            >
+                {ascending ? 'Asc' : 'Desc'}
+            </span>
+        </Button>
+    );
+}
+
+const ALL_VALUE = '__all__';
+
+/** Single-select dimension as a dropdown menu; picking “All” clears it. */
 export function FilterMenu({
     label,
-    value,
     allLabel,
+    value,
     options,
     onChange,
 }: {
     label: string;
-    value: string | null;
     allLabel: string;
-    options: Array<{ value: string; label: string }>;
+    value: string | null;
+    options: FilterOption[];
     onChange: (value: string | null) => void;
 }) {
+    if (options.length === 0) {
+        return null;
+    }
+
     const selectedLabel =
         value === null
             ? allLabel
-            : (options.find((option) => option.value === value)?.label ??
+            : (options.find((option) => option.slug === value)?.name ??
               allLabel);
+
     const isActive = value !== null;
 
     return (
@@ -157,182 +333,22 @@ export function FilterMenu({
                     </DropdownMenuRadioItem>
                     {options.map((option) => (
                         <DropdownMenuRadioItem
-                            key={option.value}
-                            value={option.value}
+                            key={option.slug}
+                            value={option.slug}
                         >
-                            {option.label}
+                            {option.name}
                         </DropdownMenuRadioItem>
                     ))}
                 </DropdownMenuRadioGroup>
             </DropdownMenuContent>
         </DropdownMenu>
     );
-}
-
-export function SortMenu({
-    value,
-    onChange,
-}: {
-    value: SortOption;
-    onChange: (value: SortOption) => void;
-}) {
-    const selectedLabel =
-        SORT_OPTIONS.find((option) => option.value === value)?.label ??
-        'Newest listed';
-    const isActive = value !== 'latest';
-
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                        'gap-2 px-3',
-                        filterControlClassName,
-                        isActive && filterControlActiveClassName,
-                    )}
-                >
-                    <ArrowUpDown className="size-4 text-muted-foreground/80" />
-                    <span
-                        className={cn(
-                            'truncate',
-                            isActive
-                                ? 'text-foreground'
-                                : 'text-muted-foreground',
-                        )}
-                    >
-                        {selectedLabel}
-                    </span>
-                    <ChevronDown className="size-4 shrink-0 text-muted-foreground/80" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-44">
-                <DropdownMenuRadioGroup
-                    value={value}
-                    onValueChange={(next) => onChange(next as SortOption)}
-                >
-                    {SORT_OPTIONS.map((option) => (
-                        <DropdownMenuRadioItem
-                            key={option.value}
-                            value={option.value}
-                        >
-                            {option.label}
-                        </DropdownMenuRadioItem>
-                    ))}
-                </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
-}
-
-export function filterQuery(
-    filters: ResourceFilters,
-    page?: number,
-    options: { omitTaxonomyKeys?: boolean } = {},
-): Record<string, string | number | string[]> {
-    const query: Record<string, string | number | string[]> = {};
-    const omitTaxonomy = options.omitTaxonomyKeys === true;
-
-    if (filters.q.trim() !== '') {
-        query.q = filters.q.trim();
-    }
-
-    if (!omitTaxonomy && filters.category) {
-        query.category = filters.category;
-    }
-
-    if (!omitTaxonomy && filters.platform) {
-        query.platform = filters.platform;
-    }
-
-    if (!omitTaxonomy && filters.language) {
-        query.language = filters.language;
-    }
-
-    if (!omitTaxonomy && filters.tags.length > 0) {
-        query.tags = filters.tags;
-    }
-
-    if (filters.sort !== 'latest') {
-        query.sort = filters.sort;
-    }
-
-    if (page && page > 1) {
-        query.page = page;
-    }
-
-    return query;
 }
 
 /**
- * Single pure taxonomy dimension → path URL; otherwise query-string catalog.
+ * Tag filter as a modal: the taxonomy is long, and the draft is only applied on
+ * “Apply”, so the trigger stays the same size as the other filter controls.
  */
-export function catalogUrl(
-    filters: ResourceFilters,
-    page?: number,
-): string {
-    const q = filters.q.trim();
-    const hasCategory = Boolean(filters.category);
-    const hasPlatform = Boolean(filters.platform);
-    const hasLanguage = Boolean(filters.language);
-    const tagCount = filters.tags.length;
-
-    const dimensionCount =
-        (hasCategory ? 1 : 0) +
-        (hasPlatform ? 1 : 0) +
-        (hasLanguage ? 1 : 0) +
-        (tagCount > 0 ? 1 : 0);
-
-    if (q === '' && dimensionCount === 1 && tagCount <= 1) {
-        const query = filterQuery(filters, page, { omitTaxonomyKeys: true });
-
-        if (hasCategory && filters.category) {
-            return resourcesGenre.url(filters.category, { query });
-        }
-
-        if (hasPlatform && filters.platform) {
-            return resourcesPlatform.url(filters.platform, { query });
-        }
-
-        if (hasLanguage && filters.language) {
-            return resourcesLanguage.url(filters.language, { query });
-        }
-
-        if (tagCount === 1) {
-            return resourcesTag.url(filters.tags[0]!, { query });
-        }
-    }
-
-    return resourcesIndex.url({
-        query: filterQuery(filters, page),
-    });
-}
-
-export function visitFilters(
-    next: ResourceFilters,
-    options: { page?: number; onFinish?: () => void } = {},
-) {
-    router.get(
-        catalogUrl(next, options.page),
-        {},
-        {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-            only: [
-                'resources',
-                'filters',
-                'pageSeo',
-                'heading',
-                'resultsHeading',
-                'taxonomy',
-            ],
-            onFinish: options.onFinish,
-        },
-    );
-}
-
 export function TagFilterDialog({
     options,
     selected,
@@ -379,15 +395,17 @@ export function TagFilterDialog({
                 <Button
                     type="button"
                     variant="outline"
+                    aria-label="Tags"
                     className={cn(
-                        'justify-start gap-2',
+                        'w-full justify-start gap-2 px-3',
                         filterControlClassName,
                         selected.length > 0 && filterControlActiveClassName,
                     )}
                 >
-                    <Tags className="size-4 text-muted-foreground/80" />
+                    <Tags className="size-4 shrink-0 text-muted-foreground/80" />
                     <span
                         className={cn(
+                            'truncate',
                             selected.length > 0
                                 ? 'text-foreground'
                                 : 'text-muted-foreground',
@@ -419,7 +437,7 @@ export function TagFilterDialog({
                     <Input
                         value={query}
                         onChange={(event) => setQuery(event.target.value)}
-                        placeholder="Search tags…"
+                        placeholder="Search tags"
                         className="h-10 border-border bg-background pl-9 shadow-none"
                         autoFocus
                     />
@@ -491,5 +509,114 @@ export function TagFilterDialog({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+export function filterQuery(
+    filters: ResourceFilters,
+    page?: number,
+    options: { omitTaxonomyKeys?: boolean } = {},
+): Record<string, string | number | string[]> {
+    const query: Record<string, string | number | string[]> = {};
+    const omitTaxonomy = options.omitTaxonomyKeys === true;
+
+    if (filters.q.trim() !== '') {
+        query.q = filters.q.trim();
+    }
+
+    if (!omitTaxonomy && filters.category) {
+        query.category = filters.category;
+    }
+
+    if (!omitTaxonomy && filters.platform) {
+        query.platform = filters.platform;
+    }
+
+    if (!omitTaxonomy && filters.language) {
+        query.language = filters.language;
+    }
+
+    if (!omitTaxonomy && filters.tags.length > 0) {
+        query.tags = filters.tags;
+    }
+
+    if (filters.sort !== 'latest') {
+        query.sort = filters.sort;
+    }
+
+    if (filters.dir !== defaultDirectionForSort(filters.sort)) {
+        query.dir = filters.dir;
+    }
+
+    if (page && page > 1) {
+        query.page = page;
+    }
+
+    return query;
+}
+
+/**
+ * Single pure taxonomy dimension → path URL; otherwise query-string catalog.
+ * The update feed always stays on the query-string catalog.
+ */
+export function catalogUrl(filters: ResourceFilters, page?: number): string {
+    const q = filters.q.trim();
+    const hasCategory = Boolean(filters.category);
+    const hasPlatform = Boolean(filters.platform);
+    const hasLanguage = Boolean(filters.language);
+    const tagCount = filters.tags.length;
+
+    const dimensionCount =
+        (hasCategory ? 1 : 0) +
+        (hasPlatform ? 1 : 0) +
+        (hasLanguage ? 1 : 0) +
+        (tagCount > 0 ? 1 : 0);
+
+    if (q === '' && dimensionCount === 1 && tagCount <= 1) {
+        const query = filterQuery(filters, page, { omitTaxonomyKeys: true });
+
+        if (hasCategory && filters.category) {
+            return resourcesGenre.url(filters.category, { query });
+        }
+
+        if (hasPlatform && filters.platform) {
+            return resourcesPlatform.url(filters.platform, { query });
+        }
+
+        if (hasLanguage && filters.language) {
+            return resourcesLanguage.url(filters.language, { query });
+        }
+
+        if (tagCount === 1) {
+            return resourcesTag.url(filters.tags[0]!, { query });
+        }
+    }
+
+    return resourcesIndex.url({
+        query: filterQuery(filters, page),
+    });
+}
+
+export function visitFilters(
+    next: ResourceFilters,
+    options: { page?: number; onFinish?: () => void } = {},
+) {
+    router.get(
+        catalogUrl(next, options.page),
+        {},
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            only: [
+                'resources',
+                'filters',
+                'pageSeo',
+                'heading',
+                'resultsHeading',
+                'taxonomy',
+            ],
+            onFinish: options.onFinish,
+        },
     );
 }

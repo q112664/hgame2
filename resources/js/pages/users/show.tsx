@@ -138,7 +138,7 @@ export default function UserProfileShow({
                             </h2>
 
                             {resources && resources.data.length > 0 ? (
-                                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+                                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                                     {resources.data.map((resource, index) => (
                                         <li
                                             key={resource.id}

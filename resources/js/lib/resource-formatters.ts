@@ -32,14 +32,23 @@ export function formatViews(views: number): string {
 }
 
 /**
+ * Parses the date shapes the API sends: YYYY-MM-DD is read as a calendar day in
+ * the site timezone, anything else (ISO timestamps) goes through `Date`.
+ */
+function parseCalendarDate(date: string): Date {
+    const trimmed = date.trim();
+
+    return /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+        ? new Date(`${trimmed}T00:00:00`)
+        : new Date(trimmed);
+}
+
+/**
  * Site-wide calendar date in en-US medium style: e.g. Jul 4, 2026.
  * Accepts YYYY-MM-DD or any Date-parseable string.
  */
 export function formatDate(date: string): string {
-    const trimmed = date.trim();
-    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
-        ? new Date(`${trimmed}T00:00:00`)
-        : new Date(trimmed);
+    const parsed = parseCalendarDate(date);
 
     if (Number.isNaN(parsed.getTime())) {
         return date;
@@ -55,4 +64,22 @@ export function formatDate(date: string): string {
 /** Alias of formatDate for commercial release dates. */
 export function formatReleaseDate(date: string): string {
     return formatDate(date);
+}
+
+/**
+ * Numeric calendar date, e.g. 9/8/2026, with the full year. Used in thumbnail
+ * chips where a written month would crowd the artwork.
+ */
+export function formatCompactDate(date: string): string {
+    const parsed = parseCalendarDate(date);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return date;
+    }
+
+    return new Intl.DateTimeFormat(SITE_LOCALE, {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+    }).format(parsed);
 }

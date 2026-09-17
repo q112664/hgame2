@@ -21,12 +21,27 @@ class ListPublishedGames
 
     public const SORT_OLDEST = 'oldest';
 
-    /** Opt-in: last download/package change (does not replace default listing). */
+    /**
+     * “Last updated”: the most recent download package change, falling back to
+     * the listed date for resources that were never re-packaged. Every resource
+     * has a value, so this ordering never hides anything.
+     */
     public const SORT_UPDATED = 'updated';
 
     public const SORT_TITLE = 'title';
 
     public const SORT_VIEWS = 'views';
+
+    /** Ordering direction, shared by every sort field. */
+    public const DIR_ASC = 'asc';
+
+    public const DIR_DESC = 'desc';
+
+    /** @var list<string> */
+    public const DIRECTIONS = [
+        self::DIR_ASC,
+        self::DIR_DESC,
+    ];
 
     /** @var list<string> */
     public const SORTS = [
@@ -38,10 +53,53 @@ class ListPublishedGames
     ];
 
     /**
-     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}  $filters
+     * Canonical ordering for a requested sort field + direction, so equivalent
+     * URLs (e.g. `sort=latest&dir=asc` and `sort=oldest`) collapse into one
+     * result set and one URL.
+     *
+     * @return array{sort: string, dir: string}
+     */
+    public static function normalizeSort(?string $sort, ?string $dir): array
+    {
+        $sort ??= self::SORT_LATEST;
+        $knownDir = in_array($dir, self::DIRECTIONS, true) ? $dir : null;
+
+        // Unknown values are passed through so validation can reject them.
+        if (! in_array($sort, self::SORTS, true) || ($dir !== null && $knownDir === null)) {
+            return [
+                'sort' => $sort,
+                'dir' => $dir ?? self::defaultDirection($sort),
+            ];
+        }
+
+        if ($sort === self::SORT_LATEST || $sort === self::SORT_OLDEST) {
+            $direction = $knownDir ?? self::defaultDirection($sort);
+
+            return [
+                'sort' => $direction === self::DIR_ASC ? self::SORT_OLDEST : self::SORT_LATEST,
+                'dir' => $direction,
+            ];
+        }
+
+        return [
+            'sort' => $sort,
+            'dir' => $knownDir ?? self::defaultDirection($sort),
+        ];
+    }
+
+    /** Direction a sort field uses when the URL omits `dir`. */
+    public static function defaultDirection(string $sort): string
+    {
+        return $sort === self::SORT_OLDEST || $sort === self::SORT_TITLE
+            ? self::DIR_ASC
+            : self::DIR_DESC;
+    }
+
+    /**
+     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string, dir: string}  $filters
      * @return array{
      *     resources: LengthAwarePaginator<int, array<string, mixed>>,
-     *     filters: array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string},
+     *     filters: array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string, dir: string},
      *     filterOptions: \Closure(): array{
      *         categories: list<array{name: string, slug: string}>,
      *         platforms: list<array{name: string, slug: string}>,
@@ -52,7 +110,7 @@ class ListPublishedGames
      */
     public function __invoke(array $filters, int $perPage = self::PER_PAGE): array
     {
-        $paginator = $this->applySort($this->query($filters), $filters['sort'])
+        $paginator = $this->applySort($this->query($filters), $filters)
             ->withCardData()
             ->paginate($perPage)
             ->withQueryString()
@@ -66,7 +124,7 @@ class ListPublishedGames
     }
 
     /**
-     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}  $filters
+     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string, dir: string}  $filters
      * @return Builder<Game>
      */
     private function query(array $filters): Builder
@@ -138,19 +196,24 @@ class ListPublishedGames
 
     /**
      * @param  Builder<Game>  $query
+     * @param  array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string, dir: string}  $filters
      * @return Builder<Game>
      */
-    private function applySort(Builder $query, string $sort): Builder
+    private function applySort(Builder $query, array $filters): Builder
     {
-        return match ($sort) {
-            self::SORT_OLDEST => $query->orderBy('published_at')->orderBy('id'),
+        $direction = $filters['dir'] === self::DIR_ASC ? self::DIR_ASC : self::DIR_DESC;
+
+        return match ($filters['sort']) {
+            self::SORT_OLDEST => $query->orderBy('published_at', self::DIR_ASC)->orderBy('id'),
+            self::SORT_TITLE => $query->orderBy('title', $direction)->orderByDesc('published_at'),
+            self::SORT_VIEWS => $query->orderBy('views_count', $direction)->orderByDesc('published_at'),
+            // Resources without a package change fall back to their listed date,
+            // so the ordering covers the whole catalog on one timeline.
             self::SORT_UPDATED => $query
-                ->orderByRaw('COALESCE(downloads_updated_at, published_at) DESC')
+                ->orderByRaw('coalesce(downloads_updated_at, published_at) '.$direction)
                 ->orderByDesc('id'),
-            self::SORT_TITLE => $query->orderBy('title')->orderByDesc('published_at'),
-            self::SORT_VIEWS => $query->orderByDesc('views_count')->orderByDesc('published_at'),
             // Default “Latest” = newest listed on this site (not download updates).
-            default => $query->latest('published_at')->orderByDesc('id'),
+            default => $query->orderByDesc('published_at')->orderByDesc('id'),
         };
     }
 
@@ -172,6 +235,8 @@ class ListPublishedGames
         return [
             'categories' => array_values(Category::query()
                 ->whereHas('games', $publishedGames)
+                ->withCount(['games' => $publishedGames])
+                ->orderByDesc('games_count')
                 ->orderBy('name')
                 ->get(['name', 'slug'])
                 ->map(fn (Category $category): array => [
@@ -230,6 +295,8 @@ class ListPublishedGames
                 ->all()),
             'tags' => array_values(Tag::query()
                 ->whereHas('games', $publishedGames)
+                ->withCount(['games' => $publishedGames])
+                ->orderByDesc('games_count')
                 ->orderBy('name')
                 ->get(['name', 'slug'])
                 ->map(fn (Tag $tag): array => [

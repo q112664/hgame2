@@ -84,6 +84,45 @@ test('resources index lists published games with filter options', function () {
         );
 });
 
+test('filter options list published taxonomies ordered by popularity', function () {
+    $romance = Tag::factory()->create(['name' => 'Romance', 'slug' => 'romance']);
+    $comedy = Tag::factory()->create(['name' => 'Comedy', 'slug' => 'comedy']);
+
+    $first = createListedGame([
+        'slug' => 'first-game',
+        'title' => 'First Game',
+        'tags' => [$romance, $comedy],
+    ]);
+
+    createListedGame([
+        'slug' => 'second-game',
+        'title' => 'Second Game',
+        'category' => $first['category'],
+        'platform' => $first['platform'],
+        'language' => $first['language'],
+        'tags' => [$romance],
+        'published_at' => now()->subHours(2),
+    ]);
+
+    // Draft games never contribute to filter option totals.
+    Game::factory()->draft()->create([
+        'category_id' => $first['category']->id,
+        'title' => 'Hidden Draft',
+    ]);
+
+    $this->get(route('resources.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('filterOptions.categories', 1)
+            ->where('filterOptions.categories.0.slug', 'visual-novel')
+            ->has('filterOptions.tags', 2)
+            ->where('filterOptions.tags.0.slug', 'romance')
+            ->where('filterOptions.tags.1.slug', 'comedy')
+            // Counts stay server side: the menus show names only.
+            ->missing('filterOptions.tags.0.count')
+        );
+});
+
 test('resources index filters by category platform language and tags', function () {
     ['game' => $matched] = createListedGame();
 
@@ -250,14 +289,19 @@ test('resources index rejects unknown filter values', function () {
     ]))->assertSessionHasErrors('category');
 });
 
-test('resources index can sort by download updates without changing default latest', function () {
-    $olderListing = Game::factory()->create([
-        'title' => 'Older Listing',
+test('resources index last updated ordering covers updated and untouched games', function () {
+    $staleUpdate = Game::factory()->create([
+        'title' => 'Stale Update',
         'published_at' => now()->subDays(5),
+        'downloads_updated_at' => now()->subHours(3),
+    ]);
+    $freshUpdate = Game::factory()->create([
+        'title' => 'Fresh Update',
+        'published_at' => now()->subDays(9),
         'downloads_updated_at' => now()->subHour(),
     ]);
-    $newerListing = Game::factory()->create([
-        'title' => 'Newer Listing',
+    $neverUpdated = Game::factory()->create([
+        'title' => 'Never Updated',
         'published_at' => now()->subDay(),
         'downloads_updated_at' => null,
     ]);
@@ -266,14 +310,66 @@ test('resources index can sort by download updates without changing default late
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('filters.sort', 'latest')
-            ->where('resources.data.0.id', $newerListing->slug)
+            ->where('resources.total', 3)
+            ->where('resources.data.0.id', $neverUpdated->slug)
         );
 
+    // `?sort=updated` orders the whole catalog by last change and hides nothing.
     $this->get(route('resources.index', ['sort' => 'updated']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('filters.sort', 'updated')
-            ->where('resources.data.0.id', $olderListing->slug)
+            ->where('filters.dir', 'desc')
+            ->where('resources.total', 3)
+            ->where('resources.data.0.id', $freshUpdate->slug)
+            ->where('resources.data.1.id', $staleUpdate->slug)
+            ->where('resources.data.2.id', $neverUpdated->slug)
+        );
+});
+
+test('resources index last updated ordering keeps every resource on one timeline', function () {
+    // Listed half an hour ago and never re-packaged: still the most recent change.
+    $recentlyListed = Game::factory()->create([
+        'title' => 'Recently Listed',
+        'published_at' => now()->subMinutes(30),
+        'downloads_updated_at' => null,
+    ]);
+    $olderUpdate = Game::factory()->create([
+        'title' => 'Older Update',
+        'published_at' => now()->subDays(10),
+        'downloads_updated_at' => now()->subHours(3),
+    ]);
+
+    $this->get(route('resources.index', ['sort' => 'updated']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('resources.total', 2)
+            ->where('resources.data.0.id', $recentlyListed->slug)
+            ->where('resources.data.1.id', $olderUpdate->slug)
+        );
+
+    $this->get(route('resources.index', ['sort' => 'updated', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.sort', 'updated')
+            ->where('filters.dir', 'asc')
+            ->where('resources.data.0.id', $olderUpdate->slug)
+            ->where('resources.data.1.id', $recentlyListed->slug)
+        );
+});
+
+test('resources index ignores a removed updates filter param', function () {
+    Game::factory()->create([
+        'published_at' => now()->subDay(),
+        'downloads_updated_at' => null,
+    ]);
+
+    $this->get(route('resources.index', ['updates' => 1]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('resources.total', 1)
+            ->has('resources.data', 1)
+            ->missing('filters.updates')
         );
 });
 
@@ -317,6 +413,7 @@ test('resources index sorts by title views and oldest', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('filters.sort', 'title')
+            ->where('filters.dir', 'asc')
             ->where('resources.data.0.id', 'alpha-game')
             ->where('resources.data.1.id', 'beta-game')
         );
@@ -325,6 +422,7 @@ test('resources index sorts by title views and oldest', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('filters.sort', 'views')
+            ->where('filters.dir', 'desc')
             ->where('resources.data.0.id', 'alpha-game')
             ->where('resources.data.1.id', 'beta-game')
         );
@@ -333,8 +431,68 @@ test('resources index sorts by title views and oldest', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('filters.sort', 'oldest')
+            ->where('filters.dir', 'asc')
             ->where('resources.data.0.id', 'beta-game')
             ->where('resources.data.1.id', 'alpha-game')
+        );
+});
+
+test('resources index flips sort direction and folds equivalent orderings', function () {
+    $first = createListedGame([
+        'slug' => 'beta-game',
+        'title' => 'Beta Game',
+        'tags' => [],
+        'published_at' => now()->subDays(2),
+        'views_count' => 10,
+    ]);
+
+    createListedGame([
+        'slug' => 'alpha-game',
+        'title' => 'Alpha Game',
+        'category' => $first['category'],
+        'platform' => $first['platform'],
+        'language' => $first['language'],
+        'tags' => [],
+        'published_at' => now()->subDay(),
+        'views_count' => 100,
+    ]);
+
+    // Fewest views first.
+    $this->get(route('resources.index', ['sort' => 'views', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.sort', 'views')
+            ->where('filters.dir', 'asc')
+            ->where('resources.data.0.id', 'beta-game')
+            ->where('resources.data.1.id', 'alpha-game')
+        );
+
+    // Z–A only exists for the legacy title ordering.
+    $this->get(route('resources.index', ['sort' => 'title', 'dir' => 'desc']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.sort', 'title')
+            ->where('filters.dir', 'desc')
+            ->where('resources.data.0.id', 'beta-game')
+            ->where('resources.data.1.id', 'alpha-game')
+        );
+
+    // `latest` + ascending is the same result set as `oldest`; fold the URL.
+    $this->get(route('resources.index', ['sort' => 'latest', 'dir' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.sort', 'oldest')
+            ->where('filters.dir', 'asc')
+            ->where('resources.data.0.id', 'beta-game')
+            ->where('resources.data.1.id', 'alpha-game')
+        );
+
+    // ...and `oldest` + descending is `latest`.
+    $this->get(route('resources.index', ['sort' => 'oldest', 'dir' => 'desc']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.sort', 'latest')
+            ->where('filters.dir', 'desc')
         );
 });
 
@@ -342,6 +500,12 @@ test('resources index rejects unknown sort values', function () {
     $this->get(route('resources.index', [
         'sort' => 'popularity',
     ]))->assertSessionHasErrors('sort');
+});
+
+test('resources index rejects unknown sort directions', function () {
+    $this->get(route('resources.index', [
+        'dir' => 'sideways',
+    ]))->assertSessionHasErrors('dir');
 });
 
 test('resources index skips filter options on partial reload', function () {

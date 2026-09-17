@@ -27,6 +27,7 @@ class ListResourcesRequest extends FormRequest
             'tags.*' => ['string', 'max:100', Rule::exists('tags', 'slug')],
             'q' => ['nullable', 'string', 'max:100'],
             'sort' => ['nullable', 'string', Rule::in(ListPublishedGames::SORTS)],
+            'dir' => ['nullable', 'string', Rule::in(ListPublishedGames::DIRECTIONS)],
             'page' => ['nullable', 'integer', 'min:1'],
         ];
     }
@@ -43,6 +44,11 @@ class ListResourcesRequest extends FormRequest
             $tags = [];
         }
 
+        $ordering = ListPublishedGames::normalizeSort(
+            $this->filled('sort') ? $this->string('sort')->toString() : null,
+            $this->filled('dir') ? $this->string('dir')->toString() : null,
+        );
+
         $this->merge([
             'q' => $this->filled('q') ? $this->string('q')->trim()->toString() : '',
             'category' => $this->filled('category') ? $this->string('category')->toString() : null,
@@ -51,18 +57,17 @@ class ListResourcesRequest extends FormRequest
             'tags' => array_values(array_unique(array_filter(
                 array_map(fn (mixed $tag): string => is_string($tag) ? trim($tag) : '', $tags),
             ))),
-            'sort' => $this->filled('sort')
-                ? $this->string('sort')->toString()
-                : ListPublishedGames::SORT_LATEST,
+            'sort' => $ordering['sort'],
+            'dir' => $ordering['dir'],
         ]);
     }
 
     /**
-     * @return array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string}
+     * @return array{q: string, category: string|null, platform: string|null, language: string|null, tags: list<string>, sort: string, dir: string}
      */
     public function filters(): array
     {
-        /** @var array{q?: string, category?: string|null, platform?: string|null, language?: string|null, tags?: list<string>, sort?: string} $validated */
+        /** @var array{q?: string, category?: string|null, platform?: string|null, language?: string|null, tags?: list<string>, sort?: string, dir?: string} $validated */
         $validated = $this->validated();
 
         return [
@@ -72,6 +77,7 @@ class ListResourcesRequest extends FormRequest
             'language' => $validated['language'] ?? null,
             'tags' => $validated['tags'] ?? [],
             'sort' => $validated['sort'] ?? ListPublishedGames::SORT_LATEST,
+            'dir' => $validated['dir'] ?? ListPublishedGames::DIR_DESC,
         ];
     }
 

@@ -16,6 +16,8 @@ class HomeController extends Controller
 
     private const int PopularLimit = 8;
 
+    private const int PopularWindowDays = 30;
+
     public function __invoke(): Response
     {
         $latestGames = Game::query()
@@ -33,6 +35,9 @@ class HomeController extends Controller
                 Game::query()
                     ->published()
                     ->withCardData()
+                    // “Popular” is a rolling window, so an old favourite cannot
+                    // sit there forever on lifetime views.
+                    ->where('published_at', '>=', now()->subDays(self::PopularWindowDays))
                     ->orderByDesc('views_count')
                     ->orderByDesc('downloads_count')
                     ->orderByDesc('published_at')

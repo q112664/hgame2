@@ -11,16 +11,19 @@ test('home includes a popular section ordered by views', function () {
         'slug' => 'low-views',
         'title' => 'Low Views',
         'views_count' => 10,
+        'published_at' => now()->subDays(20),
     ]);
     $high = Game::factory()->create([
         'slug' => 'high-views',
         'title' => 'High Views',
         'views_count' => 500,
+        'published_at' => now()->subDays(10),
     ]);
     $mid = Game::factory()->create([
         'slug' => 'mid-views',
         'title' => 'Mid Views',
         'views_count' => 100,
+        'published_at' => now()->subDays(25),
     ]);
     Game::factory()->draft()->create([
         'slug' => 'draft-hot',
@@ -40,6 +43,28 @@ test('home includes a popular section ordered by views', function () {
         );
 });
 
+test('home popular section only ranks the last 30 days', function () {
+    $recent = Game::factory()->create([
+        'slug' => 'recent-hit',
+        'views_count' => 100,
+        'published_at' => now()->subDays(29),
+    ]);
+    $stale = Game::factory()->create([
+        'slug' => 'stale-hit',
+        'views_count' => 9999,
+        'published_at' => now()->subDays(31),
+    ]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('popular', 1)
+            ->where('popular.0.id', $recent->slug)
+            // Lifetime views are still the ranking key inside the window.
+            ->where('popular.0.views', $recent->views_count)
+            ->etc()
+        );
+});
 test('home popular section is empty when nothing is published', function () {
     Game::factory()->draft()->create(['views_count' => 100]);
 

@@ -192,7 +192,7 @@ test('disabled comments hide the tab payload and reject writes', function () {
 
     $this->get(route('resources.comments', $this->game->slug))
         ->assertStatus(301)
-        ->assertRedirect(route('resources.show', $this->game->slug).'#comments');
+        ->assertRedirect(route('resources.show', $this->game->slug));
 
     $this->actingAs($user)
         ->post(route('resources.comments.store', $this->game->slug), [

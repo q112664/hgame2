@@ -1,10 +1,11 @@
 /**
- * The address bar as a local URL, fragment included.
+ * The address bar as a local URL, query and comment anchor included.
  *
- * Inertia's `usePage().url` never carries the fragment — the tab is written with
- * raw `history.pushState` and a fragment is never sent to the server — so using
- * it as an auth redirect silently drops deep-link state such as `#downloads`
- * and the user lands back on the default tab.
+ * Inertia's `usePage().url` cannot stand in for this: the active tab is written
+ * with the raw history API, which Inertia does not observe, and the page URL
+ * never carries the fragment either. Using it as an auth redirect would drop
+ * `?tab=downloads` and land the reader back on the default tab, or drop
+ * `#comment-9` and leave them at the top of the reviews.
  */
 export function currentUrl(): string {
     if (typeof window === 'undefined') {

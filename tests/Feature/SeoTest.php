@@ -162,17 +162,45 @@ test('legacy resource tab urls permanently redirect to the canonical resource ur
     ]);
 
     foreach ([
-        'resources.downloads' => 'downloads',
-        'resources.screenshots' => 'screenshots',
-        'resources.comments' => 'comments',
-    ] as $route => $fragment) {
+        'resources.downloads',
+        'resources.screenshots',
+        'resources.comments',
+    ] as $route) {
         $this->get(route($route, $game))
             ->assertStatus(301)
-            ->assertRedirect(route('resources.show', $game).'#'.$fragment);
+            ->assertRedirect(route('resources.show', $game));
     }
 });
 
-test('paginated comments on the details page are noindex and canonical to details', function () {
+test('every non-default view of a game page is noindex with no canonical', function (array $query) {
+    $game = Game::factory()->create([
+        'slug' => 'tab-query-game',
+        'title' => 'Tab Query Game',
+    ]);
+
+    // Only `/games/{slug}` is indexable. A tab, a page of reviews and a comment
+    // deep link are the same document under another URL, so they are kept out of
+    // the index — and kept out with no canonical at all, because a noindex page
+    // pointing its canonical elsewhere hands Google two opposing signals.
+    $this->get(route('resources.show', ['resource' => $game, ...$query]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('resources/show')
+            ->where('pageSeo.canonical', null)
+            ->where('pageSeo.robots', 'noindex,follow')
+            ->where('pageSeo.jsonLd', null)
+        );
+})->with([
+    'downloads tab' => [['tab' => 'downloads']],
+    'screenshots tab' => [['tab' => 'screenshots']],
+    'reviews tab' => [['tab' => 'comments']],
+    'reviews page' => [['page' => 2]],
+    'reviews tab on a later page' => [['tab' => 'comments', 'page' => 2]],
+    'comment deep link' => [['focus' => 9]],
+    'a comment page carried onto another tab' => [['tab' => 'downloads', 'page' => 2]],
+]);
+
+test('paginated comments stay noindex and carry no canonical', function () {
     $game = Game::factory()->create([
         'slug' => 'paged-comments-game',
         'title' => 'Paged Comments Game',
@@ -189,8 +217,22 @@ test('paginated comments on the details page are noindex and canonical to detail
         ->assertInertia(fn ($page) => $page
             ->where('pageSeo.title', 'Paged Comments Game Download')
             ->where('pageSeo.robots', 'noindex,follow')
-            ->where('pageSeo.canonical', route('resources.show', $game))
+            ->where('pageSeo.canonical', null)
             ->where('pageSeo.jsonLd', null)
+            ->where('comments.current_page', 2)
+        );
+
+    // Naming the reviews tab paginates the same way; only the deindex and the
+    // missing canonical matter to a search engine.
+    $this->get(route('resources.show', [
+        'resource' => $game,
+        'tab' => 'comments',
+        'page' => 2,
+    ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('pageSeo.robots', 'noindex,follow')
+            ->where('pageSeo.canonical', null)
             ->where('comments.current_page', 2)
         );
 });

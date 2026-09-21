@@ -96,6 +96,8 @@ type Props = {
     ratingsAvg?: number;
     ratingsCount?: number;
     related?: GameCard[];
+    /** The tab the server rendered, so hydration does not repaint another one. */
+    initialTab?: ResourceTab;
     pageSeo?: PageSeoData | null;
 };
 
@@ -206,10 +208,14 @@ export default function ResourceShow({
     ratingsAvg = 0,
     ratingsCount = 0,
     related = [],
+    initialTab = 'details',
     pageSeo,
 }: Props) {
     const shouldReduceMotion = useReducedMotion();
-    const { activeTab, selectTab } = useResourceTab(commentsEnabled);
+    const { activeTab, selectTab } = useResourceTab(
+        commentsEnabled,
+        initialTab,
+    );
     const {
         isFavorited: isFavorite,
         isToggling: isTogglingFavorite,

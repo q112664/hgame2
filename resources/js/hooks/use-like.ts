@@ -65,8 +65,8 @@ export function useLike({
             {
                 preserveScroll: true,
                 preserveState: true,
-                // Same as favorites: keep the tab fragment across the redirect
-                // back from the toggle endpoint.
+                // Same as favorites: the tab lives in the query string, so it
+                // survives the redirect back from the toggle endpoint.
                 preserveUrl: true,
                 only,
                 onError: () => {

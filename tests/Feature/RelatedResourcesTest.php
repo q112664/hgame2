@@ -45,7 +45,7 @@ test('legacy downloads urls redirect instead of rendering a separate tab page', 
 
     $this->get(route('resources.downloads', $game))
         ->assertStatus(301)
-        ->assertRedirect(route('resources.show', $game).'#downloads');
+        ->assertRedirect(route('resources.show', $game));
 });
 
 test('list related games excludes the current game and prefers same category', function () {

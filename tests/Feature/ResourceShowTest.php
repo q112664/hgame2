@@ -108,34 +108,75 @@ test('resource pages hide the site notice when it is disabled', function () {
         );
 });
 
-test('legacy resource tab urls permanently redirect to the details page', function (string $routeName, string $fragment) {
+test('legacy resource tab urls permanently redirect to the clean url', function (string $routeName) {
     $this->get(route($routeName, $this->game->slug))
         ->assertStatus(301)
-        ->assertRedirect(route('resources.show', $this->game->slug).'#'.$fragment);
+        ->assertRedirect(route('resources.show', $this->game->slug));
 })->with([
-    'downloads' => ['resources.downloads', 'downloads'],
-    'screenshots' => ['resources.screenshots', 'screenshots'],
-    'comments' => ['resources.comments', 'comments'],
+    'downloads' => ['resources.downloads'],
+    'screenshots' => ['resources.screenshots'],
+    'comments' => ['resources.comments'],
 ]);
 
-test('legacy tab redirects ignore a resource query override', function () {
-    $this->get('/games/'.$this->game->slug.'/downloads?resource=other-slug')
+test('legacy tab urls drop every query param they carried', function () {
+    // The tab, the comment page and the comment anchor all belong to the client:
+    // none of them names an address of its own, so none survives the redirect.
+    // The old URL's value is consolidated into the one indexable URL instead of
+    // being spent on a page that is kept out of the index.
+    $this->get('/games/'.$this->game->slug.'/downloads?page=2')
         ->assertStatus(301)
-        ->assertRedirect(route('resources.show', $this->game->slug).'#downloads');
-});
+        ->assertRedirect(route('resources.show', $this->game->slug));
 
-test('legacy comments urls keep pagination and focus on the details redirect', function () {
+    $this->get('/games/'.$this->game->slug.'/screenshots?focus=9')
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug));
+
     $this->get(route('resources.comments', [
         'resource' => $this->game->slug,
         'page' => 2,
         'focus' => 9,
     ]))
         ->assertStatus(301)
-        ->assertRedirect(route('resources.show', [
-            'resource' => $this->game->slug,
-            'page' => 2,
-            'focus' => 9,
-        ]).'#comment-9');
+        ->assertRedirect(route('resources.show', $this->game->slug));
+
+    // A `resource` override and a numeric key are dropped with the rest, so no
+    // stray parameter can reach the Location header.
+    $this->get('/games/'.$this->game->slug.'/downloads?resource=other-slug&0=%3D')
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug));
+});
+
+test('legacy details urls land on the clean url', function () {
+    $this->get('/games/'.$this->game->slug.'/details?tab=comments&page=2')
+        ->assertStatus(301)
+        ->assertRedirect(route('resources.show', $this->game->slug));
+});
+
+test('the rendered tab matches the url it was requested with', function (array $query, string $expected) {
+    $this->get(route('resources.show', ['resource' => $this->game, ...$query]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('resources/show')
+            ->where('initialTab', $expected)
+        );
+})->with([
+    'default view' => [[], 'details'],
+    'downloads tab' => [['tab' => 'downloads'], 'downloads'],
+    'screenshots tab' => [['tab' => 'screenshots'], 'screenshots'],
+    'reviews tab' => [['tab' => 'comments'], 'comments'],
+    'reviews page' => [['page' => 2], 'comments'],
+    'comment deep link' => [['focus' => 9], 'comments'],
+]);
+
+test('a reviews tab collapses to details when comments are off', function () {
+    Setting::setBoolean('comments_enabled', false);
+
+    $this->get(route('resources.show', ['resource' => $this->game, 'tab' => 'comments']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('commentsEnabled', false)
+            ->where('initialTab', 'details')
+        );
 });
 
 test('details includes sanitized description versions with screenshots and releases', function () {
@@ -282,24 +323,21 @@ test('legacy /resources urls permanently redirect to /games', function () {
 
     $this->get('/resources/'.$this->game->slug.'/downloads')
         ->assertStatus(301)
-        ->assertRedirect(route('resources.show', $this->game->slug).'#downloads');
+        ->assertRedirect(route('resources.show', $this->game->slug));
 
     $this->get('/resources/'.$this->game->slug.'/screenshots')
         ->assertStatus(301)
-        ->assertRedirect(route('resources.show', $this->game->slug).'#screenshots');
+        ->assertRedirect(route('resources.show', $this->game->slug));
 
     $this->get('/resources/'.$this->game->slug.'/comments')
         ->assertStatus(301)
-        ->assertRedirect(route('resources.show', $this->game->slug).'#comments');
+        ->assertRedirect(route('resources.show', $this->game->slug));
 });
 
-test('legacy /resources comments urls keep focus as a fragment', function () {
+test('legacy /resources comments urls land on the clean url', function () {
     $this->get('/resources/'.$this->game->slug.'/comments?focus=9')
         ->assertStatus(301)
-        ->assertRedirect(route('resources.show', [
-            'resource' => $this->game->slug,
-            'focus' => 9,
-        ]).'#comment-9');
+        ->assertRedirect(route('resources.show', $this->game->slug));
 });
 
 test('resource routes return not found for unknown or unpublished games', function () {

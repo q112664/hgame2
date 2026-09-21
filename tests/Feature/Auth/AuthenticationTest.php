@@ -57,14 +57,29 @@ test('users return to the tab they were on after logging in', function () {
     $response = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
-        'redirect' => '/games/senren-banka#downloads',
+        'redirect' => '/games/senren-banka?tab=downloads',
     ]);
 
     $this->assertAuthenticatedAs($user);
-    $response->assertRedirect(url('/games/senren-banka#downloads'));
+    $response->assertRedirect(url('/games/senren-banka?tab=downloads'));
 });
 
-test('modal redirects keep only plain tab fragments', function () {
+test('modal redirects keep comment anchors', function () {
+    $user = User::factory()->create();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+        'redirect' => '/games/senren-banka?tab=comments#comment-9',
+    ]);
+
+    $this->assertAuthenticatedAs($user);
+    $response->assertRedirect(
+        url('/games/senren-banka?tab=comments#comment-9'),
+    );
+});
+
+test('modal redirects drop fragments that are not plain anchors', function () {
     $user = User::factory()->create();
 
     $response = $this->post(route('login.store'), [

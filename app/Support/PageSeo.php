@@ -271,9 +271,14 @@ final class PageSeo
     }
 
     /**
+     * Only the clean game URL is indexable. A tab and a page of reviews are the
+     * same document under another URL, so they are kept out of the index — and
+     * kept out with no canonical at all, because a noindex page that points its
+     * canonical elsewhere hands Google two opposing signals.
+     *
      * @return PageSeoArray
      */
-    public static function forGame(Game $game, int $commentsPage = 1): array
+    public static function forGame(Game $game, bool $isDefaultView = true): array
     {
         if (! $game->relationLoaded('category')) {
             $game->load('category:id,name,slug');
@@ -282,7 +287,6 @@ final class PageSeo
         $description = self::gameDescription($game);
         $image = self::gameImageUrl($game);
         $jsonLdDescription = self::gameJsonLdDescription($game);
-        $isPaginatedComments = $commentsPage > 1;
 
         // Site listing time vs download-update time — never commercial release_date,
         // never Eloquent updated_at (views/metadata must not fake freshness).
@@ -293,21 +297,21 @@ final class PageSeo
             title: self::gameTitle($game),
             titleSuffix: Setting::siteLogoText(),
             description: $description,
-            canonical: route('resources.show', $game),
+            canonical: $isDefaultView ? route('resources.show', $game) : null,
             ogImageUrl: $image,
             ogType: 'website',
-            robots: $isPaginatedComments ? 'noindex,follow' : null,
+            robots: $isDefaultView ? null : 'noindex,follow',
             publishedTime: $publishedTime,
             modifiedTime: $modifiedTime,
-            jsonLd: $isPaginatedComments
-                ? null
-                : [
+            jsonLd: $isDefaultView
+                ? [
                     '@context' => 'https://schema.org',
                     '@graph' => [
                         self::gameJsonLd($game, $jsonLdDescription, $image),
                         self::gameBreadcrumbList($game),
                     ],
-                ],
+                ]
+                : null,
         );
     }
 

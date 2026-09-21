@@ -401,16 +401,25 @@ class ResourceController extends Controller
         ($this->recordGameView)($request, $game);
 
         $commentsProps = $this->commentsPageProps($game, $request);
-        $paginatorPage = $commentsProps['comments'] instanceof LengthAwarePaginator
-            ? $commentsProps['comments']->currentPage()
-            : 1;
-        $commentsPage = max(1, $request->integer('page', 1), $paginatorPage);
+
+        $requestedTab = $this->requestedTab($request);
+
+        // The reviews tab does not exist when comments are off, and the client
+        // collapses it to details: the server-rendered tab has to collapse with
+        // it, or hydration would paint a panel the page does not show.
+        $initialTab = $requestedTab === 'comments' && ! $commentsProps['commentsEnabled']
+            ? 'details'
+            : $requestedTab;
 
         return Inertia::render('resources/show', [
             'resourceNotice' => Setting::resourceNoticeHtml(),
             ...$commentsProps,
             'related' => ($this->listRelatedGames)($game),
-            'pageSeo' => PageSeo::forGame($game, $commentsPage),
+            'initialTab' => $initialTab,
+            'pageSeo' => PageSeo::forGame(
+                $game,
+                isDefaultView: $requestedTab === 'details',
+            ),
             'resource' => $this->presentResource(
                 $game,
                 includeScreenshots: true,
@@ -421,41 +430,21 @@ class ResourceController extends Controller
         ]);
     }
 
-    public function details(Request $request, Game $resource): RedirectResponse
+    public function details(Game $resource): RedirectResponse
     {
-        return to_route('resources.show', [
-            'resource' => $resource,
-            ...$this->queryWithoutResource($request),
-        ], 301);
+        return $this->redirectToResource($resource);
     }
 
     public function legacy(Request $request, ?string $path = null): RedirectResponse
     {
         $path = trim((string) $path, '/');
-        $query = $this->queryWithoutResource($request);
 
         if (preg_match('#^([^/]+)/details$#', $path, $matches) === 1) {
-            return to_route('resources.show', [
-                'resource' => $matches[1],
-                ...$query,
-            ], 301);
+            return $this->redirectToResource($matches[1]);
         }
 
         if (preg_match('#^([^/]+)/(downloads|screenshots|comments)$#', $path, $matches) === 1) {
-            $fragment = $matches[2];
-
-            if ($fragment === 'comments') {
-                $focusId = (int) ($query['focus'] ?? 0);
-
-                if ($focusId > 0) {
-                    $fragment = 'comment-'.$focusId;
-                }
-            }
-
-            return to_route('resources.show', [
-                'resource' => $matches[1],
-                ...$query,
-            ], 301)->withFragment($fragment);
+            return $this->redirectToResource($matches[1]);
         }
 
         if ($path === '') {
@@ -479,9 +468,9 @@ class ResourceController extends Controller
         return redirect($target, 301);
     }
 
-    public function downloads(Request $request, Game $resource): RedirectResponse
+    public function downloads(Game $resource): RedirectResponse
     {
-        return $this->redirectToResourceTab($resource, 'downloads', $request);
+        return $this->redirectToResource($resource);
     }
 
     public function markDownloadsSeen(
@@ -494,50 +483,52 @@ class ResourceController extends Controller
         return response()->noContent();
     }
 
-    public function screenshots(Request $request, Game $resource): RedirectResponse
+    public function screenshots(Game $resource): RedirectResponse
     {
-        return $this->redirectToResourceTab($resource, 'screenshots', $request);
+        return $this->redirectToResource($resource);
     }
 
-    public function comments(Request $request, Game $resource): RedirectResponse
+    public function comments(Game $resource): RedirectResponse
     {
-        return $this->redirectToResourceTab($resource, 'comments', $request);
+        return $this->redirectToResource($resource);
     }
 
     /**
-     * @param  'downloads'|'screenshots'|'comments'  $tab
+     * The tab, the comment page and the comment anchor all belong to the client,
+     * and none of them earns an address of its own: they are the same document
+     * under a different URL, which is exactly what a search engine should not be
+     * given. Every legacy shape therefore lands on `/games/{slug}`, the one URL
+     * that is indexable, so whatever the old URL had earned is consolidated
+     * there rather than dropped.
      */
-    private function redirectToResourceTab(
-        Game $resource,
-        string $tab,
-        Request $request,
-    ): RedirectResponse {
-        $query = $this->queryWithoutResource($request);
-        $fragment = $tab;
+    private function redirectToResource(Game|string $resource): RedirectResponse
+    {
+        return to_route('resources.show', ['resource' => $resource], 301);
+    }
 
-        if ($tab === 'comments') {
-            $focusId = (int) ($query['focus'] ?? 0);
+    /**
+     * The tab a request names, mirroring `parseResourceTab()` on the client:
+     * `?tab=` wins, and `focus` or a page past the first mean the reviews tab.
+     * A legacy `#`-anchor tab is never sent to the server, so it cannot be seen
+     * here — which is harmless, because that URL names no tab for a crawler
+     * either.
+     *
+     * @return 'details'|'downloads'|'screenshots'|'comments'
+     */
+    private function requestedTab(Request $request): string
+    {
+        $tab = $request->query('tab');
+        $tabs = ['details', 'downloads', 'screenshots', 'comments'];
 
-            if ($focusId > 0) {
-                $fragment = 'comment-'.$focusId;
-            }
+        if (is_string($tab) && in_array($tab, $tabs, true)) {
+            return $tab;
         }
 
-        return to_route('resources.show', [
-            'resource' => $resource,
-            ...$query,
-        ], 301)->withFragment($fragment);
-    }
+        if ($request->integer('focus') > 0 || $request->integer('page', 1) > 1) {
+            return 'comments';
+        }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function queryWithoutResource(Request $request): array
-    {
-        $query = $request->query();
-        unset($query['resource']);
-
-        return $query;
+        return 'details';
     }
 
     private function findGame(

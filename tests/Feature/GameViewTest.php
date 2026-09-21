@@ -71,13 +71,13 @@ test('legacy tab urls redirect without recording a view', function () {
 
     $this->get(route('resources.downloads', $game->slug))
         ->assertStatus(301)
-        ->assertRedirect(route('resources.show', $game->slug).'#downloads');
+        ->assertRedirect(route('resources.show', $game->slug));
 
     expect($game->fresh()->views_count)->toBe(3);
 
     $this->get(route('resources.screenshots', $game->slug))
         ->assertStatus(301)
-        ->assertRedirect(route('resources.show', $game->slug).'#screenshots');
+        ->assertRedirect(route('resources.show', $game->slug));
 
     expect($game->fresh()->views_count)->toBe(3);
 });

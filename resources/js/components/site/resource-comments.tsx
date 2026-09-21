@@ -506,8 +506,8 @@ export function ResourceComments({
             },
             {
                 preserveScroll: true,
-                // Keep the #comments fragment: the redirect back from the
-                // comment endpoints rewrites the URL without it.
+                // Keep the reviews tab: the redirect back from the comment
+                // endpoints rewrites the URL from the redirect target.
                 preserveUrl: true,
                 only: [...COMMENT_PARTIALS],
                 onSuccess: () => {

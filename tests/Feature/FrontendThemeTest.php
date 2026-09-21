@@ -246,13 +246,13 @@ test('resource language detail tabs keep inactive versions mounted', function ()
         ->toContain('data-[state=inactive]:hidden');
 });
 
-test('detail page mutations preserve the tab fragment across the redirect back', function () {
+test('detail page mutations keep the tab across the redirect back', function () {
     $filesystem = app(Filesystem::class);
 
-    // Favorites, likes and comments all redirect `back()` to the detail page,
-    // and a browser never sends the URL fragment in the Referer, so Inertia
-    // would rewrite the address bar without #downloads / #comments and the
-    // active tab would snap back to details.
+    // Favorites, likes and comments all redirect `back()` to the detail page.
+    // The tab rides in the query string, which the Referer carries, so it
+    // survives on its own; preserving the URL also keeps Inertia from
+    // rewriting the address bar from the redirect target mid-flight.
     foreach (
         [
             'hooks/use-favorite.ts',
@@ -265,11 +265,12 @@ test('detail page mutations preserve the tab fragment across the redirect back',
     }
 });
 
-test('auth redirects carry the tab fragment instead of the hashless inertia url', function () {
+test('auth redirects carry the address bar instead of the stale inertia url', function () {
     $filesystem = app(Filesystem::class);
 
-    // `usePage().url` has no fragment (the tab is written with raw pushState), so
-    // signing in from #downloads used to land the user back on the default tab.
+    // `usePage().url` knows neither the tab (written with the raw history API)
+    // nor a comment anchor, so signing in from `?tab=downloads#comment-9` would
+    // land the reader back on the default tab.
     expect($filesystem->get(resource_path('js/lib/current-url.ts')))
         ->toContain('window.location.hash');
 
@@ -287,17 +288,50 @@ test('auth redirects carry the tab fragment instead of the hashless inertia url'
     }
 });
 
-test('the active tab survives visits that rewrite the url', function () {
+test('the active tab is read from the query string, not a fragment', function () {
     $source = app(Filesystem::class)->get(
         resource_path('js/lib/resource-tabs.ts'),
     );
 
-    // Sign-in and other framework-owned redirects replace the address bar with
-    // the redirect target, so the tab has to be remembered and put back.
+    // A fragment is dropped by every redirect that lands back here — no
+    // fragment in the Referer, none in an XHR response URL — which is why the
+    // tab moved into `?tab=`. `#comment-9` stays a fragment: that one is a
+    // position in the document.
     expect($source)
-        ->toContain("router.on('navigate'")
-        ->toContain('adoptUrl()')
-        ->toContain('nextResourceTabUrl(window.location.href, activeTab)');
+        ->toContain("params.get('tab')")
+        ->toContain("url.searchParams.set('tab', tab)")
+        ->toContain("url.searchParams.delete('tab')")
+        ->toContain("url.hash = ''")
+        ->toContain("router.on('navigate'");
+});
+
+test('switching tabs replaces the url instead of pushing a history entry', function () {
+    $source = app(Filesystem::class)->get(
+        resource_path('js/lib/resource-tabs.ts'),
+    );
+
+    // A tab is a view switch on a page the reader already has open. Pushing an
+    // entry per tab would make Back walk back through every tab that was peeked
+    // at — the hero download button alone switches one — instead of leaving the
+    // page they arrived from.
+    expect($source)
+        ->toContain('window.history.replaceState(window.history.state')
+        ->not->toContain('window.history.pushState');
+});
+
+test('the server rendered tab is the one hydration starts from', function () {
+    $filesystem = app(Filesystem::class);
+
+    // With SSR on, the first paint is the server's markup: if hydration started
+    // from the default tab instead, a `?tab=` deep link would visibly repaint.
+    // Asserted as tokens because the formatter is free to wrap the call.
+    expect($filesystem->get(resource_path('js/pages/resources/show.tsx')))
+        ->toContain('useResourceTab(')
+        ->toContain('initialTab,');
+
+    expect($filesystem->get(resource_path('js/lib/resource-tabs.ts')))
+        ->toContain('resourceLocationServerSnapshot(initialTab)')
+        ->toContain('() => initialTab');
 });
 
 test('site empty states and download buttons use primary CTAs', function () {
@@ -348,7 +382,7 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain('export function nextResourceTabUrl')
         ->toContain("url.searchParams.delete('page')")
         ->toContain("url.searchParams.delete('focus')")
-        ->toContain('window.history.pushState(window.history.state')
+        ->toContain('window.history.replaceState(window.history.state')
         ->not->toContain('new PopStateEvent');
 
     expect($filesystem->get(resource_path('js/lib/resource-formatters.ts')))

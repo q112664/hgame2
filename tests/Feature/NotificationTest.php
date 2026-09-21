@@ -127,7 +127,8 @@ test('users can mark a notification as read and open its target', function () {
         ->from(route('notifications.index'))
         ->post(route('notifications.read', $notificationId), ['open' => 1])
         ->assertRedirect(
-            route('resources.show', 'demo-game').'?focus='.$reply->id.'#comment-'.$reply->id,
+            route('resources.show', 'demo-game')
+                .'?tab=comments&focus='.$reply->id.'#comment-'.$reply->id,
         );
 
     expect($alice->fresh()->unreadNotifications()->count())->toBe(0);
@@ -305,7 +306,7 @@ test('reading a favorite download notification marks downloads as seen', functio
     $this->actingAs($user)
         ->from(route('notifications.index', ['tab' => 'favorites']))
         ->post(route('notifications.read', $notificationId), ['open' => 1])
-        ->assertRedirect(route('resources.show', 'seen-from-notification').'#downloads');
+        ->assertRedirect(route('resources.show', 'seen-from-notification').'?tab=downloads');
 
     expect($user->fresh()->unreadNotifications()->count())->toBe(0);
 

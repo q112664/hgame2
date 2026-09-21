@@ -74,9 +74,10 @@ export function useFavorite({
             {
                 preserveScroll: true,
                 preserveState: true,
-                // The toggle redirects back to this URL and Inertia rewrites the
-                // address bar from the redirect target, which drops the tab
-                // fragment (e.g. #downloads) and snaps the page back to details.
+                // The toggle redirects `back()` to the current URL. The tab
+                // rides in the query string, so it survives the redirect on its
+                // own; preserving the URL keeps the address bar from being
+                // rewritten from the redirect target mid-flight.
                 preserveUrl: true,
                 only,
                 onError: () => {

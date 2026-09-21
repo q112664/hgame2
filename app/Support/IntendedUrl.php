@@ -77,9 +77,11 @@ class IntendedUrl
     }
 
     /**
-     * Keep content anchors (`#downloads`, `#comments`, `#comment-9`) so a deep
-     * link survives the login redirect, but drop anything else: the value is
-     * attacker-controlled and is replayed as a redirect target.
+     * Keep a plain content anchor (`#comment-9`, and the tab anchors shared
+     * before the tab moved into the query string) so a deep link survives the
+     * login redirect, but drop anything else: the value is attacker-controlled
+     * and is replayed as a redirect target. The active tab itself rides in the
+     * query string, which `sanitize()` already carries through untouched.
      */
     private static function fragment(?string $fragment): string
     {

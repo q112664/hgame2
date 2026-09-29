@@ -45,6 +45,7 @@ export type GameCard = {
 
 export type GameDownloadLink = {
     id: number;
+    /** Name derived from the link's own domain, e.g. "Nekobox". */
     label: string;
     url: string;
 };

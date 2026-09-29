@@ -775,10 +775,17 @@ test('download release items use the compact responsive layout', function () {
         ->toContain('releaseDescriptionNeedsToggle')
         ->toContain("overflow: 'hidden'")
         ->toContain('RELEASE_DESCRIPTION_COLLAPSED_MAX_PX')
+        // Each mirror is named after its own domain, so several links on one
+        // release can be told apart.
+        ->toContain('link.label')
+        ->toContain('Download from ${name}')
+        // No per-mirror icon is fetched; the button is the download arrow plus
+        // the name.
+        ->not->toContain('link.faviconUrl')
+        ->not->toContain('favicons')
         ->not->toContain('useLayoutEffect')
         ->not->toContain('ResizeObserver')
         ->not->toContain('link.contributor')
-        ->not->toContain('link.label')
         ->not->toContain('p-3 sm:p-4')
         ->not->toContain('border-b border-border bg-muted/50 px-4 py-3.5');
 

@@ -111,6 +111,8 @@ test('an administrator can publish a complete game via the api', function () {
         ->and($game->releases->first()->platforms->pluck('name')->all())->toBe(['Windows'])
         ->and($game->releases->first()->languages->pluck('name')->all())->toBe(['Chinese'])
         ->and($game->releases->first()->downloadLinks)->toHaveCount(1)
+        // The API sends only URLs; the link is still named from its domain.
+        ->and($game->releases->first()->downloadLinks->first()->label)->toBe('Example')
         ->and($game->downloads_updated_at)->toBeNull();
 
     Storage::disk(Media::diskName())->assertExists($game->cover_path);

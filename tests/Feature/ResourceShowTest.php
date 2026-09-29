@@ -277,6 +277,7 @@ test('details includes releases, download links, and screenshots together', func
                 fn (string $description): bool => str_contains($description, '<p>Release notes</p>') && ! str_contains($description, '<script>'),
             )
             ->has('resource.releases.0.downloadLinks', 2)
+            // A name chosen by hand is kept rather than re-derived.
             ->where('resource.releases.0.downloadLinks.0.label', 'Baidu Netdisk')
         );
 });

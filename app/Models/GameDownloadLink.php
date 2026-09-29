@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\DownloadLinkName;
 use Database\Factories\GameDownloadLinkFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,10 +28,10 @@ class GameDownloadLink extends Model
         static::saving(function (GameDownloadLink $link): void {
             $link->is_active = true;
 
-            if (blank($link->label)) {
-                $host = parse_url((string) $link->url, PHP_URL_HOST);
-                $link->label = is_string($host) && $host !== '' ? $host : 'Download';
-            }
+            // Every write path — the admin repeater and the publish API alike —
+            // reaches this hook, so naming a link lives in one place instead of
+            // being repeated by each caller.
+            $link->label = DownloadLinkName::resolve($link->label, (string) $link->url);
         });
     }
 

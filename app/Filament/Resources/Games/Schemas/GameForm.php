@@ -355,16 +355,18 @@ class GameForm
     }
 
     /**
+     * Trim what the form submitted and force the link active.
+     *
+     * The label is deliberately left out: GameDownloadLink names a link from its
+     * URL when saving, and setting it here as well would overwrite a name with
+     * the link's host every time a release is edited.
+     *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     public static function normalizeDownloadLink(array $data): array
     {
-        $url = trim((string) ($data['url'] ?? ''));
-        $host = parse_url($url, PHP_URL_HOST);
-
-        $data['url'] = $url;
-        $data['label'] = is_string($host) && $host !== '' ? $host : 'Download';
+        $data['url'] = trim((string) ($data['url'] ?? ''));
         $data['is_active'] = true;
 
         return $data;

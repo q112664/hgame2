@@ -575,36 +575,47 @@ export function ResourceTabContent({
                                             />
                                             {hasLinks
                                                 ? release.downloadLinks.map(
-                                                      (link, index) => (
-                                                          <Button
-                                                              key={link.id}
-                                                              asChild
-                                                              variant="default"
-                                                              size="sm"
-                                                              className={cn(
-                                                                  downloadButtonClassName,
-                                                                  'w-full sm:w-auto',
-                                                              )}
-                                                          >
-                                                              <Link
-                                                                  href={downloadLinkShow(
-                                                                      link.id,
+                                                      (link, index) => {
+                                                          const name =
+                                                              link.label ||
+                                                              'Download';
+                                                          const ariaLabel =
+                                                              name ===
+                                                              'Download'
+                                                                  ? multiLinks
+                                                                      ? `Download ${index + 1}`
+                                                                      : 'Download'
+                                                                  : `Download from ${name}`;
+
+                                                          return (
+                                                              <Button
+                                                                  key={link.id}
+                                                                  asChild
+                                                                  variant="default"
+                                                                  size="sm"
+                                                                  className={cn(
+                                                                      downloadButtonClassName,
+                                                                      'w-full sm:w-auto',
                                                                   )}
-                                                                  target="_blank"
-                                                                  rel="noopener noreferrer"
-                                                                  aria-label={
-                                                                      multiLinks
-                                                                          ? `Download ${index + 1}`
-                                                                          : 'Download'
-                                                                  }
                                                               >
-                                                                  <Download data-icon="inline-start" />
-                                                                  <span className="truncate">
-                                                                      Download
-                                                                  </span>
-                                                              </Link>
-                                                          </Button>
-                                                      ),
+                                                                  <Link
+                                                                      href={downloadLinkShow(
+                                                                          link.id,
+                                                                      )}
+                                                                      target="_blank"
+                                                                      rel="noopener noreferrer"
+                                                                      aria-label={
+                                                                          ariaLabel
+                                                                      }
+                                                                  >
+                                                                      <Download data-icon="inline-start" />
+                                                                      <span className="truncate">
+                                                                          {name}
+                                                                      </span>
+                                                                  </Link>
+                                                              </Button>
+                                                          );
+                                                      },
                                                   )
                                                 : null}
                                         </div>

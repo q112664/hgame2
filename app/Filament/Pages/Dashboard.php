@@ -2,9 +2,10 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Widgets\LatestResourcesTable;
+use App\Filament\Widgets\DailyTrafficChart;
 use App\Filament\Widgets\RecentUsersTable;
 use App\Filament\Widgets\SiteStatsOverview;
+use App\Filament\Widgets\TopResourcesTable;
 use BackedEnum;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Support\Icons\Heroicon;
@@ -26,7 +27,8 @@ class Dashboard extends BaseDashboard
     {
         return [
             SiteStatsOverview::class,
-            LatestResourcesTable::class,
+            DailyTrafficChart::class,
+            TopResourcesTable::class,
             RecentUsersTable::class,
         ];
     }

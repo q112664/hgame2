@@ -1,11 +1,13 @@
 <?php
 
 use App\Filament\Pages\Dashboard;
-use App\Filament\Widgets\LatestResourcesTable;
+use App\Filament\Widgets\DailyTrafficChart;
 use App\Filament\Widgets\RecentUsersTable;
 use App\Filament\Widgets\SiteStatsOverview;
+use App\Filament\Widgets\TopResourcesTable;
 use App\Models\Category;
 use App\Models\Game;
+use App\Models\GameDailyStat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -35,29 +37,43 @@ test('administrators land on the operations dashboard', function () {
         ->assertSee('Dashboard');
 });
 
-test('site stats overview shows operational metrics', function () {
+test('site stats overview shows daily traffic and users', function () {
     $admin = User::factory()->admin()->create();
     User::factory()->count(2)->create();
 
     $category = Category::factory()->create();
-    Game::factory()->count(3)->create([
+    $game = Game::factory()->create([
         'category_id' => $category->id,
         'views_count' => 10,
         'downloads_count' => 4,
     ]);
-    Game::factory()->draft()->create([
-        'category_id' => $category->id,
+
+    GameDailyStat::factory()->create([
+        'game_id' => $game->id,
+        'date' => today()->toDateString(),
+        'views' => 12,
+        'downloads' => 3,
+    ]);
+    GameDailyStat::factory()->create([
+        'game_id' => $game->id,
+        'date' => today()->subDay()->toDateString(),
+        'views' => 6,
+        'downloads' => 1,
     ]);
 
     Livewire::actingAs($admin)
         ->test(SiteStatsOverview::class)
         ->assertSuccessful()
-        ->assertSee('Published resources')
+        ->assertSee('Views today')
+        ->assertSee('Downloads today')
         ->assertSee('Users')
-        ->assertSee('Total views')
-        ->assertSee('Engagement')
-        ->assertSee('3')
-        ->assertSee('1 draft');
+        ->assertSee('vs yesterday (6)')
+        // 12 + 6 views and 3 + 1 downloads over the week.
+        ->assertSee('18 in 7 days')
+        ->assertSee('4 in 7 days')
+        // The retired cumulative cards must not come back.
+        ->assertDontSee('Published resources')
+        ->assertDontSee('Engagement');
 });
 
 test('dashboard widgets load for administrators', function () {
@@ -69,14 +85,38 @@ test('dashboard widgets load for administrators', function () {
         ->assertSee('Dashboard');
 
     Livewire::actingAs($admin)
-        ->test(LatestResourcesTable::class)
+        ->test(DailyTrafficChart::class)
         ->assertSuccessful()
-        ->assertSee('Latest resources');
+        ->assertSee('Views and downloads');
+
+    Livewire::actingAs($admin)
+        ->test(TopResourcesTable::class)
+        ->assertSuccessful()
+        ->assertSee('Top resources (7 days)');
 
     Livewire::actingAs($admin)
         ->test(RecentUsersTable::class)
         ->assertSuccessful()
         ->assertSee('Recent users');
+});
+
+test('the dashboard is composed of the daily traffic widgets', function () {
+    $admin = User::factory()->admin()->create();
+
+    $widgets = Livewire::actingAs($admin)
+        ->test(Dashboard::class)
+        ->assertSuccessful()
+        ->instance()
+        ->getWidgets();
+
+    // Widgets lazy-load, so the page itself only ships placeholders: the list
+    // the Dashboard returns is what actually decides what shows up, in order.
+    expect($widgets)->toBe([
+        SiteStatsOverview::class,
+        DailyTrafficChart::class,
+        TopResourcesTable::class,
+        RecentUsersTable::class,
+    ]);
 });
 
 test('administrators can access game management after public login', function () {

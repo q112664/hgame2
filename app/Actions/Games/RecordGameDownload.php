@@ -2,10 +2,15 @@
 
 namespace App\Actions\Games;
 
+use App\GameMetric;
 use App\Models\Game;
 
 class RecordGameDownload
 {
+    public function __construct(
+        private RecordGameDailyStat $recordGameDailyStat,
+    ) {}
+
     /**
      * Increment the game download counter when a user continues to an external link.
      *
@@ -17,5 +22,7 @@ class RecordGameDownload
         Game::withoutTimestamps(function () use ($game): void {
             $game->increment('downloads_count');
         });
+
+        ($this->recordGameDailyStat)($game, GameMetric::Downloads);
     }
 }

@@ -2,12 +2,17 @@
 
 namespace App\Actions\Games;
 
+use App\GameMetric;
 use App\Models\Game;
 use Illuminate\Http\Request;
 
 class RecordGameView
 {
     public const string TabNavigationHeader = 'X-Resource-Tab-Nav';
+
+    public function __construct(
+        private RecordGameDailyStat $recordGameDailyStat,
+    ) {}
 
     /**
      * Record a view on every full page visit / refresh.
@@ -26,6 +31,8 @@ class RecordGameView
         Game::withoutTimestamps(function () use ($game): void {
             $game->increment('views_count');
         });
+
+        ($this->recordGameDailyStat)($game, GameMetric::Views);
     }
 
     private function shouldSkip(Request $request, Game $game): bool

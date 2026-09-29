@@ -17,14 +17,19 @@ class RecentUsersTable extends TableWidget
 
     protected int|string|array $columnSpan = 1;
 
+    protected int $defaultPaginationPageOption = 5;
+
     public function table(Table $table): Table
     {
+        $usersNewWeek = User::query()->where('created_at', '>=', now()->subDays(7))->count();
+
         return $table
             ->query(
                 fn (): Builder => User::query()
                     ->latest('created_at')
                     ->latest('id'),
             )
+            ->description($usersNewWeek.' registered in the last 7 days.')
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -40,11 +45,14 @@ class RecentUsersTable extends TableWidget
                     ->label('Joined')
                     ->since()
                     ->sortable(),
+                // Worth seeing at a glance rather than digging out of the column
+                // toggle: an account that registered and never came back reads
+                // very differently from one that is here every day.
                 TextColumn::make('last_login_at')
                     ->label('Last login')
                     ->since()
-                    ->placeholder('—')
-                    ->toggleable(),
+                    ->placeholder('Never')
+                    ->sortable(),
             ])
             ->recordActions([
                 Action::make('manage')

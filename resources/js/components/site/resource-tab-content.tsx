@@ -12,8 +12,6 @@ import type { LightboxSlide } from '@/components/site/image-lightbox';
 import { LikeButton } from '@/components/site/like-button';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import { RelatedResources } from '@/components/site/related-resources';
-import type { ResourceComment } from '@/components/site/resource-comments';
-import { ResourceComments } from '@/components/site/resource-comments';
 import {
     downloadButtonClassName,
     fileSizeBadgeClassName,
@@ -25,7 +23,6 @@ import {
 } from '@/components/site/resource-detail-styles';
 import { RichHtml } from '@/components/site/rich-html';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
-import type { PaginatedData } from '@/components/site/site-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -33,7 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserAvatar } from '@/components/user-avatar';
 import { useImageLoadState } from '@/hooks/use-image-load-state';
 import { useLike } from '@/hooks/use-like';
-import { formatDate } from '@/lib/resource-formatters';
+import { formatDate, formatViews } from '@/lib/resource-formatters';
 import type { ResourceTab } from '@/lib/resource-tabs';
 import { cn } from '@/lib/utils';
 import { show as downloadLinkShow } from '@/routes/download-links';
@@ -43,6 +40,33 @@ import type { GameCard, GameDetail } from '@/types/resources';
 
 /** Collapsed height ≈ three prose-sm lines before “Show more”. */
 const RELEASE_DESCRIPTION_COLLAPSED_MAX_PX = 72;
+
+/** Resource-wide download total, aligned with the like chip on the package bar. */
+function DownloadCount({
+    count,
+    className,
+}: {
+    count: number;
+    className?: string;
+}) {
+    const formatted = formatViews(count);
+
+    return (
+        <span
+            className={cn(
+                'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5',
+                'bg-muted text-sm font-medium text-muted-foreground tabular-nums',
+                'dark:bg-white/10',
+                className,
+            )}
+            title={`${formatted} downloads`}
+        >
+            <Download className="size-3.5 shrink-0" aria-hidden />
+            <span className="sr-only">Downloads </span>
+            {formatted}
+        </span>
+    );
+}
 
 const releaseDescriptionClassName = cn(
     'prose-sm max-w-none text-muted-foreground',
@@ -262,10 +286,6 @@ type Props = {
     /** Site-wide notice HTML above download packages (empty when disabled). */
     resourceNotice?: string;
     resourceId?: string;
-    comments?: PaginatedData<ResourceComment> | null;
-    commentsCount?: number;
-    ratingsAvg?: number;
-    ratingsCount?: number;
     related?: GameCard[];
 };
 
@@ -276,10 +296,6 @@ export function ResourceTabContent({
     onOpenLightbox,
     resourceNotice = '',
     resourceId,
-    comments,
-    commentsCount = 0,
-    ratingsAvg = 0,
-    ratingsCount = 0,
     related = [],
 }: Props) {
     const {
@@ -460,9 +476,8 @@ export function ResourceTabContent({
                                         className={releaseFooterInnerClassName}
                                     >
                                         {/*
-                                              Mobile: author left + like right on one row,
-                                              download buttons full-width below.
-                                              sm+: author left, like + downloads on the right.
+                                              Mobile: author left, like + download count on the right.
+                                              sm+: author left; like, count, and download buttons on the right.
                                             */}
                                         <div className="flex w-full min-w-0 items-center justify-between gap-2 sm:w-auto sm:justify-start">
                                             {release.contributor ? (
@@ -473,7 +488,7 @@ export function ResourceTabContent({
                                                     )}
                                                     prefetch
                                                     className={cn(
-                                                        'inline-flex max-w-full min-w-0 items-center gap-2 sm:max-w-[min(100%,14rem)]',
+                                                        'inline-flex min-w-0 flex-1 items-center gap-2 sm:max-w-[min(100%,14rem)] sm:flex-none',
                                                         'rounded-md transition-opacity hover:opacity-85',
                                                         'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
                                                     )}
@@ -525,7 +540,7 @@ export function ResourceTabContent({
                                                 </Link>
                                             ) : (
                                                 <span
-                                                    className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
+                                                    className="inline-flex min-w-0 flex-1 items-center gap-1 text-xs leading-4 text-muted-foreground sm:flex-none"
                                                     title={
                                                         activityIsUpdate
                                                             ? 'Downloads last updated'
@@ -542,7 +557,7 @@ export function ResourceTabContent({
                                                             activityDate ??
                                                             undefined
                                                         }
-                                                        className="tabular-nums"
+                                                        className="min-w-0 truncate tabular-nums"
                                                     >
                                                         {activityDate
                                                             ? formatDate(
@@ -552,13 +567,18 @@ export function ResourceTabContent({
                                                     </time>
                                                 </span>
                                             )}
-                                            <LikeButton
-                                                isLiked={isLiked}
-                                                likesCount={likesCount}
-                                                isToggling={isTogglingLike}
-                                                onToggle={toggleLike}
-                                                className="shrink-0 sm:hidden"
-                                            />
+                                            <div className="flex shrink-0 items-center gap-2 sm:hidden">
+                                                <LikeButton
+                                                    isLiked={isLiked}
+                                                    likesCount={likesCount}
+                                                    isToggling={isTogglingLike}
+                                                    onToggle={toggleLike}
+                                                    className="shrink-0"
+                                                />
+                                                <DownloadCount
+                                                    count={resource.downloads}
+                                                />
+                                            </div>
                                         </div>
 
                                         <div
@@ -572,6 +592,10 @@ export function ResourceTabContent({
                                                 isToggling={isTogglingLike}
                                                 onToggle={toggleLike}
                                                 className="hidden shrink-0 sm:inline-flex"
+                                            />
+                                            <DownloadCount
+                                                count={resource.downloads}
+                                                className="hidden sm:inline-flex"
                                             />
                                             {hasLinks
                                                 ? release.downloadLinks.map(
@@ -664,19 +688,6 @@ export function ResourceTabContent({
                     />
                 )}
             </div>
-
-            {resourceId && comments ? (
-                <div hidden={activeTab !== 'comments'}>
-                    <ResourceComments
-                        resourceId={resourceId}
-                        comments={comments}
-                        commentsCount={commentsCount}
-                        ratingsAvg={ratingsAvg}
-                        ratingsCount={ratingsCount}
-                        isVisible={activeTab === 'comments'}
-                    />
-                </div>
-            ) : null}
         </div>
     );
 }

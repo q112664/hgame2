@@ -52,6 +52,8 @@ test('resource filter controls keep the inline dropdowns, tag modal, and standal
         ->not->toContain('Most viewed');
 
     expect($index)
+        ->toContain('gap-4 sm:gap-5')
+        ->toContain('gap-3 rounded-md border border-border/80 bg-card p-3 sm:p-4')
         ->toContain('id="resource-search"')
         ->toContain('Search titles, tags, developers…')
         ->toContain('<FilterMenu')

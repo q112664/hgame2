@@ -19,10 +19,9 @@ final class ResourceShowUrl
 
     /**
      * The tab is a query parameter rather than a fragment so it survives the
-     * redirects that land back here; only in-document comment anchors are
-     * fragments now.
+     * redirects that land back here.
      *
-     * @param  'details'|'downloads'|'screenshots'|'comments'  $tab
+     * @param  'details'|'downloads'|'screenshots'  $tab
      * @param  array<string, mixed>  $query
      */
     public static function tab(
@@ -31,7 +30,7 @@ final class ResourceShowUrl
         array $query = [],
         bool $absolute = true,
     ): string {
-        if (! in_array($tab, ['downloads', 'screenshots', 'comments'], true)) {
+        if (! in_array($tab, ['downloads', 'screenshots'], true)) {
             unset($query['tab']);
 
             return self::details($game, $query, $absolute);
@@ -40,13 +39,5 @@ final class ResourceShowUrl
         $query['tab'] = $tab;
 
         return self::details($game, $query, $absolute);
-    }
-
-    public static function comment(Game|string $game, int $commentId, bool $absolute = false): string
-    {
-        return self::details($game, [
-            'tab' => 'comments',
-            'focus' => $commentId,
-        ], $absolute).'#comment-'.$commentId;
     }
 }

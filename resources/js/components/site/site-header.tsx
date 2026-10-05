@@ -538,7 +538,7 @@ export function SiteHeader() {
     }, []);
 
     return (
-        <header className="sticky top-0 z-40 border-b border-border/80 bg-surface-raised/85 backdrop-blur-md supports-backdrop-filter:bg-surface-raised/70">
+        <header className="sticky top-0 z-40 border-b border-border/80 bg-[color-mix(in_oklch,var(--surface-raised)_88%,var(--background))]">
             <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
                 <Sheet open={open} onOpenChange={setOpen}>
                     <SheetTrigger asChild>

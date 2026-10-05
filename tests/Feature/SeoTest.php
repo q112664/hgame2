@@ -4,7 +4,6 @@ use App\Actions\Games\ListPublishedGames;
 use App\Models\Category;
 use App\Models\Doc;
 use App\Models\Game;
-use App\Models\GameComment;
 use App\Models\GameDownloadLink;
 use App\Models\GameRelease;
 use App\Models\GameScreenshot;
@@ -64,7 +63,6 @@ test('resource detail pages expose page-level seo props', function () {
             ->where('pageSeo.jsonLd.@graph.0.@type', 'SoftwareApplication')
             ->where('pageSeo.jsonLd.@graph.0.name', 'Senren Banka')
             ->where('pageSeo.jsonLd.@graph.0.alternateName', 'A spring tale')
-            ->missing('pageSeo.jsonLd.@graph.0.aggregateRating')
             ->missing('pageSeo.jsonLd.@graph.0.screenshot')
             // Crawlers use site publish time, not commercial release_date.
             ->where('pageSeo.jsonLd.@graph.0.datePublished', $sitePublishedAt->toIso8601String())
@@ -88,7 +86,7 @@ test('resource detail pages expose page-level seo props', function () {
         );
 });
 
-test('resource detail json-ld includes screenshots languages ratings and genre breadcrumbs', function () {
+test('resource detail json-ld includes screenshots languages and genre breadcrumbs', function () {
     $category = Category::factory()->create([
         'name' => 'SLG',
         'slug' => 'slg',
@@ -99,8 +97,6 @@ test('resource detail json-ld includes screenshots languages ratings and genre b
         'subtitle' => 'スキーマゲーム',
         'category_id' => $category->id,
         'cover_path' => 'games/covers/schema.png',
-        'ratings_count' => 4,
-        'ratings_avg' => 4.5,
     ]);
     $windows = Platform::factory()->create(['name' => 'Windows', 'slug' => 'windows']);
     $japanese = Language::factory()->create(['name' => 'Japanese', 'code' => 'ja']);
@@ -131,11 +127,7 @@ test('resource detail json-ld includes screenshots languages ratings and genre b
             ->where('pageSeo.jsonLd.@graph.0.screenshot', [
                 Media::url('games/screenshots/one.jpg'),
             ])
-            ->where('pageSeo.jsonLd.@graph.0.aggregateRating.@type', 'AggregateRating')
-            ->where('pageSeo.jsonLd.@graph.0.aggregateRating.ratingValue', 4.5)
-            ->where('pageSeo.jsonLd.@graph.0.aggregateRating.ratingCount', 4)
-            ->where('pageSeo.jsonLd.@graph.0.aggregateRating.bestRating', 5)
-            ->where('pageSeo.jsonLd.@graph.0.aggregateRating.worstRating', 1)
+            ->missing('pageSeo.jsonLd.@graph.0.aggregateRating')
             ->where('pageSeo.jsonLd.@graph.1.@type', 'BreadcrumbList')
             ->has('pageSeo.jsonLd.@graph.1.itemListElement', 4)
             ->where('pageSeo.jsonLd.@graph.1.itemListElement.2.name', 'SLG')
@@ -178,10 +170,10 @@ test('every non-default view of a game page is noindex with no canonical', funct
         'title' => 'Tab Query Game',
     ]);
 
-    // Only `/games/{slug}` is indexable. A tab, a page of reviews and a comment
-    // deep link are the same document under another URL, so they are kept out of
-    // the index — and kept out with no canonical at all, because a noindex page
-    // pointing its canonical elsewhere hands Google two opposing signals.
+    // Only `/games/{slug}` is indexable. A tab is the same document under
+    // another URL, so it is kept out of the index — and kept out with no
+    // canonical at all, because a noindex page pointing its canonical
+    // elsewhere hands Google two opposing signals.
     $this->get(route('resources.show', ['resource' => $game, ...$query]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
@@ -193,47 +185,27 @@ test('every non-default view of a game page is noindex with no canonical', funct
 })->with([
     'downloads tab' => [['tab' => 'downloads']],
     'screenshots tab' => [['tab' => 'screenshots']],
-    'reviews tab' => [['tab' => 'comments']],
-    'reviews page' => [['page' => 2]],
-    'reviews tab on a later page' => [['tab' => 'comments', 'page' => 2]],
-    'comment deep link' => [['focus' => 9]],
-    'a comment page carried onto another tab' => [['tab' => 'downloads', 'page' => 2]],
+    'downloads tab with a stray page query' => [['tab' => 'downloads', 'page' => 2]],
 ]);
 
-test('paginated comments stay noindex and carry no canonical', function () {
+test('a legacy reviews query is the indexable game page', function () {
     $game = Game::factory()->create([
-        'slug' => 'paged-comments-game',
-        'title' => 'Paged Comments Game',
+        'slug' => 'legacy-reviews-game',
+        'title' => 'Legacy Reviews Game',
     ]);
-    $user = User::factory()->create();
-    GameComment::factory()
-        ->count(21)
-        ->for($game)
-        ->for($user)
-        ->create();
 
-    $this->get(route('resources.show', ['resource' => $game, 'page' => 2]))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->where('pageSeo.title', 'Paged Comments Game Download')
-            ->where('pageSeo.robots', 'noindex,follow')
-            ->where('pageSeo.canonical', null)
-            ->where('pageSeo.jsonLd', null)
-            ->where('comments.current_page', 2)
-        );
-
-    // Naming the reviews tab paginates the same way; only the deindex and the
-    // missing canonical matter to a search engine.
     $this->get(route('resources.show', [
         'resource' => $game,
         'tab' => 'comments',
         'page' => 2,
+        'focus' => 9,
     ]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('pageSeo.robots', 'noindex,follow')
-            ->where('pageSeo.canonical', null)
-            ->where('comments.current_page', 2)
+            ->where('initialTab', 'details')
+            ->where('pageSeo.canonical', route('resources.show', $game))
+            ->where('pageSeo.robots', 'index,follow')
+            ->missing('comments')
         );
 });
 

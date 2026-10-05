@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { useSyncExternalStore } from 'react';
 import { show as resourceDetails } from '@/routes/resources';
 
-export type ResourceTab = 'details' | 'downloads' | 'screenshots' | 'comments';
+export type ResourceTab = 'details' | 'downloads' | 'screenshots';
 
 const RESOURCE_TAB_LOCATION_EVENT = 'resource-tab-location';
 
@@ -10,7 +10,6 @@ const resourceTabValues: readonly string[] = [
     'details',
     'downloads',
     'screenshots',
-    'comments',
 ];
 
 function isResourceTab(value: string | null): value is ResourceTab {
@@ -26,11 +25,11 @@ function parseSearch(search: string): URLSearchParams {
 /**
  * The tab lives in `?tab=` because a query string survives the round trip a
  * fragment does not: `back()` redirects replay it from the Referer, and the
- * XHR that follows a redirect keeps it in the response URL. Fragments are
- * reserved for in-document anchors (`#comment-12`), which is what they mean.
+ * XHR that follows a redirect keeps it in the response URL. Fragments stay
+ * reserved for in-document anchors.
  *
- * `#downloads` and `?focus=` are still honoured so links shared before the
- * query contract keep opening the tab they name.
+ * `#downloads` is still honoured so links shared before the query contract
+ * keep opening the tab they name.
  */
 export function parseResourceTab(hash: string, search = ''): ResourceTab {
     const params = parseSearch(search);
@@ -46,24 +45,6 @@ export function parseResourceTab(hash: string, search = ''): ResourceTab {
         return value;
     }
 
-    if (value.startsWith('comment-')) {
-        return 'comments';
-    }
-
-    // Read the same way the reviews panel does, so a junk `focus` does not open
-    // a tab with nothing in it to scroll to.
-    const focus = Number(params.get('focus') ?? '');
-
-    if (Number.isInteger(focus) && focus > 0) {
-        return 'comments';
-    }
-
-    const page = Number(params.get('page') ?? '');
-
-    if (Number.isInteger(page) && page > 1) {
-        return 'comments';
-    }
-
     return 'details';
 }
 
@@ -76,13 +57,11 @@ export function nextResourceTabUrl(href: string, tab: ResourceTab): string {
         url.searchParams.set('tab', tab);
     }
 
-    if (tab !== 'comments') {
-        url.searchParams.delete('page');
-        url.searchParams.delete('focus');
-    }
+    url.searchParams.delete('page');
+    url.searchParams.delete('focus');
 
-    // The tab is no longer a fragment, and a stale comment anchor would send
-    // the browser scrolling into a panel that is about to be hidden.
+    // The tab is no longer a fragment, and a stale anchor would send the
+    // browser scrolling into a panel that is about to be hidden.
     url.hash = '';
 
     return `${url.pathname}${url.search}`;
@@ -91,12 +70,6 @@ export function nextResourceTabUrl(href: string, tab: ResourceTab): string {
 export function resourceTabHref(resourceId: string, tab: ResourceTab): string {
     return resourceDetails.url(resourceId, {
         query: tab === 'details' ? {} : { tab },
-    });
-}
-
-export function commentsPageUrl(resourceId: string, page: number): string {
-    return resourceDetails.url(resourceId, {
-        query: { tab: 'comments', ...(page > 1 ? { page } : {}) },
     });
 }
 
@@ -140,20 +113,15 @@ function subscribeResourceLocation(onChange: () => void): () => void {
     };
 }
 
-export function useResourceTab(
-    commentsEnabled = true,
-    initialTab: ResourceTab = 'details',
-): {
+export function useResourceTab(initialTab: ResourceTab = 'details'): {
     activeTab: ResourceTab;
     selectTab: (tab: ResourceTab) => void;
 } {
-    const tab = useSyncExternalStore(
+    const resolvedTab = useSyncExternalStore(
         subscribeResourceLocation,
         resourceLocationSnapshot,
         resourceLocationServerSnapshot(initialTab),
     );
-    const resolvedTab: ResourceTab =
-        !commentsEnabled && tab === 'comments' ? 'details' : tab;
 
     /**
      * A tab is a view switch on a page the reader already has open, not a

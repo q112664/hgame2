@@ -380,11 +380,6 @@ class Setting extends Model
         ];
     }
 
-    public static function commentsEnabled(): bool
-    {
-        return static::boolean('comments_enabled', true);
-    }
-
     public static function resourceNoticeEnabled(): bool
     {
         return static::boolean('resource_notice_enabled', false);

@@ -1,10 +1,10 @@
 import { cn } from '@/lib/utils';
 
-/** Frosted label chips over resource card thumbnails (category, platform, language, version). */
+/** Translucent label chips over resource card thumbnails (category, platform, language, version). */
 export const overlayChipClassName = cn(
     'inline-flex h-5 max-w-full items-center justify-center rounded-sm px-1.5',
-    'bg-black/40 text-[11px] leading-none font-medium text-white/90',
-    'ring-1 ring-white/15 backdrop-blur-[2px]',
+    'bg-black/50 text-[11px] leading-none font-medium text-white/90',
+    'ring-1 ring-white/15',
 );
 
 /** Primary title in the card body — full contrast, catalog-scan friendly. */

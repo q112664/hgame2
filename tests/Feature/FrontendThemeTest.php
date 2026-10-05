@@ -249,15 +249,14 @@ test('resource language detail tabs keep inactive versions mounted', function ()
 test('detail page mutations keep the tab across the redirect back', function () {
     $filesystem = app(Filesystem::class);
 
-    // Favorites, likes and comments all redirect `back()` to the detail page.
-    // The tab rides in the query string, which the Referer carries, so it
-    // survives on its own; preserving the URL also keeps Inertia from
-    // rewriting the address bar from the redirect target mid-flight.
+    // Favorites and likes redirect `back()` to the detail page. The tab rides
+    // in the query string, which the Referer carries, so it survives on its
+    // own; preserving the URL also keeps Inertia from rewriting the address
+    // bar from the redirect target mid-flight.
     foreach (
         [
             'hooks/use-favorite.ts',
             'hooks/use-like.ts',
-            'components/site/resource-comments.tsx',
         ] as $file
     ) {
         expect($filesystem->get(resource_path("js/{$file}")))
@@ -269,14 +268,13 @@ test('auth redirects carry the address bar instead of the stale inertia url', fu
     $filesystem = app(Filesystem::class);
 
     // `usePage().url` knows neither the tab (written with the raw history API)
-    // nor a comment anchor, so signing in from `?tab=downloads#comment-9` would
-    // land the reader back on the default tab.
+    // nor a fragment, so signing in from `?tab=downloads#cover` would land the
+    // reader back on the default tab.
     expect($filesystem->get(resource_path('js/lib/current-url.ts')))
         ->toContain('window.location.hash');
 
     foreach (
         [
-            'components/site/resource-comments.tsx',
             'components/site/site-header.tsx',
             'hooks/use-favorite.ts',
             'hooks/use-like.ts',
@@ -295,8 +293,7 @@ test('the active tab is read from the query string, not a fragment', function ()
 
     // A fragment is dropped by every redirect that lands back here — no
     // fragment in the Referer, none in an XHR response URL — which is why the
-    // tab moved into `?tab=`. `#comment-9` stays a fragment: that one is a
-    // position in the document.
+    // tab moved into `?tab=`. A fragment stays a position in the document.
     expect($source)
         ->toContain("params.get('tab')")
         ->toContain("url.searchParams.set('tab', tab)")
@@ -326,8 +323,7 @@ test('the server rendered tab is the one hydration starts from', function () {
     // from the default tab instead, a `?tab=` deep link would visibly repaint.
     // Asserted as tokens because the formatter is free to wrap the call.
     expect($filesystem->get(resource_path('js/pages/resources/show.tsx')))
-        ->toContain('useResourceTab(')
-        ->toContain('initialTab,');
+        ->toContain('useResourceTab(initialTab)');
 
     expect($filesystem->get(resource_path('js/lib/resource-tabs.ts')))
         ->toContain('resourceLocationServerSnapshot(initialTab)')
@@ -431,6 +427,8 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain('label="Languages"')
         ->toContain('resourcesGenre.url')
         ->toContain('resourcesLanguage.url')
+        ->toContain('bg-[color-mix(in_oklch,var(--surface-raised)_88%,var(--background))]')
+        ->not->toContain('backdrop-blur')
         ->not->toContain('staticGameCategories')
         ->not->toContain('GamesCategoryMenu')
         ->not->toContain('SiteTaxonomyNavDesktop')
@@ -513,7 +511,7 @@ test('detailed resource cards avoid decorative hover motion and shadows', functi
         ->not->toContain('group-hover:scale-');
 });
 
-test('resource and detailed cards share frosted thumbnail overlay chips', function () {
+test('resource and detailed cards keep translucent thumbnail chips without backdrop blur', function () {
     $filesystem = app(Filesystem::class);
     $styles = $filesystem->get(resource_path('js/components/site/resource-card-styles.ts'));
     $resourceCard = $filesystem->get(resource_path('js/components/site/resource-card.tsx'));
@@ -522,8 +520,8 @@ test('resource and detailed cards share frosted thumbnail overlay chips', functi
     expect($styles)
         ->toContain('overlayChipClassName')
         ->toContain('resourceCardTitleClassName')
-        ->toContain('bg-black/40')
-        ->toContain('backdrop-blur-[2px]')
+        ->toContain('bg-black/50')
+        ->not->toContain('backdrop-blur')
         // The update cue rides inside the meta line, so it stays chromeless.
         ->toContain('resourceCardUpdateBadgeClassName')
         ->not->toContain('bg-info')
@@ -750,6 +748,15 @@ test('site pagination uses a compact page window instead of listing every page',
         ->toContain("'ellipsis'");
 });
 
+test('notification timestamps share one right column', function () {
+    $source = app(Filesystem::class)->get(resource_path('js/pages/notifications/index.tsx'));
+
+    expect($source)
+        ->toContain('shrink-0 self-center text-right text-xs leading-4 text-muted-foreground tabular-nums')
+        ->toContain('inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground')
+        ->not->toContain('items-baseline justify-between');
+});
+
 test('download release items use the compact responsive layout', function () {
     $filesystem = app(Filesystem::class);
     $source = $filesystem->get(resource_path('js/components/site/resource-tab-content.tsx'));
@@ -772,6 +779,9 @@ test('download release items use the compact responsive layout', function () {
         ->toContain('Downloads last updated')
         ->toContain('sm:hidden')
         ->toContain('hidden shrink-0 sm:inline-flex')
+        ->toContain('flex shrink-0 items-center gap-2 sm:hidden')
+        ->toContain('resource.downloads')
+        ->toContain('${formatted} downloads')
         ->toContain('releaseDescriptionNeedsToggle')
         ->toContain("overflow: 'hidden'")
         ->toContain('RELEASE_DESCRIPTION_COLLAPSED_MAX_PX')

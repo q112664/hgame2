@@ -10,7 +10,6 @@ use App\Filament\Resources\Games\GameResource;
 use App\Http\Requests\ListResourcesRequest;
 use App\Models\Category;
 use App\Models\Game;
-use App\Models\GameComment;
 use App\Models\Language;
 use App\Models\Platform;
 use App\Models\Setting;
@@ -22,14 +21,11 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ResourceController extends Controller
 {
-    private const COMMENTS_PER_PAGE = 20;
-
     public function __construct(
         private RecordGameView $recordGameView,
         private ListRelatedGames $listRelatedGames,
@@ -400,25 +396,15 @@ class ResourceController extends Controller
         );
         ($this->recordGameView)($request, $game);
 
-        $commentsProps = $this->commentsPageProps($game, $request);
-
-        $requestedTab = $this->requestedTab($request);
-
-        // The reviews tab does not exist when comments are off, and the client
-        // collapses it to details: the server-rendered tab has to collapse with
-        // it, or hydration would paint a panel the page does not show.
-        $initialTab = $requestedTab === 'comments' && ! $commentsProps['commentsEnabled']
-            ? 'details'
-            : $requestedTab;
+        $initialTab = $this->requestedTab($request);
 
         return Inertia::render('resources/show', [
             'resourceNotice' => Setting::resourceNoticeHtml(),
-            ...$commentsProps,
             'related' => ($this->listRelatedGames)($game),
             'initialTab' => $initialTab,
             'pageSeo' => PageSeo::forGame(
                 $game,
-                isDefaultView: $requestedTab === 'details',
+                isDefaultView: $initialTab === 'details',
             ),
             'resource' => $this->presentResource(
                 $game,
@@ -494,12 +480,8 @@ class ResourceController extends Controller
     }
 
     /**
-     * The tab, the comment page and the comment anchor all belong to the client,
-     * and none of them earns an address of its own: they are the same document
-     * under a different URL, which is exactly what a search engine should not be
-     * given. Every legacy shape therefore lands on `/games/{slug}`, the one URL
-     * that is indexable, so whatever the old URL had earned is consolidated
-     * there rather than dropped.
+     * Legacy tab paths are the same document under another URL. They land on
+     * `/games/{slug}`, the one URL that is indexable.
      */
     private function redirectToResource(Game|string $resource): RedirectResponse
     {
@@ -507,25 +489,20 @@ class ResourceController extends Controller
     }
 
     /**
-     * The tab a request names, mirroring `parseResourceTab()` on the client:
-     * `?tab=` wins, and `focus` or a page past the first mean the reviews tab.
+     * The tab a request names, mirroring `parseResourceTab()` on the client.
      * A legacy `#`-anchor tab is never sent to the server, so it cannot be seen
      * here — which is harmless, because that URL names no tab for a crawler
      * either.
      *
-     * @return 'details'|'downloads'|'screenshots'|'comments'
+     * @return 'details'|'downloads'|'screenshots'
      */
     private function requestedTab(Request $request): string
     {
         $tab = $request->query('tab');
-        $tabs = ['details', 'downloads', 'screenshots', 'comments'];
+        $tabs = ['details', 'downloads', 'screenshots'];
 
         if (is_string($tab) && in_array($tab, $tabs, true)) {
             return $tab;
-        }
-
-        if ($request->integer('focus') > 0 || $request->integer('page', 1) > 1) {
-            return 'comments';
         }
 
         return 'details';
@@ -595,192 +572,6 @@ class ResourceController extends Controller
             'adminEditUrl' => auth()->user()?->is_admin
                 ? GameResource::getUrl('edit', ['record' => $game], panel: 'admin')
                 : null,
-        ];
-    }
-
-    /**
-     * @return array{
-     *     commentsEnabled: bool,
-     *     comments: mixed,
-     *     commentsCount: int,
-     *     ratingsAvg: float,
-     *     ratingsCount: int
-     * }
-     */
-    private function commentsPageProps(Game $game, Request $request): array
-    {
-        $enabled = Setting::commentsEnabled();
-
-        if (! $enabled) {
-            return [
-                'commentsEnabled' => false,
-                'comments' => null,
-                'commentsCount' => 0,
-                'ratingsAvg' => 0.0,
-                'ratingsCount' => 0,
-            ];
-        }
-
-        return [
-            'commentsEnabled' => true,
-            'comments' => $this->presentComments($game, $request),
-            'commentsCount' => $game->comments()->count(),
-            'ratingsAvg' => round((float) $game->ratings_avg, 2),
-            'ratingsCount' => (int) $game->ratings_count,
-        ];
-    }
-
-    /**
-     * Nested threads: paginated top-level comments (newest first) with replies (oldest first).
-     *
-     * @return LengthAwarePaginator<int, non-empty-array<string, mixed>>
-     */
-    private function presentComments(Game $game, Request $request): LengthAwarePaginator
-    {
-        $user = auth()->user();
-        $commentColumns = [
-            'id',
-            'user_id',
-            'parent_id',
-            'reply_to_user_id',
-            'body',
-            'rating',
-            'created_at',
-            'updated_at',
-        ];
-
-        $focusId = $request->integer('focus');
-        $focusRootId = null;
-
-        if ($focusId > 0) {
-            $focusComment = $game->comments()
-                ->whereKey($focusId)
-                ->first(['id', 'parent_id']);
-
-            $focusRootId = $focusComment === null
-                ? null
-                : (int) ($focusComment->parent_id ?? $focusComment->id);
-        }
-
-        $rootQuery = $game->comments()
-            ->whereNull('parent_id')
-            ->select($commentColumns)
-            ->with(['user:id,name,avatar,is_admin', 'replyToUser:id,name'])
-            ->orderByDesc('created_at')
-            ->orderByDesc('id');
-
-        $page = $this->commentPageForRoot($game, $focusRootId);
-        $roots = $rootQuery
-            ->paginate(self::COMMENTS_PER_PAGE, ['*'], 'page', $page);
-
-        if ($roots->currentPage() > $roots->lastPage()) {
-            $roots = $rootQuery->paginate(
-                self::COMMENTS_PER_PAGE,
-                ['*'],
-                'page',
-                $roots->lastPage(),
-            );
-        }
-
-        $roots->appends($request->except('focus'));
-
-        $rootIds = $roots->getCollection()->pluck('id');
-        /** @var Collection<int, Collection<int, GameComment>> $repliesByParent */
-        $repliesByParent = collect();
-
-        if ($rootIds->isNotEmpty()) {
-            $repliesByParent = $game->comments()
-                ->whereIn('parent_id', $rootIds->all())
-                ->select($commentColumns)
-                ->with(['user:id,name,avatar,is_admin', 'replyToUser:id,name'])
-                ->orderBy('created_at')
-                ->orderBy('id')
-                ->get()
-                ->groupBy('parent_id');
-        }
-
-        $transformedRoots = $roots->through(function (GameComment $root) use ($user, $repliesByParent): array {
-            $replies = ($repliesByParent->get($root->id) ?? collect())
-                ->map(fn (GameComment $reply): array => $this->presentCommentNode($reply, $user))
-                ->values()
-                ->all();
-
-            return [
-                ...$this->presentCommentNode($root, $user),
-                'replies' => $replies,
-            ];
-        });
-
-        return $transformedRoots;
-    }
-
-    private function commentPageForRoot(Game $game, ?int $rootId): ?int
-    {
-        if ($rootId === null) {
-            return null;
-        }
-
-        $root = $game->comments()
-            ->whereNull('parent_id')
-            ->whereKey($rootId)
-            ->first(['id', 'created_at']);
-
-        if ($root === null) {
-            return null;
-        }
-
-        $newerRootCount = $game->comments()
-            ->whereNull('parent_id')
-            ->where(function ($query) use ($root): void {
-                $query
-                    ->where('created_at', '>', $root->created_at)
-                    ->orWhere(function ($query) use ($root): void {
-                        $query
-                            ->where('created_at', $root->created_at)
-                            ->where('id', '>', $root->id);
-                    });
-            })
-            ->count();
-
-        return intdiv($newerRootCount, self::COMMENTS_PER_PAGE) + 1;
-    }
-
-    /** @return array<string, mixed> */
-    private function presentCommentNode(GameComment $comment, mixed $user): array
-    {
-        $isMine = $user !== null && $user->id === $comment->user_id;
-        $isEdited = $comment->updated_at !== null
-            && $comment->created_at !== null
-            && $comment->updated_at->gt($comment->created_at->copy()->addSecond());
-
-        $replyTo = null;
-
-        if ($comment->reply_to_user_id !== null && $comment->relationLoaded('replyToUser') && $comment->replyToUser) {
-            $replyTo = [
-                'id' => $comment->replyToUser->id,
-                'name' => $comment->replyToUser->name,
-            ];
-        }
-
-        return [
-            'id' => $comment->id,
-            'body' => $comment->body,
-            'rating' => $comment->parent_id === null && $comment->rating !== null
-                ? (int) $comment->rating
-                : null,
-            'createdAt' => $comment->created_at?->toIso8601String(),
-            'updatedAt' => $comment->updated_at?->toIso8601String(),
-            'isEdited' => $isEdited,
-            'isMine' => $isMine,
-            'canEdit' => $isMine,
-            'canDelete' => $isMine || (bool) $user?->is_admin,
-            'replyTo' => $replyTo,
-            'user' => [
-                'id' => $comment->user->id,
-                'name' => $comment->user->name,
-                'avatar' => $comment->user->avatar,
-                'isAdmin' => (bool) $comment->user->is_admin,
-            ],
         ];
     }
 }

@@ -36,10 +36,8 @@ class FavoriteDownloadsUpdatedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => __('Downloads updated: :title', [
-                'title' => $this->game->title,
-            ]),
-            'body' => __('A resource you favorited has new or updated downloads.'),
+            'title' => $this->game->title,
+            'body' => __('Downloads updated'),
             'url' => ResourceShowUrl::tab($this->game->slug, 'downloads', absolute: false),
             'game_id' => $this->game->id,
             'game_slug' => $this->game->slug,

@@ -64,18 +64,18 @@ test('users return to the tab they were on after logging in', function () {
     $response->assertRedirect(url('/games/senren-banka?tab=downloads'));
 });
 
-test('modal redirects keep comment anchors', function () {
+test('modal redirects keep plain content anchors', function () {
     $user = User::factory()->create();
 
     $response = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
-        'redirect' => '/games/senren-banka?tab=comments#comment-9',
+        'redirect' => '/games/senren-banka?tab=downloads#cover',
     ]);
 
     $this->assertAuthenticatedAs($user);
     $response->assertRedirect(
-        url('/games/senren-banka?tab=comments#comment-9'),
+        url('/games/senren-banka?tab=downloads#cover'),
     );
 });
 

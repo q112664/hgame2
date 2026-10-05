@@ -5,7 +5,6 @@ namespace App;
 enum NotificationTab: string
 {
     case All = 'all';
-    case Comments = 'comments';
     case Favorites = 'favorites';
     case System = 'system';
 
@@ -13,9 +12,8 @@ enum NotificationTab: string
     {
         return match ($this) {
             self::All => __('All'),
-            self::Comments => __('Comments'),
-            self::Favorites => __('Favorites'),
-            self::System => __('System'),
+            self::Favorites => __('Favorite updates'),
+            self::System => __('Announcements'),
         };
     }
 
@@ -29,7 +27,6 @@ enum NotificationTab: string
     {
         return match ($this) {
             self::All => null,
-            self::Comments => ['comment.replied'],
             self::Favorites => ['favorite.downloads_updated'],
             self::System => ['system.broadcast'],
         };

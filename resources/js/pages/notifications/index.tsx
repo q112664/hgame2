@@ -1,10 +1,11 @@
 import { router } from '@inertiajs/react';
 import {
     Bell,
+    Check,
     CheckCheck,
+    ChevronRight,
     Download,
     Megaphone,
-    MessageSquare,
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -20,10 +21,11 @@ import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/user-avatar';
 import { SiteLayout } from '@/layouts/site-layout';
 import { formatAbsoluteDateTime, formatRelativeTime } from '@/lib/datetime';
+import { notificationDisplay } from '@/lib/notification-display';
 import { cn } from '@/lib/utils';
 import type { AppNotificationItem } from '@/types/notifications';
 
-type NotificationTabValue = 'all' | 'comments' | 'favorites' | 'system';
+type NotificationTabValue = 'all' | 'favorites' | 'system';
 
 type NotificationTabItem = RouteTab<NotificationTabValue> & {
     count: number;
@@ -38,17 +40,9 @@ type Props = {
 };
 
 function NotificationTypeIcon({ type }: { type: string }) {
-    if (type === 'comment.replied' || type.startsWith('comment.')) {
-        return (
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
-                <MessageSquare className="size-4" aria-hidden />
-            </span>
-        );
-    }
-
     if (type === 'favorite.downloads_updated' || type.startsWith('favorite.')) {
         return (
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-info/12 text-info ring-1 ring-info/20">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                 <Download className="size-4" aria-hidden />
             </span>
         );
@@ -56,17 +50,29 @@ function NotificationTypeIcon({ type }: { type: string }) {
 
     if (type === 'system.broadcast' || type.startsWith('system.')) {
         return (
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning ring-1 ring-warning/25">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                 <Megaphone className="size-4" aria-hidden />
             </span>
         );
     }
 
     return (
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border/60">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
             <Bell className="size-4" aria-hidden />
         </span>
     );
+}
+
+function tabDescription(tab: NotificationTabValue): string {
+    if (tab === 'favorites') {
+        return 'New downloads on games you favorited.';
+    }
+
+    if (tab === 'system') {
+        return 'Announcements from the site.';
+    }
+
+    return 'Download updates and announcements.';
 }
 
 function tabHref(tab: NotificationTabValue, page?: number): string {
@@ -102,18 +108,29 @@ export default function NotificationsIndex({
         href: tab.href,
     }));
 
-    const openNotification = (notification: AppNotificationItem) => {
+    const postRead = (notification: AppNotificationItem, open: boolean) => {
         if (openingId !== null) {
             return;
         }
+
+        const shouldOpen = open && Boolean(notification.url);
 
         setOpeningId(notification.id);
 
         router.post(
             `/notifications/${notification.id}/read`,
-            { open: notification.url ? 1 : 0 },
+            { open: shouldOpen ? 1 : 0 },
             {
-                preserveScroll: !notification.url,
+                preserveScroll: !shouldOpen,
+                ...(shouldOpen
+                    ? {}
+                    : {
+                          only: [
+                              'notifications',
+                              'tabs',
+                              'notificationSummary',
+                          ],
+                      }),
                 onFinish: () => setOpeningId(null),
             },
         );
@@ -141,13 +158,14 @@ export default function NotificationsIndex({
             return;
         }
 
-        if (
-            !window.confirm(
-                activeTab === 'all'
-                    ? 'Clear all notifications? This cannot be undone.'
-                    : 'Clear all notifications in this tab? This cannot be undone.',
-            )
-        ) {
+        const clearLabel =
+            activeTab === 'favorites'
+                ? 'favorite updates'
+                : activeTab === 'system'
+                  ? 'announcements'
+                  : 'notifications';
+
+        if (!window.confirm(`Clear ${clearLabel}? This cannot be undone.`)) {
             return;
         }
 
@@ -174,7 +192,7 @@ export default function NotificationsIndex({
                             Notifications
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            Replies and other updates across the site.
+                            {tabDescription(activeTab)}
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -192,9 +210,9 @@ export default function NotificationsIndex({
                         </Button>
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="text-muted-foreground hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                             disabled={
                                 countInTab === 0 || clearing || markingAll
                             }
@@ -218,6 +236,8 @@ export default function NotificationsIndex({
                             {notifications.data.map((notification) => {
                                 const unread = !notification.readAt;
                                 const isOpening = openingId === notification.id;
+                                const display =
+                                    notificationDisplay(notification);
 
                                 const handleRowActivate = () => {
                                     if (isOpening) {
@@ -231,19 +251,25 @@ export default function NotificationsIndex({
                                         return;
                                     }
 
-                                    openNotification(notification);
+                                    postRead(notification, true);
                                 };
 
                                 return (
                                     <li
                                         key={notification.id}
                                         className={cn(
-                                            'transition-colors select-text',
+                                            'relative flex transition-colors select-text',
                                             'hover:bg-muted/50',
                                             isOpening && 'opacity-70',
                                             unread && 'bg-primary/4',
                                         )}
                                     >
+                                        {unread ? (
+                                            <span
+                                                className="absolute inset-y-0 left-0 w-0.5 bg-primary"
+                                                aria-hidden
+                                            />
+                                        ) : null}
                                         <div
                                             role="button"
                                             tabIndex={isOpening ? -1 : 0}
@@ -252,11 +278,11 @@ export default function NotificationsIndex({
                                             }
                                             aria-label={
                                                 notification.url
-                                                    ? `Open notification: ${notification.title}`
-                                                    : `Mark notification as read: ${notification.title}`
+                                                    ? `Open ${display.title}`
+                                                    : `Mark as read: ${display.title}`
                                             }
                                             className={cn(
-                                                'flex w-full cursor-pointer gap-3 px-4 py-3.5 text-left sm:gap-3.5 sm:px-5 sm:py-4',
+                                                'flex min-w-0 flex-1 cursor-pointer items-center gap-3 px-4 py-3 text-left sm:px-5',
                                                 'focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none focus-visible:ring-inset',
                                             )}
                                             onClick={handleRowActivate}
@@ -273,7 +299,7 @@ export default function NotificationsIndex({
                                             {notification.actor ? (
                                                 <UserAvatar
                                                     user={notification.actor}
-                                                    className="mt-0.5 size-10 shrink-0 ring-1 ring-border/60"
+                                                    className="size-8 shrink-0 ring-1 ring-border/60"
                                                     fallbackClassName="rounded-full bg-muted text-xs text-muted-foreground"
                                                 />
                                             ) : (
@@ -283,90 +309,83 @@ export default function NotificationsIndex({
                                             )}
 
                                             <div className="min-w-0 flex-1">
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <p
-                                                        className={cn(
-                                                            'text-sm leading-snug text-foreground sm:text-[15px]',
-                                                            unread &&
-                                                                'font-medium',
-                                                        )}
-                                                    >
-                                                        {notification.title}
-                                                    </p>
-                                                    {unread ? (
-                                                        <span
-                                                            className="mt-1.5 size-2 shrink-0 rounded-full bg-primary"
-                                                            aria-label="Unread"
-                                                        />
-                                                    ) : null}
-                                                </div>
-
-                                                {notification.body ? (
-                                                    <p className="mt-1 text-sm leading-relaxed break-words text-muted-foreground">
-                                                        {notification.body}
+                                                <p
+                                                    className={cn(
+                                                        'truncate text-sm text-foreground',
+                                                        unread && 'font-medium',
+                                                    )}
+                                                >
+                                                    {display.title}
+                                                </p>
+                                                {display.detail ? (
+                                                    <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                                                        {display.detail}
                                                     </p>
                                                 ) : null}
-
-                                                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                                                    {typeof notification.data
-                                                        .game_title ===
-                                                    'string' ? (
-                                                        <span className="truncate font-medium text-foreground/70">
-                                                            {
-                                                                notification
-                                                                    .data
-                                                                    .game_title as string
-                                                            }
-                                                        </span>
-                                                    ) : null}
-                                                    {notification.createdAt ? (
-                                                        <time
-                                                            dateTime={
-                                                                notification.createdAt
-                                                            }
-                                                            title={formatAbsoluteDateTime(
-                                                                notification.createdAt,
-                                                            )}
-                                                            className="tabular-nums"
-                                                        >
-                                                            {formatRelativeTime(
-                                                                notification.createdAt,
-                                                            )}
-                                                        </time>
-                                                    ) : null}
-                                                </div>
                                             </div>
+                                            {notification.createdAt ? (
+                                                <time
+                                                    dateTime={
+                                                        notification.createdAt
+                                                    }
+                                                    title={formatAbsoluteDateTime(
+                                                        notification.createdAt,
+                                                    )}
+                                                    className="shrink-0 self-center text-right text-xs leading-4 text-muted-foreground tabular-nums"
+                                                >
+                                                    {formatRelativeTime(
+                                                        notification.createdAt,
+                                                    )}
+                                                </time>
+                                            ) : null}
+                                            <span
+                                                className="inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground"
+                                                aria-hidden
+                                            >
+                                                {notification.url ? (
+                                                    <ChevronRight className="size-4" />
+                                                ) : null}
+                                            </span>
                                         </div>
+                                        {unread ? (
+                                            <button
+                                                type="button"
+                                                className="mr-2 inline-flex size-8 shrink-0 items-center justify-center self-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none sm:mr-3"
+                                                aria-label={`Mark as read: ${display.title}`}
+                                                disabled={isOpening}
+                                                onClick={() =>
+                                                    postRead(
+                                                        notification,
+                                                        false,
+                                                    )
+                                                }
+                                            >
+                                                <Check
+                                                    className="size-4"
+                                                    aria-hidden
+                                                />
+                                            </button>
+                                        ) : null}
                                     </li>
                                 );
                             })}
                         </ul>
                     ) : (
                         <SiteEmptyState
-                            icon={
-                                activeTab === 'favorites'
-                                    ? Download
-                                    : activeTab === 'comments'
-                                      ? MessageSquare
-                                      : Bell
-                            }
+                            icon={activeTab === 'favorites' ? Download : Bell}
                             title={
                                 notifications.total > 0
                                     ? 'No notifications on this page'
-                                    : activeTab === 'comments'
-                                      ? 'No comment notifications'
-                                      : activeTab === 'favorites'
-                                        ? 'No favorite updates'
+                                    : activeTab === 'favorites'
+                                      ? 'No favorite updates'
+                                      : activeTab === 'system'
+                                        ? 'No announcements'
                                         : 'No notifications yet'
                             }
                             description={
                                 notifications.total > 0
                                     ? 'Try another page.'
-                                    : activeTab === 'comments'
-                                      ? 'When someone replies to your comments, it will show up here.'
-                                      : activeTab === 'favorites'
-                                        ? 'When a favorited resource gets new downloads, it will show up here.'
-                                        : 'Replies, favorite updates, and other site activity will appear here.'
+                                    : tabDescription(activeTab)
                             }
                         />
                     )}

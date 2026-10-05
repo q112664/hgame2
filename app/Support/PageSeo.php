@@ -271,8 +271,8 @@ final class PageSeo
     }
 
     /**
-     * Only the clean game URL is indexable. A tab and a page of reviews are the
-     * same document under another URL, so they are kept out of the index — and
+     * Only the clean game URL is indexable. A tab is the same document under
+     * another URL, so it is kept out of the index — and
      * kept out with no canonical at all, because a noindex page that points its
      * canonical elsewhere hands Google two opposing signals.
      *
@@ -875,19 +875,6 @@ final class PageSeo
 
         if ($game->category?->name) {
             $data['genre'] = $game->category->name;
-        }
-
-        $ratingsCount = (int) $game->ratings_count;
-        $ratingsAvg = round((float) $game->ratings_avg, 2);
-
-        if ($ratingsCount > 0 && $ratingsAvg > 0) {
-            $data['aggregateRating'] = [
-                '@type' => 'AggregateRating',
-                'ratingValue' => $ratingsAvg,
-                'ratingCount' => $ratingsCount,
-                'bestRating' => 5,
-                'worstRating' => 1,
-            ];
         }
 
         return $data;

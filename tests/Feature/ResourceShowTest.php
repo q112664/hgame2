@@ -72,7 +72,8 @@ test('the resource details page includes hero metadata and every tab payload', f
             ->where('resourceNotice', '')
             ->has('resource.screenshots', 1)
             ->has('resource.releases', 1)
-            ->has('comments.data')
+            ->missing('comments')
+            ->missing('commentsEnabled')
         );
 });
 
@@ -163,21 +164,10 @@ test('the rendered tab matches the url it was requested with', function (array $
     'default view' => [[], 'details'],
     'downloads tab' => [['tab' => 'downloads'], 'downloads'],
     'screenshots tab' => [['tab' => 'screenshots'], 'screenshots'],
-    'reviews tab' => [['tab' => 'comments'], 'comments'],
-    'reviews page' => [['page' => 2], 'comments'],
-    'comment deep link' => [['focus' => 9], 'comments'],
+    'legacy reviews query' => [['tab' => 'comments'], 'details'],
+    'legacy reviews page' => [['page' => 2], 'details'],
+    'legacy comment deep link' => [['focus' => 9], 'details'],
 ]);
-
-test('a reviews tab collapses to details when comments are off', function () {
-    Setting::setBoolean('comments_enabled', false);
-
-    $this->get(route('resources.show', ['resource' => $this->game, 'tab' => 'comments']))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('commentsEnabled', false)
-            ->where('initialTab', 'details')
-        );
-});
 
 test('details includes sanitized description versions with screenshots and releases', function () {
     $this->get(route('resources.show', $this->game->slug))

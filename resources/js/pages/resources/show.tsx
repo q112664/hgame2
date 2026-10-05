@@ -16,7 +16,6 @@ import type { LightboxSlide } from '@/components/site/image-lightbox';
 import type { PageSeoData } from '@/components/site/page-seo';
 import { PageSeo } from '@/components/site/page-seo';
 import { PlatformIcon } from '@/components/site/platform-icon';
-import type { ResourceComment } from '@/components/site/resource-comments';
 import {
     categoryBadgeClassName,
     downloadHeroButtonClassName,
@@ -27,7 +26,6 @@ import { ResourceSourceMeta } from '@/components/site/resource-source-meta';
 import { ResourceTabContent } from '@/components/site/resource-tab-content';
 import { RouteTabs } from '@/components/site/route-tabs';
 import { SitePageContainer } from '@/components/site/site-page-container';
-import type { PaginatedData } from '@/components/site/site-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -90,11 +88,6 @@ type Props = {
     resource: GameDetail;
     /** Site-wide notice HTML from admin (empty string when disabled). */
     resourceNotice?: string;
-    comments?: PaginatedData<ResourceComment> | null;
-    commentsCount?: number;
-    commentsEnabled?: boolean;
-    ratingsAvg?: number;
-    ratingsCount?: number;
     related?: GameCard[];
     /** The tab the server rendered, so hydration does not repaint another one. */
     initialTab?: ResourceTab;
@@ -116,10 +109,6 @@ const resourceTabs: Array<{
     {
         value: 'screenshots',
         label: 'Screenshots',
-    },
-    {
-        value: 'comments',
-        label: 'Reviews',
     },
 ];
 
@@ -202,20 +191,12 @@ function ResourceHeroCover({
 export default function ResourceShow({
     resource,
     resourceNotice = '',
-    comments,
-    commentsCount = 0,
-    commentsEnabled = true,
-    ratingsAvg = 0,
-    ratingsCount = 0,
     related = [],
     initialTab = 'details',
     pageSeo,
 }: Props) {
     const shouldReduceMotion = useReducedMotion();
-    const { activeTab, selectTab } = useResourceTab(
-        commentsEnabled,
-        initialTab,
-    );
+    const { activeTab, selectTab } = useResourceTab(initialTab);
     const {
         isFavorited: isFavorite,
         isToggling: isTogglingFavorite,
@@ -263,16 +244,11 @@ export default function ResourceShow({
         });
     };
 
-    const resourceTabLinks = resourceTabs
-        .filter((tab) => tab.value !== 'comments' || commentsEnabled)
-        .map((tab) => ({
-            value: tab.value,
-            label:
-                tab.value === 'comments' && commentsCount > 0
-                    ? `${tab.label} (${commentsCount})`
-                    : tab.label,
-            href: resourceTabHref(resource.id, tab.value),
-        }));
+    const resourceTabLinks = resourceTabs.map((tab) => ({
+        value: tab.value,
+        label: tab.label,
+        href: resourceTabHref(resource.id, tab.value),
+    }));
 
     const screenshotSlides = resource.screenshots.map((src, index) => ({
         src,
@@ -666,10 +642,6 @@ export default function ResourceShow({
                         screenshotSlides={screenshotSlides}
                         onOpenLightbox={openLightbox}
                         resourceNotice={resourceNotice}
-                        comments={comments}
-                        commentsCount={commentsCount}
-                        ratingsAvg={ratingsAvg}
-                        ratingsCount={ratingsCount}
                         resourceId={resource.id}
                         related={related}
                     />

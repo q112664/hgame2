@@ -1,12 +1,9 @@
 <?php
 
 use App\Models\Game;
-use App\Models\GameComment;
 use App\Models\User;
-use App\Notifications\CommentRepliedNotification;
+use App\Notifications\SystemBroadcastNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -16,224 +13,106 @@ test('guests cannot view notifications page', function () {
         ->assertRedirect(route('login'));
 });
 
-test('replying to a comment notifies the parent author', function () {
-    Notification::fake();
-
-    $game = Game::factory()->create();
-    $alice = User::factory()->create();
-    $bob = User::factory()->create();
-
-    $root = GameComment::factory()->for($game)->for($alice)->create([
-        'body' => 'Root comment',
-    ]);
-
-    $this->actingAs($bob)
-        ->post(route('resources.comments.store', $game->slug), [
-            'body' => '@Alice Nice take!',
-            'parent_id' => $root->id,
-        ])
-        ->assertRedirect();
-
-    Notification::assertSentTo(
-        $alice,
-        CommentRepliedNotification::class,
-        function (CommentRepliedNotification $notification) use ($bob, $game): bool {
-            $data = $notification->toArray($bob);
-
-            return $data['game_slug'] === $game->slug
-                && $data['actor']['id'] === $bob->id
-                && str_contains($data['body'], 'Nice take')
-                && str_contains((string) $data['url'], '#comment-')
-                && str_contains((string) $data['url'], '/games/');
-        },
-    );
-});
-
-test('users are not notified when replying to themselves', function () {
-    Notification::fake();
-
-    $game = Game::factory()->create();
-    $alice = User::factory()->create();
-
-    $root = GameComment::factory()->for($game)->for($alice)->create();
-
-    $this->actingAs($alice)
-        ->post(route('resources.comments.store', $game->slug), [
-            'body' => 'Replying to myself',
-            'parent_id' => $root->id,
-        ])
-        ->assertRedirect();
-
-    Notification::assertNothingSent();
-});
-
 test('authenticated users can view the notifications page with tabs', function () {
+    $user = User::factory()->create();
     $game = Game::factory()->create(['title' => 'Demo Game', 'slug' => 'demo-game']);
-    $alice = User::factory()->create(['name' => 'Alice']);
-    $bob = User::factory()->create(['name' => 'Bob']);
-
-    $root = GameComment::factory()->for($game)->for($alice)->create();
-    $reply = GameComment::factory()->for($game)->for($bob)->create([
-        'parent_id' => $root->id,
-        'reply_to_user_id' => $alice->id,
-        'body' => 'Hello Alice',
-    ]);
-
-    $alice->notify(new CommentRepliedNotification($reply));
-
-    $this->actingAs($alice)
-        ->get(route('notifications.index'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('notifications/index')
-            ->where('activeTab', 'all')
-            ->has('tabs', 4)
-            ->where('tabs.0.value', 'all')
-            ->where('tabs.1.value', 'comments')
-            ->where('tabs.2.value', 'favorites')
-            ->where('tabs.3.value', 'system')
-            ->has('notifications.data', 1)
-            ->where('notifications.data.0.type', 'comment.replied')
-            ->where('notifications.data.0.actor.name', 'Bob')
-            ->where('notificationSummary.unreadCount', 1)
-        );
-
-    $this->actingAs($alice)
-        ->get(route('notifications.index', ['tab' => 'comments']))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('notifications/index')
-            ->where('activeTab', 'comments')
-            ->has('notifications.data', 1)
-        );
-});
-
-test('users can mark a notification as read and open its target', function () {
-    $game = Game::factory()->create(['slug' => 'demo-game']);
-    $alice = User::factory()->create();
-    $bob = User::factory()->create();
-
-    $root = GameComment::factory()->for($game)->for($alice)->create();
-    $reply = GameComment::factory()->for($game)->for($bob)->create([
-        'parent_id' => $root->id,
-        'reply_to_user_id' => $alice->id,
-        'body' => 'Hello Alice',
-    ]);
-
-    $alice->notify(new CommentRepliedNotification($reply));
-    $notificationId = $alice->notifications()->first()->id;
-
-    $this->actingAs($alice)
-        ->from(route('notifications.index'))
-        ->post(route('notifications.read', $notificationId), ['open' => 1])
-        ->assertRedirect(
-            route('resources.show', 'demo-game')
-                .'?tab=comments&focus='.$reply->id.'#comment-'.$reply->id,
-        );
-
-    expect($alice->fresh()->unreadNotifications()->count())->toBe(0);
-});
-
-test('opening a stale comment notification returns with an info toast', function () {
-    $game = Game::factory()->create(['slug' => 'stale-comment-game']);
-    $alice = User::factory()->create();
-    $notification = $alice->notifications()->create([
-        'id' => (string) Str::uuid(),
-        'type' => 'comment.replied',
-        'data' => [
-            'url' => route('resources.show', $game->slug, absolute: false)
-                .'?focus=999#comment-999',
-            'comment_id' => 999,
-        ],
-    ]);
-
-    $this->actingAs($alice)
-        ->from(route('notifications.index'))
-        ->post(route('notifications.read', $notification->id), ['open' => 1])
-        ->assertRedirect(route('notifications.index'))
-        ->assertInertiaFlash('toast', [
-            'type' => 'info',
-            'message' => __('This comment is no longer available.'),
-        ]);
-
-    expect($alice->fresh()->unreadNotifications()->count())->toBe(0);
-});
-
-test('users can mark all notifications as read for a tab', function () {
-    $game = Game::factory()->create();
-    $alice = User::factory()->create();
-    $bob = User::factory()->create();
-
-    $root = GameComment::factory()->for($game)->for($alice)->create();
-
-    foreach (range(1, 2) as $i) {
-        $reply = GameComment::factory()->for($game)->for($bob)->create([
-            'parent_id' => $root->id,
-            'reply_to_user_id' => $alice->id,
-            'body' => "Reply {$i}",
-        ]);
-        $alice->notify(new CommentRepliedNotification($reply));
-    }
-
-    expect($alice->unreadNotifications()->count())->toBe(2);
-
-    $this->actingAs($alice)
-        ->from(route('notifications.index', ['tab' => 'comments']))
-        ->post(route('notifications.read-all'), ['tab' => 'comments'])
-        ->assertRedirect(route('notifications.index', ['tab' => 'comments']));
-
-    expect($alice->fresh()->unreadNotifications()->count())->toBe(0);
-});
-
-test('users can clear all notifications for a tab', function () {
-    $game = Game::factory()->create();
-    $alice = User::factory()->create();
-    $bob = User::factory()->create();
-
-    $root = GameComment::factory()->for($game)->for($alice)->create();
-    $reply = GameComment::factory()->for($game)->for($bob)->create([
-        'parent_id' => $root->id,
-        'reply_to_user_id' => $alice->id,
-    ]);
-    $alice->notify(new CommentRepliedNotification($reply));
-
-    $alice->favoritedGames()->attach($game->id, [
+    $user->favoritedGames()->attach($game->id, [
         'downloads_seen_at' => now()->subDay(),
         'created_at' => now()->subDay(),
         'updated_at' => now()->subDay(),
     ]);
     $game->touchDownloadsUpdatedAt();
 
-    expect($alice->notifications()->count())->toBe(2);
+    $this->actingAs($user)
+        ->get(route('notifications.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('notifications/index')
+            ->where('activeTab', 'all')
+            ->has('tabs', 3)
+            ->where('tabs.0.value', 'all')
+            ->where('tabs.0.label', 'All')
+            ->where('tabs.1.value', 'favorites')
+            ->where('tabs.1.label', 'Favorite updates')
+            ->where('tabs.2.value', 'system')
+            ->where('tabs.2.label', 'Announcements')
+            ->has('notifications.data', 1)
+            ->where('notifications.data.0.type', 'favorite.downloads_updated')
+            ->where('notificationSummary.unreadCount', 1)
+        );
 
-    $this->actingAs($alice)
-        ->from(route('notifications.index', ['tab' => 'comments']))
-        ->post(route('notifications.clear'), ['tab' => 'comments'])
-        ->assertRedirect(route('notifications.index', ['tab' => 'comments']));
+    $this->actingAs($user)
+        ->get(route('notifications.index', ['tab' => 'favorites']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('notifications/index')
+            ->where('activeTab', 'favorites')
+            ->has('notifications.data', 1)
+        );
+});
 
-    expect($alice->fresh()->notifications()->count())->toBe(1)
-        ->and($alice->notifications()->first()->type)->toBe('favorite.downloads_updated');
+test('users can mark all notifications as read for a tab', function () {
+    $user = User::factory()->create();
+    $game = Game::factory()->create();
+    $user->favoritedGames()->attach($game->id, [
+        'downloads_seen_at' => now()->subDay(),
+        'created_at' => now()->subDay(),
+        'updated_at' => now()->subDay(),
+    ]);
+    $game->touchDownloadsUpdatedAt();
+    $user->notify(new SystemBroadcastNotification('Notice', 'Body', null));
 
-    $this->actingAs($alice)
+    expect($user->unreadNotifications()->count())->toBe(2);
+
+    $this->actingAs($user)
+        ->from(route('notifications.index', ['tab' => 'favorites']))
+        ->post(route('notifications.read-all'), ['tab' => 'favorites'])
+        ->assertRedirect(route('notifications.index', ['tab' => 'favorites']));
+
+    expect($user->fresh()->unreadNotifications()->count())->toBe(1)
+        ->and($user->unreadNotifications()->first()->type)->toBe('system.broadcast');
+});
+
+test('users can clear all notifications for a tab', function () {
+    $user = User::factory()->create();
+    $game = Game::factory()->create();
+    $user->favoritedGames()->attach($game->id, [
+        'downloads_seen_at' => now()->subDay(),
+        'created_at' => now()->subDay(),
+        'updated_at' => now()->subDay(),
+    ]);
+    $game->touchDownloadsUpdatedAt();
+    $user->notify(new SystemBroadcastNotification('Notice', 'Body', null));
+
+    expect($user->notifications()->count())->toBe(2);
+
+    $this->actingAs($user)
+        ->from(route('notifications.index', ['tab' => 'favorites']))
+        ->post(route('notifications.clear'), ['tab' => 'favorites'])
+        ->assertRedirect(route('notifications.index', ['tab' => 'favorites']));
+
+    expect($user->fresh()->notifications()->count())->toBe(1)
+        ->and($user->notifications()->first()->type)->toBe('system.broadcast');
+
+    $this->actingAs($user)
         ->from(route('notifications.index'))
         ->post(route('notifications.clear'), ['tab' => 'all'])
         ->assertRedirect(route('notifications.index'));
 
-    expect($alice->fresh()->notifications()->count())->toBe(0);
+    expect($user->fresh()->notifications()->count())->toBe(0);
 });
 
 test('shared inertia props include unread notification count', function () {
-    $alice = User::factory()->create();
-    $bob = User::factory()->create();
+    $user = User::factory()->create();
     $game = Game::factory()->create();
-    $root = GameComment::factory()->for($game)->for($alice)->create();
-    $reply = GameComment::factory()->for($game)->for($bob)->create([
-        'parent_id' => $root->id,
-        'reply_to_user_id' => $alice->id,
+    $user->favoritedGames()->attach($game->id, [
+        'downloads_seen_at' => now()->subDay(),
+        'created_at' => now()->subDay(),
+        'updated_at' => now()->subDay(),
     ]);
-    $alice->notify(new CommentRepliedNotification($reply));
+    $game->touchDownloadsUpdatedAt();
 
-    $this->actingAs($alice)
+    $this->actingAs($user)
         ->get(route('home'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -242,21 +121,29 @@ test('shared inertia props include unread notification count', function () {
 });
 
 test('users cannot mark another users notification as read', function () {
-    $game = Game::factory()->create();
     $alice = User::factory()->create();
     $bob = User::factory()->create();
-    $root = GameComment::factory()->for($game)->for($alice)->create();
-    $reply = GameComment::factory()->for($game)->for($bob)->create([
-        'parent_id' => $root->id,
-        'reply_to_user_id' => $alice->id,
+    $game = Game::factory()->create();
+    $alice->favoritedGames()->attach($game->id, [
+        'downloads_seen_at' => now()->subDay(),
+        'created_at' => now()->subDay(),
+        'updated_at' => now()->subDay(),
     ]);
-    $alice->notify(new CommentRepliedNotification($reply));
+    $game->touchDownloadsUpdatedAt();
 
     $notificationId = $alice->notifications()->first()->id;
 
     $this->actingAs($bob)
         ->post(route('notifications.read', $notificationId))
         ->assertNotFound();
+});
+
+test('the removed comments notification tab redirects to all notifications', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/notifications/comments')
+        ->assertRedirect('/notifications');
 });
 
 test('favorited users are notified when downloads are updated', function () {
@@ -281,6 +168,8 @@ test('favorited users are notified when downloads are updated', function () {
             ->where('activeTab', 'favorites')
             ->has('notifications.data', 1)
             ->where('notifications.data.0.type', 'favorite.downloads_updated')
+            ->where('notifications.data.0.title', 'Fav Game')
+            ->where('notifications.data.0.body', 'Downloads updated')
             ->where('notifications.data.0.data.game_title', 'Fav Game')
         );
 

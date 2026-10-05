@@ -121,7 +121,7 @@ export default function ResourcesIndex({
         <SiteLayout>
             <PageSeo seo={pageSeo} title={heading} />
 
-            <SitePageContainer className="gap-6 sm:gap-8">
+            <SitePageContainer className="gap-4 sm:gap-5">
                 <header className="flex flex-col gap-1">
                     <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                         {heading}
@@ -138,7 +138,7 @@ export default function ResourcesIndex({
                     )}
                 </header>
 
-                <div className="flex flex-col gap-4 rounded-md border border-border/80 bg-card p-4 sm:p-5">
+                <div className="flex flex-col gap-3 rounded-md border border-border/80 bg-card p-3 sm:p-4">
                     <div className="relative">
                         <label className="sr-only" htmlFor="resource-search">
                             Search resources
@@ -183,7 +183,7 @@ export default function ResourcesIndex({
                         ) : null}
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         <FilterMenu
                             label="Category"
                             allLabel="All categories"
@@ -228,7 +228,7 @@ export default function ResourcesIndex({
                         />
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-2.5">
                         <div className="flex flex-wrap items-center gap-1.5">
                             {selectedTagNames.map((tag) => (
                                 <Badge
@@ -310,7 +310,7 @@ export default function ResourcesIndex({
                 {resources.data.length > 0 ? (
                     <section
                         id="resource-results"
-                        className="relative flex scroll-mt-20 flex-col gap-5"
+                        className="relative flex scroll-mt-20 flex-col gap-3"
                         aria-labelledby="resource-results-heading"
                         aria-busy={isPending || undefined}
                     >

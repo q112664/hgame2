@@ -77,7 +77,7 @@ class IntendedUrl
     }
 
     /**
-     * Keep a plain content anchor (`#comment-9`, and the tab anchors shared
+     * Keep a plain content anchor (`#cover`, and the tab anchors shared
      * before the tab moved into the query string) so a deep link survives the
      * login redirect, but drop anything else: the value is attacker-controlled
      * and is replayed as a redirect target. The active tab itself rides in the

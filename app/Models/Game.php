@@ -35,7 +35,6 @@ use Illuminate\Support\Facades\Notification;
  * @property-read EloquentCollection<int, GameDetailTranslation> $detailTranslations
  * @property-read EloquentCollection<int, GameRelease> $releases
  * @property-read EloquentCollection<int, GameScreenshot> $screenshots
- * @property-read EloquentCollection<int, GameComment> $comments
  * @property-read EloquentCollection<int, User> $favoritedBy
  * @property-read EloquentCollection<int, User> $likedBy
  */
@@ -44,7 +43,7 @@ use Illuminate\Support\Facades\Notification;
     'source_name', 'source_id', 'source_url',
     'cover_url', 'cover_path',
     'release_date', 'status', 'published_at', 'views_count', 'downloads_count', 'likes_count',
-    'ratings_count', 'ratings_avg', 'downloads_updated_at',
+    'downloads_updated_at',
 ])]
 class Game extends Model
 {
@@ -101,8 +100,6 @@ class Game extends Model
             'status' => GameStatus::class,
             'published_at' => 'datetime',
             'downloads_updated_at' => 'datetime',
-            'ratings_count' => 'integer',
-            'ratings_avg' => 'float',
         ];
     }
 
@@ -156,12 +153,6 @@ class Game extends Model
     {
         return $this->belongsToMany(User::class, 'likes')
             ->withTimestamps();
-    }
-
-    /** @return HasMany<GameComment, $this> */
-    public function comments(): HasMany
-    {
-        return $this->hasMany(GameComment::class);
     }
 
     /**

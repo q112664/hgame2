@@ -82,14 +82,14 @@ test('legacy tab urls redirect without recording a view', function () {
     expect($game->fresh()->views_count)->toBe(3);
 });
 
-test('inertia comment pagination on the same resource does not record a view', function () {
+test('inertia navigation on the same resource does not record a view', function () {
     $game = Game::factory()->create([
         'slug' => 'referer-tab-game',
         'views_count' => 3,
     ]);
 
     $request = Request::create(
-        route('resources.show', ['resource' => $game->slug, 'page' => 2]),
+        route('resources.show', ['resource' => $game->slug, 'tab' => 'downloads']),
         'GET',
         server: [
             'HTTP_X_INERTIA' => 'true',

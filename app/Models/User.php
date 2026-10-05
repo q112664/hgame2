@@ -170,12 +170,6 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
             ->withTimestamps();
     }
 
-    /** @return HasMany<GameComment, $this> */
-    public function comments(): HasMany
-    {
-        return $this->hasMany(GameComment::class);
-    }
-
     /** @return HasMany<GameRelease, $this> */
     public function contributedReleases(): HasMany
     {

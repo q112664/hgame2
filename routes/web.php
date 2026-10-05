@@ -4,7 +4,6 @@ use App\Http\Controllers\DocController;
 use App\Http\Controllers\DownloadLinkContinueController;
 use App\Http\Controllers\DownloadLinkController;
 use App\Http\Controllers\FavoriteController;
-use App\Http\Controllers\GameCommentController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\IndexNowKeyController;
 use App\Http\Controllers\LikeController;
@@ -84,23 +83,6 @@ Route::get('/games/{resource}/comments', [ResourceController::class, 'comments']
 Route::get('/games/{resource}', [ResourceController::class, 'show'])
     ->name('resources.show');
 
-Route::middleware('comments.enabled')->group(function () {
-    Route::middleware('auth')->group(function () {
-        Route::post('/games/{resource}/comments', [GameCommentController::class, 'store'])
-            ->name('resources.comments.store')
-            ->middleware('throttle:20,1');
-        Route::patch('/games/{resource}/comments/{comment}', [GameCommentController::class, 'update'])
-            ->name('resources.comments.update')
-            ->whereNumber('comment')
-            ->scopeBindings()
-            ->middleware('throttle:30,1');
-        Route::delete('/games/{resource}/comments/{comment}', [GameCommentController::class, 'destroy'])
-            ->name('resources.comments.destroy')
-            ->whereNumber('comment')
-            ->scopeBindings();
-    });
-});
-
 Route::get('/resources/{path?}', [ResourceController::class, 'legacy'])
     ->where('path', '.*');
 
@@ -115,9 +97,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/games/{resource}/downloads/seen', [ResourceController::class, 'markDownloadsSeen'])
         ->name('resources.downloads.seen');
 
+    Route::redirect('/notifications/comments', '/notifications');
     Route::get('/notifications/{tab?}', [NotificationController::class, 'index'])
         ->name('notifications.index')
-        ->whereIn('tab', ['all', 'comments', 'favorites', 'system']);
+        ->whereIn('tab', ['all', 'favorites', 'system']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])
         ->name('notifications.read-all');
     Route::post('/notifications/clear', [NotificationController::class, 'clear'])

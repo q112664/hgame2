@@ -466,6 +466,23 @@ test('avatar urls use the configured site url', function () {
     expect($user->avatar)->toStartWith('http://hgame.test/storage/avatars/');
 });
 
+test('administrators can hide the download count on the download bar', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    expect(Setting::showDownloadCount())->toBeTrue();
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'show_download_count' => false,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    expect(Setting::showDownloadCount())->toBeFalse();
+});
+
 test('administrators can save a resource page notice', function () {
     $this->actingAs(User::factory()->admin()->create());
 

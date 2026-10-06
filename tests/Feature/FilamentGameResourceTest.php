@@ -307,15 +307,22 @@ test('creating a download package does not bump updates unless marked', function
 
     $createPackage($game, 'Windows package', 'https://example.com/game.zip', false);
 
+    $unchanged = $game->releases()->where('title', 'Windows package')->first();
+
     expect($game->fresh()->downloads_updated_at)->toBeNull()
-        ->and($game->releases()->count())->toBe(1);
+        ->and($game->releases()->count())->toBe(1)
+        ->and($unchanged?->downloads_updated_at)->toBeNull();
 
     Notification::assertNothingSent();
 
     $createPackage($game, 'Windows package v2', 'https://example.com/game-v2.zip', true);
 
+    $marked = $game->releases()->where('title', 'Windows package v2')->first();
+
     expect($game->fresh()->downloads_updated_at)->not->toBeNull()
-        ->and($game->releases()->count())->toBe(2);
+        ->and($game->releases()->count())->toBe(2)
+        ->and($marked?->downloads_updated_at)->not->toBeNull()
+        ->and($unchanged?->fresh()->downloads_updated_at)->toBeNull();
 
     Notification::assertSentTo($fan, FavoriteDownloadsUpdatedNotification::class);
 });
@@ -329,11 +336,16 @@ test('editing a download package bumps updates only when marked', function () {
     $release = GameRelease::factory()->for($game)->create([
         'title' => 'Windows package',
         'version' => '1.0',
+        'downloads_updated_at' => null,
     ]);
     $release->platforms()->sync([$platform->id]);
     $release->languages()->sync([$language->id]);
     GameDownloadLink::factory()->for($release, 'release')->create([
         'url' => 'https://example.com/old.zip',
+    ]);
+    $sibling = GameRelease::factory()->for($game)->create([
+        'title' => 'Mac package',
+        'downloads_updated_at' => null,
     ]);
 
     Livewire::test(ReleasesRelationManager::class, [
@@ -354,7 +366,9 @@ test('editing a download package bumps updates only when marked', function () {
         ])
         ->assertHasNoTableActionErrors();
 
-    expect($game->fresh()->downloads_updated_at)->toBeNull();
+    expect($game->fresh()->downloads_updated_at)->toBeNull()
+        ->and($release->fresh()->downloads_updated_at)->toBeNull()
+        ->and($sibling->fresh()->downloads_updated_at)->toBeNull();
 
     Livewire::test(ReleasesRelationManager::class, [
         'ownerRecord' => $game,
@@ -375,5 +389,28 @@ test('editing a download package bumps updates only when marked', function () {
         ])
         ->assertHasNoTableActionErrors();
 
-    expect($game->fresh()->downloads_updated_at)->not->toBeNull();
+    expect($game->fresh()->downloads_updated_at)->not->toBeNull()
+        ->and($release->fresh()->downloads_updated_at)->not->toBeNull()
+        ->and($sibling->fresh()->downloads_updated_at)->toBeNull();
+
+    Livewire::test(ReleasesRelationManager::class, [
+        'ownerRecord' => $game,
+        'pageClass' => EditGame::class,
+    ])
+        ->callTableAction('edit', $release, [
+            'platforms' => [$platform->id],
+            'languages' => [$language->id],
+            'title' => 'Windows package',
+            'version' => '2.1',
+            'is_active' => true,
+            'downloadLinks' => [
+                (string) Str::uuid() => [
+                    'url' => 'https://example.com/v2-1.zip',
+                ],
+            ],
+        ])
+        ->assertHasNoTableActionErrors();
+
+    expect($release->fresh()->downloads_updated_at)->not->toBeNull()
+        ->and($sibling->fresh()->downloads_updated_at)->toBeNull();
 });

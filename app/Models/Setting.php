@@ -386,6 +386,15 @@ class Setting extends Model
     }
 
     /**
+     * Whether the download bar shows the game-wide download total.
+     * Missing settings stay visible so existing sites do not hide the count.
+     */
+    public static function showDownloadCount(): bool
+    {
+        return static::boolean('show_download_count', true);
+    }
+
+    /**
      * Sanitized HTML for the resource-page notice above the download CTA.
      * Empty when disabled or when the editor has no meaningful content.
      */
@@ -430,6 +439,7 @@ class Setting extends Model
                 'open_in_new_tab' => false,
                 'match' => 'prefix',
             ],
+            self::rankingsNavigationItem(),
             [
                 'label' => 'Tags',
                 'url' => '/games/tags',
@@ -463,6 +473,7 @@ class Setting extends Model
             'BookOpen' => 'Book open',
             'Dices' => 'Dices',
             'ExternalLink' => 'External link',
+            'Flame' => 'Flame',
             'Gamepad2' => 'Gamepad',
             'Home' => 'Home',
             'Library' => 'Library',
@@ -495,7 +506,64 @@ class Setting extends Model
             return static::presentNavigationMenu(static::defaultNavigationMenu());
         }
 
-        return static::presentNavigationMenu($decoded);
+        return static::presentNavigationMenu(static::withRankingsNavigationItem($decoded));
+    }
+
+    /**
+     * @return array{label: string, url: string, icon: string|null, open_in_new_tab: bool, match: 'exact'|'prefix'|'none'}
+     */
+    public static function rankingsNavigationItem(): array
+    {
+        return [
+            'label' => 'Rankings',
+            'url' => '/rankings',
+            'icon' => 'Flame',
+            'open_in_new_tab' => false,
+            'match' => 'prefix',
+        ];
+    }
+
+    /**
+     * Keep a Rankings link on saved menus without rewriting their other labels.
+     *
+     * @param  array<string|int, mixed>  $items
+     * @return array<string|int, mixed>
+     */
+    protected static function withRankingsNavigationItem(array $items): array
+    {
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            if (static::navigationMenuPath((string) ($item['url'] ?? '')) === '/rankings') {
+                return $items;
+            }
+        }
+
+        $withRankings = [];
+        $inserted = false;
+
+        foreach ($items as $item) {
+            $withRankings[] = $item;
+
+            if ($inserted || ! is_array($item)) {
+                continue;
+            }
+
+            $path = static::navigationMenuPath((string) ($item['url'] ?? ''));
+
+            if (in_array($path, ['/games', '/resources'], true)) {
+                $withRankings[] = static::rankingsNavigationItem();
+                $inserted = true;
+            }
+        }
+
+        if (! $inserted) {
+            $withRankings[] = static::rankingsNavigationItem();
+        }
+
+        return $withRankings;
     }
 
     /**

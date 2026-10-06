@@ -70,6 +70,7 @@ test('the resource details page includes hero metadata and every tab payload', f
             ->where('resource.adminEditUrl', null)
             ->where('resource.hasDownloads', true)
             ->where('resourceNotice', '')
+            ->where('showDownloadCount', true)
             ->has('resource.screenshots', 1)
             ->has('resource.releases', 1)
             ->missing('comments')
@@ -94,6 +95,18 @@ test('resource pages expose a sanitized site notice above downloads when enabled
                     && str_contains($html, '<strong>')
                     && ! str_contains($html, '<script>'),
             )
+        );
+});
+
+test('resource pages hide the download count when the site setting is off', function () {
+    Setting::setBoolean('show_download_count', false);
+
+    $this->get(route('resources.show', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('resources/show')
+            ->where('showDownloadCount', false)
+            ->where('resource.downloads', $this->game->downloads_count)
         );
 });
 
@@ -246,6 +259,32 @@ test('details hero uses a card thumbnail while cover stays full size', function 
                 'resource.cover',
                 fn (string $cover): bool => str_contains($cover, $path) && ! str_contains($cover, '/thumbs/'),
             )
+        );
+});
+
+test('only the marked download package exposes an update date', function () {
+    $markedAt = now()->subDay()->startOfSecond();
+    $gameUpdatedAt = now()->subHour()->startOfSecond();
+    $marked = $this->game->releases()->firstOrFail();
+    $marked->forceFill(['downloads_updated_at' => $markedAt])->saveQuietly();
+    $this->game->forceFill(['downloads_updated_at' => $gameUpdatedAt])->saveQuietly();
+
+    $sibling = GameRelease::factory()->for($this->game)->create([
+        'title' => 'Older package',
+        'downloads_updated_at' => null,
+        'sort_order' => ($marked->sort_order ?? 0) + 1,
+    ]);
+    GameDownloadLink::factory()->for($sibling, 'release')->create();
+
+    $this->get(route('resources.show', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('resource.releases', 2)
+            ->where('resource.releases.0.id', $marked->id)
+            ->where('resource.releases.0.downloadsUpdatedAt', $markedAt->toDateString())
+            ->where('resource.releases.1.id', $sibling->id)
+            ->where('resource.releases.1.downloadsUpdatedAt', null)
+            ->where('resource.downloadsUpdatedAt', $gameUpdatedAt->toDateString())
         );
 });
 

@@ -139,7 +139,7 @@ export function PopularResources({
                                         <p className="line-clamp-2 font-heading text-sm leading-snug font-semibold tracking-tight text-white">
                                             {resource.title}
                                         </p>
-                                        <p className="mt-1 inline-flex items-center gap-1 text-xs leading-none tabular-nums text-white/85">
+                                        <p className="mt-1 inline-flex items-center gap-1 text-xs leading-none text-white/85 tabular-nums">
                                             <Eye
                                                 className="size-3.5 shrink-0 opacity-90"
                                                 aria-hidden
@@ -159,7 +159,7 @@ export function PopularResources({
                                             rank === 3 &&
                                                 'bg-warning/90 text-warning-foreground',
                                             rank > 3 &&
-                                                'bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-[2px]',
+                                                'bg-black/60 text-white ring-1 ring-white/15',
                                         )}
                                         aria-label={`Rank ${rank}`}
                                     >

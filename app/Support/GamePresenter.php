@@ -67,6 +67,41 @@ class GamePresenter
         ];
     }
 
+    /**
+     * One public leaderboard row. Views and downloads belong to the requested
+     * window, not the lifetime counters on the game.
+     *
+     * @return array{
+     *     slug: string,
+     *     title: string,
+     *     subtitle: string|null,
+     *     thumbnail: string,
+     *     thumbnailFallback: string,
+     *     developer: string,
+     *     category: string,
+     *     views: int,
+     *     downloads: int,
+     *     rank: int
+     * }
+     */
+    public static function rankingEntry(Game $game, int $views, int $downloads, int $rank): array
+    {
+        $categoryName = $game->category?->name;
+
+        return [
+            'slug' => $game->slug,
+            'title' => $game->title,
+            'subtitle' => $game->subtitle ?: null,
+            'thumbnail' => self::cardThumbnailUrl($game),
+            'thumbnailFallback' => self::mediaUrl($game->cover_path ?: $game->cover_url),
+            'developer' => $game->developer ?? 'Unknown',
+            'category' => filled($categoryName) ? $categoryName : 'Uncategorized',
+            'views' => $views,
+            'downloads' => $downloads,
+            'rank' => $rank,
+        ];
+    }
+
     /** @return array<string, mixed> */
     public static function detail(
         Game $game,
@@ -127,6 +162,7 @@ class GamePresenter
                         'fileSize' => $release->file_size,
                         'description' => str($release->description ?? '')->sanitizeHtml()->toString(),
                         'publishedAt' => self::dateString($release->published_at),
+                        'downloadsUpdatedAt' => self::dateString($release->downloads_updated_at),
                         'contributor' => $release->relationLoaded('contributor') && $release->contributor !== null
                             ? $release->contributor->toPublicProfile()
                             : null,

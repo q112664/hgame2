@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property CarbonInterface|null $published_at
+ * @property CarbonInterface|null $downloads_updated_at
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property-read Game|null $game
@@ -25,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'game_id', 'user_id', 'platform_id', 'language_id', 'title', 'version', 'file_size',
-    'description', 'published_at', 'is_active', 'sort_order',
+    'description', 'published_at', 'downloads_updated_at', 'is_active', 'sort_order',
 ])]
 class GameRelease extends Model
 {
@@ -36,6 +37,7 @@ class GameRelease extends Model
     {
         return [
             'published_at' => 'datetime',
+            'downloads_updated_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }
@@ -74,6 +76,7 @@ class GameRelease extends Model
                 'version',
                 'sort_order',
                 'published_at',
+                'downloads_updated_at',
                 'created_at',
             ])
             ->with([
@@ -101,6 +104,21 @@ class GameRelease extends Model
                     ->orderBy('sort_order'),
             ])
             ->orderBy('sort_order');
+    }
+
+    /**
+     * Mark only this package as a download update, then refresh the game-level
+     * signal used by the catalog, favorites, and search engines.
+     */
+    public function markAsDownloadUpdate(): void
+    {
+        $this->forceFill([
+            'downloads_updated_at' => now(),
+        ])->saveQuietly();
+
+        $game = $this->relationLoaded('game') ? $this->game : $this->game()->first();
+
+        $game?->touchDownloadsUpdatedAt();
     }
 
     /** @return BelongsTo<Game, $this> */

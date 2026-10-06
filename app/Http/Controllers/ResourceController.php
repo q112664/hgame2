@@ -400,6 +400,7 @@ class ResourceController extends Controller
 
         return Inertia::render('resources/show', [
             'resourceNotice' => Setting::resourceNoticeHtml(),
+            'showDownloadCount' => Setting::showDownloadCount(),
             'related' => ($this->listRelatedGames)($game),
             'initialTab' => $initialTab,
             'pageSeo' => PageSeo::forGame(

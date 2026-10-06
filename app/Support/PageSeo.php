@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Doc;
 use App\Models\Game;
 use App\Models\Setting;
+use App\RankingPeriod;
 use Illuminate\Support\Str;
 
 /**
@@ -358,6 +359,31 @@ final class PageSeo
                 'datePublished' => $doc->published_at?->toIso8601String(),
                 'mainEntityOfPage' => self::absoluteUrl($canonical),
             ],
+        );
+    }
+
+    /**
+     * @return PageSeoArray
+     */
+    public static function rankings(RankingPeriod $period): array
+    {
+        $title = match ($period) {
+            RankingPeriod::Day => 'Rankings',
+            RankingPeriod::Week => 'Rankings · 7 days',
+            RankingPeriod::Month => 'Rankings · 30 days',
+        };
+
+        $canonical = match ($period) {
+            RankingPeriod::Day => route('rankings.day'),
+            RankingPeriod::Week => route('rankings.week'),
+            RankingPeriod::Month => route('rankings.month'),
+        };
+
+        return self::make(
+            title: $title,
+            description: 'Rank free hentai games and eroge by views plus downloads. Compare today, the last 7 days, and the last 30 days, then open a title for details.',
+            canonical: $canonical,
+            robots: 'index,follow',
         );
     }
 

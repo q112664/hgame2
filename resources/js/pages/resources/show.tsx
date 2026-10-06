@@ -88,6 +88,8 @@ type Props = {
     resource: GameDetail;
     /** Site-wide notice HTML from admin (empty string when disabled). */
     resourceNotice?: string;
+    /** Admin toggle for the download-total chip on each package. */
+    showDownloadCount?: boolean;
     related?: GameCard[];
     /** The tab the server rendered, so hydration does not repaint another one. */
     initialTab?: ResourceTab;
@@ -191,6 +193,7 @@ function ResourceHeroCover({
 export default function ResourceShow({
     resource,
     resourceNotice = '',
+    showDownloadCount = true,
     related = [],
     initialTab = 'details',
     pageSeo,
@@ -642,6 +645,7 @@ export default function ResourceShow({
                         screenshotSlides={screenshotSlides}
                         onOpenLightbox={openLightbox}
                         resourceNotice={resourceNotice}
+                        showDownloadCount={showDownloadCount}
                         resourceId={resource.id}
                         related={related}
                     />

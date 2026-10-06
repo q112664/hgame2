@@ -82,6 +82,7 @@ class ManageSiteSettings extends Page
             'indexnow_key' => Setting::get('indexnow_key') ?? '',
             'resource_notice_enabled' => Setting::resourceNoticeEnabled(),
             'resource_notice_content' => Setting::get('resource_notice_content') ?? '',
+            'show_download_count' => Setting::showDownloadCount(),
             'turnstile_site_key' => Setting::get('turnstile_site_key') ?? config('services.turnstile.site_key'),
             'turnstile_secret_key' => Setting::get('turnstile_secret_key') ? '••••••••' : '',
             'turnstile_login_enabled' => Setting::boolean('turnstile_login_enabled', false),
@@ -342,6 +343,14 @@ class ManageSiteSettings extends Page
                         Tab::make('Resources')
                             ->icon(Heroicon::OutlinedRectangleStack)
                             ->schema([
+                                Section::make('Download count')
+                                    ->description('The total on each package in the Downloads tab. Turning this off hides the number. Downloads are still counted.')
+                                    ->schema([
+                                        Toggle::make('show_download_count')
+                                            ->label('Show download count')
+                                            ->default(true)
+                                            ->inline(false),
+                                    ]),
                                 Section::make('Resource page notice')
                                     ->description('Shown on the Downloads tab above download packages. Disable or clear to hide.')
                                     ->schema([
@@ -574,6 +583,10 @@ class ManageSiteSettings extends Page
             filter_var($data['hero_show_random'] ?? true, FILTER_VALIDATE_BOOLEAN),
         );
 
+        Setting::setBoolean(
+            'show_download_count',
+            filter_var($data['show_download_count'] ?? true, FILTER_VALIDATE_BOOLEAN),
+        );
         Setting::setBoolean(
             'resource_notice_enabled',
             filter_var($data['resource_notice_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),

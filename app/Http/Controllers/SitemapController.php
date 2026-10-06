@@ -20,12 +20,16 @@ class SitemapController extends Controller
     {
         $catalogLastmod = $this->catalogLastmod();
         $docsLastmod = $this->docsIndexLastmod();
+        $rankingsLastmod = today()->startOfDay()->toAtomString();
 
         $urls = [
             $this->url(route('home'), 'daily', '1.0', $catalogLastmod),
             $this->url(route('resources.index'), 'daily', '0.9', $catalogLastmod),
             $this->url(route('resources.tags'), 'daily', '0.8', $catalogLastmod),
             $this->url(route('docs.index'), 'weekly', '0.6', $docsLastmod),
+            $this->url(route('rankings.day'), 'daily', '0.6', $rankingsLastmod),
+            $this->url(route('rankings.week'), 'daily', '0.6', $rankingsLastmod),
+            $this->url(route('rankings.month'), 'daily', '0.6', $rankingsLastmod),
         ];
 
         foreach ($this->taxonomyUrls() as $taxonomyUrl) {

@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Inertia\ExceptionResponse;
+use Inertia\Inertia;
 use Laravel\Fortify\Http\Requests\LoginRequest as FortifyLoginRequest;
 use Laravel\Fortify\Http\Requests\SendPasswordResetLinkRequest as FortifySendPasswordResetLinkRequest;
 use Laravel\Sanctum\Sanctum;
@@ -64,6 +66,29 @@ class AppServiceProvider extends ServiceProvider
             ->published()
             ->where('slug', $value)
             ->firstOrFail());
+
+        $this->registerNotFoundPage();
+    }
+
+    /**
+     * Public HTML 404s use the site header, footer, and pixel page.
+     * API and admin misses keep their own responses.
+     */
+    protected function registerNotFoundPage(): void
+    {
+        Inertia::handleExceptionsUsing(function (ExceptionResponse $response): ?ExceptionResponse {
+            if ($response->statusCode() !== 404) {
+                return null;
+            }
+
+            $request = $response->request;
+
+            if ($request->is('api/*', 'admin', 'admin/*') || $request->wantsJson()) {
+                return null;
+            }
+
+            return $response->render('errors/404')->withSharedData();
+        });
     }
 
     /**

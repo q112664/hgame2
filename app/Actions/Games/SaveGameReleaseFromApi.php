@@ -65,7 +65,7 @@ class SaveGameReleaseFromApi
             });
 
             if (filter_var($data['touch_downloads'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-                $game->touchDownloadsUpdatedAt();
+                $release->markAsDownloadUpdate();
             }
 
             return GameApiPayload::reload($game);
@@ -144,7 +144,7 @@ class SaveGameReleaseFromApi
             }
 
             if (filter_var($data['touch_downloads'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-                $game->touchDownloadsUpdatedAt();
+                $release->markAsDownloadUpdate();
             }
 
             return GameApiPayload::reload($game);

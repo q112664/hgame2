@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Games\RelationManagers;
 
 use App\Filament\Resources\Games\Schemas\GameForm;
-use App\Models\Game;
 use App\Models\GameRelease;
 use App\Support\MediaUpload;
 use Filament\Actions\Action;
@@ -86,7 +85,7 @@ class ReleasesRelationManager extends RelationManager
                 Hidden::make('published_at')->default(now()),
                 Checkbox::make('mark_as_download_update')
                     ->label('This is a download update')
-                    ->helperText('Shows Updated on the public page and notifies people who favorited this game. Leave unchecked when fixing notes, size, or links without a new package.')
+                    ->helperText('Marks only this package as Updated and notifies people who favorited this game. Other download bars stay as they are. Leave unchecked when fixing notes, size, or links without a new package.')
                     ->default(false)
                     ->dehydrated(false)
                     ->columnSpanFull(),
@@ -157,15 +156,15 @@ class ReleasesRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->mutateDataUsing(fn (array $data, CreateAction $action): array => $this->rememberDownloadUpdateFlag($data, $action))
-                    ->after(function (): void {
-                        $this->touchOwnerDownloadsIfMarked();
+                    ->after(function (GameRelease $record): void {
+                        $this->markReleaseDownloadUpdate($record);
                     }),
             ])
             ->recordActions([
                 EditAction::make()
                     ->mutateDataUsing(fn (array $data, EditAction $action): array => $this->rememberDownloadUpdateFlag($data, $action))
-                    ->after(function (): void {
-                        $this->touchOwnerDownloadsIfMarked();
+                    ->after(function (GameRelease $record): void {
+                        $this->markReleaseDownloadUpdate($record);
                     }),
                 DeleteAction::make(),
             ])
@@ -193,7 +192,7 @@ class ReleasesRelationManager extends RelationManager
         return $data;
     }
 
-    private function touchOwnerDownloadsIfMarked(): void
+    private function markReleaseDownloadUpdate(GameRelease $release): void
     {
         if (! $this->pendingDownloadUpdate) {
             return;
@@ -201,10 +200,6 @@ class ReleasesRelationManager extends RelationManager
 
         $this->pendingDownloadUpdate = false;
 
-        $game = $this->getOwnerRecord();
-
-        if ($game instanceof Game) {
-            $game->touchDownloadsUpdatedAt();
-        }
+        $release->markAsDownloadUpdate();
     }
 }

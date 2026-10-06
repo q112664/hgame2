@@ -65,6 +65,8 @@ export type GameRelease = {
     fileSize: string | null;
     description: string;
     publishedAt: string | null;
+    /** Set only when this package was marked as a download update. */
+    downloadsUpdatedAt: string | null;
     /** Site user who contributed this release package. */
     contributor: GameReleaseContributor | null;
     downloadLinks: GameDownloadLink[];

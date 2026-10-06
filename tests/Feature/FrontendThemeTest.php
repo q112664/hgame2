@@ -590,6 +590,8 @@ test('homepage popular section uses a ranked landscape strip', function () {
         ->toContain('from-black/85')
         ->toContain('Rank')
         ->toContain('formatViews')
+        ->toContain('bg-black/60 text-white ring-1 ring-white/15')
+        ->not->toContain('backdrop-blur')
         ->not->toContain('useDragScroll')
         ->not->toContain('cursor-grab')
         ->not->toContain('fit="contain"')
@@ -601,6 +603,29 @@ test('homepage popular section uses a ranked landscape strip', function () {
         ->toContain('<LatestResources')
         ->not->toContain('CatalogBrowseLinks')
         ->not->toContain('HomeTaxonomyPanel');
+});
+
+test('rankings page is a compact list without blur', function () {
+    $source = app(Filesystem::class)->get(resource_path('js/pages/rankings/index.tsx'));
+
+    expect($source)
+        ->toContain('font-heading text-2xl font-semibold tracking-tight')
+        ->toContain('LazyThumbnail')
+        ->toContain('priority={entry.rank <= 3}')
+        ->toContain('bg-primary text-primary-foreground')
+        ->toContain('bg-foreground/85 text-background')
+        ->toContain('bg-warning/90 text-warning-foreground')
+        ->toContain('bg-surface-inverse text-surface-inverse-foreground')
+        ->toContain('absolute top-1.5 left-1.5')
+        ->toContain('w-28')
+        ->toContain('sm:w-36')
+        ->toContain('grid-cols-[7rem_minmax(0,1fr)_auto]')
+        ->not->toContain('min-w-full')
+        ->toContain('prefetch')
+        ->not->toContain('w-16 sm:w-20')
+        ->not->toContain('Download')
+        ->not->toContain('bg-black/60')
+        ->not->toContain('backdrop-blur');
 });
 
 test('page seo component renders canonical robots og and json-ld overrides', function () {
@@ -775,12 +800,16 @@ test('download release items use the compact responsive layout', function () {
         ->toContain('UserAvatar')
         ->toContain('Contributed by')
         ->toContain('release.contributor.name')
-        ->toContain('resource.downloadsUpdatedAt')
+        ->toContain('release.downloadsUpdatedAt')
+        ->toContain('showReleaseUpdate')
+        ->not->toContain('hasLaterDownloadUpdate')
         ->toContain('Downloads last updated')
+        ->toContain('bg-info/15 text-sm font-medium text-info')
         ->toContain('sm:hidden')
         ->toContain('hidden shrink-0 sm:inline-flex')
         ->toContain('flex shrink-0 items-center gap-2 sm:hidden')
         ->toContain('resource.downloads')
+        ->toContain('showDownloadCount')
         ->toContain('${formatted} downloads')
         ->toContain('releaseDescriptionNeedsToggle')
         ->toContain("overflow: 'hidden'")

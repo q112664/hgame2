@@ -423,19 +423,34 @@ test('nested release updates bump downloads only when touch_downloads is true', 
     $data = publishGameViaApi();
     $releaseId = $data['releases'][0]['id'];
 
+    $sibling = $this->postJson("/api/v1/games/{$data['id']}/releases", [
+        'title' => 'Mac English package',
+        'platforms' => ['Mac'],
+        'languages' => ['English'],
+        'download_links' => ['https://example.com/mac.zip'],
+    ])->assertCreated()->json('data.releases');
+
+    $siblingId = collect($sibling)->firstWhere('title', 'Mac English package')['id'];
+
     $this->patchJson("/api/v1/games/{$data['id']}/releases/{$releaseId}", [
         'version' => '1.1',
         'touch_downloads' => false,
     ])->assertOk();
 
     $game = Game::query()->where('slug', $data['id'])->firstOrFail();
-    expect($game->downloads_updated_at)->toBeNull();
+    expect($game->downloads_updated_at)->toBeNull()
+        ->and($game->releases()->find($releaseId)?->downloads_updated_at)->toBeNull()
+        ->and($game->releases()->find($siblingId)?->downloads_updated_at)->toBeNull();
 
     $this->patchJson("/api/v1/games/{$data['id']}/releases/{$releaseId}", [
         'touch_downloads' => true,
     ])->assertOk();
 
-    expect($game->fresh()->downloads_updated_at)->not->toBeNull();
+    $game->refresh();
+
+    expect($game->downloads_updated_at)->not->toBeNull()
+        ->and($game->releases()->find($releaseId)?->downloads_updated_at)->not->toBeNull()
+        ->and($game->releases()->find($siblingId)?->downloads_updated_at)->toBeNull();
 });
 
 test('deleting a release leaves other packages', function () {

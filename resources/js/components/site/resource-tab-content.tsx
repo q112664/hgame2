@@ -6,6 +6,7 @@ import {
     HardDrive,
     Images,
     Info,
+    RefreshCw,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
@@ -40,6 +41,29 @@ import type { GameCard, GameDetail } from '@/types/resources';
 
 /** Collapsed height ≈ three prose-sm lines before “Show more”. */
 const RELEASE_DESCRIPTION_COLLAPSED_MAX_PX = 72;
+
+/**
+ * Marks the one package an admin flagged as a download update.
+ * Same info tint as the catalog update chip, sized to the download button.
+ */
+function DownloadUpdateChip({ date }: { date: string }) {
+    return (
+        <span
+            className={cn(
+                'inline-flex h-8 w-full shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5',
+                'bg-info/15 text-sm font-medium text-info',
+                'sm:w-auto sm:justify-start',
+            )}
+            title="Downloads last updated"
+        >
+            <RefreshCw className="size-3.5 shrink-0" aria-hidden />
+            <span>Updated</span>
+            <time dateTime={date} className="tabular-nums">
+                {formatDate(date)}
+            </time>
+        </span>
+    );
+}
 
 /** Resource-wide download total, aligned with the like chip on the package bar. */
 function DownloadCount({
@@ -285,6 +309,8 @@ type Props = {
     onOpenLightbox: (slides: LightboxSlide[], index: number) => void;
     /** Site-wide notice HTML above download packages (empty when disabled). */
     resourceNotice?: string;
+    /** When false, the download-total chip is omitted from each package bar. */
+    showDownloadCount?: boolean;
     resourceId?: string;
     related?: GameCard[];
 };
@@ -295,6 +321,7 @@ export function ResourceTabContent({
     screenshotSlides,
     onOpenLightbox,
     resourceNotice = '',
+    showDownloadCount = true,
     resourceId,
     related = [],
 }: Props) {
@@ -388,12 +415,11 @@ export function ResourceTabContent({
                     resource.releases.map((release) => {
                         const hasLinks = release.downloadLinks.length > 0;
                         const multiLinks = release.downloadLinks.length > 1;
-                        // Prefer site download-update time over package publish date.
-                        const activityDate =
-                            resource.downloadsUpdatedAt ?? release.publishedAt;
-                        const activityIsUpdate = Boolean(
-                            resource.downloadsUpdatedAt,
-                        );
+                        const releaseUpdatedAt = release.downloadsUpdatedAt;
+                        const showReleaseUpdate =
+                            releaseUpdatedAt !== null &&
+                            releaseUpdatedAt !== '';
+                        const activityDate = release.publishedAt;
 
                         return (
                             <article
@@ -509,48 +535,38 @@ export function ResourceTabContent({
                                                                     .name
                                                             }
                                                         </span>
-                                                        <span
-                                                            className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
-                                                            title={
-                                                                activityIsUpdate
-                                                                    ? 'Downloads last updated'
-                                                                    : 'Package listed'
-                                                            }
-                                                        >
-                                                            <span className="shrink-0">
-                                                                {activityIsUpdate
-                                                                    ? 'Updated'
-                                                                    : 'Listed'}
-                                                            </span>
-                                                            <time
-                                                                dateTime={
-                                                                    activityDate ??
-                                                                    undefined
-                                                                }
-                                                                className="min-w-0 truncate tabular-nums"
+                                                        {showReleaseUpdate ? null : (
+                                                            <span
+                                                                className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
+                                                                title="Package listed"
                                                             >
-                                                                {activityDate
-                                                                    ? formatDate(
-                                                                          activityDate,
-                                                                      )
-                                                                    : 'Unscheduled'}
-                                                            </time>
-                                                        </span>
+                                                                <span className="shrink-0">
+                                                                    Listed
+                                                                </span>
+                                                                <time
+                                                                    dateTime={
+                                                                        activityDate ??
+                                                                        undefined
+                                                                    }
+                                                                    className="min-w-0 truncate tabular-nums"
+                                                                >
+                                                                    {activityDate
+                                                                        ? formatDate(
+                                                                              activityDate,
+                                                                          )
+                                                                        : 'Unscheduled'}
+                                                                </time>
+                                                            </span>
+                                                        )}
                                                     </span>
                                                 </Link>
-                                            ) : (
+                                            ) : showReleaseUpdate ? null : (
                                                 <span
                                                     className="inline-flex min-w-0 flex-1 items-center gap-1 text-xs leading-4 text-muted-foreground sm:flex-none"
-                                                    title={
-                                                        activityIsUpdate
-                                                            ? 'Downloads last updated'
-                                                            : 'Package listed'
-                                                    }
+                                                    title="Package listed"
                                                 >
                                                     <span className="shrink-0">
-                                                        {activityIsUpdate
-                                                            ? 'Updated'
-                                                            : 'Listed'}
+                                                        Listed
                                                     </span>
                                                     <time
                                                         dateTime={
@@ -575,9 +591,13 @@ export function ResourceTabContent({
                                                     onToggle={toggleLike}
                                                     className="shrink-0"
                                                 />
-                                                <DownloadCount
-                                                    count={resource.downloads}
-                                                />
+                                                {showDownloadCount ? (
+                                                    <DownloadCount
+                                                        count={
+                                                            resource.downloads
+                                                        }
+                                                    />
+                                                ) : null}
                                             </div>
                                         </div>
 
@@ -586,6 +606,12 @@ export function ResourceTabContent({
                                             role="group"
                                             aria-label="Package actions"
                                         >
+                                            {showReleaseUpdate &&
+                                            releaseUpdatedAt ? (
+                                                <DownloadUpdateChip
+                                                    date={releaseUpdatedAt}
+                                                />
+                                            ) : null}
                                             <LikeButton
                                                 isLiked={isLiked}
                                                 likesCount={likesCount}
@@ -593,10 +619,12 @@ export function ResourceTabContent({
                                                 onToggle={toggleLike}
                                                 className="hidden shrink-0 sm:inline-flex"
                                             />
-                                            <DownloadCount
-                                                count={resource.downloads}
-                                                className="hidden sm:inline-flex"
-                                            />
+                                            {showDownloadCount ? (
+                                                <DownloadCount
+                                                    count={resource.downloads}
+                                                    className="hidden sm:inline-flex"
+                                                />
+                                            ) : null}
                                             {hasLinks
                                                 ? release.downloadLinks.map(
                                                       (link, index) => {

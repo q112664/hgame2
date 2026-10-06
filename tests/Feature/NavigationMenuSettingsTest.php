@@ -49,6 +49,13 @@ test('administrators can save the public navigation menu', function () {
             'match' => 'prefix',
         ],
         [
+            'label' => 'Rankings',
+            'url' => '/rankings',
+            'icon' => 'Flame',
+            'openInNewTab' => false,
+            'match' => 'prefix',
+        ],
+        [
             'label' => 'GitHub',
             'url' => 'https://github.com/example/hgame',
             'icon' => 'ExternalLink',
@@ -96,7 +103,9 @@ test('default navigation menu includes games and tags', function () {
         ->and(collect($menu)->firstWhere('url', '/games')['label'])->toBe('Games')
         ->and(collect($menu)->firstWhere('url', '/games')['icon'])->toBe('Gamepad2')
         ->and(collect($menu)->firstWhere('url', '/games/tags')['label'])->toBe('Tags')
-        ->and(collect($menu)->firstWhere('url', '/games/tags')['icon'])->toBe('Tags');
+        ->and(collect($menu)->firstWhere('url', '/games/tags')['icon'])->toBe('Tags')
+        ->and(collect($menu)->firstWhere('url', '/rankings')['label'])->toBe('Rankings')
+        ->and(collect($menu)->firstWhere('url', '/rankings')['icon'])->toBe('Flame');
 });
 
 test('menu items without an icon stay without an icon', function () {
@@ -178,12 +187,15 @@ test('navigation menu is shared with the frontend', function () {
     $this->get(route('home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->has('navigationMenu', 1)
+            ->has('navigationMenu', 2)
             ->where('navigationMenu.0.label', 'Browse')
             ->where('navigationMenu.0.url', '/games')
             ->where('navigationMenu.0.icon', 'Library')
             ->where('navigationMenu.0.openInNewTab', false)
             ->where('navigationMenu.0.match', 'prefix')
+            ->where('navigationMenu.1.label', 'Rankings')
+            ->where('navigationMenu.1.url', '/rankings')
+            ->where('navigationMenu.1.icon', 'Flame')
             ->has('footerLinks', 0)
         );
 });
@@ -306,8 +318,9 @@ test('invalid navigation urls are rejected when saving', function () {
         ],
     ]);
 
-    expect(Setting::navigationMenu())->toHaveCount(1)
-        ->and(Setting::navigationMenu()[0]['label'])->toBe('Safe');
+    expect(Setting::navigationMenu())->toHaveCount(2)
+        ->and(Setting::navigationMenu()[0]['label'])->toBe('Safe')
+        ->and(Setting::navigationMenu()[1]['url'])->toBe('/rankings');
 });
 
 test('regular users cannot access navigation menu settings', function () {

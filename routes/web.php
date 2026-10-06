@@ -8,6 +8,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\IndexNowKeyController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\RankingController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SearchController;
@@ -24,6 +25,9 @@ Route::get('/{indexNowKey}.txt', IndexNowKeyController::class)
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/search', SearchController::class)->name('search');
+Route::get('/rankings', RankingController::class)->name('rankings.day');
+Route::get('/rankings/week', RankingController::class)->name('rankings.week');
+Route::get('/rankings/month', RankingController::class)->name('rankings.month');
 
 // Legacy Filament login URL — admin signs in on the public site only.
 Route::redirect('/admin/login', '/login');

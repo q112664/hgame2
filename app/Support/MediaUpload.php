@@ -92,19 +92,6 @@ final class MediaUpload
         $path = $directory !== '' ? $directory.'/'.$filename : $filename;
         $this->writeAndVerify($disk, $path, $binary);
 
-        if ($disk === 'r2') {
-            try {
-                $this->writeAndVerify('public', $path, $binary);
-            } catch (RuntimeException $exception) {
-                rescue(fn (): bool => Storage::disk('r2')->delete($path), report: false);
-
-                throw new RuntimeException(
-                    "Unable to create the local rollback copy for [{$path}].",
-                    previous: $exception,
-                );
-            }
-        }
-
         return $path;
     }
 

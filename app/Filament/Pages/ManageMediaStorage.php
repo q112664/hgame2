@@ -135,7 +135,9 @@ class ManageMediaStorage extends Page
             ->components([
                 $this->getFormContentComponent(),
                 Section::make('Storage workflow')
-                    ->description('Each file is queued independently. R2 changes retain verified local rollback copies.')
+                    ->description(fn (): string => $this->r2IsActive()
+                        ? 'R2 is active. New uploads and thumbnails are stored only in the bucket. Migration, validation, activation, and rollback stay unavailable.'
+                        : 'Each file is queued independently. Finish migration and validation before activation.')
                     ->schema([
                         Actions::make([
                             Action::make('startMigration')
@@ -143,7 +145,7 @@ class ManageMediaStorage extends Page
                                 ->icon(Heroicon::OutlinedCloudArrowUp)
                                 ->requiresConfirmation()
                                 ->modalDescription('Copy all managed local media to the tested R2 configuration. The site continues using its current disk.')
-                                ->disabled(fn (): bool => ! $this->currentConfiguration()?->wasSuccessfullyTested())
+                                ->disabled(fn (): bool => $this->r2IsActive() || ! $this->currentConfiguration()?->wasSuccessfullyTested())
                                 ->action('startMigration'),
                             Action::make('startValidation')
                                 ->label('Validate R2')
@@ -151,23 +153,23 @@ class ManageMediaStorage extends Page
                                 ->color('gray')
                                 ->requiresConfirmation()
                                 ->modalDescription('Read every migrated object and compare its SHA-256 checksum with the local source.')
-                                ->disabled(fn (): bool => ! $this->hasSuccessfulOperation(MediaOperation::TypeMigration))
+                                ->disabled(fn (): bool => $this->r2IsActive() || ! $this->hasSuccessfulOperation(MediaOperation::TypeMigration))
                                 ->action('startValidation'),
                             Action::make('activateR2')
                                 ->label('Activate R2')
                                 ->icon(Heroicon::OutlinedBolt)
                                 ->color('success')
                                 ->requiresConfirmation()
-                                ->modalDescription('Switch new uploads and public media URLs to the validated R2 configuration. Local files are retained.')
-                                ->disabled(fn (): bool => ! $this->hasSuccessfulOperation(MediaOperation::TypeValidation))
+                                ->modalDescription('Switch new uploads and public media URLs to the validated R2 configuration. Later uploads are stored only in R2.')
+                                ->disabled(fn (): bool => $this->r2IsActive() || ! $this->hasSuccessfulOperation(MediaOperation::TypeValidation))
                                 ->action('activateR2'),
                             Action::make('rollbackToLocal')
                                 ->label('Rollback to local')
                                 ->icon(Heroicon::OutlinedArrowUturnLeft)
                                 ->color('danger')
                                 ->requiresConfirmation()
-                                ->modalDescription('Switch media URLs and new uploads back to local storage. Rollback is blocked if a referenced local source is missing.')
-                                ->disabled(fn (): bool => MediaStorageConfiguration::active() === null)
+                                ->modalDescription('Rollback stays unavailable because the site does not keep local copies after R2 is active.')
+                                ->disabled(fn (): bool => true)
                                 ->action('rollbackToLocal'),
                             Action::make('startOptimization')
                                 ->label('Optimize existing images')
@@ -268,6 +270,10 @@ class ManageMediaStorage extends Page
 
     public function startMigration(MediaStorageManager $manager): void
     {
+        if ($this->rejectActiveR2Action()) {
+            return;
+        }
+
         $this->runAction(
             fn (): MediaOperation => $manager->startMigration(
                 $this->requireCurrentConfiguration(),
@@ -280,6 +286,10 @@ class ManageMediaStorage extends Page
 
     public function startValidation(MediaStorageManager $manager): void
     {
+        if ($this->rejectActiveR2Action()) {
+            return;
+        }
+
         $this->runAction(
             fn (): MediaOperation => $manager->startValidation(
                 $this->requireCurrentConfiguration(),
@@ -292,6 +302,10 @@ class ManageMediaStorage extends Page
 
     public function activateR2(MediaStorageManager $manager): void
     {
+        if ($this->rejectActiveR2Action()) {
+            return;
+        }
+
         $this->runAction(
             function () use ($manager): void {
                 $manager->activate($this->requireCurrentConfiguration());
@@ -301,23 +315,9 @@ class ManageMediaStorage extends Page
         );
     }
 
-    public function rollbackToLocal(MediaStorageManager $manager): void
+    public function rollbackToLocal(): void
     {
-        $configuration = MediaStorageConfiguration::active();
-
-        if ($configuration === null) {
-            $this->failureNotification('No active R2 configuration is available to roll back.');
-
-            return;
-        }
-
-        $this->runAction(
-            function () use ($manager, $configuration): void {
-                $manager->rollbackToLocal($configuration);
-            },
-            'Media storage rolled back to local',
-            'Local source files are active again. R2 objects were retained.',
-        );
+        $this->failureNotification('Rollback stays unavailable because local media copies are not retained.');
     }
 
     public function startOptimization(MediaStorageManager $manager): void
@@ -493,6 +493,22 @@ class ManageMediaStorage extends Page
         } catch (Throwable $exception) {
             $this->failureNotification($exception->getMessage());
         }
+    }
+
+    private function r2IsActive(): bool
+    {
+        return MediaStorageConfiguration::active() !== null;
+    }
+
+    private function rejectActiveR2Action(): bool
+    {
+        if (! $this->r2IsActive()) {
+            return false;
+        }
+
+        $this->failureNotification('R2 is already active. Local media copies are not retained, so this action stays unavailable.');
+
+        return true;
     }
 
     private function failureNotification(string $message): void

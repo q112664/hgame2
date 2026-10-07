@@ -10,6 +10,7 @@ use App\Support\MediaPathCollector;
 use App\Support\MediaReferenceRewriter;
 use App\Support\MediaStorageManager;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -332,25 +333,6 @@ final class ProcessMediaOperationItem implements ShouldQueue
             throw new RuntimeException("Optimized media [{$targetPath}] failed verification.");
         }
 
-        if ($diskName === 'r2') {
-            $local = Storage::disk('public');
-
-            if ($local->put($targetPath, $optimized['binary']) === false) {
-                $disk->delete($targetPath);
-
-                throw new RuntimeException("Local rollback media [{$targetPath}] could not be written.");
-            }
-
-            $localStored = $local->get($targetPath);
-
-            if (! is_string($localStored) || ! hash_equals($optimized['target_checksum'], hash('sha256', $localStored))) {
-                $local->delete($targetPath);
-                $disk->delete($targetPath);
-
-                throw new RuntimeException("Local rollback media [{$targetPath}] failed verification.");
-            }
-        }
-
         $rewritten = app(MediaOperationCoordinator::class)->cutover(
             fn (): int => DB::transaction(
                 fn (): int => $referenceRewriter->replacePath($item->path, $targetPath, $diskName),
@@ -371,10 +353,6 @@ final class ProcessMediaOperationItem implements ShouldQueue
             }
 
             $disk->delete($targetPath);
-
-            if ($diskName === 'r2') {
-                Storage::disk('public')->delete($targetPath);
-            }
 
             $this->completeItem($item, [
                 'status' => MediaOperationItem::StatusSkipped,
@@ -412,42 +390,7 @@ final class ProcessMediaOperationItem implements ShouldQueue
             throw new RuntimeException("Original media [{$item->path}] is still referenced and cannot be deleted.");
         }
 
-        $diskNames = $sourceDisk === 'r2' ? ['public', 'r2'] : [$sourceDisk];
-        $sourceSizes = [];
-
-        foreach ($diskNames as $diskName) {
-            $disk = Storage::disk($diskName);
-
-            if (! $disk->exists($item->path)) {
-                continue;
-            }
-
-            if (! $disk->exists($targetPath)) {
-                throw new RuntimeException("Optimized media [{$targetPath}] is missing from [{$diskName}].");
-            }
-
-            $targetChecksum = $this->checksum(
-                $disk->readStream($targetPath),
-                "optimized {$diskName}",
-                $targetPath,
-            );
-
-            if (! hash_equals((string) $item->target_checksum, $targetChecksum)) {
-                throw new RuntimeException("Optimized media [{$targetPath}] failed checksum verification on [{$diskName}].");
-            }
-
-            $sourceChecksum = $this->checksum(
-                $disk->readStream($item->path),
-                "original {$diskName}",
-                $item->path,
-            );
-
-            if (! hash_equals((string) $item->source_checksum, $sourceChecksum)) {
-                throw new RuntimeException("Original media [{$item->path}] changed after optimization on [{$diskName}].");
-            }
-
-            $sourceSizes[$diskName] = $disk->size($item->path);
-        }
+        $sourceSizes = $this->verifiedCleanupDisks($item, $sourceDisk, $targetPath);
 
         if ($sourceSizes === []) {
             $this->completeItem($item, [
@@ -524,6 +467,60 @@ final class ProcessMediaOperationItem implements ShouldQueue
             'etag' => isset($result['ETag']) ? (string) $result['ETag'] : null,
             'version_id' => isset($result['VersionId']) ? (string) $result['VersionId'] : null,
         ], static fn (?string $value): bool => $value !== null && $value !== '');
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function verifiedCleanupDisks(MediaOperationItem $item, string $sourceDisk, string $targetPath): array
+    {
+        $sizes = [];
+        $source = Storage::disk($sourceDisk);
+        $sourceVerified = false;
+
+        if ($source->exists($item->path)) {
+            $this->assertOptimizedCopy($source, $sourceDisk, $targetPath, (string) $item->target_checksum);
+            $this->assertOriginalCopy($source, $sourceDisk, $item->path, (string) $item->source_checksum);
+            $sizes[$sourceDisk] = $source->size($item->path);
+            $sourceVerified = true;
+        }
+
+        if ($sourceDisk !== 'r2' || ! Storage::disk('public')->exists($item->path)) {
+            return $sizes;
+        }
+
+        if (! $sourceVerified) {
+            $remote = Storage::disk('r2');
+            $this->assertOptimizedCopy($remote, 'r2', $targetPath, (string) $item->target_checksum);
+        }
+
+        $local = Storage::disk('public');
+        $this->assertOriginalCopy($local, 'public', $item->path, (string) $item->source_checksum);
+        $sizes['public'] = $local->size($item->path);
+
+        return $sizes;
+    }
+
+    private function assertOptimizedCopy(Filesystem $disk, string $diskName, string $path, string $expectedChecksum): void
+    {
+        if (! $disk->exists($path)) {
+            throw new RuntimeException("Optimized media [{$path}] is missing from [{$diskName}].");
+        }
+
+        $checksum = $this->checksum($disk->readStream($path), "optimized {$diskName}", $path);
+
+        if (! hash_equals($expectedChecksum, $checksum)) {
+            throw new RuntimeException("Optimized media [{$path}] failed checksum verification on [{$diskName}].");
+        }
+    }
+
+    private function assertOriginalCopy(Filesystem $disk, string $diskName, string $path, string $expectedChecksum): void
+    {
+        $checksum = $this->checksum($disk->readStream($path), "original {$diskName}", $path);
+
+        if (! hash_equals($expectedChecksum, $checksum)) {
+            throw new RuntimeException("Original media [{$path}] changed after optimization on [{$diskName}].");
+        }
     }
 
     /** @param resource|false $stream */

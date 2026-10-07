@@ -290,7 +290,7 @@ test('r2 adapter can read object metadata for size verification', function (): v
         ->and($attributes->extraMetadata())->toHaveKey('ETag', '"test-etag"');
 });
 
-test('new r2 uploads keep an identical local rollback copy', function (): void {
+test('new r2 uploads are stored only on r2', function (): void {
     config(['filesystems.media' => 'r2']);
     $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
 
@@ -303,8 +303,30 @@ test('new r2 uploads keep an identical local rollback copy', function (): void {
 
     expect($path)->toEndWith('.webp')
         ->and(Storage::disk('r2')->exists($path))->toBeTrue()
-        ->and(Storage::disk('public')->exists($path))->toBeTrue()
-        ->and(Storage::disk('public')->get($path))->toBe(Storage::disk('r2')->get($path));
+        ->and(Storage::disk('public')->exists($path))->toBeFalse();
+});
+
+test('active r2 storage keeps migration and rollback unavailable', function (): void {
+    Queue::fake();
+    $configuration = createTestedMediaConfiguration();
+    $configuration->forceFill([
+        'is_active' => true,
+        'activated_at' => now(),
+    ])->save();
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageMediaStorage::class)
+        ->assertSee('New uploads and thumbnails are stored only in the bucket')
+        ->call('startMigration')
+        ->assertNotified('Media storage action failed')
+        ->call('startValidation')
+        ->assertNotified('Media storage action failed')
+        ->call('activateR2')
+        ->assertNotified('Media storage action failed')
+        ->call('rollbackToLocal')
+        ->assertNotified('Media storage action failed');
+
+    expect(MediaOperation::query()->count())->toBe(0);
 });
 
 test('migration is blocked when a required cover thumbnail is missing locally', function (): void {
@@ -549,7 +571,7 @@ test('rollback rejects a same-size corrupted local media copy', function (): voi
         ->and(config('filesystems.media'))->toBe('r2');
 });
 
-test('rollback accepts media uploaded after activation when local and r2 copies match', function (): void {
+test('rollback stops when media uploaded after activation exists only on r2', function (): void {
     Queue::fake();
     $configuration = createTestedMediaConfiguration();
     $models = seedManagedMediaReferences();
@@ -569,12 +591,14 @@ test('rollback accepts media uploaded after activation when local and r2 copies 
         'description' => '<p><img src="/storage/'.$latePath.'"></p>',
     ])->saveQuietly();
 
-    $manager->rollbackToLocal($configuration);
+    expect(Storage::disk('r2')->get($latePath))->toBe('late-media')
+        ->and(Storage::disk('public')->exists($latePath))->toBeFalse()
+        ->and(fn () => $manager->rollbackToLocal($configuration))
+        ->toThrow(RuntimeException::class, 'Local rollback media');
 
-    expect($configuration->refresh()->is_active)->toBeFalse()
-        ->and(config('filesystems.media'))->toBe('public')
-        ->and($models['game']->refresh()->description)->toContain('/storage/'.$latePath)
-        ->and(Storage::disk('public')->get($latePath))->toBe('late-media');
+    expect($configuration->refresh()->is_active)->toBeTrue()
+        ->and(config('filesystems.media'))->toBe('r2')
+        ->and($models['game']->refresh()->description)->toContain('/storage/'.$latePath);
 });
 
 test('expired media operation leases are recovered and old queue tokens are rejected', function (): void {

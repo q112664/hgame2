@@ -97,9 +97,9 @@ final class MediaThumbnail
     }
 
     /**
-     * Ensure a thumbnail exists on the active disk and has a local rollback copy.
+     * Ensure a thumbnail exists on the active media disk.
      *
-     * @throws Throwable When a required source or mirrored write cannot be verified.
+     * @throws Throwable When a required source or write cannot be verified.
      */
     public static function ensureReady(string $path, bool $force = false): ?string
     {
@@ -108,15 +108,8 @@ final class MediaThumbnail
         }
 
         $thumbnailPath = self::pathFor($path);
-        $diskName = Media::diskName();
 
-        if (! $force && $diskName === 'r2' && Storage::disk('r2')->exists($thumbnailPath)) {
-            self::syncR2ThumbnailToLocal($thumbnailPath);
-
-            return $thumbnailPath;
-        }
-
-        if (! $force && $diskName !== 'r2' && Storage::disk($diskName)->exists($thumbnailPath)) {
+        if (! $force && Storage::disk(Media::diskName())->exists($thumbnailPath)) {
             return $thumbnailPath;
         }
 
@@ -124,7 +117,7 @@ final class MediaThumbnail
     }
 
     /**
-     * Generate a thumbnail and mirror it to local storage when R2 is active.
+     * Generate a thumbnail on the active media disk.
      *
      * @throws Throwable When the source cannot be read or either required write fails.
      */
@@ -236,35 +229,15 @@ final class MediaThumbnail
 
     private static function writeThumbnail(string $path, string $binary, string $diskName): void
     {
-        $diskNames = $diskName === 'r2' ? ['r2', 'public'] : [$diskName];
-        $snapshots = [];
-
-        foreach ($diskNames as $name) {
-            $snapshots[$name] = self::snapshot($name, $path);
-        }
+        $snapshot = self::snapshot($diskName, $path);
 
         try {
-            foreach ($diskNames as $name) {
-                self::writeAndVerify($name, $path, $binary);
-            }
+            self::writeAndVerify($diskName, $path, $binary);
         } catch (Throwable $exception) {
-            foreach ($snapshots as $name => $snapshot) {
-                self::restore($name, $path, $snapshot);
-            }
+            self::restore($diskName, $path, $snapshot);
 
             throw $exception;
         }
-    }
-
-    private static function syncR2ThumbnailToLocal(string $path): void
-    {
-        $binary = Storage::disk('r2')->get($path);
-
-        if (! is_string($binary) || $binary === '') {
-            throw new RuntimeException("R2 thumbnail [{$path}] could not be read.");
-        }
-
-        self::writeAndVerify('public', $path, $binary);
     }
 
     /** @return array{exists: bool, binary: string|null} */

@@ -201,7 +201,7 @@ test('cleanup keeps originals that become referenced again', function (): void {
         ->and(Storage::disk('public')->exists($source))->toBeTrue();
 });
 
-test('r2 cleanup verifies and removes both remote and local rollback originals', function (): void {
+test('r2 cleanup removes the remote original and a leftover local original', function (): void {
     Queue::fake();
     config(['filesystems.media' => 'r2']);
     $source = 'games/covers/r2-cleanup.jpg';
@@ -219,7 +219,25 @@ test('r2 cleanup verifies and removes both remote and local rollback originals',
         ->and(Storage::disk('r2')->exists($source))->toBeFalse()
         ->and(Storage::disk('public')->exists($source))->toBeFalse()
         ->and(Storage::disk('r2')->exists('games/covers/r2-cleanup.webp'))->toBeTrue()
-        ->and(Storage::disk('public')->exists('games/covers/r2-cleanup.webp'))->toBeTrue();
+        ->and(Storage::disk('public')->exists('games/covers/r2-cleanup.webp'))->toBeFalse();
+});
+
+test('r2 cleanup removes the remote original when no local copy exists', function (): void {
+    Queue::fake();
+    config(['filesystems.media' => 'r2']);
+    $source = 'games/covers/r2-only.jpg';
+    Storage::disk('r2')->put($source, makeJpegImage(1800, 1200));
+    Game::factory()->create(['cover_path' => $source]);
+    $manager = app(MediaStorageManager::class);
+
+    runImageOperation($manager->startOptimization());
+    $cleanup = $manager->startCleanup();
+    runImageOperation($cleanup);
+
+    expect($cleanup->refresh()->status)->toBe(MediaOperation::StatusCompleted)
+        ->and(Storage::disk('r2')->exists($source))->toBeFalse()
+        ->and(Storage::disk('public')->exists($source))->toBeFalse()
+        ->and(Storage::disk('r2')->exists('games/covers/r2-only.webp'))->toBeTrue();
 });
 
 function runImageOperation(MediaOperation $operation): void

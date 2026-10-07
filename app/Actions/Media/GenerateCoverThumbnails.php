@@ -5,7 +5,6 @@ namespace App\Actions\Media;
 use App\Models\Game;
 use App\Support\Media;
 use App\Support\MediaThumbnail;
-use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class GenerateCoverThumbnails
@@ -40,11 +39,7 @@ class GenerateCoverThumbnails
                     }
 
                     $thumbnailPath = MediaThumbnail::pathFor($path);
-                    $activeDisk = Media::diskName();
-                    $thumbnailReady = $activeDisk === 'r2'
-                        ? Storage::disk('r2')->exists($thumbnailPath)
-                            && Storage::disk('public')->exists($thumbnailPath)
-                        : Media::disk()->exists($thumbnailPath);
+                    $thumbnailReady = Media::disk()->exists($thumbnailPath);
 
                     if (! $force && $thumbnailReady) {
                         $skipped++;

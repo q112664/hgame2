@@ -6,7 +6,6 @@ use App\Models\Game;
 use App\Support\GamePresenter;
 use App\Support\Media;
 use App\Support\MediaThumbnail;
-use Illuminate\Contracts\Filesystem\Filesystem as FilesystemContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
@@ -68,7 +67,7 @@ test('card thumbnail urls use the deterministic thumbnail path without requiring
         ->not->toContain('example-cover.jpg');
 });
 
-test('r2 thumbnails keep an identical local rollback copy', function (): void {
+test('r2 thumbnails are stored only on r2', function (): void {
     config(['filesystems.media' => 'r2']);
     $path = UploadedFile::fake()
         ->image('cover.jpg', 1280, 720)
@@ -78,19 +77,16 @@ test('r2 thumbnails keep an identical local rollback copy', function (): void {
 
     expect($thumbnailPath)->toBe(MediaThumbnail::pathFor($path))
         ->and(Storage::disk('r2')->exists($thumbnailPath))->toBeTrue()
-        ->and(Storage::disk('public')->exists($thumbnailPath))->toBeTrue()
-        ->and(Storage::disk('r2')->get($thumbnailPath))
-        ->toBe(Storage::disk('public')->get($thumbnailPath));
+        ->and(Storage::disk('public')->exists($thumbnailPath))->toBeFalse();
 });
 
-test('r2 thumbnail backfill repairs a missing local copy without regeneration', function (): void {
+test('existing r2 thumbnails are not copied back to local storage', function (): void {
     config(['filesystems.media' => 'r2']);
     $path = UploadedFile::fake()
         ->image('cover.jpg', 1280, 720)
         ->store('games/covers', 'r2');
     $thumbnailPath = MediaThumbnail::generate($path);
     $r2Binary = Storage::disk('r2')->get($thumbnailPath);
-    Storage::disk('public')->delete($thumbnailPath);
 
     Game::withoutEvents(fn () => Game::factory()->create([
         'cover_path' => $path,
@@ -99,27 +95,10 @@ test('r2 thumbnail backfill repairs a missing local copy without regeneration', 
 
     $result = app(GenerateCoverThumbnails::class)();
 
-    expect($result['generated'])->toBe(1)
-        ->and(Storage::disk('public')->get($thumbnailPath))->toBe($r2Binary);
-});
-
-test('r2 thumbnail writes restore the previous remote copy when local mirroring fails', function (): void {
-    config(['filesystems.media' => 'r2']);
-    $path = UploadedFile::fake()
-        ->image('cover.jpg', 1280, 720)
-        ->store('games/covers', 'r2');
-    $thumbnailPath = MediaThumbnail::pathFor($path);
-    Storage::disk('r2')->put($thumbnailPath, 'previous-thumbnail');
-    $r2 = Storage::disk('r2');
-    $public = Mockery::mock(FilesystemContract::class);
-    $public->shouldReceive('exists')->with($thumbnailPath)->andReturn(false);
-    $public->shouldReceive('put')->with($thumbnailPath, Mockery::type('string'), 'public')->andReturn(false);
-
-    Storage::shouldReceive('disk')->with('r2')->andReturn($r2);
-    Storage::shouldReceive('disk')->with('public')->andReturn($public);
-
-    expect(MediaThumbnail::generate($path))->toBeNull()
-        ->and($r2->get($thumbnailPath))->toBe('previous-thumbnail');
+    expect($result['skipped'])->toBe(1)
+        ->and($result['generated'])->toBe(0)
+        ->and(Storage::disk('public')->exists($thumbnailPath))->toBeFalse()
+        ->and(Storage::disk('r2')->get($thumbnailPath))->toBe($r2Binary);
 });
 
 test('saving a game with a cover generates a card thumbnail', function () {

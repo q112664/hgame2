@@ -2,7 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\MediaOperation;
+use App\Models\MediaOperationItem;
 use App\Models\MediaStorageConfiguration;
+use App\Models\User;
 use App\Support\Media;
 use App\Support\MediaStorageManager;
 use BackedEnum;
@@ -189,6 +192,17 @@ class ManageMediaStorage extends Page
                 ->visible(fn (): bool => $this->hasPendingConfiguration())
                 ->disabled(fn (): bool => ! $this->canApplyConfiguration())
                 ->action('applyConfiguration'),
+            Action::make('restoreToLocal')
+                ->label('退回本地')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('退回本地磁盘？')
+                ->modalDescription('正在使用的文件会从 R2 复制到本地。全部核对通过后，站点改用本地磁盘，不再读写 R2。R2 上的文件会保留。')
+                ->modalSubmitActionLabel('开始退回')
+                ->visible(fn (): bool => Media::diskName() === 'r2')
+                ->disabled(fn (): bool => $this->localRestoreIsRunning())
+                ->action('restoreToLocal'),
         ];
     }
 
@@ -262,6 +276,26 @@ class ManageMediaStorage extends Page
         );
     }
 
+    public function restoreToLocal(MediaStorageManager $manager): void
+    {
+        $active = MediaStorageConfiguration::active();
+        $user = auth()->user();
+
+        if ($active === null || Media::diskName() !== 'r2') {
+            $this->failureNotification('只有正在使用 R2 时才能退回本地。');
+
+            return;
+        }
+
+        $this->runAction(
+            function () use ($manager, $active, $user): void {
+                $manager->startLocalRestore($active, $user instanceof User ? $user : null);
+            },
+            '已开始退回本地',
+            '复制在后台进行。全部核对通过后，站点会改用本地磁盘。',
+        );
+    }
+
     /** @return array<string, mixed> */
     public function storageSnapshot(): array
     {
@@ -289,6 +323,7 @@ class ManageMediaStorage extends Page
                 'tested_at' => $active->connection_tested_at?->toDateTimeString(),
                 'activated_at' => $active->activated_at?->toDateTimeString(),
             ],
+            'restore' => $this->localRestoreSnapshot(),
         ];
     }
 
@@ -310,6 +345,56 @@ class ManageMediaStorage extends Page
         }
 
         return $configuration;
+    }
+
+    private function localRestoreIsRunning(): bool
+    {
+        return MediaOperation::query()
+            ->where('type', MediaOperation::TypeLocalRestore)
+            ->where('status', MediaOperation::StatusRunning)
+            ->exists();
+    }
+
+    /** @return array{status: string, processed: int, total: int, failed: int, error: string|null}|null */
+    private function localRestoreSnapshot(): ?array
+    {
+        $restore = MediaOperation::query()
+            ->where('type', MediaOperation::TypeLocalRestore)
+            ->latest('id')
+            ->first();
+
+        if ($restore === null) {
+            return null;
+        }
+
+        $cutover = $restore->metadata['cutover'] ?? null;
+
+        if ($restore->status === MediaOperation::StatusCompleted && $cutover === 'switched') {
+            return null;
+        }
+
+        if (! in_array($restore->status, [
+            MediaOperation::StatusRunning,
+            MediaOperation::StatusFailed,
+        ], true) && $cutover !== 'blocked') {
+            return null;
+        }
+
+        $error = $restore->error;
+
+        if (blank($error) && $restore->failed_items > 0) {
+            $error = $restore->items()
+                ->where('status', MediaOperationItem::StatusFailed)
+                ->value('error');
+        }
+
+        return [
+            'status' => $restore->status,
+            'processed' => $restore->processed_items,
+            'total' => $restore->total_items,
+            'failed' => $restore->failed_items,
+            'error' => filled($error) ? $this->operationMessage((string) $error) : null,
+        ];
     }
 
     private function hasPendingConfiguration(): bool
@@ -398,6 +483,11 @@ class ManageMediaStorage extends Page
             str_contains($message, 'already running') => '已有媒体任务在运行，请稍后再试。',
             str_contains($message, 'already active') => '只有站点已经在使用 R2 时，才能应用另一份配置。',
             str_contains($message, 'Test this exact') => '请先测试当前这份配置。',
+            str_contains($message, 'Only the active R2 configuration can be rolled back') => '只有正在使用的 R2 配置才能退回本地。',
+            str_contains($message, 'Media changed while files were being copied') => '复制期间文件有变化。请再执行一次退回本地。站点仍使用 R2。',
+            str_contains($message, 'R2 media [') => 'R2 上缺少正在使用的文件，站点仍使用 R2。',
+            str_contains($message, 'does not match') => '复制到本地的文件和 R2 不一致，站点仍使用 R2。',
+            str_contains($message, 'could not be written') => '文件无法写入本地磁盘，站点仍使用 R2。',
             default => $message,
         };
     }

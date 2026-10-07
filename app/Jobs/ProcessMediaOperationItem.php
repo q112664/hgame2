@@ -85,6 +85,7 @@ final class ProcessMediaOperationItem implements ShouldQueue
                         $referenceRewriter,
                     ),
                     MediaOperation::TypeCleanup => $this->cleanup($item, $operation, $pathCollector),
+                    MediaOperation::TypeLocalRestore => $this->restoreToLocal($item),
                     default => throw new RuntimeException("Unsupported media operation [{$operation->type}]."),
                 };
             } catch (Throwable $exception) {
@@ -100,6 +101,10 @@ final class ProcessMediaOperationItem implements ShouldQueue
             }
 
             $manager->refreshOperationProgress($operation);
+
+            if ($operation->type === MediaOperation::TypeLocalRestore) {
+                $manager->finishLocalRestore($operation);
+            }
         } finally {
             $manager->applyRuntimeConfiguration();
         }
@@ -252,6 +257,68 @@ final class ProcessMediaOperationItem implements ShouldQueue
             'status' => MediaOperationItem::StatusCompleted,
             'source_size' => $sourceSize,
             'target_size' => $targetSize,
+        ]);
+    }
+
+    private function restoreToLocal(MediaOperationItem $item): void
+    {
+        $source = Storage::disk('r2');
+        $target = Storage::disk('public');
+        $path = $item->path;
+
+        if (! $source->exists($path)) {
+            throw new RuntimeException("R2 media [{$path}] is missing.");
+        }
+
+        $sourceSize = $source->size($path);
+        $sourceChecksum = $this->checksum($source->readStream($path), 'R2', $path);
+
+        if ($target->exists($path) && $target->size($path) === $sourceSize) {
+            $localChecksum = $this->checksum($target->readStream($path), 'local', $path);
+
+            if (hash_equals($sourceChecksum, $localChecksum)) {
+                $this->completeItem($item, [
+                    'status' => MediaOperationItem::StatusSkipped,
+                    'source_size' => $sourceSize,
+                    'target_size' => $sourceSize,
+                    'source_checksum' => $sourceChecksum,
+                    'target_checksum' => $localChecksum,
+                ]);
+
+                return;
+            }
+        }
+
+        $stream = $source->readStream($path);
+
+        if (! is_resource($stream)) {
+            throw new RuntimeException("R2 media [{$path}] could not be opened.");
+        }
+
+        try {
+            if ($target->put($path, $stream) === false) {
+                throw new RuntimeException("Local media [{$path}] could not be written.");
+            }
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        $targetChecksum = $this->checksum($target->readStream($path), 'local', $path);
+
+        if ($target->size($path) !== $sourceSize || ! hash_equals($sourceChecksum, $targetChecksum)) {
+            $target->delete($path);
+
+            throw new RuntimeException("Local media [{$path}] does not match R2.");
+        }
+
+        $this->completeItem($item, [
+            'status' => MediaOperationItem::StatusCompleted,
+            'source_size' => $sourceSize,
+            'target_size' => $sourceSize,
+            'source_checksum' => $sourceChecksum,
+            'target_checksum' => $targetChecksum,
         ]);
     }
 

@@ -78,6 +78,19 @@
             </div>
         @endif
 
+        @if (($snapshot['restore']['status'] ?? null) === 'running')
+            <div wire:poll.5s class="mt-4 rounded-lg bg-warning-50 px-4 py-3 text-sm text-warning-700 ring-1 ring-warning-600/20 dark:bg-warning-400/10 dark:text-warning-400">
+                正在从 R2 复制到本地：{{ $snapshot['restore']['processed'] }}/{{ $snapshot['restore']['total'] }}
+                @if (($snapshot['restore']['failed'] ?? 0) > 0)
+                    ，失败 {{ $snapshot['restore']['failed'] }}
+                @endif
+            </div>
+        @elseif (filled($snapshot['restore']['error'] ?? null))
+            <div class="mt-4 rounded-lg bg-danger-50 px-4 py-3 text-sm text-danger-700 ring-1 ring-danger-600/20 dark:bg-danger-400/10 dark:text-danger-400">
+                {{ $snapshot['restore']['error'] }}
+            </div>
+        @endif
+
         @if (filled($candidate['test_error'] ?? null))
             <div class="mt-4 rounded-lg bg-danger-50 px-4 py-3 text-sm text-danger-700 ring-1 ring-danger-600/20 dark:bg-danger-400/10 dark:text-danger-400">
                 {{ $candidate['test_error'] }}

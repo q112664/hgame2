@@ -61,6 +61,8 @@ class MediaOperation extends Model
 
     public const string TypeCleanup = 'cleanup';
 
+    public const string TypeLocalRestore = 'local_restore';
+
     public const string StatusPending = 'pending';
 
     public const string StatusRunning = 'running';

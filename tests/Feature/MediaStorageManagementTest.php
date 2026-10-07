@@ -351,6 +351,7 @@ test('active r2 storage shows the live connection in chinese', function (): void
         ->assertSee('Cloudflare R2')
         ->assertSee('https://media.example.com')
         ->assertSee('测试通过')
+        ->assertSee('退回本地')
         ->assertDontSee('Rollback to local')
         ->assertDontSee('Migrate to R2');
 });
@@ -617,7 +618,7 @@ test('activation requires the r2 public url to serve a validated object', functi
         ->and(config('filesystems.media'))->toBe('public');
 });
 
-test('rollback rejects a same-size corrupted local media copy', function (): void {
+test('rollback replaces a corrupted local copy from r2 and then leaves r2', function (): void {
     Queue::fake();
     $configuration = createTestedMediaConfiguration();
     seedManagedMediaReferences();
@@ -628,17 +629,18 @@ test('rollback rejects a same-size corrupted local media copy', function (): voi
     $manager->activate($configuration);
 
     $path = 'games/content/game.jpg';
-    $original = Storage::disk('public')->get($path);
-    Storage::disk('public')->put($path, str_repeat('x', strlen($original)));
+    $original = Storage::disk('r2')->get($path);
+    Storage::disk('public')->put($path, str_repeat('x', strlen((string) $original)));
 
-    expect(fn () => $manager->rollbackToLocal($configuration))
-        ->toThrow(RuntimeException::class, 'changed after validation');
+    $manager->rollbackToLocal($configuration);
 
-    expect($configuration->refresh()->is_active)->toBeTrue()
-        ->and(config('filesystems.media'))->toBe('r2');
+    expect($configuration->refresh()->is_active)->toBeFalse()
+        ->and(config('filesystems.media'))->toBe('public')
+        ->and(Storage::disk('public')->get($path))->toBe($original)
+        ->and(Storage::disk('r2')->get($path))->toBe($original);
 });
 
-test('rollback stops when media uploaded after activation exists only on r2', function (): void {
+test('rollback copies media that exists only on r2 before leaving r2', function (): void {
     Queue::fake();
     $configuration = createTestedMediaConfiguration();
     $models = seedManagedMediaReferences();
@@ -655,17 +657,104 @@ test('rollback stops when media uploaded after activation exists only on r2', fu
         'r2',
     );
     $models['game']->forceFill([
-        'description' => '<p><img src="/storage/'.$latePath.'"></p>',
+        'description' => '<p><img src="https://media.example.com/'.$latePath.'"></p>',
     ])->saveQuietly();
 
-    expect(Storage::disk('r2')->get($latePath))->toBe('late-media')
-        ->and(Storage::disk('public')->exists($latePath))->toBeFalse()
-        ->and(fn () => $manager->rollbackToLocal($configuration))
-        ->toThrow(RuntimeException::class, 'Local rollback media');
+    $manager->rollbackToLocal($configuration);
+
+    expect(Storage::disk('public')->get($latePath))->toBe('late-media')
+        ->and(Storage::disk('r2')->get($latePath))->toBe('late-media')
+        ->and($configuration->refresh()->is_active)->toBeFalse()
+        ->and(config('filesystems.media'))->toBe('public')
+        ->and($models['game']->refresh()->description)->toContain('/storage/'.$latePath);
+});
+
+test('rollback stays on r2 when a required object is missing from r2', function (): void {
+    $configuration = createTestedMediaConfiguration();
+    $configuration->forceFill([
+        'is_active' => true,
+        'active_slot' => 1,
+        'activated_at' => now(),
+    ])->save();
+    $manager = app(MediaStorageManager::class);
+    $manager->applyRuntimeConfiguration();
+    $thumb = MediaThumbnail::pathFor('games/covers/one.jpg');
+    Storage::disk('r2')->put($thumb, 'thumb');
+    Game::factory()->create([
+        'cover_path' => 'games/covers/one.jpg',
+        'description' => '<img src="https://media.example.com/games/covers/one.jpg">',
+    ]);
+
+    expect(fn () => $manager->rollbackToLocal($configuration))
+        ->toThrow(RuntimeException::class, 'is missing');
+
+    expect($configuration->refresh()->is_active)->toBeTrue()
+        ->and(config('filesystems.media'))->toBe('r2');
+});
+
+test('local restore does not leave r2 when referenced media changes during the copy', function (): void {
+    $configuration = createTestedMediaConfiguration();
+    $configuration->forceFill([
+        'is_active' => true,
+        'active_slot' => 1,
+        'activated_at' => now(),
+    ])->save();
+    $manager = app(MediaStorageManager::class);
+    $manager->applyRuntimeConfiguration();
+    $thumb = MediaThumbnail::pathFor('games/covers/one.jpg');
+    Storage::disk('r2')->put('games/covers/one.jpg', 'one');
+    Storage::disk('r2')->put($thumb, 'thumb');
+    $game = Game::factory()->create(['cover_path' => 'games/covers/one.jpg']);
+    $operation = $manager->startLocalRestore($configuration, dispatch: false);
+    Storage::disk('r2')->put('games/screenshots/extra.jpg', 'extra');
+    GameScreenshot::factory()->for($game)->create(['path' => 'games/screenshots/extra.jpg']);
+
+    runMediaOperation($operation);
 
     expect($configuration->refresh()->is_active)->toBeTrue()
         ->and(config('filesystems.media'))->toBe('r2')
-        ->and($models['game']->refresh()->description)->toContain('/storage/'.$latePath);
+        ->and($operation->refresh()->error)->toContain('Media changed while files were being copied')
+        ->and(Storage::disk('public')->get('games/covers/one.jpg'))->toBe('one')
+        ->and(Storage::disk('r2')->exists('games/screenshots/extra.jpg'))->toBeTrue();
+});
+
+test('the media storage page copies r2 files locally before it stops using r2', function (): void {
+    Queue::fake();
+    $configuration = createTestedMediaConfiguration();
+    $configuration->forceFill([
+        'is_active' => true,
+        'active_slot' => 1,
+        'activated_at' => now(),
+    ])->save();
+    $manager = app(MediaStorageManager::class);
+    $manager->applyRuntimeConfiguration();
+    $thumb = MediaThumbnail::pathFor('games/covers/one.jpg');
+    Storage::disk('r2')->put('games/covers/one.jpg', 'one');
+    Storage::disk('r2')->put($thumb, 'thumb');
+    Game::factory()->create([
+        'cover_path' => 'games/covers/one.jpg',
+        'description' => '<img src="https://media.example.com/games/covers/one.jpg">',
+    ]);
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageMediaStorage::class)
+        ->assertSee('退回本地')
+        ->call('restoreToLocal')
+        ->assertNotified('已开始退回本地')
+        ->assertSee('正在从 R2 复制到本地');
+
+    expect(config('filesystems.media'))->toBe('r2')
+        ->and(MediaOperation::query()->latest('id')->first()?->type)->toBe(MediaOperation::TypeLocalRestore)
+        ->and(MediaOperation::query()->latest('id')->first()?->status)->toBe(MediaOperation::StatusRunning);
+
+    runMediaOperation(MediaOperation::query()->latest('id')->firstOrFail());
+
+    expect($configuration->refresh()->is_active)->toBeFalse()
+        ->and(config('filesystems.media'))->toBe('public')
+        ->and(Storage::disk('public')->get('games/covers/one.jpg'))->toBe('one')
+        ->and(Storage::disk('public')->get($thumb))->toBe('thumb')
+        ->and(Storage::disk('r2')->get('games/covers/one.jpg'))->toBe('one')
+        ->and(Game::query()->first()?->description)->toContain('/storage/games/covers/one.jpg');
 });
 
 test('expired media operation leases are recovered and old queue tokens are rejected', function (): void {

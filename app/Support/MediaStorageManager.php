@@ -452,36 +452,148 @@ final class MediaStorageManager
         }
     }
 
-    public function rollbackToLocal(MediaStorageConfiguration $configuration): void
+    public function startLocalRestore(MediaStorageConfiguration $configuration, ?User $user = null, bool $dispatch = true): MediaOperation
     {
-        $this->coordinator->operation(function () use ($configuration): void {
-            $this->coordinator->cutover(function () use ($configuration): void {
-                $this->rollbackToLocalUnderLock($configuration);
-            });
-        });
-    }
-
-    private function rollbackToLocalUnderLock(MediaStorageConfiguration $configuration): void
-    {
-        $this->assertNoOperationRunning();
         if (! $configuration->is_active) {
             throw new RuntimeException('Only the active R2 configuration can be rolled back.');
         }
 
-        $validation = $this->latestSuccessfulOperation(MediaOperation::TypeValidation, $configuration);
+        $operation = $this->createOperation(
+            type: MediaOperation::TypeLocalRestore,
+            configuration: $configuration,
+            paths: $this->pathCollector->required(),
+            sourceDisk: 'r2',
+            targetDisk: 'public',
+            user: $user,
+            metadata: [
+                'public_url' => (string) $configuration->public_url,
+                'deletes_remote_objects' => false,
+            ],
+            dispatch: $dispatch,
+        );
 
-        if ($validation === null) {
-            throw new RuntimeException('Rollback is blocked because no successful media validation is available.');
+        if ($operation->total_items === 0) {
+            $this->finishLocalRestore($operation);
         }
 
-        $this->assertLocalRollbackMediaIsCurrent($validation);
+        return $operation->refresh();
+    }
 
-        DB::transaction(function () use ($configuration): void {
+    public function rollbackToLocal(MediaStorageConfiguration $configuration): void
+    {
+        $operation = $this->startLocalRestore($configuration, dispatch: false);
+        $this->runLocalRestore($operation);
+        $operation = $operation->refresh();
+
+        if ($operation->failed_items > 0 || $operation->status === MediaOperation::StatusFailed) {
+            throw new RuntimeException($operation->error ?: 'Local restore failed before the site could leave R2.');
+        }
+
+        $this->finishLocalRestore($operation);
+        $operation = $operation->refresh();
+
+        if (($operation->metadata['cutover'] ?? null) !== 'switched') {
+            throw new RuntimeException($operation->error ?: 'Local restore could not switch the site back to local storage.');
+        }
+    }
+
+    public function finishLocalRestore(MediaOperation $operation): void
+    {
+        $operation = $operation->refresh();
+
+        if ($operation->type !== MediaOperation::TypeLocalRestore
+            || ($operation->metadata['cutover'] ?? null) === 'switched'
+            || $operation->status !== MediaOperation::StatusCompleted
+            || $operation->failed_items > 0) {
+            return;
+        }
+
+        try {
+            $this->coordinator->operation(function () use ($operation): void {
+                $this->coordinator->cutover(function () use ($operation): void {
+                    $this->switchToLocalUnderLock($operation);
+                });
+            });
+        } catch (Throwable $exception) {
+            $operation->refresh()->forceFill([
+                'error' => mb_substr($exception->getMessage(), 0, 4000),
+                'metadata' => array_merge($operation->metadata ?? [], [
+                    'cutover' => 'blocked',
+                ]),
+            ])->save();
+        }
+    }
+
+    private function runLocalRestore(MediaOperation $operation): void
+    {
+        $operation->items()->orderBy('id')->each(function (MediaOperationItem $item): void {
+            if (in_array($item->status, [
+                MediaOperationItem::StatusCompleted,
+                MediaOperationItem::StatusSkipped,
+            ], true)) {
+                return;
+            }
+
+            (new ProcessMediaOperationItem((int) $item->getKey()))->handle(
+                $this,
+                $this->imageOptimizer,
+                $this->pathCollector,
+                $this->referenceRewriter,
+            );
+        });
+    }
+
+    private function switchToLocalUnderLock(MediaOperation $operation): void
+    {
+        $operation = MediaOperation::query()->lockForUpdate()->findOrFail($operation->getKey());
+
+        if (($operation->metadata['cutover'] ?? null) === 'switched') {
+            return;
+        }
+
+        $configuration = MediaStorageConfiguration::query()
+            ->lockForUpdate()
+            ->find($operation->media_storage_configuration_id);
+
+        if ($configuration === null || ! $configuration->is_active) {
+            throw new RuntimeException('Only the active R2 configuration can be rolled back.');
+        }
+
+        $copied = $operation->items()
+            ->whereIn('status', [
+                MediaOperationItem::StatusCompleted,
+                MediaOperationItem::StatusSkipped,
+            ])
+            ->orderBy('path')
+            ->get(['path', 'source_size', 'source_checksum']);
+        $required = $this->pathCollector->required();
+
+        if (! $this->samePathSet($required, $copied->pluck('path')->all())) {
+            throw new RuntimeException('Media changed while files were being copied back to local storage.');
+        }
+
+        $local = Storage::disk('public');
+
+        foreach ($copied as $item) {
+            if (blank($item->source_checksum)
+                || ! $local->exists($item->path)
+                || $local->size($item->path) !== (int) $item->source_size) {
+                throw new RuntimeException("Local media [{$item->path}] does not match the R2 copy.");
+            }
+        }
+
+        DB::transaction(function () use ($configuration, $operation): void {
             $this->referenceRewriter->rollbackToLocal((string) $configuration->public_url);
             $configuration->forceFill([
                 'is_active' => false,
                 'active_slot' => null,
                 'activated_at' => null,
+            ])->save();
+            $metadata = $operation->metadata ?? [];
+            $metadata['cutover'] = 'switched';
+            $operation->forceFill([
+                'metadata' => $metadata,
+                'error' => null,
             ])->save();
         });
 
@@ -785,6 +897,7 @@ final class MediaStorageManager
         bool $targetPaths = false,
         array $itemDetails = [],
         ?string $configurationFingerprint = null,
+        bool $dispatch = true,
     ): MediaOperation {
         $operation = $this->coordinator->operation(function () use (
             $type,
@@ -873,7 +986,9 @@ final class MediaStorageManager
             });
         });
 
-        $this->dispatchPending($operation);
+        if ($dispatch) {
+            $this->dispatchPending($operation);
+        }
 
         return $operation;
     }
@@ -991,58 +1106,6 @@ final class MediaStorageManager
 
             if (! hash_equals((string) $item->source_checksum, $checksum)) {
                 throw new RuntimeException("Local media [{$item->path}] changed after validation.");
-            }
-        }
-    }
-
-    private function assertLocalRollbackMediaIsCurrent(MediaOperation $validation): void
-    {
-        $validated = $validation->items()
-            ->whereNotNull('source_checksum')
-            ->get(['path', 'source_size', 'source_checksum'])
-            ->keyBy('path');
-        $requiredPaths = $this->pathCollector->required();
-        $remote = Storage::disk('r2');
-
-        foreach ($requiredPaths as $path) {
-            $local = Storage::disk('public');
-
-            if (! $local->exists($path)) {
-                throw new RuntimeException("Local rollback media [{$path}] is missing.");
-            }
-
-            $item = $validated->get($path);
-
-            if ($item !== null) {
-                if ($local->size($path) !== (int) $item->source_size) {
-                    throw new RuntimeException("Local rollback media [{$path}] changed after validation.");
-                }
-
-                $checksum = $this->streamChecksum($local->readStream($path), $path);
-
-                if (! hash_equals((string) $item->source_checksum, $checksum)) {
-                    throw new RuntimeException("Local rollback media [{$path}] changed after validation.");
-                }
-
-                continue;
-            }
-
-            // Media uploaded after activation was not part of the immutable
-            // migration validation. Verify its local rollback copy against R2
-            // before switching URLs back to local.
-            if (! $remote->exists($path)) {
-                throw new RuntimeException("R2 media [{$path}] is missing for rollback verification.");
-            }
-
-            if ($remote->size($path) !== $local->size($path)) {
-                throw new RuntimeException("Local rollback media [{$path}] does not match R2.");
-            }
-
-            $localChecksum = $this->streamChecksum($local->readStream($path), $path);
-            $remoteChecksum = $this->streamChecksum($remote->readStream($path), $path);
-
-            if (! hash_equals($localChecksum, $remoteChecksum)) {
-                throw new RuntimeException("Local rollback media [{$path}] does not match R2.");
             }
         }
     }

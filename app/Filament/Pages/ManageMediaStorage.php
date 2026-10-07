@@ -2,11 +2,11 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\MediaOperation;
 use App\Models\MediaStorageConfiguration;
 use App\Support\Media;
 use App\Support\MediaStorageManager;
 use BackedEnum;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
@@ -20,6 +20,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 use UnitEnum;
 
@@ -32,9 +33,9 @@ class ManageMediaStorage extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Settings';
 
-    protected static ?string $navigationLabel = 'Media storage';
+    protected static ?string $navigationLabel = '媒体存储';
 
-    protected static ?string $title = 'Media storage';
+    protected static ?string $title = '媒体存储';
 
     protected static ?string $slug = 'media-storage';
 
@@ -88,40 +89,51 @@ class ManageMediaStorage extends Page
     {
         return $schema
             ->components([
-                Section::make('Cloudflare R2 configuration')
-                    ->description('Save a candidate configuration before testing it. Existing active storage stays unchanged until activation.')
+                Section::make('R2 连接')
+                    ->description('图片和文件保存在 Cloudflare R2。修改后先保存并测试，测试通过后再应用到站点。应用之前，正在使用的连接不会改变。')
                     ->schema([
                         TextInput::make('account_id')
-                            ->label('Account ID')
+                            ->label('账户 ID')
                             ->required()
                             ->maxLength(64)
-                            ->autocomplete(false),
+                            ->autocomplete(false)
+                            ->validationMessages($this->fieldMessages('账户 ID')),
                         TextInput::make('bucket')
-                            ->label('Bucket name')
-                            ->required()
-                            ->maxLength(255),
-                        TextInput::make('access_key_id')
-                            ->label('Access key ID')
+                            ->label('存储桶')
                             ->required()
                             ->maxLength(255)
-                            ->autocomplete(false),
+                            ->validationMessages($this->fieldMessages('存储桶')),
+                        TextInput::make('access_key_id')
+                            ->label('访问密钥 ID')
+                            ->required()
+                            ->maxLength(255)
+                            ->autocomplete(false)
+                            ->validationMessages($this->fieldMessages('访问密钥 ID')),
                         TextInput::make('secret_access_key')
-                            ->label('Secret access key')
+                            ->label('访问密钥')
                             ->password()
                             ->revealable()
                             ->required(fn (): bool => blank($this->currentConfiguration()?->secret_access_key))
                             ->maxLength(255)
                             ->autocomplete('new-password')
                             ->helperText($this->currentConfiguration() === null
-                                ? 'Required for the first saved configuration.'
-                                : 'Leave blank to keep the saved secret.'),
+                                ? '第一次保存时必填。'
+                                : '留空则保留已保存的密钥。')
+                            ->validationMessages($this->fieldMessages('访问密钥')),
                         TextInput::make('public_url')
-                            ->label('Public custom domain')
+                            ->label('公开域名')
                             ->required()
                             ->url()
+                            ->rule('starts_with:https://')
+                            ->rules([fn (): Closure => $this->publicUrlRule()])
                             ->maxLength(255)
-                            ->placeholder('https://media.example.com')
-                            ->helperText('Use an HTTPS custom domain connected to the bucket. r2.dev URLs are rejected.')
+                            ->placeholder('https://img.example.com')
+                            ->helperText('填写绑定到存储桶的 HTTPS 域名。不能使用 r2.dev 地址。')
+                            ->validationMessages([
+                                ...$this->fieldMessages('公开域名'),
+                                'url' => '请填写有效的网址。',
+                                'starts_with' => '公开域名必须是 HTTPS 地址。',
+                            ])
                             ->columnSpanFull(),
                         Hidden::make('region')->default('auto'),
                     ])
@@ -134,67 +146,8 @@ class ManageMediaStorage extends Page
         return $schema
             ->components([
                 $this->getFormContentComponent(),
-                Section::make('Storage workflow')
-                    ->description(fn (): string => $this->r2IsActive()
-                        ? 'R2 is active. New uploads and thumbnails are stored only in the bucket. Migration, validation, activation, and rollback stay unavailable.'
-                        : 'Each file is queued independently. Finish migration and validation before activation.')
-                    ->schema([
-                        Actions::make([
-                            Action::make('startMigration')
-                                ->label('Migrate to R2')
-                                ->icon(Heroicon::OutlinedCloudArrowUp)
-                                ->requiresConfirmation()
-                                ->modalDescription('Copy all managed local media to the tested R2 configuration. The site continues using its current disk.')
-                                ->disabled(fn (): bool => $this->r2IsActive() || ! $this->currentConfiguration()?->wasSuccessfullyTested())
-                                ->action('startMigration'),
-                            Action::make('startValidation')
-                                ->label('Validate R2')
-                                ->icon(Heroicon::OutlinedCheckBadge)
-                                ->color('gray')
-                                ->requiresConfirmation()
-                                ->modalDescription('Read every migrated object and compare its SHA-256 checksum with the local source.')
-                                ->disabled(fn (): bool => $this->r2IsActive() || ! $this->hasSuccessfulOperation(MediaOperation::TypeMigration))
-                                ->action('startValidation'),
-                            Action::make('activateR2')
-                                ->label('Activate R2')
-                                ->icon(Heroicon::OutlinedBolt)
-                                ->color('success')
-                                ->requiresConfirmation()
-                                ->modalDescription('Switch new uploads and public media URLs to the validated R2 configuration. Later uploads are stored only in R2.')
-                                ->disabled(fn (): bool => $this->r2IsActive() || ! $this->hasSuccessfulOperation(MediaOperation::TypeValidation))
-                                ->action('activateR2'),
-                            Action::make('rollbackToLocal')
-                                ->label('Rollback to local')
-                                ->icon(Heroicon::OutlinedArrowUturnLeft)
-                                ->color('danger')
-                                ->requiresConfirmation()
-                                ->modalDescription('Rollback stays unavailable because the site does not keep local copies after R2 is active.')
-                                ->disabled(fn (): bool => true)
-                                ->action('rollbackToLocal'),
-                            Action::make('startOptimization')
-                                ->label('Optimize existing images')
-                                ->icon(Heroicon::OutlinedPhoto)
-                                ->color('gray')
-                                ->requiresConfirmation()
-                                ->modalDescription('Create WebP 80 versions of JPEG and PNG media, verify each new file, and update references. Original files are retained.')
-                                ->action('startOptimization'),
-                            Action::make('startCleanup')
-                                ->label('Free original image space')
-                                ->icon(Heroicon::OutlinedTrash)
-                                ->color('danger')
-                                ->requiresConfirmation()
-                                ->modalHeading('Permanently delete optimized originals?')
-                                ->modalDescription(fn (MediaStorageManager $manager): string => $this->cleanupDescription($manager))
-                                ->modalSubmitActionLabel('Delete verified originals')
-                                ->disabled(fn (MediaStorageManager $manager): bool => $manager->cleanupPreview()['files'] === 0)
-                                ->action('startCleanup'),
-                        ])
-                            ->fullWidth()
-                            ->extraAttributes(['class' => 'media-storage-workflow-actions']),
-                    ]),
                 View::make('filament.pages.manage-media-storage')
                     ->viewData(fn (): array => ['snapshot' => $this->storageSnapshot()])
-                    ->poll('5s')
                     ->key('media-storage-status'),
             ]);
     }
@@ -216,41 +169,63 @@ class ManageMediaStorage extends Page
     {
         return [
             Action::make('save')
-                ->label('Save configuration')
+                ->label('保存')
                 ->submit('save')
                 ->keyBindings(['mod+s']),
             Action::make('testConnection')
-                ->label('Test saved connection')
+                ->label('测试连接')
                 ->icon(Heroicon::OutlinedSignal)
                 ->color('gray')
                 ->disabled(fn (): bool => $this->currentConfiguration() === null)
                 ->action('testConnection'),
+            Action::make('applyConfiguration')
+                ->label('应用配置')
+                ->icon(Heroicon::OutlinedCheckBadge)
+                ->color('success')
+                ->requiresConfirmation()
+                ->modalHeading('应用这份 R2 配置？')
+                ->modalDescription('站点会改用已测试的账户、存储桶和公开域名。已有文件不会重新上传。')
+                ->modalSubmitActionLabel('应用')
+                ->visible(fn (): bool => $this->hasPendingConfiguration())
+                ->disabled(fn (): bool => ! $this->canApplyConfiguration())
+                ->action('applyConfiguration'),
         ];
     }
 
     public function save(MediaStorageManager $manager): void
     {
-        $state = $this->form->getState();
-        $configurationData = [
-            'account_id' => (string) ($state['account_id'] ?? ''),
-            'access_key_id' => (string) ($state['access_key_id'] ?? ''),
-            'secret_access_key' => isset($state['secret_access_key'])
-                ? (string) $state['secret_access_key']
-                : null,
-            'bucket' => (string) ($state['bucket'] ?? ''),
-            'public_url' => (string) ($state['public_url'] ?? ''),
-            'region' => isset($state['region']) ? (string) $state['region'] : 'auto',
-        ];
-        $configuration = $manager->saveConfiguration(
-            $configurationData,
-            $this->currentConfiguration(),
-        );
+        try {
+            $state = $this->form->getState();
+            $configurationData = [
+                'account_id' => (string) ($state['account_id'] ?? ''),
+                'access_key_id' => (string) ($state['access_key_id'] ?? ''),
+                'secret_access_key' => isset($state['secret_access_key'])
+                    ? (string) $state['secret_access_key']
+                    : null,
+                'bucket' => (string) ($state['bucket'] ?? ''),
+                'public_url' => (string) ($state['public_url'] ?? ''),
+                'region' => isset($state['region']) ? (string) $state['region'] : 'auto',
+            ];
+            $configuration = $manager->saveConfiguration(
+                $configurationData,
+                $this->currentConfiguration(),
+            );
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            $this->failureNotification($exception->getMessage());
+
+            return;
+        }
+
         $this->configurationId = $configuration->getKey();
         $this->data['secret_access_key'] = '';
 
         Notification::make()
-            ->title('R2 configuration saved')
-            ->body('The active media disk has not changed. Test this saved configuration before migration.')
+            ->title($configuration->wasRecentlyCreated ? '配置已保存' : '配置没有变化')
+            ->body($configuration->wasRecentlyCreated
+                ? '正在使用的存储没有改变。请先测试连接，通过后再应用。'
+                : '保存的内容和当前配置一致。')
             ->success()
             ->send();
     }
@@ -263,95 +238,27 @@ class ManageMediaStorage extends Page
             function () use ($manager, $configuration): void {
                 $manager->testConnection($configuration);
             },
-            'R2 connection test passed',
-            'The temporary test object was uploaded, read, and deleted.',
+            '连接测试通过',
+            '测试文件已上传、读取并删除。',
         );
     }
 
-    public function startMigration(MediaStorageManager $manager): void
+    public function applyConfiguration(MediaStorageManager $manager): void
     {
-        if ($this->rejectActiveR2Action()) {
+        $configuration = $this->requireCurrentConfiguration();
+
+        if (! $this->canApplyConfiguration()) {
+            $this->failureNotification('请先保存并测试一份尚未应用的配置。');
+
             return;
         }
 
         $this->runAction(
-            fn (): MediaOperation => $manager->startMigration(
-                $this->requireCurrentConfiguration(),
-                auth()->user(),
-            ),
-            'Media migration queued',
-            'The site will keep using its current media disk until validation and activation finish.',
-        );
-    }
-
-    public function startValidation(MediaStorageManager $manager): void
-    {
-        if ($this->rejectActiveR2Action()) {
-            return;
-        }
-
-        $this->runAction(
-            fn (): MediaOperation => $manager->startValidation(
-                $this->requireCurrentConfiguration(),
-                auth()->user(),
-            ),
-            'Media validation queued',
-            'Each R2 object will be read and compared with its local source.',
-        );
-    }
-
-    public function activateR2(MediaStorageManager $manager): void
-    {
-        if ($this->rejectActiveR2Action()) {
-            return;
-        }
-
-        $this->runAction(
-            function () use ($manager): void {
-                $manager->activate($this->requireCurrentConfiguration());
+            function () use ($manager, $configuration): void {
+                $manager->switchActiveConfiguration($configuration);
             },
-            'R2 media storage activated',
-            'New uploads and managed media URLs now use the validated R2 configuration.',
-        );
-    }
-
-    public function rollbackToLocal(): void
-    {
-        $this->failureNotification('Rollback stays unavailable because local media copies are not retained.');
-    }
-
-    public function startOptimization(MediaStorageManager $manager): void
-    {
-        $this->runAction(
-            fn (): MediaOperation => $manager->startOptimization(auth()->user()),
-            'Image optimization queued',
-            'JPEG and PNG media will be converted to verified WebP 80 files. Originals are retained.',
-        );
-    }
-
-    public function startCleanup(MediaStorageManager $manager): void
-    {
-        $this->runAction(
-            fn (): MediaOperation => $manager->startCleanup(auth()->user()),
-            'Original image cleanup queued',
-            'Each original will be rechecked before permanent deletion. Failed safety checks keep the file.',
-        );
-    }
-
-    public function retryFailedOperation(int $operationId, MediaStorageManager $manager): void
-    {
-        $operation = MediaOperation::query()->find($operationId);
-
-        if ($operation === null) {
-            $this->failureNotification('The media operation no longer exists.');
-
-            return;
-        }
-
-        $this->runAction(
-            fn (): MediaOperation => $manager->retryFailed($operation),
-            'Failed media items queued again',
-            'Only failed items from the selected operation will be retried.',
+            '配置已应用',
+            '站点现在使用这份 R2 连接。',
         );
     }
 
@@ -360,34 +267,6 @@ class ManageMediaStorage extends Page
     {
         $candidate = $this->currentConfiguration();
         $active = MediaStorageConfiguration::active();
-        $operations = [];
-
-        foreach (MediaOperation::query()
-            ->latest('id')
-            ->limit(10)
-            ->get() as $operation) {
-            $operations[] = [
-                'id' => $operation->getKey(),
-                'type' => $operation->type,
-                'status' => $operation->status,
-                'progress' => $operation->progressPercentage(),
-                'total_items' => $operation->total_items,
-                'processed_items' => $operation->processed_items,
-                'succeeded_items' => $operation->succeeded_items,
-                'skipped_items' => $operation->skipped_items,
-                'failed_items' => $operation->failed_items,
-                'source_bytes' => $operation->total_source_bytes,
-                'target_bytes' => $operation->type === MediaOperation::TypeCleanup
-                    ? 0
-                    : $operation->total_target_bytes,
-                'storage_impact_bytes' => $operation->type === MediaOperation::TypeCleanup
-                    ? $operation->total_source_bytes
-                    : max(0, $operation->total_source_bytes - $operation->total_target_bytes),
-                'error' => $operation->error,
-                'started_at' => $operation->started_at?->toDateTimeString(),
-                'completed_at' => $operation->completed_at?->toDateTimeString(),
-            ];
-        }
 
         return [
             'disk' => Media::diskName(),
@@ -397,51 +276,20 @@ class ManageMediaStorage extends Page
                 'public_url' => $candidate->public_url,
                 'tested' => $candidate->wasSuccessfullyTested(),
                 'tested_at' => $candidate->connection_tested_at?->toDateTimeString(),
-                'test_error' => $candidate->connection_test_error,
+                'test_error' => filled($candidate->connection_test_error)
+                    ? $this->operationMessage((string) $candidate->connection_test_error)
+                    : null,
                 'active' => $candidate->is_active,
             ],
             'active' => $active === null ? null : [
                 'id' => $active->getKey(),
                 'bucket' => $active->bucket,
                 'public_url' => $active->public_url,
+                'tested' => $active->wasSuccessfullyTested(),
+                'tested_at' => $active->connection_tested_at?->toDateTimeString(),
                 'activated_at' => $active->activated_at?->toDateTimeString(),
             ],
-            'cleanup' => app(MediaStorageManager::class)->cleanupPreview(),
-            'operations' => $operations,
         ];
-    }
-
-    private function cleanupDescription(MediaStorageManager $manager): string
-    {
-        $preview = $manager->cleanupPreview();
-
-        return sprintf(
-            'Delete %d verified original files and reclaim about %s. This cannot be undone. Each optimized WebP checksum and database reference is checked again before deletion.',
-            $preview['files'],
-            $this->formatBytes($preview['bytes']),
-        );
-    }
-
-    private function formatBytes(int $bytes): string
-    {
-        if ($bytes < 1024) {
-            return $bytes.' B';
-        }
-
-        $units = ['KiB', 'MiB', 'GiB', 'TiB'];
-        $value = $bytes;
-        $unit = 'B';
-
-        foreach ($units as $nextUnit) {
-            $value /= 1024;
-            $unit = $nextUnit;
-
-            if ($value < 1024) {
-                break;
-            }
-        }
-
-        return number_format($value, 1).' '.$unit;
     }
 
     private function currentConfiguration(): ?MediaStorageConfiguration
@@ -464,19 +312,21 @@ class ManageMediaStorage extends Page
         return $configuration;
     }
 
-    private function hasSuccessfulOperation(string $type): bool
+    private function hasPendingConfiguration(): bool
     {
         $configuration = $this->currentConfiguration();
 
-        if ($configuration === null) {
-            return false;
-        }
+        return $configuration !== null
+            && ! $configuration->is_active
+            && MediaStorageConfiguration::active() !== null;
+    }
 
-        return MediaOperation::query()
-            ->where('type', $type)
-            ->where('status', MediaOperation::StatusCompleted)
-            ->where('configuration_fingerprint', $configuration->configuration_fingerprint)
-            ->exists();
+    private function canApplyConfiguration(): bool
+    {
+        $configuration = $this->currentConfiguration();
+
+        return $this->hasPendingConfiguration()
+            && $configuration?->wasSuccessfullyTested() === true;
     }
 
     /** @param callable(): mixed $callback */
@@ -495,29 +345,60 @@ class ManageMediaStorage extends Page
         }
     }
 
-    private function r2IsActive(): bool
-    {
-        return MediaStorageConfiguration::active() !== null;
-    }
-
-    private function rejectActiveR2Action(): bool
-    {
-        if (! $this->r2IsActive()) {
-            return false;
-        }
-
-        $this->failureNotification('R2 is already active. Local media copies are not retained, so this action stays unavailable.');
-
-        return true;
-    }
-
     private function failureNotification(string $message): void
     {
         Notification::make()
-            ->title('Media storage action failed')
-            ->body($message)
+            ->title('媒体存储操作失败')
+            ->body($this->operationMessage($message))
             ->danger()
             ->persistent()
             ->send();
+    }
+
+    /** @return array<string, string> */
+    private function fieldMessages(string $label): array
+    {
+        return [
+            'required' => "请填写{$label}。",
+            'max' => "{$label}不能超过 :max 个字符。",
+        ];
+    }
+
+    private function publicUrlRule(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $url = (string) $value;
+            $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+            if ($host === '' || str_ends_with($host, '.r2.dev')) {
+                $fail('不能使用 r2.dev 地址，请填写绑定到存储桶的自定义域名。');
+
+                return;
+            }
+
+            if (trim((string) parse_url($url, PHP_URL_PATH), '/') !== ''
+                || parse_url($url, PHP_URL_QUERY) !== null
+                || parse_url($url, PHP_URL_FRAGMENT) !== null) {
+                $fail('公开域名只能填写域名本身，不能带路径。');
+            }
+        };
+    }
+
+    private function operationMessage(string $message): string
+    {
+        return match (true) {
+            str_contains($message, 'r2.dev') => '不能使用 r2.dev 地址，请填写绑定到存储桶的自定义域名。',
+            str_contains($message, 'HTTPS') => '公开域名必须是有效的 HTTPS 地址。',
+            str_contains($message, 'path prefix') => '公开域名只能填写域名本身，不能带路径。',
+            str_contains($message, 'are required') => '请填写账户、密钥和存储桶。',
+            str_contains($message, 'could not be uploaded') => '测试文件上传失败。请检查账户、密钥和存储桶。',
+            str_contains($message, 'could not be read back') => '测试文件已上传，但读取结果不正确。',
+            str_contains($message, 'public URL') => '公开域名无法读取测试文件。请确认域名已绑定到这个存储桶。',
+            str_contains($message, 'could not be deleted') => '测试文件无法删除。',
+            str_contains($message, 'already running') => '已有媒体任务在运行，请稍后再试。',
+            str_contains($message, 'already active') => '只有站点已经在使用 R2 时，才能应用另一份配置。',
+            str_contains($message, 'Test this exact') => '请先测试当前这份配置。',
+            default => $message,
+        };
     }
 }

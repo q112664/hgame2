@@ -488,6 +488,57 @@ final class MediaStorageManager
         $this->applyRuntimeConfiguration();
     }
 
+    public function switchActiveConfiguration(MediaStorageConfiguration $configuration): void
+    {
+        $this->coordinator->operation(function () use ($configuration): void {
+            $this->coordinator->cutover(function () use ($configuration): void {
+                $this->switchActiveConfigurationUnderLock($configuration);
+            });
+        });
+    }
+
+    private function switchActiveConfigurationUnderLock(MediaStorageConfiguration $configuration): void
+    {
+        $this->assertNoOperationRunning();
+        $this->assertTested($configuration);
+        $previousActive = MediaStorageConfiguration::active();
+
+        if ($previousActive === null) {
+            throw new RuntimeException('Apply this configuration only while R2 is already active.');
+        }
+
+        if ($previousActive->is($configuration)) {
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($configuration, $previousActive): void {
+                MediaStorageConfiguration::query()
+                    ->where(function (Builder $query): void {
+                        $query->where('is_active', true)->orWhere('active_slot', 1);
+                    })
+                    ->update([
+                        'is_active' => false,
+                        'active_slot' => null,
+                        'activated_at' => null,
+                    ]);
+
+                $configuration->forceFill([
+                    'is_active' => true,
+                    'active_slot' => 1,
+                    'activated_at' => now(),
+                ])->save();
+
+                $this->referenceRewriter->activateR2(
+                    (string) $configuration->public_url,
+                    $previousActive->public_url,
+                );
+            });
+        } finally {
+            $this->applyRuntimeConfiguration();
+        }
+    }
+
     public function configureR2(MediaStorageConfiguration $configuration): void
     {
         $currentFingerprint = config('filesystems.disks.r2.configuration_fingerprint');

@@ -3,33 +3,6 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
-.media-storage-workflow-actions .fi-ac.fi-width-full {
-    grid-template-columns: minmax(0, 1fr);
-}
-
-.media-storage-workflow-actions .fi-ac.fi-width-full > * {
-    width: 100%;
-    min-width: 0;
-}
-
-@media (min-width: 640px) {
-    .media-storage-workflow-actions .fi-ac.fi-width-full {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (min-width: 1024px) {
-    .media-storage-workflow-actions .fi-ac.fi-width-full {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-}
-
-@media (min-width: 1536px) {
-    .media-storage-workflow-actions .fi-ac.fi-width-full {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-    }
-}
-
 .media-storage-state-grid {
     display: grid;
     gap: 1px;
@@ -48,7 +21,7 @@
 
 @media (min-width: 1280px) {
     .media-storage-state-grid {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }
 
@@ -60,41 +33,4 @@
 
 .dark .media-storage-state-item {
     background: var(--color-gray-900);
-}
-
-.media-operation-row {
-    display: grid;
-    gap: 1rem;
-    padding: 1.25rem;
-}
-
-@media (min-width: 1024px) {
-    .media-operation-row {
-        grid-template-columns: minmax(12rem, 0.7fr) minmax(18rem, 1.3fr) auto;
-        align-items: center;
-    }
-}
-
-.media-operation-progress {
-    height: 0.375rem;
-    overflow: hidden;
-    border-radius: 9999px;
-    background: var(--color-gray-200);
-}
-
-.dark .media-operation-progress {
-    background: color-mix(in oklab, white 12%, transparent);
-}
-
-.media-operation-progress-bar {
-    height: 100%;
-    border-radius: inherit;
-    background: var(--color-primary-500);
-    transition: width 300ms ease;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .media-operation-progress-bar {
-        transition: none;
-    }
 }

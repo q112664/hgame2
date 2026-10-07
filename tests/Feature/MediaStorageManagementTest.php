@@ -81,7 +81,8 @@ test('administrators can view media storage while regular users are denied', fun
     $this->actingAs(User::factory()->admin()->create())
         ->get(ManageMediaStorage::getUrl(panel: 'admin'))
         ->assertOk()
-        ->assertSee('Media storage');
+        ->assertSee('媒体存储')
+        ->assertDontSee('Rollback to local');
 
     auth()->logout();
 
@@ -114,14 +115,10 @@ test('saving media storage page creates a candidate without activating r2', func
         ->and(config('filesystems.media'))->toBe('public');
 });
 
-test('media storage page tests the saved configuration before queuing migration', function (): void {
-    Queue::fake();
-    Storage::disk('public')->put('games/covers/one.jpg', 'one');
-    Storage::disk('public')->put(MediaThumbnail::pathFor('games/covers/one.jpg'), 'thumb');
-    Game::factory()->create(['cover_path' => 'games/covers/one.jpg']);
+test('media storage page tests a saved configuration without activating it', function (): void {
     $this->actingAs(User::factory()->admin()->create());
 
-    $component = Livewire::test(ManageMediaStorage::class)
+    Livewire::test(ManageMediaStorage::class)
         ->fillForm([
             'account_id' => 'account-id',
             'access_key_id' => 'access-key',
@@ -131,22 +128,17 @@ test('media storage page tests the saved configuration before queuing migration'
             'region' => 'auto',
         ])
         ->call('save')
-        ->call('startMigration')
-        ->assertNotified();
-
-    expect(MediaOperation::query()->count())->toBe(0);
-
-    $component
         ->call('testConnection')
-        ->assertNotified()
-        ->call('startMigration')
-        ->assertNotified();
+        ->assertNotified('连接测试通过')
+        ->assertSee('本地磁盘')
+        ->assertSee('未启用')
+        ->assertDontSee('应用配置')
+        ->call('applyConfiguration')
+        ->assertNotified('媒体存储操作失败');
 
     expect(MediaStorageConfiguration::current()?->wasSuccessfullyTested())->toBeTrue()
-        ->and(MediaOperation::query()->where('type', MediaOperation::TypeMigration)->count())->toBe(1)
+        ->and(MediaStorageConfiguration::current()?->is_active)->toBeFalse()
         ->and(config('filesystems.media'))->toBe('public');
-
-    Queue::assertPushed(ProcessMediaOperationItem::class, 2);
 });
 
 test('connection test verifies upload read and delete without activating r2', function (): void {
@@ -158,6 +150,45 @@ test('connection test verifies upload read and delete without activating r2', fu
         ->and($configuration->is_active)->toBeFalse()
         ->and(config('filesystems.media'))->toBe('public')
         ->and(Storage::disk('r2')->allFiles())->toBeEmpty();
+});
+
+test('media storage form rejects an r2.dev address in chinese', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageMediaStorage::class)
+        ->fillForm([
+            'account_id' => 'account-id',
+            'access_key_id' => 'access-key',
+            'secret_access_key' => 'secret-key',
+            'bucket' => 'media-bucket',
+            'public_url' => 'https://example.r2.dev',
+            'region' => 'auto',
+        ])
+        ->call('save')
+        ->assertHasFormErrors(['public_url'])
+        ->assertSee('不能使用 r2.dev 地址');
+
+    expect(MediaStorageConfiguration::query()->exists())->toBeFalse();
+});
+
+test('a failed connection test explains the public url in chinese', function (): void {
+    Http::swap(new Factory);
+    Http::fake(fn () => Http::response('wrong-body', 200));
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageMediaStorage::class)
+        ->fillForm([
+            'account_id' => 'account-id',
+            'access_key_id' => 'access-key',
+            'secret_access_key' => 'secret-key',
+            'bucket' => 'media-bucket',
+            'public_url' => 'https://media.example.com',
+            'region' => 'auto',
+        ])
+        ->call('save')
+        ->call('testConnection')
+        ->assertNotified('媒体存储操作失败')
+        ->assertSee('公开域名无法读取测试文件');
 });
 
 test('connection test rejects a public url that cannot read the test object', function (): void {
@@ -306,27 +337,63 @@ test('new r2 uploads are stored only on r2', function (): void {
         ->and(Storage::disk('public')->exists($path))->toBeFalse();
 });
 
-test('active r2 storage keeps migration and rollback unavailable', function (): void {
-    Queue::fake();
+test('active r2 storage shows the live connection in chinese', function (): void {
     $configuration = createTestedMediaConfiguration();
     $configuration->forceFill([
         'is_active' => true,
+        'active_slot' => 1,
         'activated_at' => now(),
     ])->save();
+    app(MediaStorageManager::class)->applyRuntimeConfiguration();
     $this->actingAs(User::factory()->admin()->create());
 
     Livewire::test(ManageMediaStorage::class)
-        ->assertSee('New uploads and thumbnails are stored only in the bucket')
-        ->call('startMigration')
-        ->assertNotified('Media storage action failed')
-        ->call('startValidation')
-        ->assertNotified('Media storage action failed')
-        ->call('activateR2')
-        ->assertNotified('Media storage action failed')
-        ->call('rollbackToLocal')
-        ->assertNotified('Media storage action failed');
+        ->assertSee('Cloudflare R2')
+        ->assertSee('https://media.example.com')
+        ->assertSee('测试通过')
+        ->assertDontSee('Rollback to local')
+        ->assertDontSee('Migrate to R2');
+});
 
-    expect(MediaOperation::query()->count())->toBe(0);
+test('a tested configuration can replace the active r2 connection', function (): void {
+    $active = createTestedMediaConfiguration();
+    $active->forceFill([
+        'is_active' => true,
+        'active_slot' => 1,
+        'activated_at' => now(),
+    ])->save();
+    $game = Game::factory()->create([
+        'description' => '<img src="https://media.example.com/games/covers/cover.webp">',
+    ]);
+    $replacement = createTestedMediaConfiguration(publicUrl: 'https://img.example.com');
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ManageMediaStorage::class)
+        ->assertSee('尚未应用')
+        ->call('applyConfiguration')
+        ->assertNotified('配置已应用');
+
+    expect($replacement->refresh()->is_active)->toBeTrue()
+        ->and($active->refresh()->is_active)->toBeFalse()
+        ->and(config('filesystems.media'))->toBe('r2')
+        ->and(config('filesystems.disks.r2.url'))->toBe('https://img.example.com')
+        ->and($game->refresh()->description)->toContain('https://img.example.com/games/covers/cover.webp');
+});
+
+test('switching the active r2 configuration requires a successful connection test', function (): void {
+    $active = createTestedMediaConfiguration();
+    $active->forceFill([
+        'is_active' => true,
+        'active_slot' => 1,
+        'activated_at' => now(),
+    ])->save();
+    createTestedMediaConfiguration(tested: false, publicUrl: 'https://img.example.com');
+
+    expect(fn () => app(MediaStorageManager::class)->switchActiveConfiguration(MediaStorageConfiguration::current()))
+        ->toThrow(RuntimeException::class, 'Test this exact R2 configuration');
+
+    expect($active->refresh()->is_active)->toBeTrue()
+        ->and(config('filesystems.media'))->toBe('public');
 });
 
 test('migration is blocked when a required cover thumbnail is missing locally', function (): void {

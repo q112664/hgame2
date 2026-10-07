@@ -223,6 +223,43 @@ test('r2 adapter removes object acl options from uploads', function (): void {
     ]));
 });
 
+test('syncing r2 cors allows the site origin to read public media', function (): void {
+    Setting::set('site_url', 'https://eroga.me');
+    $configuration = createTestedMediaConfiguration();
+    $client = Mockery::mock(S3ClientInterface::class);
+    $client->shouldAllowMockingMethod('getBucketCors');
+    $client->shouldAllowMockingMethod('putBucketCors');
+    $client->shouldReceive('getBucketCors')
+        ->once()
+        ->with(['Bucket' => 'media-bucket'])
+        ->andReturn(new Result([
+            'CORSRules' => [
+                [
+                    'AllowedOrigins' => ['https://uploads.example.com'],
+                    'AllowedMethods' => ['PUT'],
+                    'AllowedHeaders' => ['Content-Type'],
+                ],
+            ],
+        ]));
+    $client->shouldReceive('putBucketCors')
+        ->once()
+        ->with(Mockery::on(function (array $arguments): bool {
+            $rules = $arguments['CORSConfiguration']['CORSRules'];
+
+            expect($arguments['Bucket'])->toBe('media-bucket')
+                ->and($rules)->toHaveCount(2)
+                ->and($rules[0]['AllowedMethods'])->toBe(['PUT'])
+                ->and($rules[1]['AllowedOrigins'])->toBe(['https://eroga.me'])
+                ->and($rules[1]['AllowedMethods'])->toBe(['GET', 'HEAD'])
+                ->and($rules[1]['AllowedHeaders'])->toBe(['*']);
+
+            return true;
+        }))
+        ->andReturn(new Result);
+
+    app(MediaStorageManager::class)->syncPublicReadCors($configuration, $client);
+});
+
 test('r2 adapter can read object metadata for size verification', function (): void {
     $client = Mockery::mock(S3ClientInterface::class);
     $command = Mockery::mock(CommandInterface::class);

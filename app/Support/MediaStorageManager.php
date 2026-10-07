@@ -6,7 +6,10 @@ use App\Jobs\ProcessMediaOperationItem;
 use App\Models\MediaOperation;
 use App\Models\MediaOperationItem;
 use App\Models\MediaStorageConfiguration;
+use App\Models\Setting;
 use App\Models\User;
+use Aws\Exception\AwsException;
+use Aws\S3\S3ClientInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Filesystem\AwsS3V3Adapter;
@@ -532,6 +535,126 @@ final class MediaStorageManager
 
         $this->configureR2($active);
         config(['filesystems.media' => 'r2']);
+    }
+
+    /**
+     * Allow the site origin to fetch public media in the browser.
+     *
+     * Filament's file preview uses fetch(), which the browser blocks unless
+     * the R2 custom domain returns Access-Control-Allow-Origin.
+     */
+    public function syncPublicReadCors(MediaStorageConfiguration $configuration, ?S3ClientInterface $client = null): void
+    {
+        $origins = $this->publicReadCorsOrigins();
+
+        if ($origins === []) {
+            throw new RuntimeException('The site URL is not a valid origin for R2 CORS.');
+        }
+
+        $this->configureR2($configuration);
+        $client ??= $this->r2Client();
+        $bucket = (string) $configuration->bucket;
+        $rules = $this->mergePublicReadCorsRules(
+            $this->existingCorsRules($client, $bucket),
+            $origins,
+        );
+
+        $client->putBucketCors([
+            'Bucket' => $bucket,
+            'CORSConfiguration' => [
+                'CORSRules' => $rules,
+            ],
+        ]);
+    }
+
+    /** @return list<string> */
+    public function publicReadCorsOrigins(): array
+    {
+        return array_values(array_unique(array_filter([
+            $this->normalizedOrigin((string) config('app.url')),
+            $this->normalizedOrigin(Setting::siteUrl()),
+        ])));
+    }
+
+    private function r2Client(): S3ClientInterface
+    {
+        $adapter = Storage::disk('r2');
+
+        if (! $adapter instanceof AwsS3V3Adapter) {
+            throw new RuntimeException('The R2 disk is not available.');
+        }
+
+        return $adapter->getClient();
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function existingCorsRules(S3ClientInterface $client, string $bucket): array
+    {
+        try {
+            $result = $client->getBucketCors(['Bucket' => $bucket]);
+        } catch (AwsException $exception) {
+            if ($exception->getAwsErrorCode() === 'NoSuchCORSConfiguration') {
+                return [];
+            }
+
+            throw $exception;
+        }
+
+        $rules = $result['CORSRules'] ?? [];
+
+        return is_array($rules) ? array_values($rules) : [];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rules
+     * @param  list<string>  $origins
+     * @return list<array<string, mixed>>
+     */
+    private function mergePublicReadCorsRules(array $rules, array $origins): array
+    {
+        $rule = [
+            'AllowedOrigins' => $origins,
+            'AllowedMethods' => ['GET', 'HEAD'],
+            'AllowedHeaders' => ['*'],
+            'ExposeHeaders' => ['Accept-Ranges', 'Content-Length', 'Content-Type', 'ETag'],
+            'MaxAgeSeconds' => 3600,
+        ];
+
+        foreach ($rules as $index => $existing) {
+            $methods = array_map('strtoupper', (array) ($existing['AllowedMethods'] ?? []));
+            sort($methods);
+
+            if ($methods === ['GET', 'HEAD']) {
+                $rules[$index] = $rule;
+
+                return array_values($rules);
+            }
+        }
+
+        $rules[] = $rule;
+
+        return array_values($rules);
+    }
+
+    private function normalizedOrigin(string $url): ?string
+    {
+        $parts = parse_url(trim($url));
+
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+            return null;
+        }
+
+        if (! in_array($parts['scheme'], ['http', 'https'], true)) {
+            return null;
+        }
+
+        $origin = $parts['scheme'].'://'.$parts['host'];
+
+        if (isset($parts['port'])) {
+            $origin .= ':'.$parts['port'];
+        }
+
+        return $origin;
     }
 
     /** @return array<string, mixed> */

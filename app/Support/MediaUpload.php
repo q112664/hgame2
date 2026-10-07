@@ -126,12 +126,20 @@ final class MediaUpload
                         $uploadedFile === null
                         || Media::diskName() !== 'r2'
                         || Str::startsWith($file, ['http://', 'https://', '/'])
-                        || ! Storage::disk('public')->exists($file)
                     ) {
                         return $uploadedFile;
                     }
 
-                    $uploadedFile['url'] = Storage::disk('public')->url($file);
+                    if (Storage::disk('public')->exists($file)) {
+                        $uploadedFile['url'] = Storage::disk('public')->url($file);
+
+                        return $uploadedFile;
+                    }
+
+                    // Cached custom-domain responses from before the CORS rule
+                    // omit Access-Control-Allow-Origin. A distinct preview URL
+                    // misses that cache and is stored with Vary: Origin.
+                    $uploadedFile['url'] .= (str_contains($uploadedFile['url'], '?') ? '&' : '?').'preview=1';
 
                     return $uploadedFile;
                 },

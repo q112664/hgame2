@@ -254,6 +254,29 @@ test('r2 game editor previews use same-origin local rollback copies', function (
         ));
 });
 
+test('r2 game editor previews bypass the headerless cdn cache when no local copy exists', function (): void {
+    config(['filesystems.media' => 'r2']);
+    Storage::fake('r2', ['url' => 'https://media.example.com']);
+    Storage::fake('public', [
+        'url' => 'http://hgame.test/storage',
+        'visibility' => 'public',
+    ]);
+
+    $coverPath = 'games/covers/cover.jpg';
+    Storage::disk('r2')->put($coverPath, UploadedFile::fake()->image('cover.jpg', 1280, 720)->getContent());
+    $game = Game::factory()->create(['cover_path' => $coverPath]);
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(EditGame::class, [
+        'record' => $game->getRouteKey(),
+    ])
+        ->call('callSchemaComponentMethod', 'form.cover_path', 'getUploadedFiles')
+        ->assertReturned(fn (?array $files): bool => collect($files)->contains(
+            fn (array $file): bool => $file['url'] === 'https://media.example.com/'.$coverPath.'?preview=1',
+        ));
+});
+
 test('games list defaults to newest created first', function () {
     $this->actingAs(User::factory()->admin()->create());
 

@@ -71,6 +71,7 @@ test('the resource details page includes hero metadata and every tab payload', f
             ->where('resource.hasDownloads', true)
             ->where('resourceNotice', '')
             ->where('showDownloadCount', true)
+            ->where('requireLoginToDownload', false)
             ->has('resource.screenshots', 1)
             ->has('resource.releases', 1)
             ->missing('comments')
@@ -94,6 +95,40 @@ test('resource pages expose a sanitized site notice above downloads when enabled
                 fn (string $html): bool => str_contains($html, 'official mirrors')
                     && str_contains($html, '<strong>')
                     && ! str_contains($html, '<script>'),
+            )
+        );
+});
+
+test('resource pages omit external download urls for guests when login is required', function () {
+    Setting::setBoolean('require_login_to_download', true);
+
+    $urls = $this->game->releases()->firstOrFail()->downloadLinks()->pluck('url')->sort()->values();
+
+    $response = $this->get(route('resources.show', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('resources/show')
+            ->where('requireLoginToDownload', true)
+            ->where(
+                'resource.releases.0.downloadLinks',
+                fn ($links): bool => collect($links)->every(
+                    fn (array $link): bool => $link['url'] === null,
+                ) && collect($links)->contains('label', 'Baidu Netdisk'),
+            )
+        );
+
+    foreach ($urls as $url) {
+        $response->assertDontSee($url, false);
+    }
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('resources.show', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('requireLoginToDownload', true)
+            ->where(
+                'resource.releases.0.downloadLinks',
+                fn ($links): bool => collect($links)->pluck('url')->sort()->values()->all() === $urls->all(),
             )
         );
 });

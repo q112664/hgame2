@@ -171,7 +171,7 @@ class GamePresenter
                                 ->map(fn ($link): array => [
                                     'id' => $link->id,
                                     'label' => $link->label ?: 'Download',
-                                    'url' => $link->url,
+                                    'url' => DownloadAccess::exposeExternalUrl() ? $link->url : null,
                                 ])
                                 ->values()
                                 ->all()

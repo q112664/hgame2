@@ -4,6 +4,7 @@ use App\Models\Game;
 use App\Models\GameDownloadLink;
 use App\Models\GameRelease;
 use App\Models\Setting;
+use App\Models\User;
 use App\Support\Turnstile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -96,6 +97,40 @@ test('download continue forces a full page redirect for inertia requests', funct
         Turnstile::FIELD => 'valid-token',
     ])->assertStatus(409)
         ->assertHeader('X-Inertia-Location', 'https://cdn.example.com/game.zip');
+});
+
+test('guests hit the login gate before turnstile when both protections are on', function () {
+    Setting::set('turnstile_site_key', 'test-site-key');
+    Setting::set('turnstile_secret_key', 'test-secret-key');
+    Setting::setBoolean('turnstile_download_enabled', true);
+    Setting::setBoolean('require_login_to_download', true);
+
+    $link = makeActiveDownloadLink();
+    $game = $link->release->game;
+    $downloads = $game->downloads_count;
+
+    $this->from(route('download-links.show', $link))
+        ->post(route('download-links.continue', $link))
+        ->assertRedirect(route('login'))
+        ->assertSessionHasNoErrors()
+        ->assertDontSee('https://cdn.example.com/game.zip', false);
+
+    expect($game->fresh()->downloads_count)->toBe($downloads);
+});
+
+test('signed-in users still need turnstile when login is also required', function () {
+    Setting::set('turnstile_site_key', 'test-site-key');
+    Setting::set('turnstile_secret_key', 'test-secret-key');
+    Setting::setBoolean('turnstile_download_enabled', true);
+    Setting::setBoolean('require_login_to_download', true);
+
+    $link = makeActiveDownloadLink();
+
+    $this->actingAs(User::factory()->create())
+        ->from(route('download-links.show', $link))
+        ->post(route('download-links.continue', $link))
+        ->assertRedirect(route('download-links.show', $link))
+        ->assertSessionHasErrors(Turnstile::FIELD);
 });
 
 test('download continue works without turnstile when disabled', function () {

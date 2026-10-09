@@ -395,6 +395,15 @@ class Setting extends Model
     }
 
     /**
+     * Guests must log in before a download jump page or its external URL.
+     * Missing settings stay open so existing public downloads keep working.
+     */
+    public static function requireLoginToDownload(): bool
+    {
+        return static::boolean('require_login_to_download', false);
+    }
+
+    /**
      * Sanitized HTML for the resource-page notice above the download CTA.
      * Empty when disabled or when the editor has no meaningful content.
      */

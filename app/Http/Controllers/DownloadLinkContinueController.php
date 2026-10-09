@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Games\RecordGameDownload;
 use App\GameStatus;
 use App\Models\GameDownloadLink;
+use App\Support\DownloadAccess;
 use App\Support\Turnstile;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -31,6 +32,10 @@ class DownloadLinkContinueController extends Controller
             && $game->published_at->lte(now()),
             404,
         );
+
+        if ($redirect = DownloadAccess::guestRedirect($request, $downloadLink)) {
+            return $redirect;
+        }
 
         if (Turnstile::isEnabled(Turnstile::FEATURE_DOWNLOAD)) {
             $request->validate(Turnstile::validationRules(Turnstile::FEATURE_DOWNLOAD));

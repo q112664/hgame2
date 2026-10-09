@@ -466,6 +466,33 @@ test('avatar urls use the configured site url', function () {
     expect($user->avatar)->toStartWith('http://hgame.test/storage/avatars/');
 });
 
+test('administrators can require login before downloads', function () {
+    $this->actingAs(User::factory()->admin()->create());
+
+    expect(Setting::requireLoginToDownload())->toBeFalse();
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'require_login_to_download' => true,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    expect(Setting::requireLoginToDownload())->toBeTrue();
+
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'require_login_to_download' => false,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect(Setting::requireLoginToDownload())->toBeFalse();
+});
+
 test('administrators can hide the download count on the download bar', function () {
     $this->actingAs(User::factory()->admin()->create());
 

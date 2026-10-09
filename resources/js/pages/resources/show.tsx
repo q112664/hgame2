@@ -90,6 +90,8 @@ type Props = {
     resourceNotice?: string;
     /** Admin toggle for the download-total chip on each package. */
     showDownloadCount?: boolean;
+    /** Admin toggle: guests must log in before a download. */
+    requireLoginToDownload?: boolean;
     related?: GameCard[];
     /** The tab the server rendered, so hydration does not repaint another one. */
     initialTab?: ResourceTab;
@@ -194,6 +196,7 @@ export default function ResourceShow({
     resource,
     resourceNotice = '',
     showDownloadCount = true,
+    requireLoginToDownload = false,
     related = [],
     initialTab = 'details',
     pageSeo,
@@ -646,6 +649,7 @@ export default function ResourceShow({
                         onOpenLightbox={openLightbox}
                         resourceNotice={resourceNotice}
                         showDownloadCount={showDownloadCount}
+                        requireLoginToDownload={requireLoginToDownload}
                         resourceId={resource.id}
                         related={related}
                     />

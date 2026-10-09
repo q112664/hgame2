@@ -1,13 +1,9 @@
 import { Form, Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, Download, ExternalLink, ShieldCheck } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { PageSeo } from '@/components/site/page-seo';
 import type { PageSeoData } from '@/components/site/page-seo';
-import {
-    downloadHeroButtonClassName,
-    releaseFooterClassName,
-} from '@/components/site/resource-detail-styles';
+import { downloadHeroButtonClassName } from '@/components/site/resource-detail-styles';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { TurnstileWidget } from '@/components/turnstile-widget';
 import { Button } from '@/components/ui/button';
@@ -34,161 +30,48 @@ type Props = {
     pageSeo?: PageSeoData | null;
 };
 
-function ActionFooter({
-    resourceId,
-    primary,
-}: {
-    resourceId: string;
-    primary: ReactNode;
-}) {
-    return (
-        <div
-            className={cn(
-                releaseFooterClassName,
-                'flex flex-col-reverse gap-2.5 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5',
-            )}
-        >
-            <Button
-                variant="ghost"
-                size="sm"
-                className="h-10 w-full justify-center text-muted-foreground sm:w-auto sm:justify-start"
-                asChild
-            >
-                <Link href={resourceTabHref(resourceId, 'downloads')} prefetch>
-                    <ArrowLeft data-icon="inline-start" />
-                    Back
-                </Link>
-            </Button>
-            {primary}
-        </div>
-    );
-}
-
-function ContinueButton({
-    processing = false,
-    disabled = false,
-    title,
-    asChild = false,
-    children,
-}: {
-    processing?: boolean;
-    disabled?: boolean;
-    title?: string;
-    asChild?: boolean;
-    children?: ReactNode;
-}) {
-    return (
-        <Button
-            type={asChild ? undefined : 'submit'}
-            variant="secondary"
-            className={cn(
-                downloadHeroButtonClassName,
-                'h-10 w-full sm:w-auto sm:min-w-36',
-            )}
-            disabled={disabled || processing}
-            title={title}
-            asChild={asChild}
-        >
-            {children ?? (
-                <>
-                    <Download data-icon="inline-start" />
-                    {processing ? 'Opening…' : 'Continue'}
-                </>
-            )}
-        </Button>
-    );
-}
-
 export default function DownloadLinkShow({ resource, link, pageSeo }: Props) {
     const { turnstile } = usePage().props;
     const showTurnstile = link.requiresTurnstile && Boolean(turnstile.siteKey);
     const turnstileGate = useTurnstileGate(showTurnstile);
     const hasThumbnail = resource.thumbnail.trim() !== '';
-
-    const identity = (
-        <div className="flex items-center gap-3.5 p-4 sm:gap-4 sm:p-5">
-            {hasThumbnail ? (
-                <div
-                    className={cn(
-                        'relative aspect-[16/10] w-20 shrink-0 overflow-hidden',
-                        'rounded-lg bg-muted ring-1 ring-border/50 sm:w-[5.5rem]',
-                    )}
-                >
-                    <LazyThumbnail
-                        src={resource.thumbnail}
-                        fallbackSrc={resource.thumbnailFallback}
-                        alt={resource.title}
-                        priority
-                    />
-                </div>
-            ) : (
-                <div
-                    className={cn(
-                        'flex aspect-[16/10] w-20 shrink-0 items-center justify-center',
-                        'rounded-lg bg-muted text-muted-foreground ring-1 ring-border/50 sm:w-[5.5rem]',
-                    )}
-                    aria-hidden
-                >
-                    <Download className="size-5 opacity-50" />
-                </div>
-            )}
-
-            <div className="min-w-0 flex-1 space-y-1">
-                <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                    External download
-                </p>
-                <h1 className="line-clamp-2 font-heading text-[0.95rem] leading-snug font-semibold tracking-tight text-foreground sm:text-base">
-                    {resource.title}
-                </h1>
-            </div>
-        </div>
-    );
-
-    const destination = (
-        <div className="space-y-1.5">
-            <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                Destination
-            </p>
-            <p className="text-base font-semibold tracking-tight text-foreground">
-                {link.label}
-            </p>
-            {link.host ? (
-                <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-                    <ExternalLink
-                        className="size-3.5 shrink-0 opacity-60"
-                        aria-hidden
-                    />
-                    <span className="truncate">{link.host}</span>
-                </p>
-            ) : null}
-        </div>
-    );
-
-    const notice = (
-        <p className="flex gap-2 text-xs leading-relaxed text-muted-foreground">
-            <ShieldCheck
-                className="mt-0.5 size-3.5 shrink-0 opacity-70"
-                aria-hidden
-            />
-            <span>
-                You are leaving this site to open a third-party host. Continue
-                only if you trust the destination.
-            </span>
-        </p>
-    );
+    const destinationName = link.label.trim() || 'Download';
+    const namedDestination = destinationName !== 'Download';
 
     return (
         <SiteLayout>
             <PageSeo seo={pageSeo} title={`Download — ${resource.title}`} />
 
-            <SitePageContainer className="max-w-md gap-0 py-8 sm:py-12">
-                <div
+            <SitePageContainer className="max-w-md gap-0 px-4 py-6 sm:px-4 sm:py-10 lg:px-4">
+                <article
                     className={cn(
-                        'overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm',
-                        'dark:border-border/50',
+                        'overflow-hidden rounded-xl border border-border/70 bg-card',
+                        'shadow-sm dark:border-border/50',
                     )}
                 >
-                    {identity}
+                    <header className="relative aspect-[16/10] overflow-hidden bg-surface-inverse">
+                        {hasThumbnail ? (
+                            <LazyThumbnail
+                                src={resource.thumbnail}
+                                fallbackSrc={resource.thumbnailFallback}
+                                alt=""
+                                priority
+                                className="absolute inset-0"
+                            />
+                        ) : null}
+                        <div
+                            className="absolute inset-0 bg-gradient-to-t from-surface-inverse from-12% via-surface-inverse/70 via-46% to-transparent"
+                            aria-hidden
+                        />
+                        <div className="absolute inset-x-0 bottom-0 space-y-0.5 px-4 pt-12 pb-3.5">
+                            <p className="text-xs font-medium text-surface-inverse-foreground/75">
+                                External download
+                            </p>
+                            <h1 className="line-clamp-2 font-heading text-base font-semibold tracking-tight text-balance text-surface-inverse-foreground">
+                                {resource.title}
+                            </h1>
+                        </div>
+                    </header>
 
                     {/* Always POST continue so downloads are recorded server-side. */}
                     <Form
@@ -202,55 +85,97 @@ export default function DownloadLinkShow({ resource, link, pageSeo }: Props) {
                         }
                     >
                         {({ processing, errors }) => (
-                            <>
-                                <div className="space-y-4 border-t border-border/60 px-4 py-4 sm:px-5 sm:py-5">
-                                    {destination}
-                                    {notice}
-                                    {showTurnstile && turnstile.siteKey ? (
-                                        <div className="space-y-2">
-                                            <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                                                Security check
-                                            </p>
-                                            <TurnstileWidget
-                                                siteKey={turnstile.siteKey}
-                                                error={
-                                                    errors[
-                                                        'cf-turnstile-response'
-                                                    ] as string | undefined
-                                                }
-                                                resetKey={
-                                                    turnstileGate.resetKey
-                                                }
-                                                onTokenChange={
-                                                    turnstileGate.onTokenChange
-                                                }
-                                            />
-                                        </div>
+                            <div className="space-y-4 px-4 py-4">
+                                <div className="border-l-2 border-primary pl-3">
+                                    <p className="font-heading text-lg font-semibold tracking-tight text-balance text-foreground">
+                                        {destinationName}
+                                    </p>
+                                    {link.host ? (
+                                        <p className="mt-0.5 truncate font-mono text-sm text-muted-foreground">
+                                            {link.host}
+                                        </p>
                                     ) : null}
                                 </div>
 
-                                <ActionFooter
-                                    resourceId={resource.id}
-                                    primary={
-                                        <ContinueButton
-                                            processing={processing}
-                                            disabled={
-                                                showTurnstile
-                                                    ? turnstileGate.submitDisabled
-                                                    : false
+                                <p
+                                    id="download-leave-note"
+                                    className="text-sm leading-relaxed text-muted-foreground"
+                                >
+                                    Continue opens {destinationName} in this
+                                    tab. The game page stays open in the other
+                                    tab.
+                                </p>
+
+                                {showTurnstile && turnstile.siteKey ? (
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-medium text-muted-foreground">
+                                            Security check
+                                        </p>
+                                        <TurnstileWidget
+                                            siteKey={turnstile.siteKey}
+                                            error={
+                                                errors[
+                                                    'cf-turnstile-response'
+                                                ] as string | undefined
                                             }
-                                            title={
-                                                showTurnstile
-                                                    ? turnstileGate.submitTitle
-                                                    : undefined
+                                            resetKey={turnstileGate.resetKey}
+                                            onTokenChange={
+                                                turnstileGate.onTokenChange
                                             }
                                         />
-                                    }
-                                />
-                            </>
+                                    </div>
+                                ) : null}
+
+                                <div className="flex flex-col gap-1.5">
+                                    <Button
+                                        type="submit"
+                                        className={cn(
+                                            downloadHeroButtonClassName,
+                                            'h-10 w-full min-w-0',
+                                        )}
+                                        disabled={
+                                            processing ||
+                                            (showTurnstile
+                                                ? turnstileGate.submitDisabled
+                                                : false)
+                                        }
+                                        title={
+                                            showTurnstile
+                                                ? turnstileGate.submitTitle
+                                                : undefined
+                                        }
+                                        aria-describedby="download-leave-note"
+                                    >
+                                        <ExternalLink data-icon="inline-start" />
+                                        <span className="truncate">
+                                            {processing
+                                                ? 'Opening…'
+                                                : namedDestination
+                                                  ? `Continue to ${destinationName}`
+                                                  : 'Continue'}
+                                        </span>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="h-9 w-full text-muted-foreground"
+                                        asChild
+                                    >
+                                        <Link
+                                            href={resourceTabHref(
+                                                resource.id,
+                                                'downloads',
+                                            )}
+                                            prefetch
+                                        >
+                                            <ArrowLeft data-icon="inline-start" />
+                                            Back to downloads
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </div>
                         )}
                     </Form>
-                </div>
+                </article>
             </SitePageContainer>
         </SiteLayout>
     );

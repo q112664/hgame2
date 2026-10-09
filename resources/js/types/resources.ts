@@ -47,7 +47,8 @@ export type GameDownloadLink = {
     id: number;
     /** Name derived from the link's own domain, e.g. "Nekobox". */
     label: string;
-    url: string;
+    /** Null for guests while the site requires login to download. */
+    url: string | null;
 };
 
 export type GameReleaseContributor = {

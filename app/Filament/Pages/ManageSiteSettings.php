@@ -83,6 +83,7 @@ class ManageSiteSettings extends Page
             'resource_notice_enabled' => Setting::resourceNoticeEnabled(),
             'resource_notice_content' => Setting::get('resource_notice_content') ?? '',
             'show_download_count' => Setting::showDownloadCount(),
+            'require_login_to_download' => Setting::requireLoginToDownload(),
             'turnstile_site_key' => Setting::get('turnstile_site_key') ?? config('services.turnstile.site_key'),
             'turnstile_secret_key' => Setting::get('turnstile_secret_key') ? '••••••••' : '',
             'turnstile_login_enabled' => Setting::boolean('turnstile_login_enabled', false),
@@ -351,6 +352,14 @@ class ManageSiteSettings extends Page
                                             ->default(true)
                                             ->inline(false),
                                     ]),
+                                Section::make('Download access')
+                                    ->description('When this is on, guests must log in before a download. The external address stays off the resource page and the jump page until they do.')
+                                    ->schema([
+                                        Toggle::make('require_login_to_download')
+                                            ->label('Require login to download')
+                                            ->default(false)
+                                            ->inline(false),
+                                    ]),
                                 Section::make('Resource page notice')
                                     ->description('Shown on the Downloads tab above download packages. Disable or clear to hide.')
                                     ->schema([
@@ -586,6 +595,10 @@ class ManageSiteSettings extends Page
         Setting::setBoolean(
             'show_download_count',
             filter_var($data['show_download_count'] ?? true, FILTER_VALIDATE_BOOLEAN),
+        );
+        Setting::setBoolean(
+            'require_login_to_download',
+            filter_var($data['require_login_to_download'] ?? false, FILTER_VALIDATE_BOOLEAN),
         );
         Setting::setBoolean(
             'resource_notice_enabled',

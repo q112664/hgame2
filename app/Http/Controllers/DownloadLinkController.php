@@ -4,17 +4,20 @@ namespace App\Http\Controllers;
 
 use App\GameStatus;
 use App\Models\GameDownloadLink;
+use App\Support\DownloadAccess;
 use App\Support\Media;
 use App\Support\MediaThumbnail;
 use App\Support\PageSeo;
 use App\Support\Turnstile;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DownloadLinkController extends Controller
 {
-    public function show(GameDownloadLink $downloadLink): Response
+    public function show(Request $request, GameDownloadLink $downloadLink): Response|RedirectResponse
     {
         $release = $downloadLink->release()->first();
         $game = $release?->game()->first();
@@ -30,6 +33,10 @@ class DownloadLinkController extends Controller
             && Carbon::parse((string) $publishedAt)->lte(now()),
             404,
         );
+
+        if ($redirect = DownloadAccess::guestRedirect($request, $downloadLink)) {
+            return $redirect;
+        }
 
         $host = parse_url((string) $downloadLink->url, PHP_URL_HOST);
         $requiresTurnstile = Turnstile::isEnabled(Turnstile::FEATURE_DOWNLOAD);

@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
     ChevronDown,
     ChevronUp,
@@ -9,6 +9,7 @@ import {
     RefreshCw,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useAuthDialog } from '@/components/auth/auth-dialog';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
 import { LikeButton } from '@/components/site/like-button';
 import { PlatformIcon } from '@/components/site/platform-icon';
@@ -311,6 +312,8 @@ type Props = {
     resourceNotice?: string;
     /** When false, the download-total chip is omitted from each package bar. */
     showDownloadCount?: boolean;
+    /** When true, guests open the login dialog instead of the download jump page. */
+    requireLoginToDownload?: boolean;
     resourceId?: string;
     related?: GameCard[];
 };
@@ -322,9 +325,14 @@ export function ResourceTabContent({
     onOpenLightbox,
     resourceNotice = '',
     showDownloadCount = true,
+    requireLoginToDownload = false,
     resourceId,
     related = [],
 }: Props) {
+    const page = usePage();
+    const { openAuthDialog } = useAuthDialog();
+    const downloadsRequireLogin =
+        requireLoginToDownload && !page.props.auth.user;
     const {
         isLiked,
         likesCount,
@@ -639,16 +647,58 @@ export function ResourceTabContent({
                                                                       : 'Download'
                                                                   : `Download from ${name}`;
 
+                                                          const buttonClassName =
+                                                              cn(
+                                                                  downloadButtonClassName,
+                                                                  'w-full sm:w-auto',
+                                                              );
+
+                                                          if (
+                                                              downloadsRequireLogin
+                                                          ) {
+                                                              return (
+                                                                  <Button
+                                                                      key={
+                                                                          link.id
+                                                                      }
+                                                                      type="button"
+                                                                      variant="default"
+                                                                      size="sm"
+                                                                      className={
+                                                                          buttonClassName
+                                                                      }
+                                                                      aria-label={
+                                                                          ariaLabel
+                                                                      }
+                                                                      onClick={() =>
+                                                                          openAuthDialog(
+                                                                              'login',
+                                                                              {
+                                                                                  redirect:
+                                                                                      downloadLinkShow.url(
+                                                                                          link.id,
+                                                                                      ),
+                                                                              },
+                                                                          )
+                                                                      }
+                                                                  >
+                                                                      <Download data-icon="inline-start" />
+                                                                      <span className="truncate">
+                                                                          {name}
+                                                                      </span>
+                                                                  </Button>
+                                                              );
+                                                          }
+
                                                           return (
                                                               <Button
                                                                   key={link.id}
                                                                   asChild
                                                                   variant="default"
                                                                   size="sm"
-                                                                  className={cn(
-                                                                      downloadButtonClassName,
-                                                                      'w-full sm:w-auto',
-                                                                  )}
+                                                                  className={
+                                                                      buttonClassName
+                                                                  }
                                                               >
                                                                   <Link
                                                                       href={downloadLinkShow(

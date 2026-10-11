@@ -19,7 +19,7 @@ class RankingController extends Controller
         $period = RankingPeriod::fromRouteName($request->route()?->getName());
 
         $entries = Cache::remember(
-            'rankings.'.$period->value.'.'.today()->toDateString(),
+            'rankings.cards.'.$period->value.'.'.today()->toDateString(),
             now()->addMinutes(5),
             fn (): array => ($this->listResourceRankings)($period),
         );

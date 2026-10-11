@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Eye, Flame } from 'lucide-react';
+import { Flame } from 'lucide-react';
 import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { PageSeo } from '@/components/site/page-seo';
 import type { PageSeoData } from '@/components/site/page-seo';
@@ -24,6 +24,7 @@ type RankingEntry = {
     views: number;
     downloads: number;
     rank: number;
+    screenshots?: string[];
 };
 
 type Props = {
@@ -37,6 +38,8 @@ const periods: { id: RankingPeriodId; label: string; href: string }[] = [
     { id: 'week', label: '7 days', href: week.url() },
     { id: 'month', label: '30 days', href: month.url() },
 ];
+
+const previewScreenshotCount = 3;
 
 function rankBadgeClassName(rank: number): string {
     if (rank === 1) {
@@ -52,6 +55,29 @@ function rankBadgeClassName(rank: number): string {
     }
 
     return 'bg-surface-inverse text-surface-inverse-foreground';
+}
+
+function previewScreenshots(screenshots: string[] | undefined): string[] {
+    return (screenshots ?? [])
+        .map((src) => src.trim())
+        .filter((src) => src !== '')
+        .slice(0, previewScreenshotCount);
+}
+
+function mediaStripClassName(shotCount: number): string {
+    if (shotCount >= previewScreenshotCount) {
+        return 'grid h-16 grid-cols-4 gap-1 sm:h-20 sm:w-80 sm:shrink-0 lg:w-[28rem]';
+    }
+
+    if (shotCount === 2) {
+        return 'grid h-16 grid-cols-3 gap-1 sm:h-20 sm:w-72 sm:shrink-0';
+    }
+
+    if (shotCount === 1) {
+        return 'grid h-16 grid-cols-2 gap-1 sm:h-20 sm:w-56 sm:shrink-0';
+    }
+
+    return 'grid h-16 w-28 grid-cols-1 gap-1 sm:h-20 sm:w-36 sm:shrink-0';
 }
 
 export default function RankingsIndex({ period, entries, pageSeo }: Props) {
@@ -108,49 +134,7 @@ export default function RankingsIndex({ period, entries, pageSeo }: Props) {
                     <ol className="flex min-w-0 flex-col gap-2">
                         {entries.map((entry) => (
                             <li key={entry.slug} className="min-w-0">
-                                <Link
-                                    href={resourceShow(entry.slug)}
-                                    prefetch
-                                    className={cn(
-                                        'group grid w-full min-w-0 grid-cols-[7rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-card px-3 py-3',
-                                        'sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:gap-4 sm:px-4',
-                                        'transition-[border-color] duration-150 hover:border-foreground/15',
-                                        'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-                                    )}
-                                >
-                                    <span className="relative aspect-[16/10] w-28 shrink-0 overflow-hidden rounded-md bg-muted ring-1 ring-border/70 sm:w-36">
-                                        <LazyThumbnail
-                                            src={entry.thumbnail}
-                                            fallbackSrc={
-                                                entry.thumbnailFallback
-                                            }
-                                            alt=""
-                                            priority={entry.rank <= 3}
-                                        />
-                                        <span
-                                            className={cn(
-                                                'absolute top-1.5 left-1.5 z-10 inline-flex size-6 items-center justify-center rounded-md text-xs font-bold tabular-nums shadow-sm sm:size-7',
-                                                rankBadgeClassName(entry.rank),
-                                            )}
-                                            aria-label={`Rank ${entry.rank}`}
-                                        >
-                                            {entry.rank}
-                                        </span>
-                                    </span>
-
-                                    <span className="flex min-w-0 flex-col gap-1 overflow-hidden">
-                                        <span className="truncate font-heading text-base font-semibold tracking-tight text-foreground">
-                                            {entry.title}
-                                        </span>
-                                        <span className="truncate text-xs text-muted-foreground">
-                                            {entry.developer}
-                                            <span aria-hidden> · </span>
-                                            {entry.category}
-                                        </span>
-                                    </span>
-
-                                    <RankingViews value={entry.views} />
-                                </Link>
+                                <RankingCard entry={entry} />
                             </li>
                         ))}
                     </ol>
@@ -160,15 +144,78 @@ export default function RankingsIndex({ period, entries, pageSeo }: Props) {
     );
 }
 
-function RankingViews({ value }: { value: number }) {
+function RankingCard({ entry }: { entry: RankingEntry }) {
+    const screenshots = previewScreenshots(entry.screenshots);
+
+    return (
+        <Link
+            href={resourceShow(entry.slug)}
+            prefetch
+            className={cn(
+                'group flex min-w-0 flex-col gap-2 overflow-hidden rounded-lg border border-border/70 bg-card p-2',
+                'sm:flex-row sm:items-center sm:gap-3 sm:p-2.5',
+                'dark:border-border/50',
+                'transition-[border-color] duration-150 hover:border-foreground/15',
+                'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+            )}
+        >
+            <span className={mediaStripClassName(screenshots.length)}>
+                <span className="relative h-full overflow-hidden rounded-md bg-muted">
+                    <LazyThumbnail
+                        src={entry.thumbnail}
+                        fallbackSrc={entry.thumbnailFallback}
+                        alt=""
+                        priority={entry.rank <= 3}
+                    />
+                    <span
+                        className={cn(
+                            'absolute top-1.5 left-1.5 z-10 inline-flex size-5 items-center justify-center rounded-md text-[11px] font-bold tabular-nums shadow-sm',
+                            rankBadgeClassName(entry.rank),
+                        )}
+                        aria-label={`Rank ${entry.rank}`}
+                    >
+                        {entry.rank}
+                    </span>
+                </span>
+                {screenshots.map((src, index) => (
+                    <span
+                        key={`${entry.slug}-shot-${index}`}
+                        className="relative h-full overflow-hidden rounded-md bg-muted"
+                    >
+                        <LazyThumbnail src={src} alt="" />
+                    </span>
+                ))}
+            </span>
+
+            <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                <span className="min-w-0">
+                    <span className="block truncate text-[11px] font-medium tracking-wide text-muted-foreground">
+                        {entry.category}
+                    </span>
+                    <span className="mt-0.5 block truncate font-heading text-sm font-semibold tracking-tight text-foreground sm:text-base">
+                        {entry.title}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                        {entry.developer}
+                    </span>
+                </span>
+
+                <RankingHeat value={entry.views + entry.downloads} />
+            </span>
+        </Link>
+    );
+}
+
+function RankingHeat({ value }: { value: number }) {
+    const label = formatViews(value);
+
     return (
         <span
-            className="inline-flex shrink-0 items-center gap-1 text-sm text-muted-foreground tabular-nums"
-            title="Views"
+            className="inline-flex shrink-0 items-center gap-1 font-heading text-sm font-semibold text-foreground tabular-nums"
+            aria-label={`Heat ${label}`}
         >
-            <Eye className="size-3.5 shrink-0 opacity-80" aria-hidden />
-            <span className="sr-only">Views</span>
-            {formatViews(value)}
+            <Flame className="size-3.5 shrink-0 text-primary" aria-hidden />
+            {label}
         </span>
     );
 }

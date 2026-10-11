@@ -605,7 +605,7 @@ test('homepage popular section uses a ranked landscape strip', function () {
         ->not->toContain('HomeTaxonomyPanel');
 });
 
-test('rankings page is a compact list without blur', function () {
+test('rankings page is a card grid without blur', function () {
     $source = app(Filesystem::class)->get(resource_path('js/pages/rankings/index.tsx'));
 
     expect($source)
@@ -617,10 +617,20 @@ test('rankings page is a compact list without blur', function () {
         ->toContain('bg-warning/90 text-warning-foreground')
         ->toContain('bg-surface-inverse text-surface-inverse-foreground')
         ->toContain('absolute top-1.5 left-1.5')
-        ->toContain('w-28')
-        ->toContain('sm:w-36')
-        ->toContain('grid-cols-[7rem_minmax(0,1fr)_auto]')
+        ->toContain('flex min-w-0 flex-col gap-2')
+        ->toContain('sm:flex-row sm:items-center')
+        ->toContain('previewScreenshotCount = 3')
+        ->toContain('grid h-16 grid-cols-4 gap-1')
+        ->toContain('entry.screenshots')
+        ->toContain('entry.category')
+        ->toContain('entry.views + entry.downloads')
+        ->toContain('Heat')
+        ->not->toContain('Eye')
+        ->not->toContain('title="Views"')
+        ->not->toContain('lg:grid-cols-2')
+        ->not->toContain('aspect-[16/10]')
         ->not->toContain('min-w-full')
+        ->not->toContain('grid-cols-[7rem_minmax(0,1fr)_auto]')
         ->toContain('prefetch')
         ->not->toContain('w-16 sm:w-20')
         ->not->toContain('Download')

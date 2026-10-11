@@ -6,7 +6,6 @@ use App\Models\GameDailyStat;
 use App\Models\GameScreenshot;
 use App\Models\Setting;
 use App\RankingPeriod;
-use App\Support\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -96,7 +95,7 @@ test('ranking pages render one period and do not record a view', function () {
             ->where('entries.0.views', 1)
             ->where('entries.0.downloads', 2)
             ->where('entries.0.rank', 1)
-            ->where('entries.0.screenshots', [])
+            ->missing('entries.0.screenshots')
             ->where('pageSeo.title', 'Rankings')
             ->where('pageSeo.robots', 'index,follow')
             ->where('pageSeo.canonical', route('rankings.day'))
@@ -155,38 +154,20 @@ test('a cached ranking stays in place until the cache is cleared', function () {
         );
 });
 
-test('ranking cards keep the first three screenshots in gallery order', function () {
+test('ranking entries omit screenshot urls', function () {
     $game = rankedGame('with-shots', views: 2, downloads: 1);
 
-    GameScreenshot::factory()->for($game)->create([
-        'sort_order' => 4,
-        'path' => null,
-        'url' => 'https://shots.test/fourth.webp',
-    ]);
-    GameScreenshot::factory()->for($game)->create([
-        'sort_order' => 2,
-        'path' => 'games/screenshots/second.webp',
-        'url' => 'https://shots.test/ignored.webp',
-    ]);
     GameScreenshot::factory()->for($game)->create([
         'sort_order' => 1,
         'path' => null,
         'url' => 'https://shots.test/first.webp',
     ]);
-    GameScreenshot::factory()->for($game)->create([
-        'sort_order' => 3,
-        'path' => null,
-        'url' => 'https://shots.test/third.webp',
-    ]);
 
     $entry = collect(app(ListResourceRankings::class)(RankingPeriod::Day))
         ->firstWhere('slug', $game->slug);
 
-    expect($entry['screenshots'])->toBe([
-        'https://shots.test/first.webp',
-        Media::url('games/screenshots/second.webp'),
-        'https://shots.test/third.webp',
-    ]);
+    expect($entry)->not->toHaveKey('screenshots')
+        ->and($entry['thumbnail'])->not->toBe('https://shots.test/first.webp');
 });
 
 test('sitemap lists the three ranking pages', function () {

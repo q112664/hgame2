@@ -28,8 +28,7 @@ class ListResourceRankings
      *     category: string,
      *     views: int,
      *     downloads: int,
-     *     rank: int,
-     *     screenshots: list<string>
+     *     rank: int
      * }>
      */
     public function __invoke(RankingPeriod $period): array
@@ -48,14 +47,7 @@ class ListResourceRankings
         $games = Game::query()
             ->published()
             ->joinSub($daily, 'period_daily', 'period_daily.game_id', '=', 'games.id')
-            ->with([
-                'category:id,name',
-                'screenshots' => function ($query): void {
-                    $query->select(['id', 'game_id', 'path', 'url', 'sort_order'])
-                        ->orderBy('sort_order')
-                        ->orderBy('id');
-                },
-            ])
+            ->with('category:id,name')
             ->select([
                 'games.id',
                 'games.slug',

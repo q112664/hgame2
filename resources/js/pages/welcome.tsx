@@ -5,13 +5,14 @@ import { LatestResources } from '@/components/site/latest-resources';
 import { PageSeo } from '@/components/site/page-seo';
 import type { PageSeoData } from '@/components/site/page-seo';
 import { PopularResources } from '@/components/site/popular-resources';
+import type { PopularCard } from '@/components/site/popular-resources';
 import { SiteLayout } from '@/layouts/site-layout';
 import { index as resourcesIndex } from '@/routes/resources';
 import type { GameCard } from '@/types/resources';
 
 type Props = {
     hero: HomeHeroContent;
-    popular: GameCard[];
+    popular: PopularCard[];
     resources: GameCard[];
     hasMoreResources: boolean;
     pageSeo?: PageSeoData | null;

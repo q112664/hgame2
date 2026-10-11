@@ -24,7 +24,6 @@ type RankingEntry = {
     views: number;
     downloads: number;
     rank: number;
-    screenshots?: string[];
 };
 
 type Props = {
@@ -38,8 +37,6 @@ const periods: { id: RankingPeriodId; label: string; href: string }[] = [
     { id: 'week', label: '7 days', href: week.url() },
     { id: 'month', label: '30 days', href: month.url() },
 ];
-
-const previewScreenshotCount = 3;
 
 function rankBadgeClassName(rank: number): string {
     if (rank === 1) {
@@ -55,29 +52,6 @@ function rankBadgeClassName(rank: number): string {
     }
 
     return 'bg-surface-inverse text-surface-inverse-foreground';
-}
-
-function previewScreenshots(screenshots: string[] | undefined): string[] {
-    return (screenshots ?? [])
-        .map((src) => src.trim())
-        .filter((src) => src !== '')
-        .slice(0, previewScreenshotCount);
-}
-
-function mediaStripClassName(shotCount: number): string {
-    if (shotCount >= previewScreenshotCount) {
-        return 'grid h-16 grid-cols-4 gap-1 sm:h-20 sm:w-80 sm:shrink-0 lg:w-[28rem]';
-    }
-
-    if (shotCount === 2) {
-        return 'grid h-16 grid-cols-3 gap-1 sm:h-20 sm:w-72 sm:shrink-0';
-    }
-
-    if (shotCount === 1) {
-        return 'grid h-16 grid-cols-2 gap-1 sm:h-20 sm:w-56 sm:shrink-0';
-    }
-
-    return 'grid h-16 w-28 grid-cols-1 gap-1 sm:h-20 sm:w-36 sm:shrink-0';
 }
 
 export default function RankingsIndex({ period, entries, pageSeo }: Props) {
@@ -131,7 +105,7 @@ export default function RankingsIndex({ period, entries, pageSeo }: Props) {
                         description="Views and downloads are counted per day from Sep 29, 2026. Earlier lifetime totals are not included."
                     />
                 ) : (
-                    <ol className="flex min-w-0 flex-col gap-2">
+                    <ol className="grid min-w-0 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
                         {entries.map((entry) => (
                             <li key={entry.slug} className="min-w-0">
                                 <RankingCard entry={entry} />
@@ -145,62 +119,46 @@ export default function RankingsIndex({ period, entries, pageSeo }: Props) {
 }
 
 function RankingCard({ entry }: { entry: RankingEntry }) {
-    const screenshots = previewScreenshots(entry.screenshots);
-
     return (
         <Link
             href={resourceShow(entry.slug)}
             prefetch
             className={cn(
-                'group flex min-w-0 flex-col gap-2 overflow-hidden rounded-lg border border-border/70 bg-card p-2',
-                'sm:flex-row sm:items-center sm:gap-3 sm:p-2.5',
-                'dark:border-border/50',
-                'transition-[border-color] duration-150 hover:border-foreground/15',
+                'group relative block aspect-[16/10] overflow-hidden rounded-lg bg-muted',
+                'ring-1 ring-border/70',
+                'transition-[ring-color] duration-150 hover:ring-foreground/20',
                 'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
             )}
         >
-            <span className={mediaStripClassName(screenshots.length)}>
-                <span className="relative h-full overflow-hidden rounded-md bg-muted">
-                    <LazyThumbnail
-                        src={entry.thumbnail}
-                        fallbackSrc={entry.thumbnailFallback}
-                        alt=""
-                        priority={entry.rank <= 3}
-                    />
-                    <span
-                        className={cn(
-                            'absolute top-1.5 left-1.5 z-10 inline-flex size-5 items-center justify-center rounded-md text-[11px] font-bold tabular-nums shadow-sm',
-                            rankBadgeClassName(entry.rank),
-                        )}
-                        aria-label={`Rank ${entry.rank}`}
-                    >
-                        {entry.rank}
-                    </span>
-                </span>
-                {screenshots.map((src, index) => (
-                    <span
-                        key={`${entry.slug}-shot-${index}`}
-                        className="relative h-full overflow-hidden rounded-md bg-muted"
-                    >
-                        <LazyThumbnail src={src} alt="" />
-                    </span>
-                ))}
+            <LazyThumbnail
+                src={entry.thumbnail}
+                fallbackSrc={entry.thumbnailFallback}
+                alt=""
+                priority={entry.rank <= 4}
+                className="absolute inset-0"
+            />
+            <span
+                className={cn(
+                    'absolute top-1.5 left-1.5 z-10 inline-flex size-6 items-center justify-center rounded-md text-xs font-bold tabular-nums shadow-sm',
+                    rankBadgeClassName(entry.rank),
+                )}
+                aria-label={`Rank ${entry.rank}`}
+            >
+                {entry.rank}
             </span>
-
-            <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                <span className="min-w-0">
-                    <span className="block truncate text-[11px] font-medium tracking-wide text-muted-foreground">
-                        {entry.category}
-                    </span>
-                    <span className="mt-0.5 block truncate font-heading text-sm font-semibold tracking-tight text-foreground sm:text-base">
-                        {entry.title}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
+            <span className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-0.5 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-2 pt-6 pb-1.5 sm:px-2.5 sm:pt-8 sm:pb-2">
+                <span className="truncate text-[10px] font-medium tracking-wide text-white/75 sm:text-[11px]">
+                    {entry.category}
+                </span>
+                <span className="line-clamp-2 font-heading text-[13px] leading-tight font-semibold tracking-tight text-white sm:text-sm sm:leading-snug">
+                    {entry.title}
+                </span>
+                <span className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate text-[10px] text-white/75 sm:text-xs">
                         {entry.developer}
                     </span>
+                    <RankingHeat value={entry.views + entry.downloads} />
                 </span>
-
-                <RankingHeat value={entry.views + entry.downloads} />
             </span>
         </Link>
     );
@@ -211,10 +169,13 @@ function RankingHeat({ value }: { value: number }) {
 
     return (
         <span
-            className="inline-flex shrink-0 items-center gap-1 font-heading text-sm font-semibold text-foreground tabular-nums"
+            className="inline-flex shrink-0 items-center gap-0.5 font-heading text-[11px] font-semibold text-white tabular-nums sm:gap-1 sm:text-xs"
             aria-label={`Heat ${label}`}
         >
-            <Flame className="size-3.5 shrink-0 text-primary" aria-hidden />
+            <Flame
+                className="size-3 shrink-0 text-primary sm:size-3.5"
+                aria-hidden
+            />
             {label}
         </span>
     );

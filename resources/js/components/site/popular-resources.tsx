@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, Eye, Flame } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import { useCallback, useRef } from 'react';
 import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,12 @@ import { cn } from '@/lib/utils';
 import { show as resourceDetails } from '@/routes/resources';
 import type { GameCard } from '@/types/resources';
 
+export type PopularCard = GameCard & {
+    downloads: number;
+};
+
 type Props = {
-    resources: GameCard[];
+    resources: PopularCard[];
     title?: string;
     id?: string;
 };
@@ -105,6 +109,9 @@ export function PopularResources({
                 >
                     {resources.map((resource, index) => {
                         const rank = index + 1;
+                        const heat = formatViews(
+                            resource.views + resource.downloads,
+                        );
 
                         return (
                             <li
@@ -139,12 +146,15 @@ export function PopularResources({
                                         <p className="line-clamp-2 font-heading text-sm leading-snug font-semibold tracking-tight text-white">
                                             {resource.title}
                                         </p>
-                                        <p className="mt-1 inline-flex items-center gap-1 text-xs leading-none text-white/85 tabular-nums">
-                                            <Eye
-                                                className="size-3.5 shrink-0 opacity-90"
+                                        <p
+                                            className="mt-1 inline-flex items-center gap-1 text-xs leading-none font-semibold text-white tabular-nums"
+                                            aria-label={`Heat ${heat}`}
+                                        >
+                                            <Flame
+                                                className="size-3.5 shrink-0 text-primary"
                                                 aria-hidden
                                             />
-                                            {formatViews(resource.views)}
+                                            {heat}
                                         </p>
                                     </div>
 

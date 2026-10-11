@@ -62,6 +62,8 @@ test('home popular section only ranks the last 30 days', function () {
             ->where('popular.0.id', $recent->slug)
             // Lifetime views are still the ranking key inside the window.
             ->where('popular.0.views', $recent->views_count)
+            ->where('popular.0.downloads', $recent->downloads_count)
+            ->missing('resources.0.downloads')
             ->etc()
         );
 });

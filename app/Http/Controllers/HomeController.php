@@ -31,7 +31,7 @@ class HomeController extends Controller
         return Inertia::render('welcome', [
             'hero' => Setting::homeHero(),
             'pageSeo' => PageSeo::home(),
-            'popular' => $this->presentCards(
+            'popular' => $this->presentPopular(
                 Game::query()
                     ->published()
                     ->withCardData()
@@ -50,6 +50,25 @@ class HomeController extends Controller
             ),
             'hasMoreResources' => $latestGames->count() > self::HomeSectionLimit,
         ]);
+    }
+
+    /**
+     * Popular cards carry download totals so the strip can show heat
+     * (views plus downloads) instead of views alone.
+     *
+     * @param  Collection<int, Game>  $games
+     * @return list<array<string, mixed>>
+     */
+    private function presentPopular(Collection $games): array
+    {
+        return array_values(
+            $games
+                ->map(fn (Game $game): array => [
+                    ...GamePresenter::card($game),
+                    'downloads' => $game->downloads_count,
+                ])
+                ->all(),
+        );
     }
 
     /**

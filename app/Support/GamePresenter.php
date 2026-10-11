@@ -4,14 +4,11 @@ namespace App\Support;
 
 use App\Models\Game;
 use App\Models\GameRelease;
-use App\Models\GameScreenshot;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
 class GamePresenter
 {
-    private const int RankingScreenshotLimit = 3;
-
     /** @return array<string, mixed> */
     public static function card(Game $game, bool $includeTags = true): array
     {
@@ -84,8 +81,7 @@ class GamePresenter
      *     category: string,
      *     views: int,
      *     downloads: int,
-     *     rank: int,
-     *     screenshots: list<string>
+     *     rank: int
      * }
      */
     public static function rankingEntry(Game $game, int $views, int $downloads, int $rank): array
@@ -103,34 +99,7 @@ class GamePresenter
             'views' => $views,
             'downloads' => $downloads,
             'rank' => $rank,
-            'screenshots' => self::rankingScreenshots($game),
         ];
-    }
-
-    /**
-     * First screenshots for a ranking card, in gallery order.
-     *
-     * These are the stored screenshot files. The card does not generate a
-     * smaller derivative, and it never probes storage to find one.
-     *
-     * @return list<string>
-     */
-    private static function rankingScreenshots(Game $game): array
-    {
-        if (! $game->relationLoaded('screenshots')) {
-            return [];
-        }
-
-        return $game->screenshots
-            ->filter(fn (GameScreenshot $screenshot): bool => filled($screenshot->path) || filled($screenshot->url))
-            ->sortBy([
-                ['sort_order', 'asc'],
-                ['id', 'asc'],
-            ])
-            ->take(self::RankingScreenshotLimit)
-            ->map(fn (GameScreenshot $screenshot): string => self::mediaUrl($screenshot->path ?: $screenshot->url))
-            ->values()
-            ->all();
     }
 
     /** @return array<string, mixed> */

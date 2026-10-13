@@ -3,8 +3,12 @@
 use App\Models\Setting;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Support\Media;
 use App\Support\SocialAuth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
@@ -24,6 +28,24 @@ function enableDiscordOAuth(): void
     Setting::setBoolean('oauth_discord_enabled', true);
     Setting::set('oauth_discord_client_id', 'discord-client-id');
     Setting::set('oauth_discord_client_secret', 'discord-client-secret');
+}
+
+function providerAvatarPng(): string
+{
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
+
+    if (! is_string($png) || $png === '') {
+        throw new RuntimeException('The test avatar image could not be decoded.');
+    }
+
+    return $png;
+}
+
+function fakeProviderAvatar(string $url): void
+{
+    Http::fake([
+        $url => Http::response(providerAvatarPng(), 200, ['Content-Type' => 'image/png']),
+    ]);
 }
 
 test('social providers are shared when configured and enabled', function () {
@@ -64,13 +86,17 @@ test('oauth redirect sends the user to the provider when enabled', function () {
 
 test('oauth callback creates a new user and logs them in', function () {
     enableGoogleOAuth();
+    Storage::fake('public');
+
+    $avatar = 'https://lh3.googleusercontent.com/a/ACg8ocAda=s96-c';
+    fakeProviderAvatar('https://lh3.googleusercontent.com/a/ACg8ocAda=s256-c');
 
     Socialite::fake('google', SocialiteUser::fake([
         'id' => 'google-100',
         'name' => 'Ada Lovelace',
         'email' => 'ada@example.com',
         'verified_email' => true,
-        'avatar' => 'https://example.com/ada.png',
+        'avatar' => $avatar,
     ]));
 
     $this->get(route('auth.social.callback', ['provider' => 'google']))
@@ -84,14 +110,17 @@ test('oauth callback creates a new user and logs them in', function () {
         ->and($user->name)->toBe('Ada Lovelace')
         ->and($user->password)->toBeNull()
         ->and($user->email_verified_at)->not->toBeNull()
-        ->and($user->avatarPath())->toBe('https://example.com/ada.png')
-        ->and($user->avatar)->toBe('https://example.com/ada.png')
+        ->and($user->avatarPath())->toStartWith('avatars/social/')
+        ->and($user->avatarPath())->toEndWith('.webp')
+        ->and(Storage::disk(Media::diskName())->exists((string) $user->avatarPath()))->toBeTrue()
         ->and(SocialAccount::query()->where([
             'user_id' => $user->id,
             'provider' => 'google',
             'provider_user_id' => 'google-100',
-            'avatar' => 'https://example.com/ada.png',
+            'avatar' => $avatar,
         ])->exists())->toBeTrue();
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://lh3.googleusercontent.com/a/ACg8ocAda=s256-c');
 });
 
 test('oauth callback logs in an existing linked social account', function () {
@@ -327,13 +356,17 @@ test('telegram redirect sends the browser to the login widget', function () {
 
 test('telegram callback creates a user without an email', function () {
     enableTelegramOAuth();
+    Storage::fake('public');
+
+    $avatar = 'https://t.me/i/userpic/320/ada.jpg';
+    fakeProviderAvatar($avatar);
 
     Socialite::fake('telegram', SocialiteUser::fake([
         'id' => '9001',
         'name' => 'Ada Lovelace',
         'nickname' => 'ada',
         'email' => 'ada@example.com',
-        'avatar' => 'https://cdn.example/ada.jpg',
+        'avatar' => $avatar,
     ]));
 
     $existing = User::factory()->create([
@@ -353,14 +386,15 @@ test('telegram callback creates a user without an email', function () {
         ->and($user->email)->toBeNull()
         ->and($user->email_verified_at)->toBeNull()
         ->and($user->password)->toBeNull()
-        ->and($user->avatarPath())->toBe('https://cdn.example/ada.jpg')
+        ->and($user->avatarPath())->toStartWith('avatars/social/')
+        ->and(Storage::disk(Media::diskName())->exists((string) $user->avatarPath()))->toBeTrue()
         ->and(User::query()->count())->toBe(2)
         ->and(SocialAccount::query()->where([
             'user_id' => $user->id,
             'provider' => 'telegram',
             'provider_user_id' => '9001',
             'email' => null,
-            'avatar' => 'https://cdn.example/ada.jpg',
+            'avatar' => $avatar,
         ])->exists())->toBeTrue();
 });
 
@@ -383,6 +417,10 @@ test('telegram callback uses the username when telegram sends no display name', 
 
 test('telegram callback logs into the linked user and refreshes the name', function () {
     enableTelegramOAuth();
+    Storage::fake('public');
+
+    $avatar = 'https://t.me/i/userpic/320/new.jpg';
+    fakeProviderAvatar($avatar);
 
     $user = User::factory()->create([
         'name' => 'Old Name',
@@ -401,7 +439,7 @@ test('telegram callback logs into the linked user and refreshes the name', funct
         'name' => 'New Name',
         'nickname' => 'newname',
         'email' => 'ignored@example.com',
-        'avatar' => 'https://cdn.example/new.jpg',
+        'avatar' => $avatar,
     ]));
 
     $this->get(route('auth.social.callback', ['provider' => 'telegram']))
@@ -415,13 +453,16 @@ test('telegram callback logs into the linked user and refreshes the name', funct
         ->and($user->name)->toBe('New Name')
         ->and($user->email)->toBeNull()
         ->and($user->email_verified_at)->toBeNull()
-        ->and($user->avatarPath())->toBe('https://cdn.example/new.jpg')
-        ->and($user->socialAccounts()->first()?->avatar)->toBe('https://cdn.example/new.jpg')
+        ->and($user->avatarPath())->toStartWith('avatars/social/')
+        ->and(Storage::disk(Media::diskName())->exists((string) $user->avatarPath()))->toBeTrue()
+        ->and($user->socialAccounts()->first()?->avatar)->toBe($avatar)
         ->and($user->socialAccounts()->first()?->email)->toBeNull();
 });
 
 test('social login copies a provider avatar onto a user who has none', function () {
     enableDiscordOAuth();
+    Storage::fake('public');
+    fakeProviderAvatar('https://cdn.discordapp.com/avatars/55/new.jpg?size=256');
 
     $user = User::factory()->create([
         'email' => 'linked@example.com',
@@ -446,15 +487,22 @@ test('social login copies a provider avatar onto a user who has none', function 
     $this->get(route('auth.social.callback', ['provider' => 'discord']))
         ->assertRedirect(route('home'));
 
-    expect($user->refresh()->avatarPath())->toBe('https://cdn.discordapp.com/avatars/55/new.jpg');
+    expect($user->refresh()->avatarPath())->toStartWith('avatars/social/')
+        ->and(Storage::disk(Media::diskName())->exists((string) $user->avatarPath()))->toBeTrue();
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://cdn.discordapp.com/avatars/55/new.jpg?size=256');
 });
 
-test('social login refreshes a previously synced provider avatar', function () {
+test('social login stores a provider avatar that was previously only a remote url', function () {
     enableGoogleOAuth();
+    Storage::fake('public');
+
+    $avatar = 'https://lh3.googleusercontent.com/a/ACg8ocAda=s96-c';
+    fakeProviderAvatar('https://lh3.googleusercontent.com/a/ACg8ocAda=s256-c');
 
     $user = User::factory()->create([
         'email' => 'ada@example.com',
-        'avatar' => 'https://example.com/old.png',
+        'avatar' => $avatar,
     ]);
 
     SocialAccount::factory()->create([
@@ -462,7 +510,7 @@ test('social login refreshes a previously synced provider avatar', function () {
         'provider' => 'google',
         'provider_user_id' => 'google-100',
         'email' => 'ada@example.com',
-        'avatar' => 'https://example.com/old.png',
+        'avatar' => $avatar,
     ]);
 
     Socialite::fake('google', SocialiteUser::fake([
@@ -470,17 +518,126 @@ test('social login refreshes a previously synced provider avatar', function () {
         'name' => 'Ada Lovelace',
         'email' => 'ada@example.com',
         'verified_email' => true,
-        'avatar' => 'https://example.com/new.png',
+        'avatar' => $avatar,
     ]));
 
     $this->get(route('auth.social.callback', ['provider' => 'google']))
         ->assertRedirect(route('home'));
 
-    expect($user->refresh()->avatarPath())->toBe('https://example.com/new.png');
+    expect($user->refresh()->avatarPath())->toStartWith('avatars/social/');
+});
+
+test('social login replaces a stored provider avatar when the remote picture changes', function () {
+    enableGoogleOAuth();
+    Storage::fake('public');
+    Storage::disk('public')->put('avatars/social/old.webp', 'old-bytes');
+    fakeProviderAvatar('https://lh3.googleusercontent.com/a/ACg8ocNew=s256-c');
+
+    $user = User::factory()->create([
+        'email' => 'ada@example.com',
+        'avatar' => 'avatars/social/old.webp',
+    ]);
+
+    SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'google',
+        'provider_user_id' => 'google-100',
+        'email' => 'ada@example.com',
+        'avatar' => 'https://lh3.googleusercontent.com/a/ACg8ocOld=s96-c',
+    ]);
+
+    Socialite::fake('google', SocialiteUser::fake([
+        'id' => 'google-100',
+        'name' => 'Ada Lovelace',
+        'email' => 'ada@example.com',
+        'verified_email' => true,
+        'avatar' => 'https://lh3.googleusercontent.com/a/ACg8ocNew=s96-c',
+    ]));
+
+    $this->get(route('auth.social.callback', ['provider' => 'google']))
+        ->assertRedirect(route('home'));
+
+    expect($user->refresh()->avatarPath())
+        ->toStartWith('avatars/social/')
+        ->not->toBe('avatars/social/old.webp')
+        ->and(Storage::disk('public')->exists('avatars/social/old.webp'))->toBeFalse();
+});
+
+test('social login does not download again when the provider picture is unchanged', function () {
+    enableGoogleOAuth();
+    Storage::fake('public');
+    Storage::disk('public')->put('avatars/social/kept.webp', 'kept-bytes');
+    Http::preventStrayRequests();
+
+    $avatar = 'https://lh3.googleusercontent.com/a/ACg8ocKept=s96-c';
+
+    $user = User::factory()->create([
+        'email' => 'ada@example.com',
+        'avatar' => 'avatars/social/kept.webp',
+    ]);
+
+    SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'google',
+        'provider_user_id' => 'google-100',
+        'email' => 'ada@example.com',
+        'avatar' => $avatar,
+    ]);
+
+    Socialite::fake('google', SocialiteUser::fake([
+        'id' => 'google-100',
+        'name' => 'Ada Lovelace',
+        'email' => 'ada@example.com',
+        'verified_email' => true,
+        'avatar' => $avatar,
+    ]));
+
+    $this->get(route('auth.social.callback', ['provider' => 'google']))
+        ->assertRedirect(route('home'));
+
+    expect($user->refresh()->avatarPath())->toBe('avatars/social/kept.webp')
+        ->and(Storage::disk('public')->get('avatars/social/kept.webp'))->toBe('kept-bytes');
+});
+
+test('a failed provider avatar download leaves the current picture', function () {
+    enableDiscordOAuth();
+    Storage::fake('public');
+    Storage::disk('public')->put('avatars/social/kept.webp', 'kept-bytes');
+    Http::fake([
+        'https://cdn.discordapp.com/avatars/55/new.jpg?size=256' => Http::response('missing', 404),
+    ]);
+
+    $user = User::factory()->create([
+        'email' => 'linked@example.com',
+        'avatar' => 'avatars/social/kept.webp',
+    ]);
+
+    SocialAccount::factory()->discord()->create([
+        'user_id' => $user->id,
+        'provider_user_id' => 'discord-55',
+        'email' => 'linked@example.com',
+        'avatar' => 'https://cdn.discordapp.com/avatars/55/old.jpg',
+    ]);
+
+    Socialite::fake('discord', SocialiteUser::fake([
+        'id' => 'discord-55',
+        'name' => 'Linked User',
+        'email' => 'linked@example.com',
+        'verified' => true,
+        'avatar' => 'https://cdn.discordapp.com/avatars/55/new.jpg',
+    ]));
+
+    $this->get(route('auth.social.callback', ['provider' => 'discord']))
+        ->assertRedirect(route('home'));
+
+    expect($user->refresh()->avatarPath())->toBe('avatars/social/kept.webp');
 });
 
 test('social login keeps an uploaded avatar', function () {
     enableGoogleOAuth();
+    Http::preventStrayRequests();
+
+    $avatar = 'https://lh3.googleusercontent.com/a/ACg8ocProvider=s96-c';
 
     $user = User::factory()->create([
         'email' => 'ada@example.com',
@@ -499,14 +656,14 @@ test('social login keeps an uploaded avatar', function () {
         'name' => 'Ada Lovelace',
         'email' => 'ada@example.com',
         'verified_email' => true,
-        'avatar' => 'https://example.com/provider.png',
+        'avatar' => $avatar,
     ]));
 
     $this->get(route('auth.social.callback', ['provider' => 'google']))
         ->assertRedirect(route('home'));
 
     expect($user->refresh()->avatarPath())->toBe('avatars/custom.webp')
-        ->and($user->socialAccounts()->first()?->avatar)->toBe('https://example.com/provider.png');
+        ->and($user->socialAccounts()->first()?->avatar)->toBe($avatar);
 });
 
 test('a missing provider avatar does not clear the user avatar', function () {

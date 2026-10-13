@@ -6,13 +6,14 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Support\SocialAuth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\AbstractUser;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 
 class ResolveSocialUser
 {
+    public function __construct(private readonly StoreSocialAvatar $socialAvatars) {}
+
     public function handle(string $provider, SocialiteUser $socialUser): User
     {
         $providerUserId = (string) $socialUser->getId();
@@ -35,6 +36,8 @@ class ResolveSocialUser
                 ->first();
 
             if ($account !== null) {
+                $previousAvatar = $this->normalizeNullableString($account->avatar);
+
                 $account->forceFill([
                     'email' => $provider === SocialAuth::PROVIDER_TELEGRAM ? null : $email,
                     'avatar' => $avatar,
@@ -48,14 +51,14 @@ class ResolveSocialUser
                     $this->ensureEmailVerified($user);
                 }
 
-                $this->syncUserAvatar($user, $avatar);
+                $this->socialAvatars->sync($user, $avatar, $previousAvatar);
 
                 return $user->refresh();
             }
 
             if ($provider === SocialAuth::PROVIDER_TELEGRAM) {
                 $user = $this->createTelegramUser($provider, $providerUserId, $name, $avatar);
-                $this->syncUserAvatar($user, $avatar);
+                $this->socialAvatars->sync($user, $avatar, null);
 
                 return $user->refresh();
             }
@@ -98,32 +101,10 @@ class ResolveSocialUser
                 'avatar' => $avatar,
             ]);
 
-            $this->syncUserAvatar($user, $avatar);
+            $this->socialAvatars->sync($user, $avatar, null);
 
             return $user->refresh();
         });
-    }
-
-    /**
-     * Keep the account picture aligned with the provider picture. An uploaded
-     * file stays in place; a missing provider picture does not clear one.
-     */
-    private function syncUserAvatar(User $user, ?string $avatar): void
-    {
-        if ($avatar === null || $this->hasUploadedAvatar($user) || $user->avatarPath() === $avatar) {
-            return;
-        }
-
-        $user->forceFill([
-            'avatar' => $avatar,
-        ])->save();
-    }
-
-    private function hasUploadedAvatar(User $user): bool
-    {
-        $path = $user->avatarPath();
-
-        return filled($path) && ! Str::startsWith($path, ['http://', 'https://']);
     }
 
     private function createTelegramUser(string $provider, string $providerUserId, string $name, ?string $avatar): User

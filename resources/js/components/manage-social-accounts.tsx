@@ -16,6 +16,7 @@ export type Props = {
 const providerLabels: Record<SocialProvider, string> = {
     google: 'Google',
     discord: 'Discord',
+    telegram: 'Telegram',
 };
 
 export default function ManageSocialAccounts({
@@ -47,7 +48,7 @@ export default function ManageSocialAccounts({
             <Heading
                 variant="small"
                 title="Connected accounts"
-                description="Link Google or Discord for faster sign-in"
+                description="Link Google, Discord, or Telegram for faster sign-in"
             />
 
             {status ? (

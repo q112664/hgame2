@@ -34,11 +34,11 @@ Route::redirect('/admin/login', '/login');
 
 Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])
     ->name('auth.social.redirect')
-    ->whereIn('provider', ['google', 'discord'])
+    ->whereIn('provider', ['google', 'discord', 'telegram'])
     ->middleware(['guest', 'throttle:20,1']);
 Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'])
     ->name('auth.social.callback')
-    ->whereIn('provider', ['google', 'discord'])
+    ->whereIn('provider', ['google', 'discord', 'telegram'])
     ->middleware('throttle:20,1');
 
 Route::get('/docs', [DocController::class, 'index'])->name('docs.index');

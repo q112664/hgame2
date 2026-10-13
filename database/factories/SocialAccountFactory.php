@@ -38,4 +38,12 @@ class SocialAccountFactory extends Factory
             'provider' => 'discord',
         ]);
     }
+
+    public function telegram(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'provider' => 'telegram',
+            'email' => null,
+        ]);
+    }
 }

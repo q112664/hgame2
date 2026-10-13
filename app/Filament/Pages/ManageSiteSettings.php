@@ -98,6 +98,10 @@ class ManageSiteSettings extends Page
             'oauth_discord_client_id' => Setting::get('oauth_discord_client_id') ?? config('services.discord.client_id'),
             'oauth_discord_client_secret' => Setting::get('oauth_discord_client_secret') ? '••••••••' : '',
             'oauth_discord_callback' => route('auth.social.callback', ['provider' => 'discord'], absolute: true),
+            'oauth_telegram_enabled' => Setting::boolean('oauth_telegram_enabled', false),
+            'oauth_telegram_client_id' => Setting::get('oauth_telegram_client_id') ?? config('services.telegram.bot'),
+            'oauth_telegram_client_secret' => Setting::get('oauth_telegram_client_secret') ? '••••••••' : '',
+            'oauth_telegram_callback' => route('auth.social.callback', ['provider' => 'telegram'], absolute: true),
         ]);
     }
 
@@ -460,6 +464,34 @@ class ManageSiteSettings extends Page
                                             ->columnSpanFull(),
                                     ])
                                     ->columns(2),
+                                Section::make('Telegram login')
+                                    ->description('Bot from BotFather. Run /newbot, then /setdomain to '.$this->telegramLoginDomain().'. One bot can only be linked to one domain.')
+                                    ->schema([
+                                        Toggle::make('oauth_telegram_enabled')
+                                            ->label('Enable Telegram login')
+                                            ->default(false)
+                                            ->columnSpanFull(),
+                                        TextInput::make('oauth_telegram_client_id')
+                                            ->label('Bot username')
+                                            ->maxLength(255)
+                                            ->placeholder(config('services.telegram.bot') ?: 'sample_bot')
+                                            ->helperText('Username without the @.'),
+                                        TextInput::make('oauth_telegram_client_secret')
+                                            ->label('Bot token')
+                                            ->password()
+                                            ->revealable()
+                                            ->maxLength(255)
+                                            ->dehydrated(fn (?string $state): bool => filled($state) && $state !== '••••••••')
+                                            ->helperText('Leave blank to keep the current token.'),
+                                        TextInput::make('oauth_telegram_callback')
+                                            ->label('Callback URL')
+                                            ->readOnly()
+                                            ->copyable(copyMessage: 'Callback URL copied')
+                                            ->dehydrated(false)
+                                            ->helperText('Telegram redirects here after login. The domain must match /setdomain.')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(2),
                             ]),
                     ]),
             ]);
@@ -640,6 +672,7 @@ class ManageSiteSettings extends Page
 
         $this->saveOAuthProviderSettings('google', $data);
         $this->saveOAuthProviderSettings('discord', $data);
+        $this->saveOAuthProviderSettings('telegram', $data);
 
         if ($mode !== 'text') {
             Setting::set('site_logo_path', $nextLogoPath);
@@ -690,6 +723,11 @@ class ManageSiteSettings extends Page
         );
 
         $clientId = trim((string) ($data["oauth_{$provider}_client_id"] ?? ''));
+
+        if ($provider === 'telegram') {
+            $clientId = ltrim($clientId, '@');
+        }
+
         Setting::set(
             "oauth_{$provider}_client_id",
             $clientId !== '' ? $clientId : null,
@@ -702,6 +740,16 @@ class ManageSiteSettings extends Page
                 Setting::set("oauth_{$provider}_client_secret", $secret);
             }
         }
+    }
+
+    private function telegramLoginDomain(): string
+    {
+        $host = parse_url(
+            route('auth.social.callback', ['provider' => 'telegram'], absolute: true),
+            PHP_URL_HOST,
+        );
+
+        return is_string($host) && $host !== '' ? $host : 'this site';
     }
 
     private function normalizeUploadPath(mixed $value): ?string

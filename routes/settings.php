@@ -22,11 +22,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('security.confirm');
     Route::get('settings/security/social/{provider}/redirect', [SocialAuthController::class, 'linkRedirect'])
         ->name('security.social.redirect')
-        ->whereIn('provider', ['google', 'discord'])
+        ->whereIn('provider', ['google', 'discord', 'telegram'])
         ->middleware('throttle:20,1');
     Route::delete('settings/security/social/{provider}', [SocialAuthController::class, 'unlink'])
         ->name('security.social.unlink')
-        ->whereIn('provider', ['google', 'discord'])
+        ->whereIn('provider', ['google', 'discord', 'telegram'])
         ->middleware('throttle:20,1');
     Route::get('settings/appearance', fn () => to_route('profile.edit'))
         ->name('appearance.edit');

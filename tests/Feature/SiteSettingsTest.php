@@ -424,6 +424,9 @@ test('administrators can update social login settings', function () {
             'oauth_discord_enabled' => true,
             'oauth_discord_client_id' => 'discord-client-from-admin',
             'oauth_discord_client_secret' => 'discord-secret-from-admin',
+            'oauth_telegram_enabled' => true,
+            'oauth_telegram_client_id' => '@sample_bot',
+            'oauth_telegram_client_secret' => '123456789:telegram-token',
         ])
         ->call('save')
         ->assertHasNoFormErrors()
@@ -434,7 +437,10 @@ test('administrators can update social login settings', function () {
         ->and(Setting::get('oauth_google_client_secret'))->toBe('google-secret-from-admin')
         ->and(Setting::boolean('oauth_discord_enabled'))->toBeTrue()
         ->and(Setting::get('oauth_discord_client_id'))->toBe('discord-client-from-admin')
-        ->and(Setting::get('oauth_discord_client_secret'))->toBe('discord-secret-from-admin');
+        ->and(Setting::get('oauth_discord_client_secret'))->toBe('discord-secret-from-admin')
+        ->and(Setting::boolean('oauth_telegram_enabled'))->toBeTrue()
+        ->and(Setting::get('oauth_telegram_client_id'))->toBe('sample_bot')
+        ->and(Setting::get('oauth_telegram_client_secret'))->toBe('123456789:telegram-token');
 });
 
 test('site settings show oauth callback urls for google and discord', function () {
@@ -444,6 +450,7 @@ test('site settings show oauth callback urls for google and discord', function (
         ->assertFormSet([
             'oauth_google_callback' => route('auth.social.callback', ['provider' => 'google'], absolute: true),
             'oauth_discord_callback' => route('auth.social.callback', ['provider' => 'discord'], absolute: true),
+            'oauth_telegram_callback' => route('auth.social.callback', ['provider' => 'telegram'], absolute: true),
         ]);
 });
 

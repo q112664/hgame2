@@ -273,3 +273,211 @@ test('social auth is only enabled when credentials and toggle are present', func
     Setting::setBoolean('oauth_google_enabled', true);
     expect(SocialAuth::isEnabled('google'))->toBeTrue();
 });
+
+function enableTelegramOAuth(): void
+{
+    Setting::setBoolean('oauth_telegram_enabled', true);
+    Setting::set('oauth_telegram_client_id', '@sample_bot');
+    Setting::set('oauth_telegram_client_secret', '123456789:test-token');
+}
+
+test('telegram login is shared when the bot is configured and enabled', function () {
+    enableTelegramOAuth();
+
+    $this->get(route('login'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('socialProviders', ['telegram'])
+            ->where('authModal.socialProviders', ['telegram'])
+        );
+});
+
+test('telegram redirect is not found when the provider is disabled', function () {
+    $this->get(route('auth.social.redirect', ['provider' => 'telegram']))
+        ->assertNotFound();
+});
+
+test('telegram redirect is not found when the bot token is missing', function () {
+    Setting::setBoolean('oauth_telegram_enabled', true);
+    Setting::set('oauth_telegram_client_id', 'sample_bot');
+
+    $this->get(route('auth.social.redirect', ['provider' => 'telegram']))
+        ->assertNotFound();
+});
+
+test('telegram redirect sends the browser to the login widget', function () {
+    enableTelegramOAuth();
+
+    $returnTo = route('auth.social.callback', ['provider' => 'telegram'], absolute: true);
+
+    $this->get(route('auth.social.redirect', ['provider' => 'telegram']))
+        ->assertRedirect();
+
+    $location = urldecode((string) $this->get(route('auth.social.redirect', ['provider' => 'telegram']))->headers->get('Location'));
+
+    expect($location)
+        ->toStartWith('https://oauth.telegram.org/auth?')
+        ->toContain('bot_id=123456789')
+        ->toContain('return_to='.$returnTo)
+        ->not->toContain('telegram-widget.js');
+});
+
+test('telegram callback creates a user without an email', function () {
+    enableTelegramOAuth();
+
+    Socialite::fake('telegram', SocialiteUser::fake([
+        'id' => '9001',
+        'name' => 'Ada Lovelace',
+        'nickname' => 'ada',
+        'email' => 'ada@example.com',
+        'avatar' => 'https://cdn.example/ada.jpg',
+    ]));
+
+    $existing = User::factory()->create([
+        'email' => 'ada@example.com',
+    ]);
+
+    $this->get(route('auth.social.callback', ['provider' => 'telegram']))
+        ->assertRedirect(route('home'));
+
+    $this->assertAuthenticated();
+
+    $user = auth()->user();
+
+    expect($user)->not->toBeNull()
+        ->and($user->is($existing))->toBeFalse()
+        ->and($user->name)->toBe('Ada Lovelace')
+        ->and($user->email)->toBeNull()
+        ->and($user->email_verified_at)->toBeNull()
+        ->and($user->password)->toBeNull()
+        ->and(User::query()->count())->toBe(2)
+        ->and(SocialAccount::query()->where([
+            'user_id' => $user->id,
+            'provider' => 'telegram',
+            'provider_user_id' => '9001',
+            'email' => null,
+            'avatar' => 'https://cdn.example/ada.jpg',
+        ])->exists())->toBeTrue();
+});
+
+test('telegram callback uses the username when telegram sends no display name', function () {
+    enableTelegramOAuth();
+
+    Socialite::fake('telegram', SocialiteUser::fake([
+        'id' => '9002',
+        'name' => null,
+        'nickname' => 'onlyuser',
+        'email' => null,
+        'avatar' => null,
+    ]));
+
+    $this->get(route('auth.social.callback', ['provider' => 'telegram']))
+        ->assertRedirect(route('home'));
+
+    expect(auth()->user()?->name)->toBe('onlyuser');
+});
+
+test('telegram callback logs into the linked user and refreshes the name', function () {
+    enableTelegramOAuth();
+
+    $user = User::factory()->create([
+        'name' => 'Old Name',
+        'email' => null,
+        'email_verified_at' => null,
+        'password' => null,
+    ]);
+
+    SocialAccount::factory()->telegram()->create([
+        'user_id' => $user->id,
+        'provider_user_id' => '9001',
+    ]);
+
+    Socialite::fake('telegram', SocialiteUser::fake([
+        'id' => '9001',
+        'name' => 'New Name',
+        'nickname' => 'newname',
+        'email' => 'ignored@example.com',
+        'avatar' => 'https://cdn.example/new.jpg',
+    ]));
+
+    $this->get(route('auth.social.callback', ['provider' => 'telegram']))
+        ->assertRedirect(route('home'));
+
+    $this->assertAuthenticatedAs($user);
+
+    $user->refresh();
+
+    expect(User::query()->count())->toBe(1)
+        ->and($user->name)->toBe('New Name')
+        ->and($user->email)->toBeNull()
+        ->and($user->email_verified_at)->toBeNull()
+        ->and($user->socialAccounts()->first()?->avatar)->toBe('https://cdn.example/new.jpg')
+        ->and($user->socialAccounts()->first()?->email)->toBeNull();
+});
+
+test('two telegram users can both exist without an email', function () {
+    enableTelegramOAuth();
+
+    Socialite::fake('telegram', SocialiteUser::fake([
+        'id' => '9101',
+        'name' => 'First',
+        'email' => null,
+    ]));
+
+    $this->get(route('auth.social.callback', ['provider' => 'telegram']))
+        ->assertRedirect(route('home'));
+
+    $this->post(route('logout'));
+
+    Socialite::fake('telegram', SocialiteUser::fake([
+        'id' => '9102',
+        'name' => 'Second',
+        'email' => null,
+    ]));
+
+    $this->get(route('auth.social.callback', ['provider' => 'telegram']))
+        ->assertRedirect(route('home'));
+
+    expect(User::query()->whereNull('email')->count())->toBe(2);
+});
+
+test('telegram callback handles driver errors without creating a user', function () {
+    enableTelegramOAuth();
+
+    $driver = Mockery::mock(AbstractProvider::class);
+    $driver->shouldReceive('user')->once()->andThrow(new Exception('provider is down'));
+    $driver->shouldNotReceive('scopes');
+
+    Socialite::shouldReceive('driver')
+        ->once()
+        ->with('telegram')
+        ->andReturn($driver);
+
+    $this->from(route('login'))
+        ->get(route('auth.social.callback', ['provider' => 'telegram']))
+        ->assertRedirect(route('login'))
+        ->assertSessionHas('status');
+
+    $this->assertGuest();
+    expect(User::query()->count())->toBe(0);
+});
+
+test('telegram credentials map the bot username and keep the oauth client id empty', function () {
+    config([
+        'services.telegram.bot' => '@env_bot',
+        'services.telegram.client_id' => 'must-stay-unused',
+        'services.telegram.client_secret' => '42:env-token',
+    ]);
+
+    expect(SocialAuth::clientId('telegram'))->toBe('env_bot')
+        ->and(SocialAuth::isConfigured('telegram'))->toBeTrue();
+
+    Setting::set('oauth_telegram_client_id', '@SampleBot');
+    Setting::set('oauth_telegram_client_secret', '99:saved-token');
+
+    SocialAuth::applyProviderConfig('telegram');
+
+    expect(config('services.telegram.bot'))->toBe('SampleBot')
+        ->and(config('services.telegram.client_id'))->toBeNull()
+        ->and(config('services.telegram.client_secret'))->toBe('99:saved-token');
+});

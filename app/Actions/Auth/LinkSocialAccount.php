@@ -4,6 +4,7 @@ namespace App\Actions\Auth;
 
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Support\SocialAuth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
@@ -20,7 +21,9 @@ class LinkSocialAccount
             ]);
         }
 
-        $email = $this->normalizeEmail($socialUser->getEmail());
+        $email = $provider === SocialAuth::PROVIDER_TELEGRAM
+            ? null
+            : $this->normalizeEmail($socialUser->getEmail());
         $avatar = $this->normalizeNullableString($socialUser->getAvatar());
 
         return DB::transaction(function () use ($user, $provider, $providerUserId, $email, $avatar): SocialAccount {

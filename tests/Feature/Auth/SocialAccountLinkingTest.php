@@ -220,6 +220,93 @@ test('a disabled provider does not count as a remaining sign-in method', functio
     expect(SocialAccount::query()->where('user_id', $user->id)->count())->toBe(2);
 });
 
+function enableTelegramOAuthForLinking(): void
+{
+    Setting::setBoolean('oauth_telegram_enabled', true);
+    Setting::set('oauth_telegram_client_id', 'sample_bot');
+    Setting::set('oauth_telegram_client_secret', '123456789:test-token');
+}
+
+test('authenticated users can link a telegram account', function () {
+    enableTelegramOAuthForLinking();
+
+    $user = User::factory()->create();
+
+    Socialite::fake('telegram', SocialiteUser::fake([
+        'id' => 'tg-link-1',
+        'name' => 'Telegram User',
+        'email' => 'spoofed@example.com',
+        'avatar' => 'https://cdn.example/tg.jpg',
+    ]));
+
+    $this->actingAs($user)
+        ->withSession(['social_auth_intent' => 'link'])
+        ->get(route('auth.social.callback', ['provider' => 'telegram']))
+        ->assertRedirect(route('security.edit'))
+        ->assertInertiaFlash('toast', [
+            'type' => 'success',
+            'message' => __('Telegram account linked.'),
+        ]);
+
+    expect(SocialAccount::query()->where([
+        'user_id' => $user->id,
+        'provider' => 'telegram',
+        'provider_user_id' => 'tg-link-1',
+        'email' => null,
+        'avatar' => 'https://cdn.example/tg.jpg',
+    ])->exists())->toBeTrue()
+        ->and(User::query()->count())->toBe(1);
+});
+
+test('telegram cannot be linked when that id already belongs to someone else', function () {
+    enableTelegramOAuthForLinking();
+
+    $owner = User::factory()->create();
+    SocialAccount::factory()->telegram()->create([
+        'user_id' => $owner->id,
+        'provider_user_id' => 'tg-owned',
+    ]);
+
+    $user = User::factory()->create();
+
+    Socialite::fake('telegram', SocialiteUser::fake([
+        'id' => 'tg-owned',
+        'name' => 'Taken',
+        'email' => null,
+    ]));
+
+    $this->actingAs($user)
+        ->withSession(['social_auth_intent' => 'link'])
+        ->get(route('auth.social.callback', ['provider' => 'telegram']))
+        ->assertRedirect(route('security.edit'))
+        ->assertSessionHasErrors('social');
+
+    expect(SocialAccount::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+test('users cannot unlink telegram when it is their only sign-in method', function () {
+    enableTelegramOAuthForLinking();
+
+    $user = User::factory()->create([
+        'email' => null,
+        'email_verified_at' => null,
+        'password' => null,
+    ]);
+
+    SocialAccount::factory()->telegram()->create([
+        'user_id' => $user->id,
+        'provider_user_id' => 'tg-only',
+    ]);
+
+    $this->actingAs($user)
+        ->from(route('security.edit'))
+        ->delete(route('security.social.unlink', ['provider' => 'telegram']))
+        ->assertRedirect(route('security.edit'))
+        ->assertSessionHasErrors('social');
+
+    expect(SocialAccount::query()->where('user_id', $user->id)->exists())->toBeTrue();
+});
+
 test('password can be set without a current password for social-only users', function () {
     $user = User::factory()->create([
         'password' => null,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
@@ -10,6 +11,18 @@ test('registration screen can be rendered', function () {
     $response = $this->get(route('register'));
 
     $response->assertOk();
+});
+
+test('registration still requires an email', function () {
+    $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => '',
+        'password' => 'password1',
+        'password_confirmation' => 'password1',
+    ])->assertSessionHasErrors('email');
+
+    $this->assertGuest();
+    expect(User::query()->count())->toBe(0);
 });
 
 test('new users can register', function () {

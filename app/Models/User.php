@@ -27,7 +27,7 @@ use Laravel\Sanctum\NewAccessToken;
  * @property int $id
  * @property string $slug
  * @property string $name
- * @property string $email
+ * @property string|null $email
  * @property string|null $avatar
  * @property Carbon|null $email_verified_at
  * @property string|null $password

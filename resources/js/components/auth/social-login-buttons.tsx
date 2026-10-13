@@ -9,6 +9,7 @@ type Props = {
 const providerLabels: Record<SocialProvider, string> = {
     google: 'Continue with Google',
     discord: 'Continue with Discord',
+    telegram: 'Continue with Telegram',
 };
 
 function socialRedirectUrl(
@@ -56,6 +57,22 @@ export default function SocialLoginButtons({ providers, redirect }: Props) {
 }
 
 function SocialProviderIcon({ provider }: { provider: SocialProvider }) {
+    if (provider === 'telegram') {
+        return (
+            <svg
+                aria-hidden="true"
+                className="size-4"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+            >
+                <path
+                    d="M9.04 15.3 8.9 19c.4 0 .58-.18.8-.38l1.92-1.84 3.98 2.92c.73.4 1.25.2 1.45-.68l2.63-12.4c.24-1.1-.4-1.53-1.1-1.26L3.3 10.1c-1.06.42-1.04 1.02-.18 1.28l4.2 1.31 9.76-6.16c.46-.28.88-.12.54.18"
+                    fill="currentColor"
+                />
+            </svg>
+        );
+    }
+
     if (provider === 'google') {
         return (
             <svg

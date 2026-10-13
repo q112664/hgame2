@@ -899,3 +899,16 @@ test('button variants use deliberate dark mode surfaces and borders', function (
         ->toContain('sm:group-hover:opacity-100')
         ->toContain('<Spinner');
 });
+
+test('social login buttons include telegram', function () {
+    $filesystem = app(Filesystem::class);
+    $buttons = $filesystem->get(resource_path('js/components/auth/social-login-buttons.tsx'));
+    $providers = $filesystem->get(resource_path('js/types/auth.ts'));
+
+    expect($buttons)
+        ->toContain("telegram: 'Continue with Telegram'")
+        ->toContain("provider === 'telegram'")
+        ->toContain('data-test={`social-login-${provider}`}');
+
+    expect($providers)->toContain("'google' | 'discord' | 'telegram'");
+});

@@ -2,7 +2,7 @@ export type User = {
     id: number;
     slug: string;
     name: string;
-    email: string;
+    email: string | null;
     avatar?: string | null | undefined;
     email_verified_at: string | null;
     is_admin?: boolean;
@@ -24,7 +24,7 @@ export type TurnstileConfig = {
     download: boolean;
 };
 
-export type SocialProvider = 'google' | 'discord';
+export type SocialProvider = 'google' | 'discord' | 'telegram';
 
 export type SocialConnection = {
     provider: SocialProvider;

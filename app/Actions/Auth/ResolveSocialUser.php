@@ -4,6 +4,7 @@ namespace App\Actions\Auth;
 
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Support\SocialAuth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\AbstractUser;
@@ -34,14 +35,23 @@ class ResolveSocialUser
 
             if ($account !== null) {
                 $account->forceFill([
-                    'email' => $email,
+                    'email' => $provider === SocialAuth::PROVIDER_TELEGRAM ? null : $email,
                     'avatar' => $avatar,
                 ])->save();
 
                 $user = $account->user;
-                $this->ensureEmailVerified($user);
+
+                if ($provider === SocialAuth::PROVIDER_TELEGRAM) {
+                    $this->syncTelegramName($user, $name);
+                } else {
+                    $this->ensureEmailVerified($user);
+                }
 
                 return $user;
+            }
+
+            if ($provider === SocialAuth::PROVIDER_TELEGRAM) {
+                return $this->createTelegramUser($provider, $providerUserId, $name, $avatar);
             }
 
             $user = null;
@@ -86,9 +96,46 @@ class ResolveSocialUser
         });
     }
 
+    private function createTelegramUser(string $provider, string $providerUserId, string $name, ?string $avatar): User
+    {
+        $user = User::query()->create([
+            'name' => $name,
+            'email' => null,
+            'password' => null,
+            'email_verified_at' => null,
+            'registration_ip' => request()->ip(),
+        ]);
+
+        SocialAccount::query()->create([
+            'user_id' => $user->getKey(),
+            'provider' => $provider,
+            'provider_user_id' => $providerUserId,
+            'email' => null,
+            'avatar' => $avatar,
+        ]);
+
+        return $user->refresh();
+    }
+
+    /**
+     * Telegram sends no email, so a display name is the only profile field
+     * worth refreshing. The "User" fallback must not wipe a name the person
+     * already chose.
+     */
+    private function syncTelegramName(User $user, string $name): void
+    {
+        if ($name === 'User' || $user->name === $name) {
+            return;
+        }
+
+        $user->forceFill([
+            'name' => $name,
+        ])->save();
+    }
+
     private function ensureEmailVerified(User $user): void
     {
-        if ($user->email_verified_at !== null) {
+        if ($user->email === null || $user->email_verified_at !== null) {
             return;
         }
 

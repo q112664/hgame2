@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -29,7 +30,7 @@ class SocialAuthController extends Controller
         $request->session()->put('social_auth_intent', self::INTENT_LOGIN);
         IntendedUrl::remember($request, overwrite: true);
 
-        return SocialAuth::driver($provider)->redirect();
+        return $this->startProviderRedirect($provider, 'login');
     }
 
     public function linkRedirect(Request $request, string $provider): SymfonyRedirectResponse
@@ -39,7 +40,7 @@ class SocialAuthController extends Controller
         $request->session()->put('social_auth_intent', self::INTENT_LINK);
         $request->session()->put('url.intended', route('security.edit'));
 
-        return SocialAuth::driver($provider)->redirect();
+        return $this->startProviderRedirect($provider, 'security.edit');
     }
 
     public function callback(
@@ -141,6 +142,17 @@ class SocialAuthController extends Controller
         ]);
 
         return redirect()->route('security.edit');
+    }
+
+    private function startProviderRedirect(string $provider, string $fallbackRoute): SymfonyRedirectResponse
+    {
+        try {
+            return SocialAuth::redirect($provider);
+        } catch (InvalidArgumentException) {
+            return redirect()
+                ->route($fallbackRoute)
+                ->with('status', __('Social login failed. Please try again or use another method.'));
+        }
     }
 
     private function ensureProviderEnabled(string $provider): void

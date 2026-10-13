@@ -119,10 +119,9 @@ export default function Settings(props: Props) {
                                                     type="email"
                                                     className="block w-full"
                                                     defaultValue={
-                                                        auth.user.email
+                                                        auth.user.email ?? ''
                                                     }
                                                     name="email"
-                                                    required
                                                     autoComplete="username"
                                                     placeholder="Email address"
                                                 />

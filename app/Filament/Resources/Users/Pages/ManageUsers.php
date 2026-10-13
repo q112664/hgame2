@@ -14,7 +14,7 @@ class ManageUsers extends ManageRecords
 
     public function getSubheading(): ?string
     {
-        return 'Create accounts, manage admin access, and reset passwords. Login IPs update automatically after sign-in.';
+        return 'Accounts, sign-in methods, and admin access.';
     }
 
     protected function getHeaderActions(): array

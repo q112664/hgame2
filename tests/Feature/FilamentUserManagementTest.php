@@ -2,6 +2,7 @@
 
 use App\Filament\Resources\Users\Pages\ManageUsers;
 use App\Filament\Resources\Users\UserResource;
+use App\Models\SocialAccount;
 use App\Models\User;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Filesystem\Filesystem;
@@ -82,6 +83,34 @@ test('administrators can edit a user profile without touching the password', fun
         ->and($user->password)->toBe($originalPassword);
 });
 
+test('administrators can edit a user who has no email', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create([
+        'name' => 'No Email',
+        'email' => null,
+        'email_verified_at' => null,
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ManageUsers::class)
+        ->mountAction(TestAction::make('edit')->table($user))
+        ->fillForm([
+            'name' => 'Renamed Member',
+            'email' => null,
+            'is_admin' => false,
+            'email_verified' => false,
+        ])
+        ->callMountedAction()
+        ->assertHasNoActionErrors()
+        ->assertNotified();
+
+    $user->refresh();
+
+    expect($user->name)->toBe('Renamed Member')
+        ->and($user->email)->toBeNull();
+});
+
 test('administrators can reset a user password from a dedicated action', function () {
     $admin = User::factory()->admin()->create();
     $user = User::factory()->create([
@@ -149,7 +178,7 @@ test('the edit user modal includes read-only activity ip fields', function () {
         ->toContain("TextInput::make('created_at')")
         ->toContain("TextInput::make('last_login_ip')")
         ->toContain("TextInput::make('last_login_at')")
-        ->toContain("->label('Registered at')");
+        ->toContain("->label('Joined')");
 
     $admin = User::factory()->admin()->create();
     $registeredAt = now()->subDays(3)->startOfSecond();
@@ -167,8 +196,39 @@ test('the edit user modal includes read-only activity ip fields', function () {
         ->assertSchemaStateSet([
             'registration_ip' => '203.0.113.50',
             'last_login_ip' => '198.51.100.50',
-            'created_at' => $registeredAt->timezone(config('app.timezone'))->toDateTimeString(),
+            'created_at' => $registeredAt->timezone(config('app.timezone'))->format('M j, Y H:i'),
         ]);
+});
+
+test('the users table shows the avatar, sign-in methods, and public profile link', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create([
+        'name' => 'Telegram Member',
+        'email' => null,
+        'email_verified_at' => null,
+        'password' => null,
+        'avatar' => 'avatars/member.webp',
+    ]);
+
+    SocialAccount::factory()->google()->create([
+        'user_id' => $user->id,
+        'provider_user_id' => 'google-member',
+    ]);
+    SocialAccount::factory()->telegram()->create([
+        'user_id' => $user->id,
+        'provider_user_id' => 'telegram-member',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ManageUsers::class)
+        ->assertCanSeeTableRecords([$user])
+        ->assertSee('Telegram Member')
+        ->assertSee('No email')
+        ->assertSee('Google')
+        ->assertSee('Telegram')
+        ->assertSee('avatars/member.webp')
+        ->assertSee(route('users.show', $user));
 });
 
 test('the sole administrator cannot be deleted or demoted', function () {

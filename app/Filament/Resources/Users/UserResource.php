@@ -4,8 +4,10 @@ namespace App\Filament\Resources\Users;
 
 use App\Filament\Resources\Users\Pages\ManageUsers;
 use App\Models\User;
+use App\Support\SocialAuth;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -17,6 +19,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -147,7 +150,7 @@ class UserResource extends Resource
                 ->dehydrated(false)
                 ->placeholder('—'),
             TextInput::make('created_at')
-                ->label('Registered at')
+                ->label('Joined')
                 ->readOnly()
                 ->dehydrated(false)
                 ->placeholder('—'),
@@ -188,48 +191,88 @@ class UserResource extends Resource
             ]);
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function signInMethods(User $record): array
+    {
+        $methods = [];
+
+        if ($record->hasPassword()) {
+            $methods[] = 'Password';
+        }
+
+        $labels = [
+            SocialAuth::PROVIDER_GOOGLE => 'Google',
+            SocialAuth::PROVIDER_DISCORD => 'Discord',
+            SocialAuth::PROVIDER_TELEGRAM => 'Telegram',
+        ];
+
+        foreach (SocialAuth::PROVIDERS as $provider) {
+            if ($record->socialAccounts->contains('provider', $provider)) {
+                $methods[] = $labels[$provider];
+            }
+        }
+
+        return $methods;
+    }
+
+    public static function formatActivityTime(mixed $value): ?string
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        return Carbon::parse($value)
+            ->timezone(config('app.timezone'))
+            ->format('M j, Y H:i');
+    }
+
     public static function table(Table $table): Table
     {
         return $table
             ->recordTitleAttribute('name')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'socialAccounts:id,user_id,provider',
+            ]))
             ->columns([
+                ImageColumn::make('avatar')
+                    ->label('')
+                    ->circular()
+                    ->imageSize(36)
+                    ->checkFileExistence(false)
+                    ->extraImgAttributes(['class' => 'object-cover'])
+                    ->getStateUsing(fn (User $record): ?string => $record->avatar)
+                    ->defaultImageUrl(fn (User $record): string => self::avatarFallbackUrl($record)),
                 TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('email')
-                    ->label('Email address')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(['name', 'email'])
+                    ->sortable()
+                    ->description(fn (User $record): string => $record->email ?? 'No email'),
+                TextColumn::make('sign_in')
+                    ->label('Sign-in')
+                    ->badge()
+                    ->getStateUsing(fn (User $record): array => self::signInMethods($record))
+                    ->color(fn (string $state): string => match ($state) {
+                        'Google' => 'info',
+                        'Discord' => 'primary',
+                        'Telegram' => 'success',
+                        default => 'gray',
+                    })
+                    ->placeholder('—'),
                 IconColumn::make('is_admin')
                     ->label('Admin')
                     ->boolean(),
-                IconColumn::make('email_verified_at')
-                    ->label('Verified')
-                    ->boolean()
-                    ->getStateUsing(fn (User $record): bool => filled($record->email_verified_at)),
-                TextColumn::make('registration_ip')
-                    ->label('IP')
-                    ->placeholder('—')
-                    ->toggleable(),
                 TextColumn::make('created_at')
-                    ->label('Registered at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(),
-                TextColumn::make('last_login_ip')
-                    ->label('Last login IP')
-                    ->placeholder('—')
-                    ->toggleable(),
+                    ->label('Joined')
+                    ->since()
+                    ->dateTimeTooltip()
+                    ->sortable(),
                 TextColumn::make('last_login_at')
                     ->label('Last login')
-                    ->dateTime()
+                    ->since()
+                    ->dateTimeTooltip()
                     ->placeholder('Never')
-                    ->sortable()
-                    ->toggleable(),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
@@ -261,6 +304,13 @@ class UserResource extends Resource
                     }),
             ])
             ->recordActions([
+                Action::make('profile')
+                    ->label('Public profile')
+                    ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
+                    ->iconButton()
+                    ->tooltip('Open the public profile')
+                    ->url(fn (User $record): string => route('users.show', $record))
+                    ->openUrlInNewTab(),
                 EditAction::make()
                     ->schema([
                         Section::make('Profile')
@@ -269,11 +319,12 @@ class UserResource extends Resource
                                     ->required()
                                     ->maxLength(255),
                                 TextInput::make('email')
-                                    ->label('Email address')
+                                    ->label('Email')
                                     ->email()
-                                    ->required()
                                     ->maxLength(255)
-                                    ->unique(ignoreRecord: true),
+                                    ->unique(ignoreRecord: true)
+                                    ->nullable()
+                                    ->placeholder('No email'),
                             ]),
                         Section::make('Access')
                             ->schema(self::accessFields()),
@@ -283,36 +334,38 @@ class UserResource extends Resource
                     ])
                     ->mutateRecordDataUsing(function (array $data): array {
                         $data['email_verified'] = filled($data['email_verified_at'] ?? null);
-                        $data['created_at'] = filled($data['created_at'] ?? null)
-                            ? Carbon::parse($data['created_at'])->timezone(config('app.timezone'))->toDateTimeString()
-                            : null;
-                        $data['last_login_at'] = filled($data['last_login_at'] ?? null)
-                            ? Carbon::parse($data['last_login_at'])->timezone(config('app.timezone'))->toDateTimeString()
-                            : null;
+                        $data['created_at'] = self::formatActivityTime($data['created_at'] ?? null);
+                        $data['last_login_at'] = self::formatActivityTime($data['last_login_at'] ?? null);
 
                         return $data;
                     })
                     ->using(function (array $data, User $record): void {
                         $record->update(self::mutateUserFormData($data, $record));
                     }),
-                Action::make('resetPassword')
-                    ->label('Reset password')
-                    ->icon(Heroicon::OutlinedKey)
-                    ->modalHeading('Reset password')
-                    ->modalDescription(fn (User $record): string => "Set a new password for {$record->email}.")
-                    ->modalSubmitActionLabel('Update password')
-                    ->schema(self::passwordFields())
-                    ->action(function (array $data, User $record): void {
-                        $record->update([
-                            'password' => $data['password'],
-                        ]);
-                    })
-                    ->successNotificationTitle('Password updated'),
-                DeleteAction::make()
-                    ->hidden(fn (User $record): bool => ! self::canDeleteUser($record))
-                    ->modalDescription(fn (User $record): string => $record->is_admin
-                        ? 'This user is an administrator. Deleting them will revoke admin panel access permanently.'
-                        : 'This user will be permanently deleted.'),
+                ActionGroup::make([
+                    Action::make('resetPassword')
+                        ->label('Reset password')
+                        ->icon(Heroicon::OutlinedKey)
+                        ->modalHeading('Reset password')
+                        ->modalDescription(fn (User $record): string => 'Set a new password for '.($record->email ?? $record->name).'.')
+                        ->modalSubmitActionLabel('Update password')
+                        ->schema(self::passwordFields())
+                        ->action(function (array $data, User $record): void {
+                            $record->update([
+                                'password' => $data['password'],
+                            ]);
+                        })
+                        ->successNotificationTitle('Password updated'),
+                    DeleteAction::make()
+                        ->hidden(fn (User $record): bool => ! self::canDeleteUser($record))
+                        ->modalDescription(fn (User $record): string => $record->is_admin
+                            ? 'This user is an administrator. Deleting them will revoke admin panel access permanently.'
+                            : 'This user will be permanently deleted.'),
+                ])
+                    ->label('More')
+                    ->icon(Heroicon::OutlinedEllipsisVertical)
+                    ->iconButton()
+                    ->tooltip('More'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -328,6 +381,16 @@ class UserResource extends Resource
                         }),
                 ]),
             ]);
+    }
+
+    private static function avatarFallbackUrl(User $record): string
+    {
+        $initial = mb_strtoupper(mb_substr(trim($record->name), 0, 1));
+        $initial = $initial !== '' ? $initial : '?';
+        $safe = htmlspecialchars($initial, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#e7e5e4"/><text x="32" y="40" text-anchor="middle" font-size="28" font-family="sans-serif" fill="#44403c">'.$safe.'</text></svg>';
+
+        return 'data:image/svg+xml,'.rawurlencode($svg);
     }
 
     public static function getPages(): array

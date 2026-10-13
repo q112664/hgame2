@@ -44,17 +44,17 @@ test('login stores the last login ip and timestamp', function () {
         ->and($user->last_login_at)->not->toBeNull();
 });
 
-test('the filament users table lists registration and last login columns', function () {
+test('the filament users table shows a short last login and keeps ip fields on the record', function () {
     $filesystem = app(Filesystem::class);
     $resource = $filesystem->get(app_path('Filament/Resources/Users/UserResource.php'));
 
     expect($resource)
-        ->toContain("TextColumn::make('registration_ip')")
-        ->toContain("TextColumn::make('last_login_ip')")
         ->toContain("TextColumn::make('last_login_at')")
-        ->toContain("->label('IP')")
-        ->toContain("->label('Last login IP')")
-        ->toContain("->label('Last login')");
+        ->toContain('->since()')
+        ->toContain("->label('Last login')")
+        ->toContain("TextInput::make('registration_ip')")
+        ->toContain("TextInput::make('last_login_ip')")
+        ->toContain("->label('Last login IP')");
 
     $admin = User::factory()->admin()->create([
         'registration_ip' => '192.0.2.1',

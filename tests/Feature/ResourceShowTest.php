@@ -79,6 +79,20 @@ test('the resource details page includes hero metadata and every tab payload', f
         );
 });
 
+test('each package reports its own download count, not the game total', function () {
+    $this->game->forceFill(['downloads_count' => 900])->saveQuietly();
+    $this->game->releases()->firstOrFail()
+        ->forceFill(['downloads_count' => 42])
+        ->saveQuietly();
+
+    $this->get(route('resources.show', $this->game->slug))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('resource.downloads', 900)
+            ->where('resource.releases.0.downloads', 42)
+        );
+});
+
 test('resource pages expose a sanitized site notice above downloads when enabled', function () {
     Setting::setBoolean('resource_notice_enabled', true);
     Setting::set(

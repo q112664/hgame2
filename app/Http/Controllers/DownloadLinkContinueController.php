@@ -42,7 +42,7 @@ class DownloadLinkContinueController extends Controller
             Turnstile::validateRequest(Turnstile::FEATURE_DOWNLOAD);
         }
 
-        ($this->recordGameDownload)($game);
+        ($this->recordGameDownload)($game, $release);
 
         return Inertia::location($downloadLink->url);
     }

@@ -27,6 +27,19 @@ export function abbreviateVersion(version: string): string {
     return short ? `v${short}` : version.trim();
 }
 
+/**
+ * Version as printed on a package bar: exactly one leading `v`, with the rest of
+ * the label kept. Cards truncate to the first token because they are tight; a
+ * package row can afford `1.2 demo`, and prefixed input (`Ver1.02`) must not
+ * come out as `vVer1.02`.
+ */
+export function formatVersion(version: string): string {
+    const trimmed = version.trim();
+    const withoutPrefix = trimmed.replace(/^(version|ver|v)\s*/i, '');
+
+    return withoutPrefix === '' ? trimmed : `v${withoutPrefix}`;
+}
+
 export function formatViews(views: number): string {
     return new Intl.NumberFormat(SITE_LOCALE).format(views);
 }

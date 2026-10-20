@@ -64,6 +64,8 @@ export type GameRelease = {
     languages: GameLanguage[];
     version: string | null;
     fileSize: string | null;
+    /** Downloads attributed to this package alone, not the game total. */
+    downloads: number;
     description: string;
     publishedAt: string | null;
     /** Set only when this package was marked as a download update. */

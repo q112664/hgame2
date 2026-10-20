@@ -208,10 +208,27 @@ test('search favorites settings and resources share the site page container', fu
     expect($filesystem->get(resource_path('js/components/site/resource-tab-content.tsx')))
         ->not->toContain('resource-overview-heading')
         ->not->toContain('Overview')
-        ->toContain('id="resource-about-heading"')
-        ->toContain('aria-labelledby="resource-about-heading"')
-        ->toContain('About')
-        ->toContain('border-b border-border/70 bg-muted/25')
+        // Tags and description carry their own headings instead of one "About" block.
+        ->not->toContain('resource-about-heading')
+        ->not->toContain('About')
+        ->toContain('id="resource-tags-heading"')
+        ->toContain('aria-labelledby="resource-tags-heading"')
+        ->toContain('id="resource-description-heading"')
+        ->toContain('aria-labelledby="resource-description-heading"')
+        ->toContain('Tags')
+        ->toContain('Description')
+        // Both sections sit on the page, not inside a card block.
+        ->toMatch(
+            '/<section\s+className="flex flex-col gap-3 sm:gap-4"\s+aria-labelledby="resource-description-heading"/',
+        )
+        ->toMatch(
+            '/<section\s+className="flex flex-col gap-3 sm:gap-4"\s+aria-labelledby="resource-tags-heading"/',
+        )
+        // Description leads the panel; tags follow as secondary metadata.
+        ->toMatch(
+            '/aria-labelledby="resource-description-heading"[\s\S]*aria-labelledby="resource-tags-heading"/',
+        )
+        ->not->toContain('bg-muted/25')
         ->toContain('resource-downloads-heading')
         ->toContain('resource-screenshots-heading')
         ->toContain('Related games');
@@ -236,14 +253,29 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('resourcesIndex({ query: { page: 2 } }).url');
 });
 
-test('resource language detail tabs keep inactive versions mounted', function () {
+test('the description language switcher is a dropdown that keeps every version mounted', function () {
     $source = app(Filesystem::class)->get(
         resource_path('js/components/site/resource-tab-content.tsx'),
     );
 
     expect($source)
-        ->toMatch('/<TabsContent[\s\S]*?\bforceMount\b/')
-        ->toContain('data-[state=inactive]:hidden');
+        // A second tab row would compete with the page's own tabs, and a game
+        // can carry more translations than a horizontal strip survives.
+        ->not->toContain('TabsList')
+        ->not->toContain('TabsTrigger')
+        ->not->toContain('forceMount')
+        ->toContain('<DropdownMenu')
+        // A radio group so the menu announces the current language as checked.
+        ->toContain('<DropdownMenuRadioGroup')
+        ->toContain('<DropdownMenuRadioItem')
+        // Trigger reads as a language control: glyph, current name, chevron.
+        ->toContain('<Languages')
+        ->toContain('aria-label={`Description language: ${activeVersion.name}`}')
+        // No focus ring, matching the other dropdown triggers in the project.
+        ->toContain('focus-visible:ring-0')
+        // Inactive versions stay in the DOM so crawlers still see every translation.
+        ->toContain("version.code !== activeVersion.code && 'hidden'")
+        ->toContain('<RichHtml html={version.html} />');
 });
 
 test('detail page mutations keep the tab across the redirect back', function () {
@@ -356,7 +388,6 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain('platformBadgeClassName')
         ->toContain('languageBadgeClassName')
         ->toContain('fileSizeBadgeClassName')
-        ->toContain('LikeButton')
         ->toContain('SiteEmptyState')
         ->not->toContain('downloadButtonPalettes');
 
@@ -815,22 +846,42 @@ test('download release items use the compact responsive layout', function () {
         ->toContain('size="sm"')
         ->toContain('downloadButtonClassName')
         ->toContain('aria-label="Package actions"')
-        ->toContain('LikeButton')
+        // The package bar carries no like toggle.
+        ->not->toContain('LikeButton')
         ->toContain('Download')
         ->toContain('release.contributor')
         ->toContain('UserAvatar')
         ->toContain('Contributed by')
         ->toContain('release.contributor.name')
+        // The contributor link wraps the avatar alone: the name and the package
+        // dates are labels, not a second way to leave the page.
+        ->toContain("'shrink-0 rounded-full'")
+        ->not->toContain('inline-flex min-w-0 flex-1 items-center gap-2')
         ->toContain('release.downloadsUpdatedAt')
         ->toContain('showReleaseUpdate')
         ->not->toContain('hasLaterDownloadUpdate')
-        ->toContain('Downloads last updated')
-        ->toContain('bg-info/15 text-sm font-medium text-info')
-        ->toContain('sm:hidden')
-        ->toContain('hidden shrink-0 sm:inline-flex')
-        ->toContain('flex shrink-0 items-center gap-2 sm:hidden')
-        ->toContain('resource.downloads')
+        // One date per bar: the update when the package has one, otherwise when
+        // it was listed. The round trip through "both dates on one line" and
+        // "update only" landed here — the update wins, the list date is the
+        // fallback, and neither one is a chip inside the actions group.
+        ->toContain('const packageUpdated')
+        ->toContain('const packageListed')
+        ->toContain('packageUpdated ?? packageListed')
+        ->toContain('Package downloads updated')
+        ->toContain('Package listed')
+        ->not->toContain('const packageDates')
+        // The update keeps the accent the old chip used, so it still stands out.
+        ->toContain('shrink-0 font-medium text-info')
+        ->not->toContain('DownloadUpdateChip')
+        // Each bar counts its own package, not the game total.
+        ->toContain('count={release.downloads}')
+        // One leading "v": version input that already says "Ver1.02" must not
+        // come out as "vVer1.02", and a package row keeps the whole label.
+        ->toContain('formatVersion(')
+        ->not->toContain('v{release.version}')
         ->toContain('showDownloadCount')
+        ->toContain('hidden sm:inline-flex')
+        ->toContain('flex shrink-0 items-center gap-2 sm:hidden')
         ->toContain('${formatted} downloads')
         ->toContain('releaseDescriptionNeedsToggle')
         ->toContain("overflow: 'hidden'")
@@ -855,7 +906,6 @@ test('download release items use the compact responsive layout', function () {
         ->toContain("'h-8 min-w-0 gap-1.5")
         ->toContain('bg-primary')
         ->toContain('hover:bg-primary/90')
-        ->toContain('likeButtonClassName')
         ->not->toContain('animate-heartbeat');
 });
 

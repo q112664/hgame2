@@ -88,7 +88,7 @@ type Props = {
     resource: GameDetail;
     /** Site-wide notice HTML from admin (empty string when disabled). */
     resourceNotice?: string;
-    /** Admin toggle for the download-total chip on each package. */
+    /** Admin toggle for the per-package download count on each package bar. */
     showDownloadCount?: boolean;
     /** Admin toggle: guests must log in before a download. */
     requireLoginToDownload?: boolean;
@@ -650,7 +650,6 @@ export default function ResourceShow({
                         resourceNotice={resourceNotice}
                         showDownloadCount={showDownloadCount}
                         requireLoginToDownload={requireLoginToDownload}
-                        resourceId={resource.id}
                         related={related}
                     />
                 </div>

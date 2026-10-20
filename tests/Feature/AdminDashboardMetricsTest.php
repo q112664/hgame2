@@ -130,6 +130,9 @@ test('top resources sums the whole window per game', function () {
             'game_id' => $spread->id,
             'date' => today()->subDays($daysAgo)->toDateString(),
             'views' => 40,
+            // Pinned: the factory randomises downloads and they weigh five
+            // times a view, which used to flip this ranking at random.
+            'downloads' => 0,
         ]);
     }
 
@@ -137,6 +140,7 @@ test('top resources sums the whole window per game', function () {
         'game_id' => $spike->id,
         'date' => today()->toDateString(),
         'views' => 100,
+        'downloads' => 0,
     ]);
 
     expect(app(BuildTopResourcesQuery::class)()->pluck('slug')->all())

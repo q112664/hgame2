@@ -6,12 +6,11 @@ import {
     HardDrive,
     Images,
     Info,
-    RefreshCw,
+    Languages,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
 import type { LightboxSlide } from '@/components/site/image-lightbox';
-import { LikeButton } from '@/components/site/like-button';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import { RelatedResources } from '@/components/site/related-resources';
 import {
@@ -27,12 +26,21 @@ import { RichHtml } from '@/components/site/rich-html';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Spinner } from '@/components/ui/spinner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserAvatar } from '@/components/user-avatar';
 import { useImageLoadState } from '@/hooks/use-image-load-state';
-import { useLike } from '@/hooks/use-like';
-import { formatDate, formatViews } from '@/lib/resource-formatters';
+import {
+    formatDate,
+    formatVersion,
+    formatViews,
+} from '@/lib/resource-formatters';
 import type { ResourceTab } from '@/lib/resource-tabs';
 import { cn } from '@/lib/utils';
 import { show as downloadLinkShow } from '@/routes/download-links';
@@ -44,29 +52,9 @@ import type { GameCard, GameDetail } from '@/types/resources';
 const RELEASE_DESCRIPTION_COLLAPSED_MAX_PX = 72;
 
 /**
- * Marks the one package an admin flagged as a download update.
- * Same info tint as the catalog update chip, sized to the download button.
+ * Downloads for one package. The game-wide total lives on the catalog card and
+ * the rankings; on a package bar the reader wants that package's own number.
  */
-function DownloadUpdateChip({ date }: { date: string }) {
-    return (
-        <span
-            className={cn(
-                'inline-flex h-8 w-full shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5',
-                'bg-info/15 text-sm font-medium text-info',
-                'sm:w-auto sm:justify-start',
-            )}
-            title="Downloads last updated"
-        >
-            <RefreshCw className="size-3.5 shrink-0" aria-hidden />
-            <span>Updated</span>
-            <time dateTime={date} className="tabular-nums">
-                {formatDate(date)}
-            </time>
-        </span>
-    );
-}
-
-/** Resource-wide download total, aligned with the like chip on the package bar. */
 function DownloadCount({
     count,
     className,
@@ -80,6 +68,8 @@ function DownloadCount({
         <span
             className={cn(
                 'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5',
+                // On the card surface, so the chip uses the same muted fill as
+                // every other quiet chip in a card.
                 'bg-muted text-sm font-medium text-muted-foreground tabular-nums',
                 'dark:bg-white/10',
                 className,
@@ -251,6 +241,14 @@ type ResourceDetailVersionsProps = {
     resource: GameDetail;
 };
 
+/**
+ * Description heading plus its language switcher, and every version's body.
+ *
+ * The switcher is a dropdown rather than a second tab row: the page already has
+ * one tab row above this panel, and a game may carry up to 20 translations
+ * (plus the English original), which no horizontal tab strip survives. Inactive
+ * versions stay mounted and hidden so crawlers still see every translation.
+ */
 function ResourceDetailVersions({ resource }: ResourceDetailVersionsProps) {
     const versions =
         resource.detailVersions.length > 0
@@ -265,41 +263,79 @@ function ResourceDetailVersions({ resource }: ResourceDetailVersionsProps) {
               ];
     const defaultVersion =
         versions.find((version) => version.isDefault) ?? versions[0];
-
-    if (versions.length === 1) {
-        return <RichHtml html={defaultVersion.html} />;
-    }
+    const [activeCode, setActiveCode] = useState(defaultVersion.code);
+    // A stale code (the version list changed under us) falls back to the default.
+    const activeVersion =
+        versions.find((version) => version.code === activeCode) ??
+        defaultVersion;
 
     return (
-        <Tabs
-            key={versions.map((version) => version.code).join('|')}
-            defaultValue={defaultVersion.code}
-            className="gap-4"
-        >
-            <div className="max-w-full overflow-x-auto pb-1">
-                <TabsList
-                    variant="line"
-                    aria-label="Details language"
-                    className="justify-start"
+        <>
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                <h2
+                    id="resource-description-heading"
+                    className="font-heading text-base font-semibold tracking-tight text-foreground sm:text-lg"
                 >
-                    {versions.map((version) => (
-                        <TabsTrigger key={version.code} value={version.code}>
-                            {version.name}
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
+                    Description
+                </h2>
+                {versions.length > 1 ? (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className={cn(
+                                    '-me-1.5 gap-1.5 text-sm',
+                                    // Dropdown triggers in this project carry no
+                                    // focus ring; the open state shows through the
+                                    // ghost variant's aria-expanded background.
+                                    'focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none',
+                                )}
+                                aria-label={`Description language: ${activeVersion.name}`}
+                            >
+                                <Languages
+                                    data-icon="inline-start"
+                                    className="size-3.5"
+                                />
+                                <span className="max-w-40 truncate">
+                                    {activeVersion.name}
+                                </span>
+                                <ChevronDown
+                                    data-icon="inline-end"
+                                    className="size-3.5 opacity-70"
+                                />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuRadioGroup
+                                value={activeVersion.code}
+                                onValueChange={setActiveCode}
+                            >
+                                {versions.map((version) => (
+                                    <DropdownMenuRadioItem
+                                        key={version.code}
+                                        value={version.code}
+                                    >
+                                        {version.name}
+                                    </DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                ) : null}
             </div>
             {versions.map((version) => (
-                <TabsContent
+                <div
                     key={version.code}
-                    value={version.code}
-                    forceMount
-                    className="data-[state=inactive]:hidden"
+                    className={cn(
+                        version.code !== activeVersion.code && 'hidden',
+                    )}
                 >
                     <RichHtml html={version.html} />
-                </TabsContent>
+                </div>
             ))}
-        </Tabs>
+        </>
     );
 }
 
@@ -310,11 +346,10 @@ type Props = {
     onOpenLightbox: (slides: LightboxSlide[], index: number) => void;
     /** Site-wide notice HTML above download packages (empty when disabled). */
     resourceNotice?: string;
-    /** When false, the download-total chip is omitted from each package bar. */
+    /** When false, the per-package download count is omitted from each package bar. */
     showDownloadCount?: boolean;
     /** When true, guests open the login dialog instead of the download jump page. */
     requireLoginToDownload?: boolean;
-    resourceId?: string;
     related?: GameCard[];
 };
 
@@ -326,23 +361,12 @@ export function ResourceTabContent({
     resourceNotice = '',
     showDownloadCount = true,
     requireLoginToDownload = false,
-    resourceId,
     related = [],
 }: Props) {
     const page = usePage();
     const { openAuthDialog } = useAuthDialog();
     const downloadsRequireLogin =
         requireLoginToDownload && !page.props.auth.user;
-    const {
-        isLiked,
-        likesCount,
-        isToggling: isTogglingLike,
-        toggleLike,
-    } = useLike({
-        resourceId: resourceId ?? resource.id,
-        initialIsLiked: resource.isLiked,
-        initialLikesCount: resource.likesCount,
-    });
 
     return (
         <div>
@@ -350,19 +374,26 @@ export function ResourceTabContent({
                 className="flex flex-col gap-4 sm:gap-5"
                 hidden={activeTab !== 'details'}
             >
-                <div className="flex flex-col gap-3 sm:gap-4">
-                    <h2
-                        id="resource-about-heading"
-                        className="font-heading text-base font-semibold tracking-tight text-foreground sm:text-lg"
-                    >
-                        About
-                    </h2>
+                <div className="flex flex-col gap-5 sm:gap-6">
                     <section
-                        className="overflow-hidden rounded-md border border-border bg-card"
-                        aria-labelledby="resource-about-heading"
+                        className="flex flex-col gap-3 sm:gap-4"
+                        aria-labelledby="resource-description-heading"
                     >
-                        {resource.tags.length > 0 ? (
-                            <div className="flex flex-wrap gap-2 border-b border-border/70 bg-muted/25 px-4 py-3 sm:px-5">
+                        <ResourceDetailVersions resource={resource} />
+                    </section>
+
+                    {resource.tags.length > 0 ? (
+                        <section
+                            className="flex flex-col gap-3 sm:gap-4"
+                            aria-labelledby="resource-tags-heading"
+                        >
+                            <h2
+                                id="resource-tags-heading"
+                                className="font-heading text-base font-semibold tracking-tight text-foreground sm:text-lg"
+                            >
+                                Tags
+                            </h2>
+                            <div className="flex flex-wrap gap-2">
                                 {resource.tags.map((tag) => (
                                     <Link
                                         key={tag.slug}
@@ -374,11 +405,8 @@ export function ResourceTabContent({
                                     </Link>
                                 ))}
                             </div>
-                        ) : null}
-                        <div className="p-4 sm:p-5">
-                            <ResourceDetailVersions resource={resource} />
-                        </div>
-                    </section>
+                        </section>
+                    ) : null}
                 </div>
 
                 <RelatedResources resources={related} title="Related games" />
@@ -427,7 +455,49 @@ export function ResourceTabContent({
                         const showReleaseUpdate =
                             releaseUpdatedAt !== null &&
                             releaseUpdatedAt !== '';
-                        const activityDate = release.publishedAt;
+                        /**
+                         * One date per bar: the update when the package carries
+                         * one, otherwise when it was listed. The list date only
+                         * ever reads as the package's, never the game's — the hero
+                         * states the game's date separately.
+                         */
+                        const packageUpdated =
+                            showReleaseUpdate && releaseUpdatedAt ? (
+                                <span
+                                    className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
+                                    title="Package downloads updated"
+                                >
+                                    {/* Keeps the accent the old chip used, so
+                                        returning readers still spot a refreshed
+                                        package. */}
+                                    <span className="shrink-0 font-medium text-info">
+                                        Updated
+                                    </span>
+                                    <time
+                                        dateTime={releaseUpdatedAt}
+                                        className="min-w-0 truncate tabular-nums"
+                                    >
+                                        {formatDate(releaseUpdatedAt)}
+                                    </time>
+                                </span>
+                            ) : null;
+
+                        const packageListed = release.publishedAt ? (
+                            <span
+                                className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
+                                title="Package listed"
+                            >
+                                <span className="shrink-0">Listed</span>
+                                <time
+                                    dateTime={release.publishedAt}
+                                    className="min-w-0 truncate tabular-nums"
+                                >
+                                    {formatDate(release.publishedAt)}
+                                </time>
+                            </span>
+                        ) : null;
+
+                        const packageDate = packageUpdated ?? packageListed;
 
                         return (
                             <article
@@ -443,7 +513,7 @@ export function ResourceTabContent({
                                         </h3>
                                         {release.version ? (
                                             <span className="inline-flex h-6 shrink-0 items-center rounded-md bg-muted px-2 text-xs font-medium text-muted-foreground">
-                                                v{release.version}
+                                                {formatVersion(release.version)}
                                             </span>
                                         ) : null}
                                     </div>
@@ -510,31 +580,39 @@ export function ResourceTabContent({
                                         className={releaseFooterInnerClassName}
                                     >
                                         {/*
-                                              Mobile: author left, like + download count on the right.
-                                              sm+: author left; like, count, and download buttons on the right.
+                                              Mobile: author and package dates on the
+                                              left, download count on the right.
+                                              sm+: count and download CTAs on the right.
                                             */}
                                         <div className="flex w-full min-w-0 items-center justify-between gap-2 sm:w-auto sm:justify-start">
                                             {release.contributor ? (
-                                                <Link
-                                                    href={userShow(
-                                                        release.contributor
-                                                            .slug,
-                                                    )}
-                                                    prefetch
-                                                    className={cn(
-                                                        'inline-flex min-w-0 flex-1 items-center gap-2 sm:max-w-[min(100%,14rem)] sm:flex-none',
-                                                        'rounded-md transition-opacity hover:opacity-85',
-                                                        'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-                                                    )}
-                                                    title={`Contributed by ${release.contributor.name}`}
-                                                >
-                                                    <UserAvatar
-                                                        user={
+                                                <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[min(100%,20rem)] sm:flex-none">
+                                                    {/* Only the avatar links out:
+                                                        the name and the dates
+                                                        are labels, and a click
+                                                        on them should not
+                                                        navigate away. */}
+                                                    <Link
+                                                        href={userShow(
                                                             release.contributor
-                                                        }
-                                                        className="size-8"
-                                                        fallbackClassName="bg-primary/15 text-xs text-primary"
-                                                    />
+                                                                .slug,
+                                                        )}
+                                                        prefetch
+                                                        className={cn(
+                                                            'shrink-0 rounded-full',
+                                                            'transition-opacity hover:opacity-85',
+                                                            'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                                                        )}
+                                                        title={`Contributed by ${release.contributor.name}`}
+                                                    >
+                                                        <UserAvatar
+                                                            user={
+                                                                release.contributor
+                                                            }
+                                                            className="size-8"
+                                                            fallbackClassName="bg-primary/15 text-xs text-primary"
+                                                        />
+                                                    </Link>
                                                     <span className="flex min-w-0 flex-col justify-center gap-0.5 py-px">
                                                         <span className="truncate text-sm leading-4 font-medium text-foreground">
                                                             {
@@ -543,66 +621,19 @@ export function ResourceTabContent({
                                                                     .name
                                                             }
                                                         </span>
-                                                        {showReleaseUpdate ? null : (
-                                                            <span
-                                                                className="inline-flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground"
-                                                                title="Package listed"
-                                                            >
-                                                                <span className="shrink-0">
-                                                                    Listed
-                                                                </span>
-                                                                <time
-                                                                    dateTime={
-                                                                        activityDate ??
-                                                                        undefined
-                                                                    }
-                                                                    className="min-w-0 truncate tabular-nums"
-                                                                >
-                                                                    {activityDate
-                                                                        ? formatDate(
-                                                                              activityDate,
-                                                                          )
-                                                                        : 'Unscheduled'}
-                                                                </time>
-                                                            </span>
-                                                        )}
+                                                        {packageDate}
                                                     </span>
-                                                </Link>
-                                            ) : showReleaseUpdate ? null : (
-                                                <span
-                                                    className="inline-flex min-w-0 flex-1 items-center gap-1 text-xs leading-4 text-muted-foreground sm:flex-none"
-                                                    title="Package listed"
-                                                >
-                                                    <span className="shrink-0">
-                                                        Listed
-                                                    </span>
-                                                    <time
-                                                        dateTime={
-                                                            activityDate ??
-                                                            undefined
-                                                        }
-                                                        className="min-w-0 truncate tabular-nums"
-                                                    >
-                                                        {activityDate
-                                                            ? formatDate(
-                                                                  activityDate,
-                                                              )
-                                                            : 'Unscheduled'}
-                                                    </time>
-                                                </span>
-                                            )}
+                                                </div>
+                                            ) : packageDate ? (
+                                                <div className="flex min-w-0 flex-1 items-center sm:flex-none">
+                                                    {packageDate}
+                                                </div>
+                                            ) : null}
                                             <div className="flex shrink-0 items-center gap-2 sm:hidden">
-                                                <LikeButton
-                                                    isLiked={isLiked}
-                                                    likesCount={likesCount}
-                                                    isToggling={isTogglingLike}
-                                                    onToggle={toggleLike}
-                                                    className="shrink-0"
-                                                />
                                                 {showDownloadCount ? (
                                                     <DownloadCount
                                                         count={
-                                                            resource.downloads
+                                                            release.downloads
                                                         }
                                                     />
                                                 ) : null}
@@ -614,22 +645,9 @@ export function ResourceTabContent({
                                             role="group"
                                             aria-label="Package actions"
                                         >
-                                            {showReleaseUpdate &&
-                                            releaseUpdatedAt ? (
-                                                <DownloadUpdateChip
-                                                    date={releaseUpdatedAt}
-                                                />
-                                            ) : null}
-                                            <LikeButton
-                                                isLiked={isLiked}
-                                                likesCount={likesCount}
-                                                isToggling={isTogglingLike}
-                                                onToggle={toggleLike}
-                                                className="hidden shrink-0 sm:inline-flex"
-                                            />
                                             {showDownloadCount ? (
                                                 <DownloadCount
-                                                    count={resource.downloads}
+                                                    count={release.downloads}
                                                     className="hidden sm:inline-flex"
                                                 />
                                             ) : null}

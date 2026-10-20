@@ -261,6 +261,14 @@ class GameForm
                                     ->columnSpanFull(),
                                 Toggle::make('is_active')->default(true)->required(),
                                 Hidden::make('published_at')->default(now()),
+                                TextInput::make('downloads_count')
+                                    ->label('Downloads')
+                                    ->readOnly()
+                                    ->numeric()
+                                    // A traffic counter: shown, never written back
+                                    // by the form (a nested default does not
+                                    // survive the repeater on create anyway).
+                                    ->dehydrated(false),
                                 Repeater::make('downloadLinks')
                                     ->relationship()
                                     ->simple(

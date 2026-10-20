@@ -160,6 +160,7 @@ class GamePresenter
                             ->all(),
                         'version' => $release->version,
                         'fileSize' => $release->file_size,
+                        'downloads' => $release->downloads_count,
                         'description' => str($release->description ?? '')->sanitizeHtml()->toString(),
                         'publishedAt' => self::dateString($release->published_at),
                         'downloadsUpdatedAt' => self::dateString($release->downloads_updated_at),

@@ -349,7 +349,7 @@ class ManageSiteSettings extends Page
                             ->icon(Heroicon::OutlinedRectangleStack)
                             ->schema([
                                 Section::make('Download count')
-                                    ->description('The total on each package in the Downloads tab. Turning this off hides the number. Downloads are still counted.')
+                                    ->description('The count on each package in the Downloads tab, which counts that package only. Turning this off hides the number. Downloads are still counted.')
                                     ->schema([
                                         Toggle::make('show_download_count')
                                             ->label('Show download count')

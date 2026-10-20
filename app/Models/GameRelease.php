@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * @property CarbonInterface|null $published_at
  * @property CarbonInterface|null $downloads_updated_at
+ * @property int $downloads_count
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property-read Game|null $game
@@ -26,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'game_id', 'user_id', 'platform_id', 'language_id', 'title', 'version', 'file_size',
-    'description', 'published_at', 'downloads_updated_at', 'is_active', 'sort_order',
+    'description', 'published_at', 'downloads_updated_at', 'downloads_count', 'is_active', 'sort_order',
 ])]
 class GameRelease extends Model
 {

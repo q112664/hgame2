@@ -96,3 +96,46 @@ test('verified turnstile continue increments downloads', function () {
 
     expect($game->fresh()->downloads_count)->toBe(5);
 });
+
+test('continuing a download increments the package downloads count', function () {
+    $link = makeDownloadLinkWithCount(5);
+    $release = $link->release;
+
+    $this->post(route('download-links.continue', $link))
+        ->assertRedirect('https://cdn.example.com/game.zip');
+
+    expect($release->fresh()->downloads_count)->toBe(1);
+});
+
+test('each package counts its downloads separately', function () {
+    $link = makeDownloadLinkWithCount(0);
+    $game = $link->release->game;
+    $other = GameRelease::factory()->for($game)->create();
+
+    $this->post(route('download-links.continue', $link))
+        ->assertRedirect('https://cdn.example.com/game.zip');
+
+    expect($link->release->fresh()->downloads_count)->toBe(1)
+        ->and($other->fresh()->downloads_count)->toBe(0)
+        // The game counter still aggregates every package.
+        ->and($game->fresh()->downloads_count)->toBe(1);
+});
+
+test('recording a download does not bump package updated_at', function () {
+    $link = makeDownloadLinkWithCount(0);
+    $release = $link->release;
+
+    $frozen = now()->subDay()->startOfSecond();
+    $release->forceFill([
+        'created_at' => $frozen,
+        'updated_at' => $frozen,
+    ])->saveQuietly();
+
+    $this->post(route('download-links.continue', $link))
+        ->assertRedirect('https://cdn.example.com/game.zip');
+
+    $fresh = $release->fresh();
+
+    expect($fresh->downloads_count)->toBe(1)
+        ->and($fresh->updated_at?->equalTo($frozen))->toBeTrue();
+});

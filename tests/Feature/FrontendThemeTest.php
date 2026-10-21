@@ -39,7 +39,8 @@ test('gallery dark theme uses warm oklch tokens and default radius', function ()
 
     expect($stylesheet)
         ->toContain('Gallery Dark')
-        ->toContain('--background: oklch(0.975 0.004 60);')
+        // Neutral light page (#fafafa, the shionlib canvas) rather than the warm wash.
+        ->toContain('--background: oklch(0.985 0 0);')
         ->toContain('--card: oklch(0.995 0.002 60);')
         ->toContain('--primary: oklch(0.565 0.185 27);')
         ->toContain('--accent: oklch(0.955 0.015 30);')
@@ -184,8 +185,25 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('<Breadcrumbs breadcrumbs={breadcrumbs} />')
         ->toContain("title: 'Games'")
         ->toContain('resource.categorySlug')
-        ->toContain('flex flex-col md:flex-row')
-        ->toContain('md:aspect-auto md:h-[280px] md:w-auto md:max-w-[498px]')
+        // The hero stacks on mobile and becomes a row from sm up, where the cover
+        // takes only the width it needs and the title block flexes into the rest —
+        // stretching to the cover's height so the actions row sits at the bottom.
+        // No backdrop image and no card around it, and no extra gutter of its own.
+        ->toContain('flex flex-col gap-4 sm:flex-row sm:gap-6')
+        ->toContain('min-w-40 shrink-0 sm:max-w-[38%] sm:self-start')
+        ->not->toContain('grid grid-cols-[minmax(0,42%)_minmax(0,1fr)]')
+        ->not->toContain('View full size image for')
+        ->not->toContain('bg-gradient-to-t')
+        ->toContain('View full size cover for')
+        ->toContain('fit="contain"')
+        // The cover is sized by the image, not by a fixed 16:9 frame: a narrow
+        // cover would otherwise sit between two empty bars. Height is capped so a
+        // tall cover shrinks in width instead of growing past the hero, and it is
+        // centred while the hero is stacked (mobile) and left-aligned beside the text.
+        ->not->toContain('aspect-video')
+        ->toContain('mx-auto block h-auto')
+        ->toContain('max-h-48 w-auto max-w-full')
+        ->toContain('sm:mx-0 sm:max-h-44 lg:max-h-64')
         ->toContain('text-sm text-muted-foreground')
         ->toContain('FavoriteButton')
         ->toContain('showLabel')
@@ -193,12 +211,14 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('mt-auto w-full max-w-full')
         ->toContain('flex flex-wrap items-center gap-1.5')
         ->toContain('w-full self-end text-left')
-        ->toContain('md:ml-auto md:w-auto md:text-right')
+        ->toContain('text-muted-foreground md:w-auto')
         ->toContain('line-clamp-2')
         ->toContain('Released')
         ->toContain('Listed')
-        ->not->toContain('sm:flex-row')
-        ->not->toContain('sm:h-[280px]');
+        // The old fixed cover box is gone; the hero stacks until sm and the cover
+        // is sized by the image from there.
+        ->not->toContain('h-[280px]')
+        ->not->toContain('max-w-[498px]');
 
     expect($filesystem->get(resource_path('js/components/site/favorite-button.tsx')))
         ->toContain('showLabel?: boolean')

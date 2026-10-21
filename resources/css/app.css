@@ -21,7 +21,9 @@
  * hues (info/success/warning/favorite/language) share one lightness ladder per mode.
  */
 :root {
-    --background: oklch(0.975 0.004 60);
+    /* A neutral #fafafa page (sampled from shionlib) instead of the warm wash:
+       artwork sits on a quiet grey rather than a tinted one. */
+    --background: oklch(0.985 0 0);
     --foreground: oklch(0.17 0.008 45);
     --card: oklch(0.995 0.002 60);
     --card-foreground: oklch(0.17 0.008 45);

@@ -122,6 +122,8 @@ type ResourceHeroCoverProps = {
     alt: string;
     clickable: boolean;
     onOpen?: () => void;
+    /** `contain` keeps the whole image visible instead of cropping it. */
+    fit?: 'cover' | 'contain';
 };
 
 function ResourceHeroCover({
@@ -130,6 +132,7 @@ function ResourceHeroCover({
     alt,
     clickable,
     onOpen,
+    fit = 'cover',
 }: ResourceHeroCoverProps) {
     const {
         imageRef,
@@ -145,7 +148,14 @@ function ResourceHeroCover({
             src={displaySrc}
             alt={alt}
             className={cn(
-                'size-full object-cover transition-opacity duration-200',
+                'transition-opacity duration-200',
+                // `contain` is the cover slot. The image keeps its own aspect and
+                // carries its own frame, capped by height: a wide cover fills the
+                // column, a narrow one shrinks instead of growing past the hero.
+                // Either way there are no empty bars on the sides.
+                fit === 'contain'
+                    ? 'mx-auto block h-auto max-h-48 w-auto max-w-full rounded-md bg-muted object-contain shadow-lg sm:mx-0 sm:max-h-44 lg:max-h-64'
+                    : 'size-full object-cover',
                 loaded ? 'opacity-100' : 'opacity-0',
             )}
             loading="eager"
@@ -357,276 +367,295 @@ export default function ResourceShow({
             <SitePageContainer density="compact">
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
 
-                <section className="overflow-hidden rounded-md border border-border bg-card">
-                    <div className="flex flex-col md:flex-row">
-                        <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted md:aspect-auto md:h-[280px] md:w-auto md:max-w-[498px]">
-                            <ResourceHeroCover
-                                src={resource.thumbnail}
-                                fallbackSrc={coverSrc}
-                                alt={resource.title}
-                                clickable={hasCover}
-                                onOpen={() => setCoverDialogOpen(true)}
-                            />
+                {/* No `items-start`: the title block stretches to the cover's height
+                    so the actions row (mt-auto) lands at the bottom of the hero. */}
+                <section className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+                    {/* Width comes from the cover itself, not a column fraction, so a
+                        narrow cover gives the title block the space it no longer uses.
+                        No horizontal padding of its own: the page container already
+                        supplies it, and doubling it pushed the cover off the gutter. */}
+                    {/* `self-start` only from sm up: in the stacked column layout it
+                        would shrink this box to the image and pin it left, leaving
+                        `mx-auto` nothing to centre. */}
+                    <div className="min-w-40 shrink-0 sm:max-w-[38%] sm:self-start">
+                        {hasCover ? (
+                            <button
+                                type="button"
+                                onClick={() => setCoverDialogOpen(true)}
+                                className={cn(
+                                    // The frame lives on the image, so this box may be
+                                    // wider than a height-capped cover without showing
+                                    // a muted bar beside it.
+                                    'block min-h-20 w-full cursor-zoom-in',
+                                    'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                                )}
+                                aria-label={`View full size cover for ${resource.title}`}
+                            >
+                                <ResourceHeroCover
+                                    src={resource.thumbnail || coverSrc}
+                                    fallbackSrc={coverSrc}
+                                    alt={resource.title}
+                                    clickable={false}
+                                    fit="contain"
+                                />
+                            </button>
+                        ) : null}
+                    </div>
+
+                    <div className="flex min-w-0 flex-1 flex-col gap-2.5 md:gap-3">
+                        {/* 1. Title + subtitle */}
+                        <div className="min-w-0 space-y-1">
+                            <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+                                {resource.title}
+                            </h1>
+
+                            {resource.subtitle ? (
+                                <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                    {resource.subtitle}
+                                </p>
+                            ) : null}
                         </div>
 
-                        <div className="flex min-w-0 flex-1 flex-col gap-2.5 px-4 py-3 md:gap-3 md:px-5 md:py-4">
-                            {/* 1. Title + subtitle */}
-                            <div className="min-w-0 space-y-1">
-                                <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-                                    {resource.title}
-                                </h1>
-
-                                {resource.subtitle ? (
-                                    <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                                        {resource.subtitle}
-                                    </p>
-                                ) : null}
-                            </div>
-
-                            {/* 2. Classification chips */}
-                            <div className="flex flex-wrap gap-1.5">
-                                {resource.categorySlug ? (
-                                    <Badge
-                                        variant="ghost"
-                                        className={categoryBadgeClassName}
-                                        asChild
-                                    >
-                                        <Link
-                                            href={resourcesGenre.url(
-                                                resource.categorySlug,
-                                            )}
-                                            prefetch
-                                        >
-                                            {resource.category}
-                                        </Link>
-                                    </Badge>
-                                ) : (
-                                    <Badge
-                                        variant="ghost"
-                                        className={categoryBadgeClassName}
-                                    >
-                                        {resource.category}
-                                    </Badge>
-                                )}
-                                {resource.platforms.map((platform) => (
-                                    <Badge
-                                        key={platform.slug}
-                                        variant="ghost"
-                                        className={platformBadgeClassName(
-                                            platform.slug,
-                                        )}
-                                        asChild
-                                    >
-                                        <Link
-                                            href={resourcesPlatform.url(
-                                                platform.slug,
-                                            )}
-                                            prefetch
-                                        >
-                                            <PlatformIcon
-                                                slug={platform.slug}
-                                                data-icon="inline-start"
-                                            />
-                                            {platform.name}
-                                        </Link>
-                                    </Badge>
-                                ))}
-                                {resource.languages.map((language) => (
-                                    <Badge
-                                        key={language.code}
-                                        variant="ghost"
-                                        className={languageBadgeClassName}
-                                        asChild
-                                    >
-                                        <Link
-                                            href={resourcesLanguage.url(
-                                                language.code,
-                                            )}
-                                            prefetch
-                                        >
-                                            {language.name}
-                                        </Link>
-                                    </Badge>
-                                ))}
-                            </div>
-
-                            {/* 3. Catalog meta (game product) */}
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
-                                <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
-                                    <Building2
-                                        className="size-3.5 shrink-0 opacity-70"
-                                        aria-hidden
-                                    />
-                                    <span className="truncate">
-                                        {resource.developer}
-                                    </span>
-                                </span>
-
-                                {resource.source ? (
-                                    <ResourceSourceMeta
-                                        source={resource.source}
-                                    />
-                                ) : null}
-
-                                {resource.releaseDate ? (
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <CalendarRange
-                                            className="size-3.5 shrink-0 opacity-70"
-                                            aria-hidden
-                                        />
-                                        <span className="text-muted-foreground/80">
-                                            Released
-                                        </span>
-                                        <span>
-                                            {formatReleaseDate(
-                                                resource.releaseDate,
-                                            )}
-                                        </span>
-                                    </span>
-                                ) : null}
-                            </div>
-
-                            {/* 4. Site meta — latest contributor; keep first listed + optional update */}
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
-                                {resource.contributors[0] ? (
+                        {/* 2. Classification chips */}
+                        <div className="flex flex-wrap gap-1.5">
+                            {resource.categorySlug ? (
+                                <Badge
+                                    variant="ghost"
+                                    className={categoryBadgeClassName}
+                                    asChild
+                                >
                                     <Link
-                                        href={userShow(
-                                            resource.contributors[0].slug,
+                                        href={resourcesGenre.url(
+                                            resource.categorySlug,
                                         )}
                                         prefetch
-                                        className={cn(
-                                            'inline-flex max-w-40 min-w-0 items-center gap-1.5 rounded-sm',
-                                            'text-foreground/90 transition-colors hover:text-foreground',
-                                            'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-                                        )}
-                                        title={`Contributed by ${resource.contributors[0].name}`}
                                     >
-                                        <UserAvatar
-                                            user={resource.contributors[0]}
-                                            className="size-5"
-                                            fallbackClassName="bg-muted text-[10px] text-muted-foreground"
-                                        />
-                                        <span className="truncate font-medium">
-                                            {resource.contributors[0].name}
-                                        </span>
+                                        {resource.category}
                                     </Link>
-                                ) : null}
-                                <span
-                                    className="inline-flex items-center gap-1.5"
-                                    title="Package listed"
+                                </Badge>
+                            ) : (
+                                <Badge
+                                    variant="ghost"
+                                    className={categoryBadgeClassName}
                                 >
-                                    <CalendarCheck
+                                    {resource.category}
+                                </Badge>
+                            )}
+                            {resource.platforms.map((platform) => (
+                                <Badge
+                                    key={platform.slug}
+                                    variant="ghost"
+                                    className={platformBadgeClassName(
+                                        platform.slug,
+                                    )}
+                                    asChild
+                                >
+                                    <Link
+                                        href={resourcesPlatform.url(
+                                            platform.slug,
+                                        )}
+                                        prefetch
+                                    >
+                                        <PlatformIcon
+                                            slug={platform.slug}
+                                            data-icon="inline-start"
+                                        />
+                                        {platform.name}
+                                    </Link>
+                                </Badge>
+                            ))}
+                            {resource.languages.map((language) => (
+                                <Badge
+                                    key={language.code}
+                                    variant="ghost"
+                                    className={languageBadgeClassName}
+                                    asChild
+                                >
+                                    <Link
+                                        href={resourcesLanguage.url(
+                                            language.code,
+                                        )}
+                                        prefetch
+                                    >
+                                        {language.name}
+                                    </Link>
+                                </Badge>
+                            ))}
+                        </div>
+
+                        {/* 3. Catalog meta (game product) */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+                            <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
+                                <Building2
+                                    className="size-3.5 shrink-0 opacity-70"
+                                    aria-hidden
+                                />
+                                <span className="truncate text-foreground/85">
+                                    {resource.developer}
+                                </span>
+                            </span>
+
+                            {resource.source ? (
+                                <ResourceSourceMeta source={resource.source} />
+                            ) : null}
+
+                            {resource.releaseDate ? (
+                                <span className="inline-flex items-center gap-1.5">
+                                    <CalendarRange
                                         className="size-3.5 shrink-0 opacity-70"
                                         aria-hidden
                                     />
-                                    <span className="text-muted-foreground/80">
-                                        Listed
+                                    <span className="text-muted-foreground">
+                                        Released
+                                    </span>
+                                    <span className="text-foreground/85">
+                                        {formatReleaseDate(
+                                            resource.releaseDate,
+                                        )}
+                                    </span>
+                                </span>
+                            ) : null}
+                        </div>
+
+                        {/* 4. Site meta — latest contributor; keep first listed + optional update */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+                            {resource.contributors[0] ? (
+                                <Link
+                                    href={userShow(
+                                        resource.contributors[0].slug,
+                                    )}
+                                    prefetch
+                                    className={cn(
+                                        'inline-flex max-w-40 min-w-0 items-center gap-1.5 rounded-sm',
+                                        'text-foreground/90 transition-colors hover:text-foreground',
+                                        'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                                    )}
+                                    title={`Contributed by ${resource.contributors[0].name}`}
+                                >
+                                    <UserAvatar
+                                        user={resource.contributors[0]}
+                                        className="size-5"
+                                        fallbackClassName="bg-muted text-[10px] text-muted-foreground"
+                                    />
+                                    <span className="truncate font-medium">
+                                        {resource.contributors[0].name}
+                                    </span>
+                                </Link>
+                            ) : null}
+                            <span
+                                className="inline-flex items-center gap-1.5"
+                                title="Package listed"
+                            >
+                                <CalendarCheck
+                                    className="size-3.5 shrink-0 opacity-70"
+                                    aria-hidden
+                                />
+                                <span className="text-muted-foreground">
+                                    Listed
+                                </span>
+                                <time
+                                    dateTime={resource.publishedAt ?? undefined}
+                                    className="text-foreground/85"
+                                >
+                                    {resource.publishedAt
+                                        ? formatDate(resource.publishedAt)
+                                        : '—'}
+                                </time>
+                            </span>
+                            {resource.downloadsUpdatedAt ? (
+                                <span
+                                    className="inline-flex items-center gap-1.5"
+                                    title="Downloads last updated"
+                                >
+                                    <RefreshCw
+                                        className="size-3.5 shrink-0 opacity-70"
+                                        aria-hidden
+                                    />
+                                    <span className="text-muted-foreground">
+                                        Updated
                                     </span>
                                     <time
-                                        dateTime={
-                                            resource.publishedAt ?? undefined
-                                        }
+                                        dateTime={resource.downloadsUpdatedAt}
+                                        className="text-foreground/85"
                                     >
-                                        {resource.publishedAt
-                                            ? formatDate(resource.publishedAt)
-                                            : '—'}
+                                        {formatDate(
+                                            resource.downloadsUpdatedAt,
+                                        )}
                                     </time>
                                 </span>
-                                {resource.downloadsUpdatedAt ? (
-                                    <span
-                                        className="inline-flex items-center gap-1.5"
-                                        title="Downloads last updated"
-                                    >
-                                        <RefreshCw
-                                            className="size-3.5 shrink-0 opacity-70"
-                                            aria-hidden
-                                        />
-                                        <span className="text-muted-foreground/80">
-                                            Updated
-                                        </span>
-                                        <time
-                                            dateTime={
-                                                resource.downloadsUpdatedAt
-                                            }
-                                        >
-                                            {formatDate(
-                                                resource.downloadsUpdatedAt,
-                                            )}
-                                        </time>
-                                    </span>
-                                ) : null}
-                                <span
-                                    className="inline-flex items-center gap-1.5"
-                                    title="Views"
-                                >
-                                    <Eye
-                                        className="size-3.5 shrink-0 opacity-70"
-                                        aria-hidden
-                                    />
+                            ) : null}
+                            <span
+                                className="inline-flex items-center gap-1.5"
+                                title="Views"
+                            >
+                                <Eye
+                                    className="size-3.5 shrink-0 opacity-70"
+                                    aria-hidden
+                                />
+                                <span className="text-foreground/85">
                                     {formatViews(resource.views)}
                                 </span>
-                            </div>
+                            </span>
+                        </div>
 
-                            {/* 5. Actions */}
-                            <div className="mt-auto w-full max-w-full pt-1">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                    {resource.hasDownloads ? (
-                                        <Button
-                                            size="default"
-                                            variant="secondary"
-                                            className={
-                                                downloadHeroButtonClassName
-                                            }
-                                            onClick={openDownloadsTab}
-                                        >
-                                            <Download data-icon="inline-start" />
-                                            Download
-                                        </Button>
-                                    ) : (
-                                        <Button
-                                            size="default"
-                                            variant="secondary"
-                                            className="h-9 border-0 px-3.5 shadow-none"
-                                            disabled
-                                        >
-                                            <Download data-icon="inline-start" />
-                                            Unavailable
-                                        </Button>
-                                    )}
-                                    <FavoriteButton
-                                        showLabel
-                                        isFavorited={isFavorite}
-                                        isToggling={isTogglingFavorite}
-                                        onToggle={handleFavoriteClick}
-                                    />
-                                    {resource.adminEditUrl ? (
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="size-9"
-                                                    asChild
+                        {/* 5. Actions */}
+                        <div className="mt-auto w-full max-w-full pt-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                {resource.hasDownloads ? (
+                                    <Button
+                                        size="default"
+                                        variant="secondary"
+                                        className={downloadHeroButtonClassName}
+                                        onClick={openDownloadsTab}
+                                    >
+                                        <Download data-icon="inline-start" />
+                                        Download
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        size="default"
+                                        variant="secondary"
+                                        className="h-9 border-0 px-3.5 shadow-none"
+                                        disabled
+                                    >
+                                        <Download data-icon="inline-start" />
+                                        Unavailable
+                                    </Button>
+                                )}
+                                <FavoriteButton
+                                    showLabel
+                                    isFavorited={isFavorite}
+                                    isToggling={isTogglingFavorite}
+                                    onToggle={handleFavoriteClick}
+                                />
+                                {resource.adminEditUrl ? (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="size-9"
+                                                asChild
+                                            >
+                                                <a
+                                                    href={resource.adminEditUrl}
+                                                    aria-label="Edit in admin"
                                                 >
-                                                    <a
-                                                        href={
-                                                            resource.adminEditUrl
-                                                        }
-                                                        aria-label="Edit in admin"
-                                                    >
-                                                        <Pencil />
-                                                    </a>
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                Edit in admin
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    ) : null}
-                                    <p className="w-full self-end text-left text-xs leading-5 whitespace-nowrap text-muted-foreground md:ml-auto md:w-auto md:text-right">
-                                        Favorite for update alerts.
-                                    </p>
-                                </div>
+                                                    <Pencil />
+                                                </a>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            Edit in admin
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ) : null}
+                                {/* No `md:ml-auto`: the title column is now as wide as
+                                    the page, so pushing this to the far edge stranded it
+                                    away from the buttons it explains. */}
+                                <p className="w-full self-end text-left text-xs leading-5 whitespace-nowrap text-muted-foreground md:w-auto">
+                                    Favorite for update alerts.
+                                </p>
                             </div>
                         </div>
                     </div>

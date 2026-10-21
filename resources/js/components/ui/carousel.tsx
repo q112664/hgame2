@@ -2,6 +2,7 @@ import * as React from 'react';
 import useEmblaCarousel, {
     type UseEmblaCarouselType,
 } from 'embla-carousel-react';
+import { WheelGesturesPlugin } from 'embla-carousel-wheel-gestures';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -37,11 +38,29 @@ function Carousel({
     children,
     ...props
 }: React.ComponentProps<'div'> & { options?: CarouselOptions }) {
-    const [carouselRef, api] = useEmblaCarousel({
-        align: 'start',
-        containScroll: 'trimSnaps',
-        ...options,
-    });
+    /**
+     * Embla scrolls with transforms, so a trackpad swipe over the strip does nothing
+     * without this plugin: it feeds wheel deltas back into the carousel instead of
+     * letting them fall through to the page.
+     */
+    const plugins = React.useMemo(() => [WheelGesturesPlugin()], []);
+
+    const [carouselRef, api] = useEmblaCarousel(
+        {
+            align: 'start',
+            containScroll: 'trimSnaps',
+            // Free scrolling: with snapping on, a drag shorter than half a slide is
+            // pulled back to where it started, which reads as the strip fighting the
+            // pointer. Momentum still takes over when the drag is released.
+            dragFree: true,
+            // Embla's defaults wait 10px before a drag starts and settle slowly;
+            // both read as lag on a strip this wide.
+            dragThreshold: 5,
+            duration: 20,
+            ...options,
+        },
+        plugins,
+    );
     const [canScrollPrev, setCanScrollPrev] = React.useState(false);
     const [canScrollNext, setCanScrollNext] = React.useState(false);
 

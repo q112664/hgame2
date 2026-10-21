@@ -285,6 +285,14 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('useEmblaCarousel')
         ->toContain('cursor-grab active:cursor-grabbing')
         ->toContain('touch-pan-y')
+        // Embla cannot see wheel/trackpad deltas on its own, so the plugin feeds them
+        // in; without it a two-finger swipe over the strip does nothing.
+        ->toContain("from 'embla-carousel-wheel-gestures'")
+        ->toContain('WheelGesturesPlugin()')
+        // Free scrolling: with snapping on, a drag shorter than half a slide is pulled
+        // back to where it started, which reads as the strip fighting the pointer.
+        ->toContain('dragFree: true')
+        ->toContain('dragThreshold: 5')
         ->toContain('canScrollPrev')
         ->toContain('canScrollNext');
 

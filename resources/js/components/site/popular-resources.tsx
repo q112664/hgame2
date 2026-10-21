@@ -211,7 +211,7 @@ export function PopularResources({
                 <ol
                     ref={scrollerRef}
                     className={cn(
-                        'mt-3 flex gap-3 overflow-x-auto pb-4 sm:mt-3.5',
+                        'mt-3 flex gap-3 overflow-x-auto pb-3 sm:mt-3.5',
                         'overscroll-x-contain',
                         // Only the standard properties, so the bar stays the platform's
                         // own: thin and tinted where it is classic, overlay on macOS/iOS.

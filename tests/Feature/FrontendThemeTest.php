@@ -190,7 +190,7 @@ test('search favorites settings and resources share the site page container', fu
         // stretching to the cover's height so the actions row sits at the bottom.
         // No backdrop image and no card around it, and no extra gutter of its own.
         ->toContain('flex flex-col gap-4 sm:flex-row sm:gap-6')
-        ->toContain('min-w-40 shrink-0 sm:max-w-[38%] sm:self-start')
+        ->toContain('min-h-48 min-w-40 shrink-0 sm:min-h-44 sm:max-w-[38%] sm:self-start lg:min-h-64')
         ->not->toContain('grid grid-cols-[minmax(0,42%)_minmax(0,1fr)]')
         ->not->toContain('View full size image for')
         ->not->toContain('bg-gradient-to-t')
@@ -200,10 +200,11 @@ test('search favorites settings and resources share the site page container', fu
         // cover would otherwise sit between two empty bars. Height is capped so a
         // tall cover shrinks in width instead of growing past the hero, and it is
         // centred while the hero is stacked (mobile) and left-aligned beside the text.
-        ->not->toContain('aspect-video')
+        // The only 16:9 box is the skeleton that holds the slot until the image paints.
         ->toContain('mx-auto block h-auto')
         ->toContain('max-h-48 w-auto max-w-full')
         ->toContain('sm:mx-0 sm:max-h-44 lg:max-h-64')
+        ->toContain('h-48 w-full animate-pulse rounded-md bg-muted')
         ->toContain('text-sm text-muted-foreground')
         ->toContain('FavoriteButton')
         ->toContain('showLabel')
@@ -219,6 +220,15 @@ test('search favorites settings and resources share the site page container', fu
         // is sized by the image from there.
         ->not->toContain('h-[280px]')
         ->not->toContain('max-w-[498px]');
+
+    expect($filesystem->get(resource_path('js/components/breadcrumbs.tsx')))
+        // One row on mobile: the list never wraps, middle steps collapse into an
+        // ellipsis, and a long page title truncates rather than pushing the row.
+        ->toContain('flex-nowrap')
+        ->toContain("isMiddle && 'hidden sm:inline-flex'")
+        ->toContain("isLast && 'min-w-0'")
+        ->toContain('sr-only')
+        ->toContain('truncate');
 
     expect($filesystem->get(resource_path('js/components/site/favorite-button.tsx')))
         ->toContain('showLabel?: boolean')

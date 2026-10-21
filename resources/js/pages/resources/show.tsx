@@ -124,6 +124,8 @@ type ResourceHeroCoverProps = {
     onOpen?: () => void;
     /** `contain` keeps the whole image visible instead of cropping it. */
     fit?: 'cover' | 'contain';
+    /** Lets the hero reserve the cover's column while the image is still loading. */
+    onLoadedChange?: (loaded: boolean) => void;
 };
 
 function ResourceHeroCover({
@@ -133,6 +135,7 @@ function ResourceHeroCover({
     clickable,
     onOpen,
     fit = 'cover',
+    onLoadedChange,
 }: ResourceHeroCoverProps) {
     const {
         imageRef,
@@ -141,6 +144,12 @@ function ResourceHeroCover({
         markLoaded,
         src: displaySrc,
     } = useImageLoadState(src, fallbackSrc);
+
+    const isCoverSlot = fit === 'contain';
+
+    useEffect(() => {
+        onLoadedChange?.(loaded);
+    }, [loaded, onLoadedChange]);
 
     const image = (
         <img
@@ -153,10 +162,12 @@ function ResourceHeroCover({
                 // carries its own frame, capped by height: a wide cover fills the
                 // column, a narrow one shrinks instead of growing past the hero.
                 // Either way there are no empty bars on the sides.
-                fit === 'contain'
+                isCoverSlot
                     ? 'mx-auto block h-auto max-h-48 w-auto max-w-full rounded-md bg-muted object-contain shadow-lg sm:mx-0 sm:max-h-44 lg:max-h-64'
                     : 'size-full object-cover',
-                loaded ? 'opacity-100' : 'opacity-0',
+                // Out of flow until it paints: the skeleton (or the cover's own
+                // empty box) below then owns the height instead of a collapsed 0.
+                loaded ? 'opacity-100' : 'absolute size-0 opacity-0',
             )}
             loading="eager"
             decoding="async"
@@ -167,7 +178,18 @@ function ResourceHeroCover({
         />
     );
 
-    const placeholder = !loaded ? (
+    /**
+     * A cover is sized by the image itself, so before it loads there is no box to
+     * fill. The skeleton takes exactly the height a cover lands on once the caps
+     * apply (16:9 covers hit the cap, which is the common case), so the swap moves
+     * the artwork by a few pixels at most instead of resizing the hero.
+     */
+    const placeholder = loaded ? null : isCoverSlot ? (
+        <div
+            className="h-48 w-full animate-pulse rounded-md bg-muted sm:h-44 lg:h-64"
+            aria-hidden
+        />
+    ) : (
         <div
             className="absolute inset-0 flex items-center justify-center bg-muted"
             aria-hidden
@@ -175,7 +197,7 @@ function ResourceHeroCover({
             <div className="absolute inset-0 animate-pulse bg-muted-foreground/10" />
             <Spinner className="relative size-6 text-muted-foreground" />
         </div>
-    ) : null;
+    );
 
     if (clickable) {
         return (
@@ -224,6 +246,7 @@ export default function ResourceShow({
     const [lightboxSlides, setLightboxSlides] = useState<LightboxSlide[]>([]);
     const [lightboxIndex, setLightboxIndex] = useState(-1);
     const [coverDialogOpen, setCoverDialogOpen] = useState(false);
+    const [coverLoaded, setCoverLoaded] = useState(false);
     const page = usePage();
     const { auth } = page.props;
     const authUserId = auth.user?.id;
@@ -377,7 +400,18 @@ export default function ResourceShow({
                     {/* `self-start` only from sm up: in the stacked column layout it
                         would shrink this box to the image and pin it left, leaving
                         `mx-auto` nothing to centre. */}
-                    <div className="min-w-40 shrink-0 sm:max-w-[38%] sm:self-start">
+                    {/* The min-heights match the skeleton, so a cover shorter than the
+                        cap does not pull the tabs up when it replaces it. */}
+                    <div
+                        className={cn(
+                            'min-h-48 min-w-40 shrink-0 sm:min-h-44 sm:max-w-[38%] sm:self-start lg:min-h-64',
+                            // Until the image has a width of its own the column has
+                            // nothing to hug, so hold its usual 38% and let it relax
+                            // afterwards; otherwise the skeleton is 160px wide and the
+                            // title block jumps when the real cover arrives.
+                            !coverLoaded && 'sm:w-[38%]',
+                        )}
+                    >
                         {hasCover ? (
                             <button
                                 type="button"
@@ -397,6 +431,7 @@ export default function ResourceShow({
                                     alt={resource.title}
                                     clickable={false}
                                     fit="contain"
+                                    onLoadedChange={setCoverLoaded}
                                 />
                             </button>
                         ) : null}

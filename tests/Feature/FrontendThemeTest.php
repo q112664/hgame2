@@ -278,24 +278,6 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('grid-cols-2')
         ->toContain('<ChevronRight data-icon="inline-end" />');
 
-    expect($filesystem->get(resource_path('js/components/ui/carousel.tsx')))
-        // Embla supplies momentum, snapping and pointer dragging; the wrapper only
-        // adds the affordances it leaves to the consumer.
-        ->toContain("from 'embla-carousel-react'")
-        ->toContain('useEmblaCarousel')
-        ->toContain('cursor-grab active:cursor-grabbing')
-        ->toContain('touch-pan-y')
-        // Embla cannot see wheel/trackpad deltas on its own, so the plugin feeds them
-        // in; without it a two-finger swipe over the strip does nothing.
-        ->toContain("from 'embla-carousel-wheel-gestures'")
-        ->toContain('WheelGesturesPlugin()')
-        // Free scrolling: with snapping on, a drag shorter than half a slide is pulled
-        // back to where it started, which reads as the strip fighting the pointer.
-        ->toContain('dragFree: true')
-        ->toContain('dragThreshold: 5')
-        ->toContain('canScrollPrev')
-        ->toContain('canScrollNext');
-
     expect($filesystem->get(resource_path('js/pages/welcome.tsx')))
         ->toContain('hasMoreResources: boolean')
         ->toContain('resourcesIndex({ query: { page: 2 } }).url');
@@ -657,16 +639,18 @@ test('homepage popular section uses a ranked landscape strip', function () {
 
     expect($popular)
         ->toContain('export function PopularResources')
-        // Embla owns scrolling so the strip can be dragged with a mouse; the arrows
-        // read its state instead of computing scroll offsets by hand.
-        ->toContain("from '@/components/ui/carousel'")
-        ->toContain('<Carousel')
-        ->toContain('<CarouselPrevious')
-        ->toContain('<CarouselNext')
+        // Scrolling stays native so phones keep the compositor-driven swipe; the only
+        // addition is a 1:1 mouse drag for mice that cannot swipe.
+        ->toContain('overflow-x-auto')
+        ->toContain("event.pointerType !== 'mouse'")
+        ->toContain('onDragStart={(event) => event.preventDefault()}')
+        ->toContain('scrollBy({ left: direction * step, behavior: ')
         ->toContain('Scroll popular left')
         ->toContain('Scroll popular right')
-        ->toContain('containScroll: ')
-        ->not->toContain('scrollBy({')
+        ->toContain('disabled={edges.start}')
+        ->toContain('disabled={edges.end}')
+        ->not->toContain('embla')
+        ->not->toContain('snap-x')
         ->not->toContain('::-webkit-scrollbar')
         ->toContain('aspect-[16/10]')
         ->toContain('from-black/85')

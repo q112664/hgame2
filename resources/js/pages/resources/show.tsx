@@ -400,16 +400,14 @@ export default function ResourceShow({
                     {/* `self-start` only from sm up: in the stacked column layout it
                         would shrink this box to the image and pin it left, leaving
                         `mx-auto` nothing to centre. */}
-                    {/* The min-heights match the skeleton, so a cover shorter than the
-                        cap does not pull the tabs up when it replaces it. */}
+                    {/* While loading the column holds the skeleton's box; once the
+                        image is in, both the width and the min-height let go so a
+                        short (very wide) cover does not leave a void under it. */}
                     <div
                         className={cn(
-                            'min-h-48 min-w-40 shrink-0 sm:min-h-44 sm:max-w-[38%] sm:self-start lg:min-h-64',
-                            // Until the image has a width of its own the column has
-                            // nothing to hug, so hold its usual 38% and let it relax
-                            // afterwards; otherwise the skeleton is 160px wide and the
-                            // title block jumps when the real cover arrives.
-                            !coverLoaded && 'sm:w-[38%]',
+                            'min-w-40 shrink-0 sm:max-w-[38%] sm:self-start',
+                            !coverLoaded &&
+                                'min-h-48 sm:min-h-44 sm:w-[38%] lg:min-h-64',
                         )}
                     >
                         {hasCover ? (

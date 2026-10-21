@@ -190,7 +190,11 @@ test('search favorites settings and resources share the site page container', fu
         // stretching to the cover's height so the actions row sits at the bottom.
         // No backdrop image and no card around it, and no extra gutter of its own.
         ->toContain('flex flex-col gap-4 sm:flex-row sm:gap-6')
-        ->toContain('min-h-48 min-w-40 shrink-0 sm:min-h-44 sm:max-w-[38%] sm:self-start lg:min-h-64')
+        // The column only reserves a box while the skeleton is up: once the image
+        // lands, a short (very wide) cover must not leave a void under itself.
+        ->toContain("'min-w-40 shrink-0 sm:max-w-[38%] sm:self-start'")
+        ->toContain('!coverLoaded &&')
+        ->toContain('min-h-48 sm:min-h-44 sm:w-[38%] lg:min-h-64')
         ->not->toContain('grid grid-cols-[minmax(0,42%)_minmax(0,1fr)]')
         ->not->toContain('View full size image for')
         ->not->toContain('bg-gradient-to-t')

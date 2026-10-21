@@ -650,10 +650,9 @@ export default function ResourceShow({
                                         </TooltipContent>
                                     </Tooltip>
                                 ) : null}
-                                {/* No `md:ml-auto`: the title column is now as wide as
-                                    the page, so pushing this to the far edge stranded it
-                                    away from the buttons it explains. */}
-                                <p className="w-full self-end text-left text-xs leading-5 whitespace-nowrap text-muted-foreground md:w-auto">
+                                {/* Pushed to the end of the actions row on desktop, where it
+                                    reads as a trailing note instead of a third control. */}
+                                <p className="w-full self-end text-left text-xs leading-5 whitespace-nowrap text-muted-foreground md:ml-auto md:w-auto md:text-right">
                                     Favorite for update alerts.
                                 </p>
                             </div>

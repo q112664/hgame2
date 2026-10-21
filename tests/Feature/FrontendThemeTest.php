@@ -211,7 +211,7 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('mt-auto w-full max-w-full')
         ->toContain('flex flex-wrap items-center gap-1.5')
         ->toContain('w-full self-end text-left')
-        ->toContain('text-muted-foreground md:w-auto')
+        ->toContain('md:ml-auto md:w-auto md:text-right')
         ->toContain('line-clamp-2')
         ->toContain('Released')
         ->toContain('Listed')

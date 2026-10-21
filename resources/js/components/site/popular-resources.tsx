@@ -38,6 +38,15 @@ export function PopularResources({
     const drag = useRef({ startX: 0, startScroll: 0, moved: false });
     const [edges, setEdges] = useState({ start: true, end: false });
     const [dragging, setDragging] = useState(false);
+    /**
+     * Classic scrollbars (Windows, Linux) take 11px of layout space *below* the
+     * padding, while overlay scrollbars (macOS, iOS) float *inside* it. The same
+     * padding therefore leaves the bar further from the cards on Windows, so the
+     * padding compensates once the browser tells us which kind it draws.
+     */
+    const [overlayScrollbar, setOverlayScrollbar] = useState<boolean | null>(
+        null,
+    );
 
     const syncEdges = useCallback(() => {
         const element = scrollerRef.current;
@@ -69,11 +78,25 @@ export function PopularResources({
             return;
         }
 
+        const measureScrollbar = () => {
+            if (element.scrollWidth <= element.clientWidth) {
+                return;
+            }
+
+            setOverlayScrollbar(
+                element.offsetHeight - element.clientHeight === 0,
+            );
+        };
+
+        measureScrollbar();
+
         element.addEventListener('scroll', syncEdges, { passive: true });
+        window.addEventListener('resize', measureScrollbar);
         window.addEventListener('resize', syncEdges);
 
         return () => {
             element.removeEventListener('scroll', syncEdges);
+            window.removeEventListener('resize', measureScrollbar);
             window.removeEventListener('resize', syncEdges);
         };
     }, [syncEdges, resources.length]);
@@ -211,7 +234,10 @@ export function PopularResources({
                 <ol
                     ref={scrollerRef}
                     className={cn(
-                        'mt-3 flex gap-3 overflow-x-auto pb-3 sm:mt-3.5',
+                        'mt-3 flex gap-3 overflow-x-auto sm:mt-3.5',
+                        // Overlay bars float inside the padding, classic ones sit below it.
+                        // Tuned so both leave the same gap between cards and bar.
+                        overlayScrollbar === false ? 'pb-1.5' : 'pb-4',
                         'overscroll-x-contain',
                         // Only the standard properties, so the bar stays the platform's
                         // own: thin and tinted where it is classic, overlay on macOS/iOS.

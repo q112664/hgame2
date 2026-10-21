@@ -278,6 +278,16 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('grid-cols-2')
         ->toContain('<ChevronRight data-icon="inline-end" />');
 
+    expect($filesystem->get(resource_path('js/components/ui/carousel.tsx')))
+        // Embla supplies momentum, snapping and pointer dragging; the wrapper only
+        // adds the affordances it leaves to the consumer.
+        ->toContain("from 'embla-carousel-react'")
+        ->toContain('useEmblaCarousel')
+        ->toContain('cursor-grab active:cursor-grabbing')
+        ->toContain('touch-pan-y')
+        ->toContain('canScrollPrev')
+        ->toContain('canScrollNext');
+
     expect($filesystem->get(resource_path('js/pages/welcome.tsx')))
         ->toContain('hasMoreResources: boolean')
         ->toContain('resourcesIndex({ query: { page: 2 } }).url');
@@ -639,8 +649,17 @@ test('homepage popular section uses a ranked landscape strip', function () {
 
     expect($popular)
         ->toContain('export function PopularResources')
-        ->toContain('overflow-x-auto')
-        ->toContain('scrollBy')
+        // Embla owns scrolling so the strip can be dragged with a mouse; the arrows
+        // read its state instead of computing scroll offsets by hand.
+        ->toContain("from '@/components/ui/carousel'")
+        ->toContain('<Carousel')
+        ->toContain('<CarouselPrevious')
+        ->toContain('<CarouselNext')
+        ->toContain('Scroll popular left')
+        ->toContain('Scroll popular right')
+        ->toContain('containScroll: ')
+        ->not->toContain('scrollBy({')
+        ->not->toContain('::-webkit-scrollbar')
         ->toContain('aspect-[16/10]')
         ->toContain('from-black/85')
         ->toContain('Rank')
@@ -651,7 +670,6 @@ test('homepage popular section uses a ranked landscape strip', function () {
         ->toContain('bg-black/60 text-white ring-1 ring-white/15')
         ->not->toContain('backdrop-blur')
         ->not->toContain('useDragScroll')
-        ->not->toContain('cursor-grab')
         ->not->toContain('fit="contain"')
         ->not->toContain('grid grid-cols-2')
         ->not->toContain('divide-y');

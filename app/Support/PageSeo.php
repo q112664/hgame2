@@ -82,7 +82,7 @@ final class PageSeo
         $searchTarget = rtrim($siteUrl, '/').'/search?q={search_term_string}';
 
         return self::make(
-            title: null,
+            title: Setting::homeTitle(),
             description: $description,
             canonical: route('home'),
             ogImageUrl: Setting::seoOgImageUrl(),

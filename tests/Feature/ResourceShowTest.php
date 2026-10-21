@@ -426,6 +426,29 @@ test('resource routes return not found for unknown or unpublished games', functi
     $this->get(route('resources.show', $draft->slug))->assertNotFound();
 });
 
+test('the home title falls back to the site title', function () {
+    Setting::set('site_title', 'Eroga.me');
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('welcome')
+            ->where('pageSeo.title', 'Eroga.me')
+        );
+});
+
+test('the home title uses its own setting when one is saved', function () {
+    Setting::set('site_title', 'Eroga.me');
+    Setting::set('home_title', 'Hentai games & eroge');
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('welcome')
+            ->where('pageSeo.title', 'Hentai games & eroge')
+        );
+});
+
 test('home receives only published games', function () {
     Game::factory()->draft()->create(['title' => 'Hidden Draft']);
 
@@ -442,53 +465,6 @@ test('home receives only published games', function () {
                 ['name' => 'Chinese', 'code' => 'zh'],
             ])
             ->where('resources.0.version', '1.2 demo')
-            ->where('hero.backgroundUrl', Setting::defaultHeroBackgroundUrl())
-            ->where('hero.description', Setting::defaultHeroDescription())
-            ->missing('hero.eyebrow')
-        );
-});
-
-test('home uses the configured hero background image', function () {
-    Setting::set('hero_background_path', 'site/hero/custom.jpg');
-
-    $this->get(route('home'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('welcome')
-            ->where('hero.backgroundUrl', Media::url('site/hero/custom.jpg'))
-        );
-});
-
-test('home uses configured hero copy from site settings', function () {
-    Setting::set('hero_title', 'Custom title');
-    Setting::set('hero_description', 'Custom description line.');
-    Setting::set('hero_browse_label', 'Explore');
-    Setting::set('hero_random_label', 'Surprise');
-    Setting::setBoolean('hero_show_random', false);
-
-    $this->get(route('home'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('welcome')
-            ->where('hero.title', 'Custom title')
-            ->where('hero.description', 'Custom description line.')
-            ->where('hero.browseLabel', 'Explore')
-            ->where('hero.randomLabel', 'Surprise')
-            ->where('hero.enabled', true)
-            ->where('hero.showBrowse', true)
-            ->where('hero.showRandom', false)
-            ->missing('hero.eyebrow')
-        );
-});
-
-test('home can hide the hero module from site settings', function () {
-    Setting::setBoolean('hero_enabled', false);
-
-    $this->get(route('home'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('welcome')
-            ->where('hero.enabled', false)
         );
 });
 

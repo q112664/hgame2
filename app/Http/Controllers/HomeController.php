@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Game;
-use App\Models\Setting;
 use App\Support\GamePresenter;
 use App\Support\PageSeo;
 use Illuminate\Support\Collection;
@@ -29,7 +28,6 @@ class HomeController extends Controller
             ->get();
 
         return Inertia::render('welcome', [
-            'hero' => Setting::homeHero(),
             'pageSeo' => PageSeo::home(),
             'popular' => $this->presentPopular(
                 Game::query()

@@ -267,9 +267,6 @@ test('search favorites settings and resources share the site page container', fu
         ->toContain('resource-screenshots-heading')
         ->toContain('Related games');
 
-    expect($filesystem->get(resource_path('js/components/site/home-hero.tsx')))
-        ->toContain('<h1');
-
     expect($filesystem->get(resource_path('js/components/site/popular-resources.tsx')))
         ->toContain('<h2');
 
@@ -283,7 +280,6 @@ test('search favorites settings and resources share the site page container', fu
 
     expect($filesystem->get(resource_path('js/pages/welcome.tsx')))
         ->toContain('hasMoreResources: boolean')
-        ->toContain('hero.enabled')
         ->toContain('resourcesIndex({ query: { page: 2 } }).url');
 });
 
@@ -465,12 +461,6 @@ test('site empty states and download buttons use primary CTAs', function () {
         ->toContain('justify-between gap-3')
         ->toContain('aria-label="Close menu"');
 
-    expect($filesystem->get(resource_path('js/components/site/home-hero.tsx')))
-        ->toContain('hero.title')
-        ->toContain('hero.browseLabel')
-        ->toContain('bg-auth/22')
-        ->toContain('backdrop-blur-sm');
-
     expect($filesystem->get(resource_path('js/components/site/site-footer.tsx')))
         ->toContain('All rights reserved')
         ->toContain('footerLinks')
@@ -651,6 +641,13 @@ test('homepage popular section uses a ranked landscape strip', function () {
         ->toContain('export function PopularResources')
         ->toContain('overflow-x-auto')
         ->toContain('scrollBy')
+        // Prev/next flank the strip instead of sitting in the heading row, and
+        // fade out at either end.
+        ->toContain('Scroll popular left')
+        ->toContain('Scroll popular right')
+        ->toContain('absolute top-1/2 left-0')
+        ->toContain('absolute top-1/2 right-0')
+        ->toContain('syncEdges')
         ->toContain('aspect-[16/10]')
         ->toContain('from-black/85')
         ->toContain('Rank')
@@ -810,17 +807,6 @@ test('resource card thumbnails fade in with lazy loading', function () {
         ->toContain('ref={imageRef}')
         ->toContain('onLoad={markLoaded}')
         ->toContain('onError={markLoaded}');
-});
-
-test('the home hero background is marked as the lcp candidate', function () {
-    $hero = app(Filesystem::class)->get(
-        resource_path('js/components/site/home-hero.tsx'),
-    );
-
-    expect($hero)
-        ->toContain('loading="eager"')
-        ->toContain('decoding="async"')
-        ->toContain('fetchPriority="high"');
 });
 
 test('resource catalog keeps seo metadata out of the visible interface', function () {

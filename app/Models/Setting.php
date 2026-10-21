@@ -302,82 +302,16 @@ class Setting extends Model
         ];
     }
 
-    public static function defaultHeroBackgroundUrl(): string
-    {
-        return '/images/hero-bg.jpg';
-    }
-
-    public static function heroBackgroundPath(): ?string
-    {
-        $path = static::get('hero_background_path');
-
-        return filled($path) ? $path : null;
-    }
-
-    public static function heroBackgroundUrl(): string
-    {
-        $path = static::heroBackgroundPath();
-
-        if ($path === null) {
-            return static::defaultHeroBackgroundUrl();
-        }
-
-        $url = Media::url($path);
-
-        return $url !== '' ? $url : static::defaultHeroBackgroundUrl();
-    }
-
-    public static function defaultHeroDescription(): string
-    {
-        return 'Browse, search, and download galgame packages.';
-    }
-
-    public static function defaultHeroBrowseLabel(): string
-    {
-        return 'Games';
-    }
-
-    public static function defaultHeroRandomLabel(): string
-    {
-        return 'Random';
-    }
-
     /**
-     * Homepage hero copy and controls for the public welcome page.
+     * Browser tab title for the homepage; falls back to the site title.
      *
-     * @return array{
-     *     enabled: bool,
-     *     backgroundUrl: string,
-     *     title: string,
-     *     description: string,
-     *     browseLabel: string,
-     *     randomLabel: string,
-     *     showBrowse: bool,
-     *     showRandom: bool
-     * }
+     * Kept separate from `site_title`, which is the suffix other pages use.
      */
-    public static function homeHero(): array
+    public static function homeTitle(): string
     {
-        $title = trim((string) (static::get('hero_title') ?? ''));
+        $title = trim((string) static::get('home_title'));
 
-        if ($title === '') {
-            $title = static::siteLogoText();
-        }
-
-        $description = trim((string) (static::get('hero_description') ?? ''));
-        $browseLabel = trim((string) (static::get('hero_browse_label') ?? ''));
-        $randomLabel = trim((string) (static::get('hero_random_label') ?? ''));
-
-        return [
-            'enabled' => static::boolean('hero_enabled', true),
-            'backgroundUrl' => static::heroBackgroundUrl(),
-            'title' => $title,
-            'description' => $description !== '' ? $description : static::defaultHeroDescription(),
-            'browseLabel' => $browseLabel !== '' ? $browseLabel : static::defaultHeroBrowseLabel(),
-            'randomLabel' => $randomLabel !== '' ? $randomLabel : static::defaultHeroRandomLabel(),
-            'showBrowse' => static::boolean('hero_show_browse', true),
-            'showRandom' => static::boolean('hero_show_random', true),
-        ];
+        return $title !== '' ? $title : static::siteTitle();
     }
 
     public static function resourceNoticeEnabled(): bool

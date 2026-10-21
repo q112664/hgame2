@@ -54,11 +54,10 @@ class ManageSiteSettings extends Page
 
     public function mount(): void
     {
-        $hero = Setting::homeHero();
-
         $this->form->fill([
             'site_url' => Setting::siteUrl(),
             'site_title' => Setting::get('site_title') ?? Setting::siteTitle(),
+            'home_title' => Setting::get('home_title') ?? '',
             'seo_description' => Setting::get('seo_description') ?? Setting::seoDescription(),
             'seo_keywords' => Setting::seoKeywords(),
             'seo_robots' => Setting::seoRobots(),
@@ -69,15 +68,6 @@ class ManageSiteSettings extends Page
             'site_logo_mode' => Setting::siteLogoMode(),
             'site_logo_text' => Setting::siteLogoText(),
             'site_logo_path' => Setting::siteLogoPath(),
-            'hero_background_path' => Setting::heroBackgroundPath(),
-
-            'hero_title' => Setting::get('hero_title') ?? '',
-            'hero_description' => Setting::get('hero_description') ?? Setting::defaultHeroDescription(),
-            'hero_browse_label' => Setting::get('hero_browse_label') ?? Setting::defaultHeroBrowseLabel(),
-            'hero_random_label' => Setting::get('hero_random_label') ?? Setting::defaultHeroRandomLabel(),
-            'hero_enabled' => $hero['enabled'],
-            'hero_show_browse' => $hero['showBrowse'],
-            'hero_show_random' => $hero['showRandom'],
             'indexnow_enabled' => Setting::boolean('indexnow_enabled', false),
             'indexnow_key' => Setting::get('indexnow_key') ?? '',
             'resource_notice_enabled' => Setting::resourceNoticeEnabled(),
@@ -186,69 +176,6 @@ class ManageSiteSettings extends Page
                                             ->helperText('PNG, WebP, JPEG, or SVG. Max 2MB.'),
                                     ]),
                             ]),
-                        Tab::make('Homepage')
-                            ->icon(Heroicon::OutlinedHome)
-                            ->schema([
-                                Section::make('Hero')
-                                    ->description('Show or hide the homepage hero card. Copy and buttons below stay saved when it is off.')
-                                    ->schema([
-                                        Toggle::make('hero_enabled')
-                                            ->label('Show homepage hero')
-                                            ->helperText('When off, the homepage starts with Popular.')
-                                            ->default(true)
-                                            ->inline(false),
-                                    ]),
-                                Section::make('Hero background')
-                                    ->description('Wide artwork behind the homepage hero card. Clear to restore the built-in default.')
-                                    ->schema([
-                                        MediaUpload::fileUpload(
-                                            FileUpload::make('hero_background_path')
-                                                ->label('Background image')
-                                                ->image()
-                                                ->imageEditor(),
-                                            'site/hero',
-                                        )
-                                            ->maxSize(5120)
-                                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                                            ->helperText('Recommended about 16:9. Max 5MB.'),
-                                    ]),
-                                Section::make('Hero copy')
-                                    ->description('Main heading and text on the homepage hero. Also used for the browser tab title when it differs from the site title (SEO tab).')
-                                    ->schema([
-                                        TextInput::make('hero_title')
-                                            ->label('Hero title')
-                                            ->maxLength(120)
-                                            ->placeholder(Setting::siteLogoText())
-                                            ->helperText('Large heading on the homepage. Leave empty to use logo text. When set, the browser tab shows “Hero title - Site title”.'),
-                                        Textarea::make('hero_description')
-                                            ->label('Hero description')
-                                            ->rows(3)
-                                            ->maxLength(500)
-                                            ->placeholder(Setting::defaultHeroDescription())
-                                            ->helperText('Subtitle under the hero title.'),
-                                    ]),
-                                Section::make('Hero buttons')
-                                    ->description('Primary calls to action on the hero card.')
-                                    ->schema([
-                                        Toggle::make('hero_show_browse')
-                                            ->label('Show Browse button')
-                                            ->default(true)
-                                            ->inline(false),
-                                        TextInput::make('hero_browse_label')
-                                            ->label('Browse label')
-                                            ->maxLength(40)
-                                            ->placeholder(Setting::defaultHeroBrowseLabel()),
-                                        Toggle::make('hero_show_random')
-                                            ->label('Show Random button')
-                                            ->default(true)
-                                            ->inline(false),
-                                        TextInput::make('hero_random_label')
-                                            ->label('Random label')
-                                            ->maxLength(40)
-                                            ->placeholder(Setting::defaultHeroRandomLabel()),
-                                    ])
-                                    ->columns(2),
-                            ]),
                         Tab::make('SEO')
                             ->icon(Heroicon::OutlinedMagnifyingGlass)
                             ->schema([
@@ -260,7 +187,12 @@ class ManageSiteSettings extends Page
                                             ->maxLength(80)
                                             ->required()
                                             ->placeholder(Setting::defaultSiteTitle())
-                                            ->helperText('Used as the browser tab title on the homepage, and as the suffix on other pages (e.g. “Games - Your Title”).'),
+                                            ->helperText('Suffix for other pages (e.g. “Games - Your Title”) and the fallback for the homepage.'),
+                                        TextInput::make('home_title')
+                                            ->label('Homepage title')
+                                            ->maxLength(80)
+                                            ->placeholder(Setting::siteTitle())
+                                            ->helperText('Browser tab and share-card title for the homepage only. Leave empty to use the site title.'),
                                         Textarea::make('seo_description')
                                             ->label('Meta description')
                                             ->rows(3)
@@ -533,8 +465,6 @@ class ManageSiteSettings extends Page
     public function save(): void
     {
         $data = $this->form->getState();
-        $previousHeroPath = Setting::heroBackgroundPath();
-        $nextHeroPath = $this->normalizeUploadPath($data['hero_background_path'] ?? null);
         $previousLogoPath = Setting::siteLogoPath();
         $nextLogoPath = $this->normalizeUploadPath($data['site_logo_path'] ?? null);
         $previousFaviconPath = Setting::faviconPath();
@@ -552,6 +482,7 @@ class ManageSiteSettings extends Page
         }
 
         $siteTitle = trim((string) ($data['site_title'] ?? ''));
+        $homeTitle = trim((string) ($data['home_title'] ?? ''));
 
         if ($siteTitle === '') {
             $siteTitle = Setting::defaultSiteTitle();
@@ -573,6 +504,7 @@ class ManageSiteSettings extends Page
 
         Setting::set('site_url', rtrim((string) $data['site_url'], '/'));
         Setting::set('site_title', $siteTitle);
+        Setting::set('home_title', $homeTitle !== '' ? $homeTitle : null);
         Setting::set(
             'seo_description',
             $seoDescription !== '' ? $seoDescription : null,
@@ -600,30 +532,6 @@ class ManageSiteSettings extends Page
         Setting::set('site_favicon_path', $nextFaviconPath);
         Setting::set('site_logo_mode', $mode);
         Setting::set('site_logo_text', $logoText);
-        Setting::set('hero_background_path', $nextHeroPath);
-
-        $heroTitle = trim((string) ($data['hero_title'] ?? ''));
-        $heroDescription = trim((string) ($data['hero_description'] ?? ''));
-        $heroBrowseLabel = trim((string) ($data['hero_browse_label'] ?? ''));
-        $heroRandomLabel = trim((string) ($data['hero_random_label'] ?? ''));
-
-        Setting::set('hero_title', $heroTitle !== '' ? $heroTitle : null);
-        Setting::set('hero_description', $heroDescription !== '' ? $heroDescription : null);
-        Setting::set('hero_browse_label', $heroBrowseLabel !== '' ? $heroBrowseLabel : null);
-        Setting::set('hero_random_label', $heroRandomLabel !== '' ? $heroRandomLabel : null);
-        Setting::setBoolean(
-            'hero_enabled',
-            filter_var($data['hero_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),
-        );
-        Setting::setBoolean(
-            'hero_show_browse',
-            filter_var($data['hero_show_browse'] ?? true, FILTER_VALIDATE_BOOLEAN),
-        );
-        Setting::setBoolean(
-            'hero_show_random',
-            filter_var($data['hero_show_random'] ?? true, FILTER_VALIDATE_BOOLEAN),
-        );
-
         Setting::setBoolean(
             'show_download_count',
             filter_var($data['show_download_count'] ?? true, FILTER_VALIDATE_BOOLEAN),
@@ -683,13 +591,6 @@ class ManageSiteSettings extends Page
             ) {
                 app(MediaDeletionService::class)->deleteIfUnreferenced($previousLogoPath);
             }
-        }
-
-        if (
-            filled($previousHeroPath)
-            && $previousHeroPath !== $nextHeroPath
-        ) {
-            app(MediaDeletionService::class)->deleteIfUnreferenced($previousHeroPath);
         }
 
         if (

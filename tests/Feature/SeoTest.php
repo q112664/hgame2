@@ -778,7 +778,8 @@ test('home meta description is a full-length default when the saved one is too s
 test('home and catalog meta descriptions stay distinct', function () {
     expect(PageSeo::home()['description'])
         ->not->toBe(PageSeo::resourcesIndex()['description'])
-        ->and(PageSeo::home()['title'])->toBeNull()
+        // The homepage title is its own setting now, defaulting to the site title.
+        ->and(PageSeo::home()['title'])->toBe(Setting::homeTitle())
         ->and(PageSeo::resourcesIndex()['title'])->toBe('Hentai Games & Eroge Downloads');
 });
 

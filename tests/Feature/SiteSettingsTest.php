@@ -113,53 +113,6 @@ test('administrators can upload a custom favicon', function () {
     Storage::disk(Media::diskName())->assertExists($path);
 });
 
-test('administrators can upload a custom hero background image', function () {
-    Storage::fake(Media::diskName());
-
-    $this->actingAs(User::factory()->admin()->create());
-
-    Livewire::test(ManageSiteSettings::class)
-        ->fillForm([
-            'site_url' => Setting::siteUrl(),
-            'hero_background_path' => UploadedFile::fake()->image('hero.jpg', 1600, 900),
-        ])
-        ->call('save')
-        ->assertHasNoFormErrors()
-        ->assertNotified();
-
-    $path = Setting::heroBackgroundPath();
-
-    expect($path)->not->toBeNull()
-        ->and($path)->toStartWith('site/hero/')
-        ->and(Setting::heroBackgroundUrl())->toContain('/storage/'.$path);
-
-    Storage::disk(Media::diskName())->assertExists($path);
-});
-
-test('clearing the hero background restores the default image url', function () {
-    Storage::fake(Media::diskName());
-
-    $previous = UploadedFile::fake()
-        ->image('old-hero.jpg', 1600, 900)
-        ->store('site/hero', Media::diskName());
-
-    Setting::set('hero_background_path', $previous);
-
-    $this->actingAs(User::factory()->admin()->create());
-
-    Livewire::test(ManageSiteSettings::class)
-        ->fillForm([
-            'site_url' => Setting::siteUrl(),
-            'hero_background_path' => null,
-        ])
-        ->call('save')
-        ->assertHasNoFormErrors();
-
-    expect(Setting::heroBackgroundPath())->toBeNull()
-        ->and(Setting::heroBackgroundUrl())->toBe(Setting::defaultHeroBackgroundUrl())
-        ->and(Storage::disk(Media::diskName())->exists($previous))->toBeFalse();
-});
-
 test('administrators can save a text-only site logo', function () {
     $this->actingAs(User::factory()->admin()->create());
 
@@ -536,34 +489,33 @@ test('administrators can save a resource page notice', function () {
         ->and(Setting::resourceNoticeHtml())->not->toContain('<script>');
 });
 
-test('administrators can save homepage hero content', function () {
+test('administrators can give the homepage its own browser title', function () {
     $this->actingAs(User::factory()->admin()->create());
+
+    Setting::set('site_title', 'Eroga.me');
 
     Livewire::test(ManageSiteSettings::class)
         ->fillForm([
             'site_url' => Setting::siteUrl(),
-            'hero_title' => 'Welcome board',
-            'hero_description' => 'Find visual novels quickly.',
-            'hero_browse_label' => 'Catalog',
-            'hero_random_label' => 'Dice roll',
-            'hero_enabled' => false,
-            'hero_show_browse' => true,
-            'hero_show_random' => false,
+            'home_title' => 'Hentai games & eroge',
         ])
         ->call('save')
         ->assertHasNoFormErrors()
         ->assertNotified();
 
-    $hero = Setting::homeHero();
+    expect(Setting::homeTitle())->toBe('Hentai games & eroge');
 
-    expect($hero)->not->toHaveKey('eyebrow')
-        ->and($hero['enabled'])->toBeFalse()
-        ->and($hero['title'])->toBe('Welcome board')
-        ->and($hero['description'])->toBe('Find visual novels quickly.')
-        ->and($hero['browseLabel'])->toBe('Catalog')
-        ->and($hero['randomLabel'])->toBe('Dice roll')
-        ->and($hero['showBrowse'])->toBeTrue()
-        ->and($hero['showRandom'])->toBeFalse();
+    // Clearing it drops back to the site title.
+    Livewire::test(ManageSiteSettings::class)
+        ->fillForm([
+            'site_url' => Setting::siteUrl(),
+            'home_title' => '',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect(Setting::get('home_title'))->toBeNull()
+        ->and(Setting::homeTitle())->toBe('Eroga.me');
 });
 
 test('regular users cannot access site settings', function () {

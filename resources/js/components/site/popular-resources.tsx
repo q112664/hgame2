@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { Button } from '@/components/ui/button';
 import { formatViews } from '@/lib/resource-formatters';
@@ -28,6 +28,41 @@ export function PopularResources({
     id = 'popular',
 }: Props) {
     const scrollerRef = useRef<HTMLOListElement>(null);
+    const [edges, setEdges] = useState({ start: true, end: false });
+
+    /** The flanking arrows only make sense while there is somewhere to go. */
+    const syncEdges = useCallback(() => {
+        const el = scrollerRef.current;
+
+        if (el === null) {
+            return;
+        }
+
+        const max = el.scrollWidth - el.clientWidth;
+
+        setEdges({
+            start: el.scrollLeft <= 1,
+            end: el.scrollLeft >= max - 1,
+        });
+    }, []);
+
+    useEffect(() => {
+        const el = scrollerRef.current;
+
+        syncEdges();
+
+        if (el === null) {
+            return;
+        }
+
+        el.addEventListener('scroll', syncEdges, { passive: true });
+        window.addEventListener('resize', syncEdges);
+
+        return () => {
+            el.removeEventListener('scroll', syncEdges);
+            window.removeEventListener('resize', syncEdges);
+        };
+    }, [syncEdges, resources.length]);
 
     const scrollByCard = useCallback((direction: -1 | 1) => {
         const el = scrollerRef.current;
@@ -66,120 +101,133 @@ export function PopularResources({
                             {title}
                         </h2>
                     </div>
-
-                    <div className="hidden items-center gap-1 sm:flex">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="icon-sm"
-                            className="border-border/80 bg-card shadow-none"
-                            aria-label="Scroll popular left"
-                            onClick={() => scrollByCard(-1)}
-                        >
-                            <ChevronLeft />
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="icon-sm"
-                            className="border-border/80 bg-card shadow-none"
-                            aria-label="Scroll popular right"
-                            onClick={() => scrollByCard(1)}
-                        >
-                            <ChevronRight />
-                        </Button>
-                    </div>
                 </div>
 
-                <ol
-                    ref={scrollerRef}
-                    className={cn(
-                        'mt-3 flex gap-3 overflow-x-auto pb-2 sm:mt-3.5',
-                        'snap-x snap-mandatory scroll-px-1',
-                        'overscroll-x-contain',
-                        // Styled native scrollbar (Firefox + WebKit).
-                        '[scrollbar-width:thin] [scrollbar-color:color-mix(in_oklab,var(--muted-foreground)_35%,transparent)_transparent]',
-                        '[&::-webkit-scrollbar]:h-1.5',
-                        '[&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent',
-                        '[&::-webkit-scrollbar-thumb]:rounded-full',
-                        '[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30',
-                        '[&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50',
-                        '[&::-webkit-scrollbar-thumb]:active:bg-muted-foreground/60',
-                    )}
-                >
-                    {resources.map((resource, index) => {
-                        const rank = index + 1;
-                        const heat = formatViews(
-                            resource.views + resource.downloads,
-                        );
+                <div className="relative">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        className={cn(
+                            'absolute top-1/2 left-0 z-10 hidden -translate-x-1/2 -translate-y-1/2 rounded-full sm:flex',
+                            'border-border/80 bg-card/95 shadow-md transition-opacity',
+                            edges.start && 'pointer-events-none opacity-0',
+                        )}
+                        aria-label="Scroll popular left"
+                        aria-disabled={edges.start}
+                        onClick={() => scrollByCard(-1)}
+                    >
+                        <ChevronLeft />
+                    </Button>
 
-                        return (
-                            <li
-                                key={resource.id}
-                                className="w-[14.5rem] shrink-0 snap-start sm:w-[16.5rem]"
-                            >
-                                <Link
-                                    href={resourceDetails(resource.id)}
-                                    prefetch
-                                    className={cn(
-                                        'group relative block overflow-hidden rounded-lg',
-                                        'aspect-[16/10] bg-muted ring-1 ring-border/70',
-                                        'transition-[ring-color] duration-150',
-                                        'hover:ring-foreground/15',
-                                        'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-                                    )}
+                    <ol
+                        ref={scrollerRef}
+                        className={cn(
+                            'mt-3 flex gap-3 overflow-x-auto pb-2 sm:mt-3.5',
+                            'snap-x snap-mandatory scroll-px-1',
+                            'overscroll-x-contain',
+                            // Styled native scrollbar (Firefox + WebKit).
+                            '[scrollbar-width:thin] [scrollbar-color:color-mix(in_oklab,var(--muted-foreground)_35%,transparent)_transparent]',
+                            '[&::-webkit-scrollbar]:h-1.5',
+                            '[&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent',
+                            '[&::-webkit-scrollbar-thumb]:rounded-full',
+                            '[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30',
+                            '[&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/50',
+                            '[&::-webkit-scrollbar-thumb]:active:bg-muted-foreground/60',
+                        )}
+                    >
+                        {resources.map((resource, index) => {
+                            const rank = index + 1;
+                            const heat = formatViews(
+                                resource.views + resource.downloads,
+                            );
+
+                            return (
+                                <li
+                                    key={resource.id}
+                                    className="w-[14.5rem] shrink-0 snap-start sm:w-[16.5rem]"
                                 >
-                                    <LazyThumbnail
-                                        src={resource.thumbnail}
-                                        fallbackSrc={resource.thumbnailFallback}
-                                        alt={resource.title}
-                                        priority={index < 3}
-                                    />
-
-                                    <div
+                                    <Link
+                                        href={resourceDetails(resource.id)}
+                                        prefetch
                                         className={cn(
-                                            'absolute inset-x-0 bottom-0',
-                                            'bg-gradient-to-t from-black/85 via-black/45 to-transparent',
-                                            'px-2.5 pt-8 pb-2 sm:px-3 sm:pb-2.5',
+                                            'group relative block overflow-hidden rounded-lg',
+                                            'aspect-[16/10] bg-muted ring-1 ring-border/70',
+                                            'transition-[ring-color] duration-150',
+                                            'hover:ring-foreground/15',
+                                            'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
                                         )}
                                     >
-                                        <p className="line-clamp-2 font-heading text-sm leading-snug font-semibold tracking-tight text-white">
-                                            {resource.title}
-                                        </p>
-                                        <p
-                                            className="mt-1 inline-flex items-center gap-1 text-xs leading-none font-semibold text-white tabular-nums"
-                                            aria-label={`Heat ${heat}`}
+                                        <LazyThumbnail
+                                            src={resource.thumbnail}
+                                            fallbackSrc={
+                                                resource.thumbnailFallback
+                                            }
+                                            alt={resource.title}
+                                            priority={index < 3}
+                                        />
+
+                                        <div
+                                            className={cn(
+                                                'absolute inset-x-0 bottom-0',
+                                                'bg-gradient-to-t from-black/85 via-black/45 to-transparent',
+                                                'px-2.5 pt-8 pb-2 sm:px-3 sm:pb-2.5',
+                                            )}
                                         >
-                                            <Flame
-                                                className="size-3.5 shrink-0 text-primary"
-                                                aria-hidden
-                                            />
-                                            {heat}
-                                        </p>
-                                    </div>
+                                            <p className="line-clamp-2 font-heading text-sm leading-snug font-semibold tracking-tight text-white">
+                                                {resource.title}
+                                            </p>
+                                            <p
+                                                className="mt-1 inline-flex items-center gap-1 text-xs leading-none font-semibold text-white tabular-nums"
+                                                aria-label={`Heat ${heat}`}
+                                            >
+                                                <Flame
+                                                    className="size-3.5 shrink-0 text-primary"
+                                                    aria-hidden
+                                                />
+                                                {heat}
+                                            </p>
+                                        </div>
 
-                                    <span
-                                        className={cn(
-                                            'absolute top-2 left-2 inline-flex size-8 items-center justify-center',
-                                            'rounded-md text-sm font-bold tabular-nums shadow-sm',
-                                            rank === 1 &&
-                                                'bg-primary text-primary-foreground',
-                                            rank === 2 &&
-                                                'bg-foreground/85 text-background',
-                                            rank === 3 &&
-                                                'bg-warning/90 text-warning-foreground',
-                                            rank > 3 &&
-                                                'bg-black/60 text-white ring-1 ring-white/15',
-                                        )}
-                                        aria-label={`Rank ${rank}`}
-                                    >
-                                        {rank}
-                                    </span>
-                                </Link>
-                            </li>
-                        );
-                    })}
-                </ol>
+                                        <span
+                                            className={cn(
+                                                'absolute top-2 left-2 inline-flex size-8 items-center justify-center',
+                                                'rounded-md text-sm font-bold tabular-nums shadow-sm',
+                                                rank === 1 &&
+                                                    'bg-primary text-primary-foreground',
+                                                rank === 2 &&
+                                                    'bg-foreground/85 text-background',
+                                                rank === 3 &&
+                                                    'bg-warning/90 text-warning-foreground',
+                                                rank > 3 &&
+                                                    'bg-black/60 text-white ring-1 ring-white/15',
+                                            )}
+                                            aria-label={`Rank ${rank}`}
+                                        >
+                                            {rank}
+                                        </span>
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                    </ol>
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        className={cn(
+                            'absolute top-1/2 right-0 z-10 hidden translate-x-1/2 -translate-y-1/2 rounded-full sm:flex',
+                            'border-border/80 bg-card/95 shadow-md transition-opacity',
+                            edges.end && 'pointer-events-none opacity-0',
+                        )}
+                        aria-label="Scroll popular right"
+                        aria-disabled={edges.end}
+                        onClick={() => scrollByCard(1)}
+                    >
+                        <ChevronRight />
+                    </Button>
+                </div>
             </div>
         </section>
     );

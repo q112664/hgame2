@@ -82,9 +82,9 @@ const navigationIcons: Record<string, LucideIcon> = {
 };
 
 const navLinkClassName = cn(
-    // 13px text against 16px icons: the icons read as icons instead of dust, and the
-    // bar stays tight enough for nine items plus the search/theme cluster.
-    'inline-flex h-8 items-center gap-2 rounded-md px-3 py-0 text-[13px] font-medium',
+    // 14px text against 16px icons, with a 6px gap so the icon and label read as one
+    // unit instead of two separate columns.
+    'inline-flex h-8 items-center gap-1.5 rounded-md px-3 py-0 text-sm font-medium',
     'text-foreground/75 transition-[color,background-color]',
     'hover:bg-primary/10 hover:text-primary',
     'outline-none focus-visible:ring-0 focus-visible:outline-none',

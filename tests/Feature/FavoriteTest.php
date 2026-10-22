@@ -89,6 +89,23 @@ test('the favorite toggle is rate limited', function () {
         ->and($route->gatherMiddleware())->toContain('throttle:60,1');
 });
 
+test('the favorite state endpoint reports the current users state', function () {
+    $user = User::factory()->create();
+    $game = Game::factory()->create();
+
+    $this->actingAs($user)
+        ->getJson(route('resources.favorite.show', $game->slug))
+        ->assertOk()
+        ->assertExactJson(['favorited' => false]);
+
+    $user->favoritedGames()->attach($game);
+
+    $this->actingAs($user)
+        ->getJson(route('resources.favorite.show', $game->slug))
+        ->assertOk()
+        ->assertExactJson(['favorited' => true]);
+});
+
 test('the favorites shortcut redirects to the current users favorites tab', function () {
     $user = User::factory()->create();
 

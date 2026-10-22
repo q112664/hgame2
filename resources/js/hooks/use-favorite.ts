@@ -1,14 +1,27 @@
 import { useHttp, usePage } from '@inertiajs/react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
 import { currentUrl } from '@/lib/current-url';
-import { favorite as toggleFavorite } from '@/routes/resources';
+import { favorite } from '@/routes/resources';
+import { show as favoriteShow } from '@/routes/resources/favorite';
 
-type FavoriteResponse = {
+type FavoriteToggleResponse = {
     favorited: boolean;
     message: string;
 };
+
+type FavoriteStateResponse = {
+    favorited: boolean;
+};
+
+/**
+ * Last known state per resource, kept outside the page props. Inertia restores
+ * history entries from a snapshot, so props go stale as soon as the toggle stops
+ * being a page visit; this map lets a restored page paint the right heart before
+ * the background revalidation lands.
+ */
+const favoriteStateCache = new Map<string, boolean>();
 
 type UseFavoriteOptions = {
     /** The resource id, must be a string for wayfinder param. */
@@ -22,14 +35,12 @@ type UseFavoriteOptions = {
 /**
  * Encapsulates the optimistic "favorite / unfavorite" interaction:
  *
- * - Reconciles the server prop snapshot with optimistic local state.
+ * - Toggles in the background through `useHttp`, so a click never waits on an
+ *   Inertia visit (no progress bar, no partial reload of the detail payload).
+ * - Revalidates from `GET …/favorite` on mount, when the resource changes and on
+ *   browser back/forward, which is what keeps a restored history entry honest.
  * - Requires authentication; otherwise opens the auth dialog.
- * - Posts in the background through `useHttp`, so a click never waits on an
- *   Inertia visit: no progress bar and no partial reload of the detail payload.
  * - Rolls back the optimistic state on error and surfaces a toast.
- *
- * Multiple components on the same page can call this individually; each owns its
- * own optimistic state but shares the server snapshot through `usePage().props`.
  */
 export function useFavorite({
     resourceId,
@@ -38,24 +49,72 @@ export function useFavorite({
 }: UseFavoriteOptions) {
     const page = usePage();
     const { openAuthDialog } = useAuthDialog();
-    const toggle = useHttp<Record<string, never>, FavoriteResponse>(
+    const toggle = useHttp<Record<string, never>, FavoriteToggleResponse>(
         'post',
-        toggleFavorite.url(resourceId),
+        favorite.url(resourceId),
         {},
     );
 
-    // Optimistic toggle relative to the server snapshot that was current when
-    // the user clicked. When `initialIsFavorited` changes (navigation), prefer
-    // the server value until the next local toggle.
-    const [optimistic, setOptimistic] = useState({
-        source: initialIsFavorited,
-        value: initialIsFavorited,
-    });
+    // Seeded from the cache first (history restores), then from the server prop.
+    const [serverFavorited, setServerFavorited] = useState<boolean>(
+        () => favoriteStateCache.get(resourceId) ?? initialIsFavorited,
+    );
+    // Optimistic value for the click in flight; `null` means "use the server value".
+    const [pendingFavorited, setPendingFavorited] = useState<boolean | null>(
+        null,
+    );
 
-    const isFavorited =
-        optimistic.source === initialIsFavorited
-            ? optimistic.value
-            : initialIsFavorited;
+    const isFavorited = pendingFavorited ?? serverFavorited;
+
+    const applyServerValue = useCallback(
+        (value: boolean) => {
+            favoriteStateCache.set(resourceId, value);
+            setServerFavorited(value);
+        },
+        [resourceId],
+    );
+
+    useEffect(() => {
+        if (!page.props.auth.user) {
+            return;
+        }
+
+        let cancelled = false;
+
+        const revalidate = () => {
+            fetch(favoriteShow.url(resourceId), {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            })
+                .then((response) =>
+                    response.ok
+                        ? (response.json() as Promise<FavoriteStateResponse>)
+                        : null,
+                )
+                .then((data) => {
+                    if (
+                        !cancelled &&
+                        data !== null &&
+                        typeof data.favorited === 'boolean'
+                    ) {
+                        applyServerValue(data.favorited);
+                    }
+                })
+                .catch(() => {
+                    // Offline or aborted: keep the value we already have.
+                });
+        };
+
+        revalidate();
+
+        // Inertia restores history entries without remounting or refetching.
+        window.addEventListener('popstate', revalidate);
+
+        return () => {
+            cancelled = true;
+            window.removeEventListener('popstate', revalidate);
+        };
+    }, [applyServerValue, page.props.auth.user, resourceId]);
 
     const toggleFavoriteState = useCallback(() => {
         // A second click while the first request is in flight would double-toggle;
@@ -72,19 +131,16 @@ export function useFavorite({
 
         const next = !isFavorited;
 
-        setOptimistic({
-            source: initialIsFavorited,
-            value: next,
-        });
-        toggle.post(toggleFavorite.url(resourceId), {
+        setPendingFavorited(next);
+
+        toggle.post(favorite.url(resourceId), {
             onSuccess: (response) => {
-                // Trust the server when it disagrees with the optimistic guess.
-                if (typeof response?.favorited === 'boolean') {
-                    setOptimistic({
-                        source: initialIsFavorited,
-                        value: response.favorited,
-                    });
-                }
+                applyServerValue(
+                    typeof response?.favorited === 'boolean'
+                        ? response.favorited
+                        : next,
+                );
+                setPendingFavorited(null);
 
                 toast.success(
                     response?.message ||
@@ -94,17 +150,11 @@ export function useFavorite({
                 );
             },
             onError: () => {
-                setOptimistic({
-                    source: initialIsFavorited,
-                    value: !next,
-                });
+                setPendingFavorited(null);
                 toast.error('Could not update favorites.');
             },
             onHttpException: (response) => {
-                setOptimistic({
-                    source: initialIsFavorited,
-                    value: !next,
-                });
+                setPendingFavorited(null);
 
                 // 401/419 mean the session is gone: a retry will never succeed, so
                 // send the reader somewhere useful instead of showing a dead end.
@@ -126,15 +176,12 @@ export function useFavorite({
                 toast.error('Could not update favorites.');
             },
             onNetworkError: () => {
-                setOptimistic({
-                    source: initialIsFavorited,
-                    value: !next,
-                });
+                setPendingFavorited(null);
                 toast.error('Network error. Please try again.');
             },
         });
     }, [
-        initialIsFavorited,
+        applyServerValue,
         isFavorited,
         openAuthDialog,
         page.props.auth.user,

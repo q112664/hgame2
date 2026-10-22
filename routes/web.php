@@ -94,6 +94,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
     // Throttled: the detail page posts this in the background, so a script could
     // hammer it far more cheaply than a full page visit.
+    Route::get('/games/{resource}/favorite', [FavoriteController::class, 'show'])
+        ->name('resources.favorite.show');
     Route::post('/games/{resource}/favorite', [FavoriteController::class, 'toggle'])
         ->middleware('throttle:60,1')
         ->name('resources.favorite');

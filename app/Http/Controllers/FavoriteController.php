@@ -17,6 +17,20 @@ class FavoriteController extends Controller
         return redirect()->route('users.favorites', $request->user());
     }
 
+    /**
+     * Current state for the background revalidation the detail page runs on mount
+     * and on history navigation, so a restored page never shows a stale heart.
+     */
+    public function show(Request $request, Game $resource): JsonResponse
+    {
+        return response()->json([
+            'favorited' => $request->user()
+                ->favoritedGames()
+                ->whereKey($resource->getKey())
+                ->exists(),
+        ]);
+    }
+
     public function toggle(
         Request $request,
         Game $resource,

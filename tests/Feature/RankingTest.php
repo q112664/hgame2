@@ -184,8 +184,9 @@ test('the default menu and a saved menu both expose rankings', function () {
     $defaultUrls = array_column($default, 'url');
 
     expect($defaultUrls)->toContain('/rankings')
+        // Genres/Languages sit between the catalog link and Rankings now.
         ->and(array_search('/rankings', $defaultUrls, true))
-        ->toBe(array_search('/games', $defaultUrls, true) + 1);
+        ->toBe(array_search('/games/language', $defaultUrls, true) + 1);
 
     Setting::setNavigationMenu([
         [
@@ -206,11 +207,13 @@ test('the default menu and a saved menu both expose rankings', function () {
 
     $menu = Setting::navigationMenu();
 
-    expect($menu[0]['label'])->toBe('Catalog')
-        ->and($menu[1]['label'])->toBe('Rankings')
-        ->and($menu[1]['url'])->toBe('/rankings')
-        ->and($menu[1]['icon'])->toBe('Flame')
-        ->and($menu[2]['label'])->toBe('Docs');
+    expect(collect($menu)->pluck('label')->all())
+        ->toBe(['Catalog', 'Genres', 'Languages', 'Rankings', 'Docs']);
+
+    $rankings = collect($menu)->firstWhere('label', 'Rankings');
+
+    expect($rankings['url'])->toBe('/rankings')
+        ->and($rankings['icon'])->toBe('Flame');
 });
 
 function rankedGame(string $slug, int $views, int $downloads, int $daysAgo = 0): Game

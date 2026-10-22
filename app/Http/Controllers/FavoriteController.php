@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Games\RemoveGameFavorite;
 use App\Actions\Games\ToggleGameFavorite;
 use App\Models\Game;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,8 +21,19 @@ class FavoriteController extends Controller
         Request $request,
         Game $resource,
         ToggleGameFavorite $toggleGameFavorite,
-    ): RedirectResponse {
+    ): JsonResponse|RedirectResponse {
         $favorited = $toggleGameFavorite($request->user(), $resource);
+
+        // The detail page toggles through a background request so the button does
+        // not wait on a full Inertia visit (and its progress bar).
+        if ($request->wantsJson()) {
+            return response()->json([
+                'favorited' => $favorited,
+                'message' => $favorited
+                    ? __('Added to favorites.')
+                    : __('Removed from favorites.'),
+            ]);
+        }
 
         Inertia::flash('toast', [
             'type' => 'success',

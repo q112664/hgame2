@@ -21,6 +21,7 @@ test('administrators can save the public navigation menu', function () {
         ->fillForm([
             'items' => [
                 [
+                    'type' => 'link',
                     'label' => 'Catalog',
                     'url' => '/resources',
                     'icon' => 'Library',
@@ -28,6 +29,7 @@ test('administrators can save the public navigation menu', function () {
                     'match' => 'prefix',
                 ],
                 [
+                    'type' => 'link',
                     'label' => 'GitHub',
                     'url' => 'https://github.com/example/hgame',
                     'icon' => 'ExternalLink',
@@ -42,25 +44,56 @@ test('administrators can save the public navigation menu', function () {
 
     expect(Setting::navigationMenu())->toMatchArray([
         [
+            'type' => 'link',
             'label' => 'Catalog',
             'url' => '/games',
             'icon' => 'Library',
             'openInNewTab' => false,
             'match' => 'prefix',
+            'taxonomy' => null,
+            'limit' => 0,
+        ],
+        // Saving a menu without taxonomy items still gets the Genres/Languages
+        // dropdowns appended after the catalog link, then the forced Rankings entry.
+        [
+            'type' => 'taxonomy',
+            'label' => 'Genres',
+            'url' => '/games/genre',
+            'icon' => 'Tags',
+            'openInNewTab' => false,
+            'match' => 'prefix',
+            'taxonomy' => 'categories',
+            'limit' => 0,
         ],
         [
+            'type' => 'taxonomy',
+            'label' => 'Languages',
+            'url' => '/games/language',
+            'icon' => 'Languages',
+            'openInNewTab' => false,
+            'match' => 'prefix',
+            'taxonomy' => 'languages',
+            'limit' => 0,
+        ],
+        [
+            'type' => 'link',
             'label' => 'Rankings',
             'url' => '/rankings',
             'icon' => 'Flame',
             'openInNewTab' => false,
             'match' => 'prefix',
+            'taxonomy' => null,
+            'limit' => 0,
         ],
         [
+            'type' => 'link',
             'label' => 'GitHub',
             'url' => 'https://github.com/example/hgame',
             'icon' => 'ExternalLink',
             'openInNewTab' => true,
             'match' => 'none',
+            'taxonomy' => null,
+            'limit' => 0,
         ],
     ]);
 });
@@ -85,11 +118,14 @@ test('administrators can restore the default navigation menu', function () {
     expect(Setting::navigationMenu())->toMatchArray(
         array_map(
             fn (array $item): array => [
+                'type' => $item['type'] ?? 'link',
                 'label' => $item['label'],
                 'url' => $item['url'],
                 'icon' => $item['icon'],
                 'openInNewTab' => $item['open_in_new_tab'],
                 'match' => $item['match'],
+                'taxonomy' => $item['taxonomy'] ?? null,
+                'limit' => $item['limit'] ?? 0,
             ],
             Setting::defaultNavigationMenu(),
         ),
@@ -187,15 +223,23 @@ test('navigation menu is shared with the frontend', function () {
     $this->get(route('home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->has('navigationMenu', 2)
+            // The saved menu is kept, and the taxonomy dropdowns the header used to
+            // inject are appended right after the catalog link.
+            ->has('navigationMenu', 4)
             ->where('navigationMenu.0.label', 'Browse')
             ->where('navigationMenu.0.url', '/games')
             ->where('navigationMenu.0.icon', 'Library')
             ->where('navigationMenu.0.openInNewTab', false)
             ->where('navigationMenu.0.match', 'prefix')
-            ->where('navigationMenu.1.label', 'Rankings')
-            ->where('navigationMenu.1.url', '/rankings')
-            ->where('navigationMenu.1.icon', 'Flame')
+            ->where('navigationMenu.1.label', 'Genres')
+            ->where('navigationMenu.1.type', 'taxonomy')
+            ->where('navigationMenu.1.taxonomy', 'categories')
+            ->where('navigationMenu.2.label', 'Languages')
+            ->where('navigationMenu.2.type', 'taxonomy')
+            ->where('navigationMenu.2.taxonomy', 'languages')
+            ->where('navigationMenu.3.label', 'Rankings')
+            ->where('navigationMenu.3.url', '/rankings')
+            ->where('navigationMenu.3.icon', 'Flame')
             ->has('footerLinks', 0)
         );
 });
@@ -207,6 +251,7 @@ test('administrators can save footer links', function () {
         ->fillForm([
             'items' => [
                 [
+                    'type' => 'link',
                     'label' => 'Home',
                     'url' => '/',
                     'icon' => 'Home',
@@ -318,9 +363,12 @@ test('invalid navigation urls are rejected when saving', function () {
         ],
     ]);
 
-    expect(Setting::navigationMenu())->toHaveCount(2)
-        ->and(Setting::navigationMenu()[0]['label'])->toBe('Safe')
-        ->and(Setting::navigationMenu()[1]['url'])->toBe('/rankings');
+    $menu = Setting::navigationMenu();
+
+    expect($menu)->toHaveCount(4)
+        ->and($menu[0]['label'])->toBe('Safe')
+        ->and(collect($menu)->pluck('label')->all())
+        ->toBe(['Safe', 'Rankings', 'Genres', 'Languages']);
 });
 
 test('regular users cannot access navigation menu settings', function () {

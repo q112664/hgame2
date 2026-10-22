@@ -18,7 +18,8 @@ import {
     XIcon,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useAuthDialog } from '@/components/auth/auth-dialog';
 import type { AuthDialogView } from '@/components/auth/auth-dialog';
 import { NotificationBell } from '@/components/site/notification-bell';
@@ -56,10 +57,13 @@ import { home, search } from '@/routes';
 import {
     genre as resourcesGenre,
     language as resourcesLanguage,
+    platform as resourcesPlatform,
+    tag as resourcesTag,
 } from '@/routes/resources';
 import type { User } from '@/types';
 import type {
     NavigationMenuItem as SiteNavItem,
+    NavigationMenuTaxonomy,
     TaxonomyNavLink,
 } from '@/types/navigation';
 
@@ -78,7 +82,9 @@ const navigationIcons: Record<string, LucideIcon> = {
 };
 
 const navLinkClassName = cn(
-    'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 py-0 text-sm font-medium',
+    // 13px text against 16px icons: the icons read as icons instead of dust, and the
+    // bar stays tight enough for nine items plus the search/theme cluster.
+    'inline-flex h-8 items-center gap-2 rounded-md px-3 py-0 text-[13px] font-medium',
     'text-foreground/75 transition-[color,background-color]',
     'hover:bg-primary/10 hover:text-primary',
     'outline-none focus-visible:ring-0 focus-visible:outline-none',
@@ -167,28 +173,6 @@ function isNavigationItemActive(
 
 function pathHasPrefix(path: string, prefix: string): boolean {
     return path === prefix || path.startsWith(`${prefix}/`);
-}
-
-function navHasPathPrefix(items: SiteNavItem[], prefix: string): boolean {
-    return items.some((item) => pathHasPrefix(menuItemPath(item.url), prefix));
-}
-
-function taxonomyFlyoutInsertIndex(items: SiteNavItem[]): number {
-    const catalogIndex = items.findIndex(
-        (item) => menuItemPath(item.url) === '/games',
-    );
-
-    if (catalogIndex !== -1) {
-        return catalogIndex + 1;
-    }
-
-    const homeIndex = items.findIndex((item) => menuItemPath(item.url) === '/');
-
-    if (homeIndex !== -1) {
-        return homeIndex + 1;
-    }
-
-    return 0;
 }
 
 function TaxonomyFlyout({
@@ -280,7 +264,7 @@ function TaxonomyFlyout({
                 onClick={() => onOpenKeyChange(open ? null : menuKey)}
             >
                 {label}
-                <ChevronDown className="size-3 shrink-0 text-muted-foreground transition-transform group-aria-expanded:rotate-180" />
+                <ChevronDown className="size-3.5 shrink-0 text-muted-foreground transition-transform group-aria-expanded:rotate-180" />
             </button>
             {open ? (
                 <div
@@ -306,9 +290,34 @@ function NavLinks({
     const { url, props } = usePage();
     const currentPath = url.split('?')[0] || '/';
     const navItems = props.navigationMenu ?? [];
-    const genres = props.taxonomyNav?.categories ?? [];
-    const languages = props.taxonomyNav?.languages ?? [];
     const [openKey, setOpenKey] = useState<string | null>(null);
+
+    /**
+     * Which shared taxonomy list each menu item can render. The admin decides
+     * whether the bar has a Genres/Languages dropdown at all; the header only maps
+     * the chosen taxonomy to its links.
+     */
+    const taxonomySources: Record<
+        NavigationMenuTaxonomy,
+        { items: TaxonomyNavLink[]; hrefFor: (item: TaxonomyNavLink) => string }
+    > = {
+        categories: {
+            items: props.taxonomyNav?.categories ?? [],
+            hrefFor: (item) => resourcesGenre.url(item.value),
+        },
+        platforms: {
+            items: props.taxonomyNav?.platforms ?? [],
+            hrefFor: (item) => resourcesPlatform.url(item.value),
+        },
+        languages: {
+            items: props.taxonomyNav?.languages ?? [],
+            hrefFor: (item) => resourcesLanguage.url(item.value),
+        },
+        tags: {
+            items: props.taxonomyNav?.tags ?? [],
+            hrefFor: (item) => resourcesTag.url(item.value),
+        },
+    };
     const navRef = useRef<HTMLElement>(null);
 
     useEffect(() => {
@@ -340,53 +349,40 @@ function NavLinks({
         };
     }, [openKey, variant]);
 
-    const flyouts: ReactNode[] = [];
-
-    if (genres.length > 0 && !navHasPathPrefix(navItems, '/games/genre')) {
-        flyouts.push(
-            <TaxonomyFlyout
-                key="genres-nav"
-                menuKey="genres"
-                label="Genres"
-                items={genres}
-                hrefFor={(item) => resourcesGenre.url(item.value)}
-                currentPath={currentPath}
-                activePrefix="/games/genre"
-                variant={variant}
-                openKey={openKey}
-                onOpenKeyChange={setOpenKey}
-                onNavigate={onNavigate}
-            />,
-        );
-    }
-
-    if (
-        languages.length > 0 &&
-        !navHasPathPrefix(navItems, '/games/language')
-    ) {
-        flyouts.push(
-            <TaxonomyFlyout
-                key="languages-nav"
-                menuKey="languages"
-                label="Languages"
-                items={languages}
-                hrefFor={(item) => resourcesLanguage.url(item.value)}
-                currentPath={currentPath}
-                activePrefix="/games/language"
-                variant={variant}
-                openKey={openKey}
-                onOpenKeyChange={setOpenKey}
-                onNavigate={onNavigate}
-            />,
-        );
-    }
-
-    const insertAt = taxonomyFlyoutInsertIndex(navItems);
     const nodes: ReactNode[] = [];
 
-    navItems.forEach((item, index) => {
-        if (index === insertAt) {
-            nodes.push(...flyouts);
+    navItems.forEach((item) => {
+        if (item.type === 'taxonomy') {
+            const source = item.taxonomy
+                ? taxonomySources[item.taxonomy]
+                : null;
+            const links = source
+                ? item.limit > 0
+                    ? source.items.slice(0, item.limit)
+                    : source.items
+                : [];
+
+            if (source === null || links.length === 0) {
+                return;
+            }
+
+            nodes.push(
+                <TaxonomyFlyout
+                    key={`taxonomy-${item.taxonomy}`}
+                    menuKey={`taxonomy-${item.taxonomy}`}
+                    label={item.label}
+                    items={links}
+                    hrefFor={source.hrefFor}
+                    currentPath={currentPath}
+                    activePrefix={item.url}
+                    variant={variant}
+                    openKey={openKey}
+                    onOpenKeyChange={setOpenKey}
+                    onNavigate={onNavigate}
+                />,
+            );
+
+            return;
         }
 
         const Icon = item.icon ? navigationIcons[item.icon] : undefined;
@@ -394,7 +390,7 @@ function NavLinks({
         const external = isExternalMenuUrl(item.url) || item.openInNewTab;
         const content = (
             <>
-                {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
+                {Icon ? <Icon className="size-4 shrink-0" /> : null}
                 {item.label}
             </>
         );
@@ -434,10 +430,6 @@ function NavLinks({
             </Link>,
         );
     });
-
-    if (insertAt >= navItems.length) {
-        nodes.push(...flyouts);
-    }
 
     return (
         <nav

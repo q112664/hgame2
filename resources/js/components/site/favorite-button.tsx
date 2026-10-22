@@ -44,7 +44,10 @@ export function FavoriteButton({
                     size={showLabel ? 'default' : size}
                     aria-label={label}
                     aria-pressed={isFavorited}
-                    disabled={isToggling}
+                    // Not `disabled`: dimming the control for the length of the
+                    // request reads as a flicker. The optimistic state is already
+                    // on screen, and the handler ignores repeats while in flight.
+                    aria-busy={isToggling}
                     onClick={onToggle}
                     className={cn(
                         isFavorited
@@ -53,7 +56,6 @@ export function FavoriteButton({
                         !isFavorited &&
                             'hover:bg-favorite/10 hover:text-favorite dark:hover:bg-favorite/20 dark:hover:text-favorite',
                         showLabel && 'h-9 gap-1.5 px-3.5',
-                        'disabled:opacity-60 dark:disabled:opacity-50',
                         className,
                     )}
                 >

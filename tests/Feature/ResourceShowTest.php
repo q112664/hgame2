@@ -11,6 +11,7 @@ use App\Models\Platform;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\Media;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -567,4 +568,20 @@ test('inactive releases or releases without download links do not advertise a pl
         );
 
     expect($emptyRelease->downloadLinks)->toHaveCount(0);
+});
+
+test('the resource hero copies the page url from a share button', function () {
+    $filesystem = app(Filesystem::class);
+
+    expect($filesystem->get(resource_path('js/pages/resources/show.tsx')))
+        ->toContain('<ShareButton showLabel />')
+        ->toContain("from '@/components/site/share-button'");
+
+    expect($filesystem->get(resource_path('js/components/site/share-button.tsx')))
+        ->toContain('navigator.clipboard.writeText')
+        // Plain-http origins (and denied permissions) have no async clipboard, so the
+        // legacy path has to stay for the copy to work at all.
+        ->toContain("document.execCommand('copy')")
+        ->toContain('window.location.href')
+        ->toContain('Link copied');
 });

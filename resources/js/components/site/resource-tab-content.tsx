@@ -171,7 +171,7 @@ function CollapsibleReleaseDescription({
                 <button
                     type="button"
                     className={cn(
-                        'mt-1.5 flex w-full items-center gap-2 text-[11px] tracking-wide text-muted-foreground uppercase',
+                        'mt-1.5 flex w-full cursor-pointer items-center gap-2 text-[11px] tracking-wide text-muted-foreground uppercase',
                         'transition-colors hover:text-foreground',
                         'focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
                     )}

@@ -14,10 +14,15 @@ test('the site header wires independent genre and language flyouts', function ()
 
     expect($source)
         ->toContain('function TaxonomyFlyout')
-        ->toContain('label="Genres"')
-        ->toContain('label="Languages"')
+        // The dropdowns are menu items now, not hardcoded labels.
+        ->toContain("item.type === 'taxonomy'")
+        ->toContain('taxonomySources')
         ->toContain('resourcesGenre.url(item.value)')
+        ->toContain('resourcesPlatform.url(item.value)')
         ->toContain('resourcesLanguage.url(item.value)')
+        ->toContain('resourcesTag.url(item.value)')
+        ->not->toContain('label="Genres"')
+        ->not->toContain('taxonomyFlyoutInsertIndex')
         ->toContain('aria-haspopup="menu"')
         ->toContain('role="menu"')
         ->toContain('CollapsibleTrigger')
@@ -28,9 +33,10 @@ test('the site header wires independent genre and language flyouts', function ()
         ->not->toContain('onPointerEnter={openMenu}')
         ->toContain('aria-expanded:bg-primary/12')
         ->toContain('aria-expanded:text-primary')
-        ->toContain("menuItemPath(item.url) === '/games'")
-        ->toContain('activePrefix="/games/genre"')
-        ->toContain('activePrefix="/games/language"');
+        // Active state comes from the item's own url prefix now that admins pick the
+        // position and the taxonomy of each dropdown.
+        ->toContain('activePrefix={item.url}')
+        ->toContain('limit > 0');
 });
 
 test('published genres and languages are shared for the header flyouts', function () {

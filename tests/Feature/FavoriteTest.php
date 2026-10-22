@@ -53,6 +53,42 @@ test('an authenticated user can favorite and unfavorite a published game', funct
     expect($user->favoritedGames()->where('games.id', $game->id)->exists())->toBeFalse();
 });
 
+test('the favorite toggle answers background requests with json', function () {
+    $user = User::factory()->create();
+    $game = Game::factory()->create();
+
+    // The resource page posts this from useHttp so the button never waits on a
+    // full Inertia visit (and its progress bar).
+    $this->actingAs($user)
+        ->postJson(route('resources.favorite', $game->slug))
+        ->assertOk()
+        ->assertExactJson([
+            'favorited' => true,
+            'message' => __('Added to favorites.'),
+        ]);
+
+    expect($user->favoritedGames()->where('games.id', $game->id)->exists())->toBeTrue();
+
+    $this->actingAs($user)
+        ->postJson(route('resources.favorite', $game->slug))
+        ->assertOk()
+        ->assertExactJson([
+            'favorited' => false,
+            'message' => __('Removed from favorites.'),
+        ]);
+
+    expect($user->favoritedGames()->where('games.id', $game->id)->exists())->toBeFalse();
+});
+
+test('the favorite toggle is rate limited', function () {
+    $route = collect(app('router')->getRoutes()->getRoutes())
+        ->first(fn ($route) => $route->getName() === 'resources.favorite');
+
+    // The detail page posts this in the background, so it needs a ceiling of its own.
+    expect($route)->not->toBeNull()
+        ->and($route->gatherMiddleware())->toContain('throttle:60,1');
+});
+
 test('the favorites shortcut redirects to the current users favorites tab', function () {
     $user = User::factory()->create();
 

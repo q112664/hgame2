@@ -25,6 +25,7 @@ import {
 import { ResourceSourceMeta } from '@/components/site/resource-source-meta';
 import { ResourceTabContent } from '@/components/site/resource-tab-content';
 import { RouteTabs } from '@/components/site/route-tabs';
+import { ShareButton } from '@/components/site/share-button';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -661,6 +662,7 @@ export default function ResourceShow({
                                     isToggling={isTogglingFavorite}
                                     onToggle={handleFavoriteClick}
                                 />
+                                <ShareButton showLabel />
                                 {resource.adminEditUrl ? (
                                     <Tooltip>
                                         <TooltipTrigger asChild>

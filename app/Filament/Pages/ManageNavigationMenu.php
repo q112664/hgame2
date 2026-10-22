@@ -16,6 +16,7 @@ use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use UnitEnum;
@@ -46,11 +47,14 @@ class ManageNavigationMenu extends Page
     {
         $items = array_map(
             fn (array $item): array => [
+                'type' => $item['type'],
                 'label' => $item['label'],
                 'url' => $item['url'],
                 'icon' => $item['icon'],
                 'open_in_new_tab' => $item['openInNewTab'],
                 'match' => $item['match'],
+                'taxonomy' => $item['taxonomy'],
+                'limit' => $item['limit'],
             ],
             Setting::navigationMenu(),
         );
@@ -87,6 +91,17 @@ class ManageNavigationMenu extends Page
                         Repeater::make('items')
                             ->label('Menu items')
                             ->schema([
+                                Select::make('type')
+                                    ->label('Item type')
+                                    ->options([
+                                        'link' => 'Link',
+                                        'taxonomy' => 'Taxonomy dropdown',
+                                    ])
+                                    ->default('link')
+                                    ->required()
+                                    ->live()
+                                    ->native(false)
+                                    ->helperText('Taxonomy dropdowns list genres, platforms, languages or tags automatically.'),
                                 TextInput::make('label')
                                     ->required()
                                     ->maxLength(80),
@@ -95,7 +110,24 @@ class ManageNavigationMenu extends Page
                                     ->required()
                                     ->maxLength(2048)
                                     ->placeholder('/games')
-                                    ->helperText('Relative path (/docs, /games/tags) or absolute http(s) URL.'),
+                                    ->helperText('Relative path (/docs, /games/tags) or absolute http(s) URL.')
+                                    ->visible(fn (Get $get): bool => $get('type') !== 'taxonomy'),
+                                Select::make('taxonomy')
+                                    ->label('Taxonomy')
+                                    ->options(Setting::navigationMenuTaxonomyOptions())
+                                    ->required()
+                                    ->native(false)
+                                    ->helperText('Which list the dropdown shows.')
+                                    ->visible(fn (Get $get): bool => $get('type') === 'taxonomy'),
+                                TextInput::make('limit')
+                                    ->label('Max entries')
+                                    ->numeric()
+                                    ->integer()
+                                    ->minValue(0)
+                                    ->maxValue(50)
+                                    ->default(0)
+                                    ->helperText('0 shows every entry.')
+                                    ->visible(fn (Get $get): bool => $get('type') === 'taxonomy'),
                                 Select::make('icon')
                                     ->label('Icon')
                                     ->options(Setting::navigationMenuIconOptions())
@@ -113,10 +145,12 @@ class ManageNavigationMenu extends Page
                                     ->default('prefix')
                                     ->required()
                                     ->native(false)
-                                    ->helperText('Use “Never” for one-shot links like Random.'),
+                                    ->helperText('Use “Never” for one-shot links like Random.')
+                                    ->visible(fn (Get $get): bool => $get('type') !== 'taxonomy'),
                                 Toggle::make('open_in_new_tab')
                                     ->label('Open in new tab')
-                                    ->default(false),
+                                    ->default(false)
+                                    ->visible(fn (Get $get): bool => $get('type') !== 'taxonomy'),
                             ])
                             ->columns(2)
                             ->reorderable()
@@ -226,11 +260,14 @@ class ManageNavigationMenu extends Page
         $this->form->fill([
             'items' => array_map(
                 fn (array $item): array => [
+                    'type' => $item['type'] ?? 'link',
                     'label' => $item['label'],
                     'url' => $item['url'],
                     'icon' => $item['icon'],
                     'open_in_new_tab' => $item['open_in_new_tab'],
                     'match' => $item['match'],
+                    'taxonomy' => $item['taxonomy'] ?? null,
+                    'limit' => $item['limit'] ?? 0,
                 ],
                 Setting::defaultNavigationMenu(),
             ),

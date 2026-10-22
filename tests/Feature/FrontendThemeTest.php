@@ -311,19 +311,17 @@ test('the description language switcher is a dropdown that keeps every version m
 test('detail page mutations keep the tab across the redirect back', function () {
     $filesystem = app(Filesystem::class);
 
-    // Favorites and likes redirect `back()` to the detail page. The tab rides
-    // in the query string, which the Referer carries, so it survives on its
-    // own; preserving the URL also keeps Inertia from rewriting the address
-    // bar from the redirect target mid-flight.
-    foreach (
-        [
-            'hooks/use-favorite.ts',
-            'hooks/use-like.ts',
-        ] as $file
-    ) {
-        expect($filesystem->get(resource_path("js/{$file}")))
-            ->toContain('preserveUrl: true');
-    }
+    // Likes still redirect `back()` to the detail page. The tab rides in the query
+    // string, which the Referer carries, so it survives on its own; preserving the
+    // URL also keeps Inertia from rewriting the address bar mid-flight.
+    expect($filesystem->get(resource_path('js/hooks/use-like.ts')))
+        ->toContain('preserveUrl: true');
+
+    // Favorites post in the background instead: there is no redirect to preserve a
+    // URL across, and no Inertia visit means no progress bar on every click.
+    expect($filesystem->get(resource_path('js/hooks/use-favorite.ts')))
+        ->toContain('useHttp')
+        ->not->toContain('router.post');
 });
 
 test('auth redirects carry the address bar instead of the stale inertia url', function () {
@@ -478,8 +476,9 @@ test('site empty states and download buttons use primary CTAs', function () {
     expect($filesystem->get(resource_path('js/components/site/site-header.tsx')))
         ->toContain('Tags')
         ->toContain('TaxonomyFlyout')
-        ->toContain('label="Genres"')
-        ->toContain('label="Languages"')
+        // Genres/Languages are admin-managed taxonomy items now.
+        ->toContain("item.type === 'taxonomy'")
+        ->toContain('taxonomySources')
         ->toContain('resourcesGenre.url')
         ->toContain('resourcesLanguage.url')
         ->toContain('bg-[color-mix(in_oklch,var(--surface-raised)_88%,var(--background))]')

@@ -382,6 +382,26 @@ class Setting extends Model
                 'open_in_new_tab' => false,
                 'match' => 'prefix',
             ],
+            [
+                'type' => 'taxonomy',
+                'label' => 'Genres',
+                'url' => '/games/genre',
+                'icon' => 'Tags',
+                'open_in_new_tab' => false,
+                'match' => 'prefix',
+                'taxonomy' => 'categories',
+                'limit' => 0,
+            ],
+            [
+                'type' => 'taxonomy',
+                'label' => 'Languages',
+                'url' => '/games/language',
+                'icon' => 'Languages',
+                'open_in_new_tab' => false,
+                'match' => 'prefix',
+                'taxonomy' => 'languages',
+                'limit' => 0,
+            ],
             self::rankingsNavigationItem(),
             [
                 'label' => 'Tags',
@@ -419,12 +439,45 @@ class Setting extends Model
             'Flame' => 'Flame',
             'Gamepad2' => 'Gamepad',
             'Home' => 'Home',
+            'Languages' => 'Languages',
             'Library' => 'Library',
             'Search' => 'Search',
             'Sparkles' => 'Sparkles',
             'Star' => 'Star',
             'Tags' => 'Tags',
         ];
+    }
+
+    /**
+     * Taxonomy menus an administrator can drop into the navigation bar, so the
+     * Genres/Languages dropdowns stop being hardcoded in the header component.
+     *
+     * @return array<string, string>
+     */
+    public static function navigationMenuTaxonomyOptions(): array
+    {
+        return [
+            'categories' => 'Genres',
+            'platforms' => 'Platforms',
+            'languages' => 'Languages',
+            'tags' => 'Tags',
+        ];
+    }
+
+    /**
+     * Route prefix, stock label and icon for one taxonomy menu.
+     *
+     * @return array{url: string, label: string, icon: string}|null
+     */
+    protected static function navigationMenuTaxonomyMeta(string $taxonomy): ?array
+    {
+        return match ($taxonomy) {
+            'categories' => ['url' => '/games/genre', 'label' => 'Genres', 'icon' => 'Tags'],
+            'platforms' => ['url' => '/games/platform', 'label' => 'Platforms', 'icon' => 'Library'],
+            'languages' => ['url' => '/games/language', 'label' => 'Languages', 'icon' => 'Languages'],
+            'tags' => ['url' => '/games/tag', 'label' => 'Tags', 'icon' => 'Tags'],
+            default => null,
+        };
     }
 
     /**
@@ -449,7 +502,11 @@ class Setting extends Model
             return static::presentNavigationMenu(static::defaultNavigationMenu());
         }
 
-        return static::presentNavigationMenu(static::withRankingsNavigationItem($decoded));
+        return static::presentNavigationMenu(
+            static::withTaxonomyNavigationItems(
+                static::withRankingsNavigationItem($decoded),
+            ),
+        );
     }
 
     /**
@@ -464,6 +521,76 @@ class Setting extends Model
             'open_in_new_tab' => false,
             'match' => 'prefix',
         ];
+    }
+
+    /**
+     * Menus saved before taxonomy items existed still expect the Genres/Languages
+     * dropdowns the header used to inject on its own. Append them once, right after
+     * the catalog link, so an existing site keeps the same navigation.
+     *
+     * @param  array<string|int, mixed>  $items
+     * @return array<string|int, mixed>
+     */
+    protected static function withTaxonomyNavigationItems(array $items): array
+    {
+        $hasTaxonomy = false;
+
+        foreach ($items as $item) {
+            if (is_array($item) && ($item['type'] ?? 'link') === 'taxonomy') {
+                $hasTaxonomy = true;
+
+                break;
+            }
+        }
+
+        if ($hasTaxonomy) {
+            return $items;
+        }
+
+        $insert = [
+            [
+                'type' => 'taxonomy',
+                'label' => 'Genres',
+                'url' => '/games/genre',
+                'icon' => 'Tags',
+                'open_in_new_tab' => false,
+                'match' => 'prefix',
+                'taxonomy' => 'categories',
+                'limit' => 0,
+            ],
+            [
+                'type' => 'taxonomy',
+                'label' => 'Languages',
+                'url' => '/games/language',
+                'icon' => 'Languages',
+                'open_in_new_tab' => false,
+                'match' => 'prefix',
+                'taxonomy' => 'languages',
+                'limit' => 0,
+            ],
+        ];
+
+        $position = null;
+
+        foreach (array_values($items) as $index => $item) {
+            if (
+                is_array($item)
+                && static::navigationMenuPath((string) ($item['url'] ?? '')) === '/games'
+            ) {
+                $position = $index + 1;
+
+                break;
+            }
+        }
+
+        if ($position === null) {
+            return [...array_values($items), ...$insert];
+        }
+
+        $before = array_slice(array_values($items), 0, $position);
+        $after = array_slice(array_values($items), $position);
+
+        return [...$before, ...$insert, ...$after];
     }
 
     /**
@@ -540,11 +667,14 @@ class Setting extends Model
         }
 
         return array_map(fn (array $item): array => [
+            'type' => $item['type'] ?? 'link',
             'label' => $item['label'],
             'url' => $item['url'],
             'icon' => $item['icon'],
             'openInNewTab' => $item['open_in_new_tab'],
             'match' => $item['match'],
+            'taxonomy' => $item['taxonomy'] ?? null,
+            'limit' => $item['limit'] ?? 0,
         ], $normalized);
     }
 
@@ -558,17 +688,42 @@ class Setting extends Model
         }
 
         $label = trim((string) ($item['label'] ?? ''));
-        $url = static::rewriteLegacyCatalogUrl(trim((string) ($item['url'] ?? '')));
-
-        if ($label === '' || $url === '' || ! static::isValidNavigationMenuUrl($url)) {
-            return null;
-        }
+        $type = $item['type'] ?? 'link';
+        $type = in_array($type, ['link', 'taxonomy'], true) ? $type : 'link';
 
         $icon = $item['icon'] ?? null;
         $icon = is_string($icon) && $icon !== '' ? $icon : null;
 
         if ($icon !== null && ! array_key_exists($icon, static::navigationMenuIconOptions())) {
             $icon = null;
+        }
+
+        if ($type === 'taxonomy') {
+            $taxonomy = (string) ($item['taxonomy'] ?? '');
+            $meta = static::navigationMenuTaxonomyMeta($taxonomy);
+
+            if ($meta === null) {
+                return null;
+            }
+
+            $limit = (int) ($item['limit'] ?? 0);
+
+            return [
+                'type' => 'taxonomy',
+                'label' => mb_substr($label !== '' ? $label : $meta['label'], 0, 80),
+                'url' => $meta['url'],
+                'icon' => $icon ?? $meta['icon'],
+                'open_in_new_tab' => false,
+                'match' => 'prefix',
+                'taxonomy' => $taxonomy,
+                'limit' => $limit <= 0 ? 0 : min($limit, 50),
+            ];
+        }
+
+        $url = static::rewriteLegacyCatalogUrl(trim((string) ($item['url'] ?? '')));
+
+        if ($label === '' || $url === '' || ! static::isValidNavigationMenuUrl($url)) {
+            return null;
         }
 
         [$label, $icon] = static::presentCatalogNavigationItem($url, $label, $icon);
@@ -585,11 +740,14 @@ class Setting extends Model
         );
 
         return [
+            'type' => 'link',
             'label' => mb_substr($label, 0, 80),
             'url' => mb_substr($url, 0, 2048),
             'icon' => $icon,
             'open_in_new_tab' => $openInNewTab,
             'match' => $match,
+            'taxonomy' => null,
+            'limit' => 0,
         ];
     }
 

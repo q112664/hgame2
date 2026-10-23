@@ -22,37 +22,13 @@ class UserProfileController extends Controller
     public function show(Request $request, User $user): RedirectResponse|Response
     {
         return $this->canonicalRedirect($request, $user, 'users.show')
-            ?? $this->tab($request, $user, 'resources');
+            ?? $this->page($request, $user, 'resources');
     }
 
     public function favorites(Request $request, User $user): RedirectResponse|Response
     {
         return $this->canonicalRedirect($request, $user, 'users.favorites')
-            ?? $this->tab($request, $user, 'favorites');
-    }
-
-    /**
-     * Serve a tab, or send the visitor to the one section the owner kept public.
-     *
-     * @param  'resources'|'favorites'  $activeTab
-     */
-    private function tab(Request $request, User $user, string $activeTab): RedirectResponse|Response
-    {
-        $canViewResources = $this->tabIsVisible($request, $user, 'resources');
-        $canViewFavorites = $this->tabIsVisible($request, $user, 'favorites');
-
-        // Nothing public: keep the profile header and say so instead of a bare 404.
-        if (! $canViewResources && ! $canViewFavorites) {
-            return $this->page($request, $user, $activeTab);
-        }
-
-        if ($this->tabIsVisible($request, $user, $activeTab)) {
-            return $this->page($request, $user, $activeTab);
-        }
-
-        $other = $activeTab === 'resources' ? 'favorites' : 'resources';
-
-        return to_route($other === 'resources' ? 'users.show' : 'users.favorites', $user);
+            ?? $this->page($request, $user, 'favorites');
     }
 
     /**
@@ -84,8 +60,6 @@ class UserProfileController extends Controller
             'isOwner' => $isOwner,
             'canViewResources' => $canViewResources,
             'canViewFavorites' => $canViewFavorites,
-            // Both sections private for this visitor: header only, no content.
-            'sectionsHidden' => ! $canViewResources && ! $canViewFavorites,
             // Only used to remind the owner that a section is private.
             'hiddenResources' => $user->hide_resources,
             'hiddenFavorites' => $user->hide_favorites,

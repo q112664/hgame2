@@ -184,8 +184,13 @@ test('numeric user profile urls redirect to the public slug', function () {
 test('a hidden favorites tab is private to the owner', function () {
     $user = User::factory()->create(['hide_favorites' => true]);
 
+    // The tab still resolves; it just has nothing to show.
     $this->get(route('users.favorites', $user))
-        ->assertRedirect(route('users.show', $user));
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('canViewFavorites', false)
+            ->where('activeTab', 'favorites')
+        );
 
     $this->get(route('users.show', $user))
         ->assertOk()
@@ -205,11 +210,15 @@ test('a hidden favorites tab is private to the owner', function () {
         );
 });
 
-test('a hidden resources tab sends visitors to the other section', function () {
+test('a hidden resources tab stays on its own url', function () {
     $user = User::factory()->create(['hide_resources' => true]);
 
     $this->get(route('users.show', $user))
-        ->assertRedirect(route('users.favorites', $user));
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('canViewResources', false)
+            ->where('resources', null)
+        );
 
     $this->get(route('users.favorites', $user))
         ->assertOk()
@@ -229,7 +238,6 @@ test('a profile with both sections hidden keeps the header and says so', functio
     $this->get(route('users.show', $user))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('sectionsHidden', true)
             ->where('canViewResources', false)
             ->where('canViewFavorites', false)
             ->where('profile.name', $user->name)
@@ -237,18 +245,22 @@ test('a profile with both sections hidden keeps the header and says so', functio
 
     $this->get(route('users.favorites', $user))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where('sectionsHidden', true));
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('canViewFavorites', false)
+        );
 
     // The owner still gets the full page.
     $this->actingAs($user)
         ->get(route('users.show', $user))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where('sectionsHidden', false));
+        ->assertInertia(fn (Assert $page) => $page->where('canViewResources', true));
 
-    // The tab bar stays, only the content is replaced by the notice.
+    // The tab bar is always rendered; each hidden section swaps in a notice.
     $page = app(Filesystem::class)->get(resource_path('js/pages/users/show.tsx'));
 
     expect($page)
-        ->toContain('displayTabs')
-        ->toContain('keeps their resources and favorites');
+        ->toContain('function PrivateSection')
+        ->toContain('This section is kept private')
+        ->not->toContain('displayTabs')
+        ->not->toContain('sectionsHidden');
 });

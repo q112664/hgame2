@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Heart, Library } from 'lucide-react';
+import { Heart, Library, Lock } from 'lucide-react';
 import { useState } from 'react';
 import { FavoritesPagination } from '@/components/site/favorites-pagination';
 import type { PaginatedFavorites } from '@/components/site/favorites-pagination';
@@ -28,6 +28,21 @@ type ProfileUser = {
 
 type ProfileTab = 'resources' | 'favorites';
 
+/** Stand-in for a section its owner keeps private: one icon, one line. */
+function PrivateSection() {
+    return (
+        <div
+            className="flex flex-col items-center gap-2 rounded-md border border-border bg-card px-4 py-12 text-center"
+            role="status"
+        >
+            <Lock className="size-5 text-muted-foreground" aria-hidden />
+            <p className="text-sm text-muted-foreground">
+                This section is kept private.
+            </p>
+        </div>
+    );
+}
+
 type FavoriteResource = GameCard & {
     hasDownloadUpdate: boolean;
 };
@@ -40,8 +55,6 @@ type Props = {
     favoritesCount: number;
     canViewResources: boolean;
     canViewFavorites: boolean;
-    /** Both sections private for this visitor: header only, no tabs or grids. */
-    sectionsHidden: boolean;
     hiddenResources: boolean;
     hiddenFavorites: boolean;
     resources: PaginatedData<GameCard> | null;
@@ -58,7 +71,6 @@ export default function UserProfileShow({
     favoritesCount,
     canViewResources,
     canViewFavorites,
-    sectionsHidden,
     hiddenResources,
     hiddenFavorites,
     resources,
@@ -68,51 +80,26 @@ export default function UserProfileShow({
 }: Props) {
     const [removingId, setRemovingId] = useState<string | null>(null);
 
+    // Both sections are always listed: a private one simply shows a notice when
+    // opened, which keeps the navigation stable for visitors.
     const tabs: RouteTab<ProfileTab>[] = [
-        ...(canViewResources
-            ? [
-                  {
-                      value: 'resources' as const,
-                      label:
-                          resourcesCount > 0
-                              ? `Resources (${resourcesCount})`
-                              : 'Resources',
-                      href: userShow.url(profile.slug),
-                  },
-              ]
-            : []),
-        ...(canViewFavorites
-            ? [
-                  {
-                      value: 'favorites' as const,
-                      label:
-                          favoritesCount > 0
-                              ? `Favorites (${favoritesCount})`
-                              : 'Favorites',
-                      href: userFavorites.url(profile.slug),
-                  },
-              ]
-            : []),
+        {
+            value: 'resources',
+            label:
+                canViewResources && resourcesCount > 0
+                    ? `Resources (${resourcesCount})`
+                    : 'Resources',
+            href: userShow.url(profile.slug),
+        },
+        {
+            value: 'favorites',
+            label:
+                canViewFavorites && favoritesCount > 0
+                    ? `Favorites (${favoritesCount})`
+                    : 'Favorites',
+            href: userFavorites.url(profile.slug),
+        },
     ];
-
-    /**
-     * With both sections private there is nothing to filter, but the tab bar still
-     * tells a visitor which sections exist. Both entries point at the hidden page.
-     */
-    const displayTabs: RouteTab<ProfileTab>[] = sectionsHidden
-        ? [
-              {
-                  value: 'resources',
-                  label: 'Resources',
-                  href: userShow.url(profile.slug),
-              },
-              {
-                  value: 'favorites',
-                  label: 'Favorites',
-                  href: userFavorites.url(profile.slug),
-              },
-          ]
-        : tabs;
 
     const removeFavorite = (resourceId: string) => {
         if (removingId !== null) {
@@ -155,192 +142,174 @@ export default function UserProfileShow({
                 </header>
 
                 <div className="flex flex-col gap-6">
-                    {displayTabs.length > 1 ? (
-                        <RouteTabs
-                            tabs={displayTabs}
-                            activeValue={activeTab}
-                            ariaLabel="Profile sections"
-                        />
+                    <RouteTabs
+                        tabs={tabs}
+                        activeValue={activeTab}
+                        ariaLabel="Profile sections"
+                    />
+
+                    {isOwner && (hiddenResources || hiddenFavorites) ? (
+                        <p className="rounded-sm border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                            {hiddenResources && hiddenFavorites
+                                ? 'Your resources and favorites are hidden from other visitors.'
+                                : hiddenResources
+                                  ? 'Your resources are hidden from other visitors.'
+                                  : 'Your favorites are hidden from other visitors.'}{' '}
+                            You can change this in Settings.
+                        </p>
                     ) : null}
 
-                    {sectionsHidden ? (
-                        <p className="rounded-md border border-border bg-card px-4 py-8 text-sm text-muted-foreground">
-                            {profile.name} keeps their resources and favorites
-                            private.
-                        </p>
+                    {activeTab === 'resources' ? (
+                        <section
+                            id="contributed-resources"
+                            className="scroll-mt-20"
+                            aria-labelledby="contributed-resources-heading"
+                        >
+                            <h2
+                                id="contributed-resources-heading"
+                                className="sr-only"
+                            >
+                                Resources
+                            </h2>
+
+                            {!canViewResources ? (
+                                <PrivateSection />
+                            ) : resources && resources.data.length > 0 ? (
+                                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+                                    {resources.data.map((resource, index) => (
+                                        <li
+                                            key={resource.id}
+                                            className="h-full"
+                                        >
+                                            <ResourceCard
+                                                resource={resource}
+                                                priority={index < 4}
+                                            />
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <SiteEmptyState
+                                    icon={Library}
+                                    title="No resources yet"
+                                    description="This user has not contributed any published download packages."
+                                />
+                            )}
+
+                            {resources && resources.last_page > 1 ? (
+                                <div className="mt-8">
+                                    <SitePagination
+                                        pagination={resources}
+                                        pageUrl={(page) =>
+                                            userShow.url(profile.slug, {
+                                                query: { page },
+                                            })
+                                        }
+                                        ariaLabel="Contributed resources pagination"
+                                        only={['resources', 'resourcesCount']}
+                                        onSuccess={() =>
+                                            document
+                                                .getElementById(
+                                                    'contributed-resources',
+                                                )
+                                                ?.scrollIntoView({
+                                                    behavior: 'smooth',
+                                                    block: 'start',
+                                                })
+                                        }
+                                    />
+                                </div>
+                            ) : null}
+                        </section>
                     ) : (
-                        <>
-                            {isOwner && (hiddenResources || hiddenFavorites) ? (
-                                <p className="rounded-sm border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                                    {hiddenResources && hiddenFavorites
-                                        ? 'Your resources and favorites are hidden from other visitors.'
-                                        : hiddenResources
-                                          ? 'Your resources are hidden from other visitors.'
-                                          : 'Your favorites are hidden from other visitors.'}{' '}
-                                    You can change this in Settings.
+                        <section
+                            id="favorite-results"
+                            className="scroll-mt-20"
+                            aria-labelledby="profile-favorites-heading"
+                        >
+                            <h2
+                                id="profile-favorites-heading"
+                                className="sr-only"
+                            >
+                                Favorites
+                            </h2>
+
+                            {isOwner && downloadUpdateCount > 0 ? (
+                                <p className="mb-6 rounded-sm border border-info/25 bg-info/10 px-4 py-2.5 text-sm text-info">
+                                    {downloadUpdateCount === 1
+                                        ? '1 favorite has updated downloads'
+                                        : `${downloadUpdateCount} favorites have updated downloads`}
                                 </p>
                             ) : null}
 
-                            {activeTab === 'resources' ? (
-                                <section
-                                    id="contributed-resources"
-                                    className="scroll-mt-20"
-                                    aria-labelledby="contributed-resources-heading"
-                                >
-                                    <h2
-                                        id="contributed-resources-heading"
-                                        className="sr-only"
-                                    >
-                                        Resources
-                                    </h2>
-
-                                    {resources && resources.data.length > 0 ? (
-                                        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-                                            {resources.data.map(
-                                                (resource, index) => (
-                                                    <li
-                                                        key={resource.id}
-                                                        className="h-full"
-                                                    >
-                                                        <ResourceCard
-                                                            resource={resource}
-                                                            priority={index < 4}
-                                                        />
-                                                    </li>
-                                                ),
-                                            )}
-                                        </ul>
-                                    ) : (
-                                        <SiteEmptyState
-                                            icon={Library}
-                                            title="No resources yet"
-                                            description="This user has not contributed any published download packages."
-                                        />
-                                    )}
-
-                                    {resources && resources.last_page > 1 ? (
-                                        <div className="mt-8">
-                                            <SitePagination
-                                                pagination={resources}
-                                                pageUrl={(page) =>
-                                                    userShow.url(profile.slug, {
-                                                        query: { page },
-                                                    })
+                            {!canViewFavorites ? (
+                                <PrivateSection />
+                            ) : favorites && favorites.data.length > 0 ? (
+                                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+                                    {favorites.data.map((resource, index) => (
+                                        <li
+                                            key={resource.id}
+                                            className="h-full"
+                                        >
+                                            <ResourceCard
+                                                resource={resource}
+                                                href={
+                                                    resource.hasDownloadUpdate
+                                                        ? resourceTabHref(
+                                                              resource.id,
+                                                              'downloads',
+                                                          )
+                                                        : resourceDetails(
+                                                              resource.id,
+                                                          ).url
                                                 }
-                                                ariaLabel="Contributed resources pagination"
-                                                only={[
-                                                    'resources',
-                                                    'resourcesCount',
-                                                ]}
-                                                onSuccess={() =>
-                                                    document
-                                                        .getElementById(
-                                                            'contributed-resources',
-                                                        )
-                                                        ?.scrollIntoView({
-                                                            behavior: 'smooth',
-                                                            block: 'start',
-                                                        })
+                                                highlightUpdate={isOwner}
+                                                isRemoving={
+                                                    removingId === resource.id
                                                 }
+                                                disableRemove={
+                                                    removingId !== null
+                                                }
+                                                onRemove={
+                                                    isOwner
+                                                        ? () =>
+                                                              removeFavorite(
+                                                                  resource.id,
+                                                              )
+                                                        : undefined
+                                                }
+                                                priority={index < 4}
                                             />
-                                        </div>
-                                    ) : null}
-                                </section>
+                                        </li>
+                                    ))}
+                                </ul>
                             ) : (
-                                <section
-                                    id="favorite-results"
-                                    className="scroll-mt-20"
-                                    aria-labelledby="profile-favorites-heading"
-                                >
-                                    <h2
-                                        id="profile-favorites-heading"
-                                        className="sr-only"
-                                    >
-                                        Favorites
-                                    </h2>
-
-                                    {isOwner && downloadUpdateCount > 0 ? (
-                                        <p className="mb-6 rounded-sm border border-info/25 bg-info/10 px-4 py-2.5 text-sm text-info">
-                                            {downloadUpdateCount === 1
-                                                ? '1 favorite has updated downloads'
-                                                : `${downloadUpdateCount} favorites have updated downloads`}
-                                        </p>
-                                    ) : null}
-
-                                    {favorites && favorites.data.length > 0 ? (
-                                        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-                                            {favorites.data.map(
-                                                (resource, index) => (
-                                                    <li
-                                                        key={resource.id}
-                                                        className="h-full"
-                                                    >
-                                                        <ResourceCard
-                                                            resource={resource}
-                                                            href={
-                                                                resource.hasDownloadUpdate
-                                                                    ? resourceTabHref(
-                                                                          resource.id,
-                                                                          'downloads',
-                                                                      )
-                                                                    : resourceDetails(
-                                                                          resource.id,
-                                                                      ).url
-                                                            }
-                                                            highlightUpdate={
-                                                                isOwner
-                                                            }
-                                                            isRemoving={
-                                                                removingId ===
-                                                                resource.id
-                                                            }
-                                                            disableRemove={
-                                                                removingId !==
-                                                                null
-                                                            }
-                                                            onRemove={
-                                                                isOwner
-                                                                    ? () =>
-                                                                          removeFavorite(
-                                                                              resource.id,
-                                                                          )
-                                                                    : undefined
-                                                            }
-                                                            priority={index < 4}
-                                                        />
-                                                    </li>
-                                                ),
-                                            )}
-                                        </ul>
-                                    ) : (
-                                        <SiteEmptyState
-                                            icon={Heart}
-                                            title={
-                                                favorites && favorites.total > 0
-                                                    ? 'No favorites on this page'
-                                                    : 'No favorites yet'
-                                            }
-                                            description={
-                                                favorites && favorites.total > 0
-                                                    ? 'Try another page of this favorites list.'
-                                                    : isOwner
-                                                      ? 'Save resources from detail pages to find them here later.'
-                                                      : 'This user has not favorited any published resources.'
-                                            }
-                                        />
-                                    )}
-
-                                    {favorites ? (
-                                        <div className="mt-8">
-                                            <FavoritesPagination
-                                                resources={favorites}
-                                                userId={profile.slug}
-                                            />
-                                        </div>
-                                    ) : null}
-                                </section>
+                                <SiteEmptyState
+                                    icon={Heart}
+                                    title={
+                                        favorites && favorites.total > 0
+                                            ? 'No favorites on this page'
+                                            : 'No favorites yet'
+                                    }
+                                    description={
+                                        favorites && favorites.total > 0
+                                            ? 'Try another page of this favorites list.'
+                                            : isOwner
+                                              ? 'Save resources from detail pages to find them here later.'
+                                              : 'This user has not favorited any published resources.'
+                                    }
+                                />
                             )}
-                        </>
+
+                            {favorites ? (
+                                <div className="mt-8">
+                                    <FavoritesPagination
+                                        resources={favorites}
+                                        userId={profile.slug}
+                                    />
+                                </div>
+                            ) : null}
+                        </section>
                     )}
                 </div>
             </SitePageContainer>

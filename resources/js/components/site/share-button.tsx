@@ -118,7 +118,10 @@ export function ShareButton({
                         heroActionIdleClassName,
                         'cursor-pointer',
                         'hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20 dark:hover:text-primary',
-                        showLabel && 'h-9 gap-1.5 px-3.5',
+                        // Icon-only on phones: the hero already carries the download
+                        // and favorite labels, and the third one crowds the row.
+                        showLabel &&
+                            'h-9 w-9 shrink-0 px-0 sm:w-auto sm:gap-1.5 sm:px-3.5',
                         className,
                     )}
                 >
@@ -127,7 +130,11 @@ export function ShareButton({
                     ) : (
                         <Share2 className="size-5 dark:opacity-90" />
                     )}
-                    {showLabel ? (copied ? 'Copied' : 'Share') : null}
+                    {showLabel ? (
+                        <span className="hidden sm:inline">
+                            {copied ? 'Copied' : 'Share'}
+                        </span>
+                    ) : null}
                 </Button>
             </TooltipTrigger>
             <TooltipContent>{label}</TooltipContent>

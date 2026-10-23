@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -24,7 +25,7 @@ declare global {
                     sitekey: string;
                     callback?: (token: string) => void;
                     'expired-callback'?: () => void;
-                    'error-callback'?: () => void;
+                    'error-callback'?: (errorCode?: string) => void;
                     'timeout-callback'?: () => void;
                     theme?: 'auto' | 'light' | 'dark';
                     size?: 'normal' | 'flexible' | 'compact';
@@ -41,8 +42,26 @@ const SCRIPT_ID = 'cf-turnstile-script';
 const SCRIPT_SRC =
     'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad';
 
+/** Cloudflare's script normally lands in well under a second; 12s means "stuck". */
+const SCRIPT_TIMEOUT_MS = 12_000;
+
 let scriptLoadPromise: Promise<void> | null = null;
 
+/**
+ * Drop the cached promise and the script tag so a retry really re-fetches.
+ * Without this a failed load poisons every later attempt on the page.
+ */
+function resetTurnstileScript(): void {
+    scriptLoadPromise = null;
+    document.getElementById(SCRIPT_ID)?.remove();
+    delete window.onTurnstileLoad;
+}
+
+/**
+ * Loads `api.js` with the failure modes the browser can produce: a blocked or
+ * unreachable host (`error`), and a stalled request (timeout). Both reject so
+ * the widget can tell the reader what happened instead of showing a blank box.
+ */
 function loadTurnstileScript(): Promise<void> {
     if (typeof window === 'undefined') {
         return Promise.resolve();
@@ -56,35 +75,70 @@ function loadTurnstileScript(): Promise<void> {
         return scriptLoadPromise;
     }
 
-    scriptLoadPromise = new Promise((resolve) => {
-        const existing = document.getElementById(SCRIPT_ID);
+    scriptLoadPromise = new Promise<void>((resolve, reject) => {
+        let script = document.getElementById(
+            SCRIPT_ID,
+        ) as HTMLScriptElement | null;
 
-        if (existing) {
-            window.onTurnstileLoad = () => resolve();
+        const finish = (failure?: Error) => {
+            window.clearTimeout(timer);
+            script?.removeEventListener('load', onLoad);
+            script?.removeEventListener('error', onError);
 
-            if (window.turnstile) {
-                resolve();
+            if (failure) {
+                resetTurnstileScript();
+                reject(failure);
+
+                return;
             }
 
-            return;
+            resolve();
+        };
+
+        const timer = window.setTimeout(
+            () => finish(new Error('turnstile-timeout')),
+            SCRIPT_TIMEOUT_MS,
+        );
+
+        // The API fires `onTurnstileLoad` once `window.turnstile` is ready; the
+        // element's own `load` event can arrive before that.
+        const onLoad = () => {
+            if (window.turnstile) {
+                finish();
+            }
+        };
+
+        const onError = () => finish(new Error('turnstile-script-failed'));
+
+        window.onTurnstileLoad = () => finish();
+
+        if (!script) {
+            script = document.createElement('script');
+            script.id = SCRIPT_ID;
+            script.src = SCRIPT_SRC;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
         }
 
-        window.onTurnstileLoad = () => resolve();
+        script.addEventListener('load', onLoad);
+        script.addEventListener('error', onError);
 
-        const script = document.createElement('script');
-        script.id = SCRIPT_ID;
-        script.src = SCRIPT_SRC;
-        script.async = true;
-        script.defer = true;
-        document.head.appendChild(script);
+        if (window.turnstile) {
+            finish();
+        }
     });
 
     return scriptLoadPromise;
 }
 
+type WidgetStatus = 'loading' | 'ready' | 'failed';
+
 /**
- * Cloudflare Turnstile widget that writes a hidden form field
- * `cf-turnstile-response` for Inertia / classic form posts.
+ * Cloudflare Turnstile widget. Turnstile injects its own hidden
+ * `cf-turnstile-response` input inside the rendered container, so the token
+ * rides along with any normal form post; this component only mirrors the
+ * verification state to the parent through `onTokenChange`.
  *
  * Parents should gate submit on `onTokenChange` so users cannot click through
  * before a token is ready (or after it expires).
@@ -98,10 +152,10 @@ export function TurnstileWidget({
 }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
-    const tokenInputId = useId();
-    const tokenInputRef = useRef<HTMLInputElement>(null);
     const onTokenChangeRef = useRef(onTokenChange);
+    const [status, setStatus] = useState<WidgetStatus>('loading');
     const [verified, setVerified] = useState(false);
+    const [attempt, setAttempt] = useState(0);
 
     useEffect(() => {
         onTokenChangeRef.current = onTokenChange;
@@ -109,13 +163,8 @@ export function TurnstileWidget({
 
     useEffect(() => {
         let cancelled = false;
-        const tokenInput = tokenInputRef.current;
 
         const clearToken = () => {
-            if (tokenInput) {
-                tokenInput.value = '';
-            }
-
             if (!cancelled) {
                 setVerified(false);
             }
@@ -127,7 +176,15 @@ export function TurnstileWidget({
         clearToken();
 
         const mount = async () => {
-            await loadTurnstileScript();
+            try {
+                await loadTurnstileScript();
+            } catch {
+                if (!cancelled) {
+                    setStatus('failed');
+                }
+
+                return;
+            }
 
             if (cancelled || !containerRef.current || !window.turnstile) {
                 return;
@@ -147,24 +204,40 @@ export function TurnstileWidget({
                     theme: 'auto',
                     size: 'flexible',
                     callback: (token) => {
-                        if (tokenInput) {
-                            tokenInput.value = token;
+                        if (cancelled) {
+                            return;
                         }
 
                         setVerified(true);
+                        setStatus('ready');
                         onTokenChangeRef.current?.(token);
                     },
                     'expired-callback': () => {
                         clearToken();
                     },
-                    'error-callback': () => {
+                    'error-callback': (errorCode) => {
                         clearToken();
+
+                        // A code here means the widget itself could not run
+                        // (bad sitekey, blocked host, failed challenge): the
+                        // reader needs to see something they can act on.
+                        if (!cancelled) {
+                            setStatus('failed');
+                        }
+
+                        if (errorCode) {
+                            console.warn('Turnstile error', errorCode);
+                        }
                     },
                     'timeout-callback': () => {
                         clearToken();
                     },
                 },
             );
+
+            if (!cancelled) {
+                setStatus('ready');
+            }
         };
 
         void mount();
@@ -178,20 +251,38 @@ export function TurnstileWidget({
                 widgetIdRef.current = null;
             }
         };
-    }, [siteKey, resetKey]);
+    }, [siteKey, resetKey, attempt]);
 
     return (
         <div className={cn('flex flex-col gap-2', className)}>
-            <input
-                ref={tokenInputRef}
-                id={tokenInputId}
-                type="hidden"
-                name="cf-turnstile-response"
-                defaultValue=""
-            />
             <div ref={containerRef} className="min-h-[65px] w-full" />
             <InputError message={error} />
-            {!error && !verified ? (
+            {status === 'failed' ? (
+                <div
+                    className="flex flex-wrap items-center gap-2 text-xs"
+                    role="alert"
+                >
+                    <span className="text-destructive">
+                        Security check could not load. Check your connection or
+                        disable ad blockers, then retry.
+                    </span>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            setStatus('loading');
+                            setAttempt((value) => value + 1);
+                        }}
+                    >
+                        Retry
+                    </Button>
+                </div>
+            ) : status === 'loading' ? (
+                <p className="text-xs text-muted-foreground" role="status">
+                    Loading security check…
+                </p>
+            ) : !error && !verified ? (
                 <p className="text-xs text-muted-foreground" role="status">
                     Complete the security check to continue.
                 </p>

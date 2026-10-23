@@ -583,5 +583,8 @@ test('the resource hero copies the page url from a share button', function () {
         // legacy path has to stay for the copy to work at all.
         ->toContain("document.execCommand('copy')")
         ->toContain('window.location.href')
+        // Phones show the icon only; the label returns from `sm` up.
+        ->toContain('hidden sm:inline')
+        ->toContain('sm:w-auto sm:gap-1.5 sm:px-3.5')
         ->toContain('Link copied');
 });

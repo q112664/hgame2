@@ -139,3 +139,21 @@ test('download continue works without turnstile when disabled', function () {
     $this->post(route('download-links.continue', $link))
         ->assertRedirect('https://cdn.example.com/game.zip');
 });
+
+test('the download page preconnects to turnstile only when it renders one', function () {
+    Setting::set('turnstile_site_key', '1x00000000000000000000AA');
+    Setting::set('turnstile_secret_key', '1x0000000000000000000000000000000AA');
+    Setting::setBoolean('turnstile_download_enabled', true);
+
+    $link = makeActiveDownloadLink();
+
+    // The interstitial warms the connection before api.js is requested.
+    $this->get(route('download-links.show', $link->id))
+        ->assertOk()
+        ->assertSee('rel="preconnect" href="https://challenges.cloudflare.com"', false);
+
+    // Other pages must not pay for a connection they never use.
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertDontSee('challenges.cloudflare.com', false);
+});

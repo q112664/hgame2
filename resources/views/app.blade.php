@@ -15,6 +15,12 @@
             </script>
         @endif
 
+        {{-- Pages that render a Turnstile widget: warm the connection before the
+             challenge script is requested. --}}
+        @if (\App\Support\Turnstile::isConfigured() && request()->routeIs('login', 'register', 'download-links.show'))
+            <link rel="preconnect" href="https://challenges.cloudflare.com" crossorigin>
+        @endif
+
         {{-- Inline script so first paint matches stored preference (default: dark) --}}
         <script>
             (function() {

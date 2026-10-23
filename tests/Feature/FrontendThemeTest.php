@@ -736,7 +736,16 @@ test('turnstile forms stay locked until the widget reports a token', function ()
         ->toContain("'expired-callback'")
         ->toContain("'error-callback'")
         ->toContain("'timeout-callback'")
-        ->toContain('Complete the security check to continue.');
+        ->toContain('Complete the security check to continue.')
+        // A blocked or stalled challenges.cloudflare.com used to leave a blank
+        // box with the submit locked forever, and a silent console error.
+        ->toContain("script.addEventListener('error'")
+        ->toContain('SCRIPT_TIMEOUT_MS')
+        ->toContain('Security check could not load')
+        ->toContain('Retry')
+        // Turnstile injects its own cf-turnstile-response input; a second one from
+        // us could submit an empty or stale token.
+        ->not->toContain('name="cf-turnstile-response"');
 
     expect($filesystem->get(resource_path('js/hooks/use-turnstile-gate.ts')))
         ->toContain('export function useTurnstileGate')

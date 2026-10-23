@@ -550,8 +550,8 @@ test('search and favorite results use detailed card grids', function () {
         ->toContain('grid grid-cols-1 gap-3 sm:grid-cols-2')
         ->toContain('lg:grid-cols-3')
         ->toContain('xl:grid-cols-4')
-        ->toContain('highlightUpdate={isOwner}')
-        ->toContain('onRemove=');
+        ->toContain('highlightUpdate={')
+        ->toContain('onRemove={');
 
     expect($resourceCard)
         // Category and platform icons share the left edge of the artwork.

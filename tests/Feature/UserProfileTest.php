@@ -4,7 +4,6 @@ use App\Models\Game;
 use App\Models\GameDownloadLink;
 use App\Models\GameRelease;
 use App\Models\User;
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -181,28 +180,6 @@ test('numeric user profile urls redirect to the public slug', function () {
         ->not->toContain('/users/'.$user->id);
 });
 
-test('the profile grids show a placeholder skeleton while a page is loading', function () {
-    $filesystem = app(Filesystem::class);
-
-    $skeleton = $filesystem->get(resource_path('js/components/site/resource-grid-skeleton.tsx'));
-    $page = $filesystem->get(resource_path('js/pages/users/show.tsx'));
-
-    // Cards keep their silhouette so swapping the grid for placeholders does not jump.
-    expect($skeleton)
-        ->toContain('aspect-[16/10]')
-        ->toContain('animate-pulse')
-        ->toContain('aria-hidden');
-
-    expect($page)
-        ->toContain('import { ResourceGridSkeleton }')
-        ->toContain('<ResourceGridSkeleton')
-        // Short partial reloads skip the skeleton instead of blinking.
-        ->toContain('setTimeout(() => setIsLoading(true), 120)')
-        ->toContain("router.on('finish'")
-        // A new page of results starts back at the top of the list.
-        ->toContain('scrollIntoView');
-});
-
 test('a hidden favorites tab is private to the owner', function () {
     $user = User::factory()->create(['hide_favorites' => true]);
 
@@ -241,12 +218,29 @@ test('a hidden resources tab sends visitors to the other section', function () {
         );
 });
 
-test('a profile with both sections hidden is not reachable for visitors', function () {
+test('a profile with both sections hidden keeps the header and says so', function () {
     $user = User::factory()->create([
         'hide_resources' => true,
         'hide_favorites' => true,
     ]);
 
-    $this->get(route('users.show', $user))->assertNotFound();
-    $this->get(route('users.favorites', $user))->assertNotFound();
+    // Not a 404: visitors still see who the profile belongs to.
+    $this->get(route('users.show', $user))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('sectionsHidden', true)
+            ->where('canViewResources', false)
+            ->where('canViewFavorites', false)
+            ->where('profile.name', $user->name)
+        );
+
+    $this->get(route('users.favorites', $user))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('sectionsHidden', true));
+
+    // The owner still gets the full page.
+    $this->actingAs($user)
+        ->get(route('users.show', $user))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('sectionsHidden', false));
 });

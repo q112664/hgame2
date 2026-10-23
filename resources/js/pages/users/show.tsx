@@ -95,6 +95,25 @@ export default function UserProfileShow({
             : []),
     ];
 
+    /**
+     * With both sections private there is nothing to filter, but the tab bar still
+     * tells a visitor which sections exist. Both entries point at the hidden page.
+     */
+    const displayTabs: RouteTab<ProfileTab>[] = sectionsHidden
+        ? [
+              {
+                  value: 'resources',
+                  label: 'Resources',
+                  href: userShow.url(profile.slug),
+              },
+              {
+                  value: 'favorites',
+                  label: 'Favorites',
+                  href: userFavorites.url(profile.slug),
+              },
+          ]
+        : tabs;
+
     const removeFavorite = (resourceId: string) => {
         if (removingId !== null) {
             return;
@@ -136,6 +155,14 @@ export default function UserProfileShow({
                 </header>
 
                 <div className="flex flex-col gap-6">
+                    {displayTabs.length > 1 ? (
+                        <RouteTabs
+                            tabs={displayTabs}
+                            activeValue={activeTab}
+                            ariaLabel="Profile sections"
+                        />
+                    ) : null}
+
                     {sectionsHidden ? (
                         <p className="rounded-md border border-border bg-card px-4 py-8 text-sm text-muted-foreground">
                             {profile.name} keeps their resources and favorites
@@ -143,14 +170,6 @@ export default function UserProfileShow({
                         </p>
                     ) : (
                         <>
-                            {tabs.length > 1 ? (
-                                <RouteTabs
-                                    tabs={tabs}
-                                    activeValue={activeTab}
-                                    ariaLabel="Profile sections"
-                                />
-                            ) : null}
-
                             {isOwner && (hiddenResources || hiddenFavorites) ? (
                                 <p className="rounded-sm border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                                     {hiddenResources && hiddenFavorites

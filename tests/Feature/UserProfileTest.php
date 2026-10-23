@@ -4,6 +4,7 @@ use App\Models\Game;
 use App\Models\GameDownloadLink;
 use App\Models\GameRelease;
 use App\Models\User;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -243,4 +244,11 @@ test('a profile with both sections hidden keeps the header and says so', functio
         ->get(route('users.show', $user))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('sectionsHidden', false));
+
+    // The tab bar stays, only the content is replaced by the notice.
+    $page = app(Filesystem::class)->get(resource_path('js/pages/users/show.tsx'));
+
+    expect($page)
+        ->toContain('displayTabs')
+        ->toContain('keeps their resources and favorites');
 });

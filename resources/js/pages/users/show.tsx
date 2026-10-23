@@ -1,12 +1,12 @@
 import { router } from '@inertiajs/react';
 import { Heart, Library } from 'lucide-react';
-import { useState } from 'react';
-import { FavoriteResourceCard } from '@/components/site/favorite-resource-card';
+import { useState, useEffect } from 'react';
 import { FavoritesPagination } from '@/components/site/favorites-pagination';
 import type { PaginatedFavorites } from '@/components/site/favorites-pagination';
 import { PageSeo } from '@/components/site/page-seo';
 import type { PageSeoData } from '@/components/site/page-seo';
 import { ResourceCard } from '@/components/site/resource-card';
+import { ResourceGridSkeleton } from '@/components/site/resource-grid-skeleton';
 import { RouteTabs } from '@/components/site/route-tabs';
 import type { RouteTab } from '@/components/site/route-tabs';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
@@ -39,6 +39,10 @@ type Props = {
     isOwner: boolean;
     resourcesCount: number;
     favoritesCount: number;
+    canViewResources: boolean;
+    canViewFavorites: boolean;
+    hiddenResources: boolean;
+    hiddenFavorites: boolean;
     resources: PaginatedData<GameCard> | null;
     favorites: PaginatedFavorites<FavoriteResource> | null;
     downloadUpdateCount?: number;
@@ -51,30 +55,65 @@ export default function UserProfileShow({
     isOwner,
     resourcesCount,
     favoritesCount,
+    canViewResources,
+    canViewFavorites,
+    hiddenResources,
+    hiddenFavorites,
     resources,
     favorites,
     downloadUpdateCount = 0,
     pageSeo,
 }: Props) {
     const [removingId, setRemovingId] = useState<string | null>(null);
+    /** Tab switch / pagination in flight: swap the grid for placeholder cards. */
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        let timer: number | undefined;
+
+        const offStart = router.on('start', () => {
+            // Fast partial reloads finish in ~50ms; only show the skeleton when the
+            // wait is long enough to notice, so the grid does not blink.
+            timer = window.setTimeout(() => setIsLoading(true), 120);
+        });
+
+        const offFinish = router.on('finish', () => {
+            window.clearTimeout(timer);
+            setIsLoading(false);
+        });
+
+        return () => {
+            window.clearTimeout(timer);
+            offStart();
+            offFinish();
+        };
+    }, []);
 
     const tabs: RouteTab<ProfileTab>[] = [
-        {
-            value: 'resources',
-            label:
-                resourcesCount > 0
-                    ? `Resources (${resourcesCount})`
-                    : 'Resources',
-            href: userShow.url(profile.slug),
-        },
-        {
-            value: 'favorites',
-            label:
-                favoritesCount > 0
-                    ? `Favorites (${favoritesCount})`
-                    : 'Favorites',
-            href: userFavorites.url(profile.slug),
-        },
+        ...(canViewResources
+            ? [
+                  {
+                      value: 'resources' as const,
+                      label:
+                          resourcesCount > 0
+                              ? `Resources (${resourcesCount})`
+                              : 'Resources',
+                      href: userShow.url(profile.slug),
+                  },
+              ]
+            : []),
+        ...(canViewFavorites
+            ? [
+                  {
+                      value: 'favorites' as const,
+                      label:
+                          favoritesCount > 0
+                              ? `Favorites (${favoritesCount})`
+                              : 'Favorites',
+                      href: userFavorites.url(profile.slug),
+                  },
+              ]
+            : []),
     ];
 
     const removeFavorite = (resourceId: string) => {
@@ -118,11 +157,24 @@ export default function UserProfileShow({
                 </header>
 
                 <div className="flex flex-col gap-6">
-                    <RouteTabs
-                        tabs={tabs}
-                        activeValue={activeTab}
-                        ariaLabel="Profile sections"
-                    />
+                    {tabs.length > 1 ? (
+                        <RouteTabs
+                            tabs={tabs}
+                            activeValue={activeTab}
+                            ariaLabel="Profile sections"
+                        />
+                    ) : null}
+
+                    {isOwner && (hiddenResources || hiddenFavorites) ? (
+                        <p className="rounded-sm border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                            {hiddenResources && hiddenFavorites
+                                ? 'Your resources and favorites are hidden from other visitors.'
+                                : hiddenResources
+                                  ? 'Your resources are hidden from other visitors.'
+                                  : 'Your favorites are hidden from other visitors.'}{' '}
+                            You can change this in Settings.
+                        </p>
+                    ) : null}
 
                     {activeTab === 'resources' ? (
                         <section
@@ -137,7 +189,9 @@ export default function UserProfileShow({
                                 Resources
                             </h2>
 
-                            {resources && resources.data.length > 0 ? (
+                            {isLoading ? (
+                                <ResourceGridSkeleton count={12} />
+                            ) : resources && resources.data.length > 0 ? (
                                 <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                                     {resources.data.map((resource, index) => (
                                         <li
@@ -170,6 +224,16 @@ export default function UserProfileShow({
                                         }
                                         ariaLabel="Contributed resources pagination"
                                         only={['resources', 'resourcesCount']}
+                                        onSuccess={() =>
+                                            document
+                                                .getElementById(
+                                                    'contributed-resources',
+                                                )
+                                                ?.scrollIntoView({
+                                                    behavior: 'smooth',
+                                                    block: 'start',
+                                                })
+                                        }
                                     />
                                 </div>
                             ) : null}
@@ -195,14 +259,19 @@ export default function UserProfileShow({
                                 </p>
                             ) : null}
 
-                            {favorites && favorites.data.length > 0 ? (
-                                <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                            {isLoading ? (
+                                <ResourceGridSkeleton
+                                    count={8}
+                                    className="sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                                />
+                            ) : favorites && favorites.data.length > 0 ? (
+                                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
                                     {favorites.data.map((resource, index) => (
                                         <li
                                             key={resource.id}
                                             className="h-full"
                                         >
-                                            <FavoriteResourceCard
+                                            <ResourceCard
                                                 resource={resource}
                                                 href={
                                                     resource.hasDownloadUpdate
@@ -214,6 +283,7 @@ export default function UserProfileShow({
                                                               resource.id,
                                                           ).url
                                                 }
+                                                highlightUpdate={isOwner}
                                                 isRemoving={
                                                     removingId === resource.id
                                                 }
@@ -228,7 +298,7 @@ export default function UserProfileShow({
                                                               )
                                                         : undefined
                                                 }
-                                                priority={index < 2}
+                                                priority={index < 4}
                                             />
                                         </li>
                                     ))}

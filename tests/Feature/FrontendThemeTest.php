@@ -525,7 +525,7 @@ test('search and favorite results use detailed card grids', function () {
     $filesystem = app(Filesystem::class);
     $searchResults = $filesystem->get(resource_path('js/components/site/search-results.tsx'));
     $favorites = $filesystem->get(resource_path('js/pages/users/show.tsx'));
-    $favoriteCard = $filesystem->get(resource_path('js/components/site/favorite-resource-card.tsx'));
+    $resourceCard = $filesystem->get(resource_path('js/components/site/resource-card.tsx'));
     $catalog = $filesystem->get(resource_path('js/pages/resources/index.tsx'));
 
     expect($searchResults)
@@ -542,17 +542,28 @@ test('search and favorite results use detailed card grids', function () {
         ->toContain('lg:grid-cols-3')
         ->toContain('xl:grid-cols-4');
 
+    // Favorites have their own slim card: cover, title, listed date, update flag
+    // and a remove control — no taxonomy chips, no reuse of the catalogue card.
     expect($favorites)
-        ->toContain('md:grid-cols-2')
-        ->toContain('grid grid-cols-1')
-        ->toContain('<FavoriteResourceCard')
-        ->not->toContain('lg:grid-cols-3')
-        ->not->toContain('xl:grid-cols-4');
+        // Favorites reuse the catalogue card, plus the update and remove affordances.
+        ->toContain('<ResourceCard')
+        ->toContain('grid grid-cols-1 gap-3 sm:grid-cols-2')
+        ->toContain('lg:grid-cols-3')
+        ->toContain('xl:grid-cols-4')
+        ->toContain('highlightUpdate={isOwner}')
+        ->toContain('onRemove=');
 
-    expect($favoriteCard)
-        ->toContain('flex h-full min-h-0')
-        ->toContain('aspect-[16/10] w-[42%]')
-        ->toContain('Remove favorite');
+    expect($resourceCard)
+        // Category and platform icons share the left edge of the artwork.
+        ->toContain('flex min-w-0 flex-wrap items-center gap-1')
+        ->toContain('p-1.5 pr-9')
+        // The remove control lives in the corner the platforms used to take.
+        ->toContain('Remove from favorites?')
+        ->toContain('hasDownloadUpdate')
+        ->toContain('ring-info/45')
+        ->toContain('bg-info px-1.5 py-0.5')
+        ->toContain('Updated')
+        ->toContain('absolute top-1.5 right-1.5');
 });
 
 test('detailed resource cards avoid decorative hover motion and shadows', function () {
@@ -584,6 +595,7 @@ test('resource and detailed cards keep translucent thumbnail chips without backd
     expect($resourceCard)
         ->toContain('resourceCardTitleClassName')
         ->toContain('@/components/site/resource-card-styles')
+        ->toContain('overlayChipClassName')
         ->not->toContain('font-mono')
         ->not->toContain('text-foreground/85');
 

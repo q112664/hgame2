@@ -6,6 +6,9 @@ export type User = {
     avatar?: string | null | undefined;
     email_verified_at: string | null;
     is_admin?: boolean;
+    /** Privacy: the section is hidden from other visitors. */
+    hide_resources?: boolean;
+    hide_favorites?: boolean;
     two_factor_enabled?: boolean;
     created_at: string;
     updated_at: string;

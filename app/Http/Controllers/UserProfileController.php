@@ -22,13 +22,45 @@ class UserProfileController extends Controller
     public function show(Request $request, User $user): RedirectResponse|Response
     {
         return $this->canonicalRedirect($request, $user, 'users.show')
-            ?? $this->page($request, $user, 'resources');
+            ?? $this->tab($request, $user, 'resources');
     }
 
     public function favorites(Request $request, User $user): RedirectResponse|Response
     {
         return $this->canonicalRedirect($request, $user, 'users.favorites')
-            ?? $this->page($request, $user, 'favorites');
+            ?? $this->tab($request, $user, 'favorites');
+    }
+
+    /**
+     * Serve a tab, or send the visitor to the one section the owner kept public.
+     *
+     * @param  'resources'|'favorites'  $activeTab
+     */
+    private function tab(Request $request, User $user, string $activeTab): RedirectResponse|Response
+    {
+        if ($this->tabIsVisible($request, $user, $activeTab)) {
+            return $this->page($request, $user, $activeTab);
+        }
+
+        $other = $activeTab === 'resources' ? 'favorites' : 'resources';
+
+        abort_unless($this->tabIsVisible($request, $user, $other), 404);
+
+        return to_route($other === 'resources' ? 'users.show' : 'users.favorites', $user);
+    }
+
+    /**
+     * Owners always see their own tabs; everyone else respects the privacy flags.
+     *
+     * @param  'resources'|'favorites'  $tab
+     */
+    private function tabIsVisible(Request $request, User $user, string $tab): bool
+    {
+        if ($request->user()?->id === $user->id) {
+            return true;
+        }
+
+        return $tab === 'resources' ? ! $user->hide_resources : ! $user->hide_favorites;
     }
 
     /**
@@ -37,17 +69,29 @@ class UserProfileController extends Controller
     private function page(Request $request, User $user, string $activeTab): Response
     {
         $isOwner = $request->user()?->id === $user->id;
+        $canViewResources = $this->tabIsVisible($request, $user, 'resources');
+        $canViewFavorites = $this->tabIsVisible($request, $user, 'favorites');
 
         return Inertia::render('users/show', [
             'profile' => $user->toPublicProfile(),
             'activeTab' => $activeTab,
             'isOwner' => $isOwner,
-            'resourcesCount' => $this->contributedGamesQuery($user)->count(),
-            'favoritesCount' => $user->favoritedGames()->published()->count(),
-            'resources' => $activeTab === 'resources'
+            'canViewResources' => $canViewResources,
+            'canViewFavorites' => $canViewFavorites,
+            // Only used to remind the owner that a section is private.
+            'hiddenResources' => $user->hide_resources,
+            'hiddenFavorites' => $user->hide_favorites,
+            // Hidden tabs report zero so a private count never leaks.
+            'resourcesCount' => $canViewResources
+                ? $this->contributedGamesQuery($user)->count()
+                : 0,
+            'favoritesCount' => $canViewFavorites
+                ? $user->favoritedGames()->published()->count()
+                : 0,
+            'resources' => $activeTab === 'resources' && $canViewResources
                 ? $this->presentResources($user)
                 : null,
-            'favorites' => $activeTab === 'favorites'
+            'favorites' => $activeTab === 'favorites' && $canViewFavorites
                 ? $this->presentFavorites($user, $isOwner)
                 : null,
             'downloadUpdateCount' => $activeTab === 'favorites' && $isOwner

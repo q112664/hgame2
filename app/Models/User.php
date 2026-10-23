@@ -118,6 +118,8 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
     {
         return [
             'email_verified_at' => 'datetime',
+            'hide_favorites' => 'boolean',
+            'hide_resources' => 'boolean',
             'is_admin' => 'boolean',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',

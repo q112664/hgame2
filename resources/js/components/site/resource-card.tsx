@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
-import { Eye, RefreshCw } from 'lucide-react';
+import { Eye, RefreshCw, X } from 'lucide-react';
+import { useState } from 'react';
 import { LazyThumbnail } from '@/components/site/lazy-thumbnail';
 import { PlatformIcon } from '@/components/site/platform-icon';
 import {
@@ -8,7 +9,17 @@ import {
     resourceCardTitleClassName,
 } from '@/components/site/resource-card-styles';
 import { ResourceOverlayLanguageGroup } from '@/components/site/resource-overlay-language-group';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogFooter,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Tooltip,
     TooltipContent,
@@ -34,6 +45,14 @@ type Props = {
     priority?: boolean;
     /** Open the resource detail page in a new tab. */
     openInNewWindow?: boolean;
+    /** Override the destination (e.g. jump straight to the downloads tab). */
+    href?: string;
+    /** Favorites: emphasise a download change the viewer has not seen yet. */
+    highlightUpdate?: boolean;
+    /** Favorites: render a remove control on the thumbnail. */
+    onRemove?: () => void;
+    isRemoving?: boolean;
+    disableRemove?: boolean;
 };
 
 export function ResourceCard({
@@ -41,7 +60,13 @@ export function ResourceCard({
     dateField = 'publishedAt',
     priority = false,
     openInNewWindow = false,
+    href,
+    highlightUpdate = false,
+    onRemove,
+    isRemoving = false,
+    disableRemove = false,
 }: Props) {
+    const [confirmOpen, setConfirmOpen] = useState(false);
     const displayDate =
         dateField === 'releaseDate'
             ? (resource.releaseDate ?? resource.publishedAt)
@@ -60,6 +85,9 @@ export function ResourceCard({
     /** `updated` ordering puts the download update date in the primary slot. */
     const showsUpdateDate =
         dateField === 'downloadsUpdatedAt' && updatedAt !== null;
+    /** Unseen download change reported by the server (favorites only). */
+    const hasUnseenUpdate =
+        highlightUpdate && resource.hasDownloadUpdate === true;
     const hasLaterUpdate =
         !showsUpdateDate &&
         updatedAt !== null &&
@@ -68,10 +96,14 @@ export function ResourceCard({
     return (
         <Card
             size="sm"
-            className="h-full gap-0 rounded-md py-0 transition-[ring-color] duration-150 hover:ring-foreground/12"
+            className={cn(
+                'relative h-full gap-0 rounded-md py-0 transition-[ring-color] duration-150 hover:ring-foreground/12',
+                hasUnseenUpdate && 'ring-info/45 hover:ring-info/60',
+                isRemoving && 'opacity-60',
+            )}
         >
             <Link
-                href={resourceDetails(resource.id)}
+                href={href ?? resourceDetails(resource.id)}
                 className="group flex h-full flex-col"
                 prefetch={!openInNewWindow}
                 target={openInNewWindow ? '_blank' : undefined}
@@ -85,11 +117,13 @@ export function ResourceCard({
                         priority={priority}
                     />
 
-                    <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-1.5">
-                        <span className={overlayChipClassName}>
-                            {abbreviateCategory(resource.category)}
-                        </span>
-                        <div className="flex flex-wrap justify-end gap-1">
+                    {/* Category and platforms share the left edge; the top-right
+                        corner stays free for the favorites remove control. */}
+                    <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-1.5 pr-9">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1">
+                            <span className={overlayChipClassName}>
+                                {abbreviateCategory(resource.category)}
+                            </span>
                             {resource.platforms.length > 0
                                 ? resource.platforms.map((platform) => (
                                       <Tooltip key={platform.slug}>
@@ -154,6 +188,22 @@ export function ResourceCard({
                     <CardTitle className={resourceCardTitleClassName}>
                         {resource.title}
                     </CardTitle>
+                    {hasUnseenUpdate ? (
+                        <span
+                            className="inline-flex w-fit items-center gap-1 rounded-sm bg-info px-1.5 py-0.5 text-[11px] leading-none font-semibold text-info-foreground"
+                            title={
+                                resource.downloadsUpdatedAt
+                                    ? `Downloads updated ${formatDate(resource.downloadsUpdatedAt)}`
+                                    : 'Downloads updated'
+                            }
+                        >
+                            <RefreshCw
+                                className="size-3 shrink-0"
+                                aria-hidden
+                            />
+                            Updated
+                        </span>
+                    ) : null}
                 </CardHeader>
 
                 <CardContent
@@ -184,6 +234,51 @@ export function ResourceCard({
                     </span>
                 </CardContent>
             </Link>
+
+            {onRemove ? (
+                <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                    <DialogTrigger asChild>
+                        <button
+                            type="button"
+                            className={cn(
+                                'absolute top-1.5 right-1.5 z-10 inline-flex size-6 items-center justify-center rounded-sm',
+                                // Rides on the artwork: needs its own surface to stay legible.
+                                'bg-black/55 text-white/90 backdrop-blur-[2px] transition-colors',
+                                'hover:bg-black/75 hover:text-white',
+                                'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                            )}
+                            aria-label={`Remove ${resource.title} from favorites`}
+                        >
+                            {isRemoving ? (
+                                <Spinner className="size-3.5" />
+                            ) : (
+                                <X className="size-3.5" aria-hidden />
+                            )}
+                        </button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogTitle>Remove from favorites?</DialogTitle>
+                        <DialogFooter className="gap-2">
+                            <DialogClose asChild>
+                                <Button variant="secondary" size="sm">
+                                    Cancel
+                                </Button>
+                            </DialogClose>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={disableRemove}
+                                onClick={() => {
+                                    setConfirmOpen(false);
+                                    onRemove();
+                                }}
+                            >
+                                Remove
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            ) : null}
         </Card>
     );
 }

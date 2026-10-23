@@ -130,3 +130,31 @@ test('correct password must be provided to delete account', function () {
 
     expect($user->fresh())->not->toBeNull();
 });
+
+test('the profile form stores the privacy flags', function () {
+    $user = User::factory()->create([
+        'hide_favorites' => false,
+        'hide_resources' => false,
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'hide_favorites' => '1',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($user->refresh()->hide_favorites)->toBeTrue()
+        ->and($user->hide_resources)->toBeFalse();
+
+    // Unchecked boxes are absent from the payload and must fall back to false.
+    $this->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($user->refresh()->hide_favorites)->toBeFalse();
+});

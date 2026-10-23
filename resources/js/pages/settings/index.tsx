@@ -16,6 +16,7 @@ import type { PageSeoData } from '@/components/site/page-seo';
 import { RouteTabs } from '@/components/site/route-tabs';
 import { SitePageContainer } from '@/components/site/site-page-container';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SiteLayout } from '@/layouts/site-layout';
@@ -128,6 +129,61 @@ export default function Settings(props: Props) {
                                                 <InputError
                                                     message={errors.email}
                                                 />
+                                            </div>
+
+                                            <div className="space-y-3 border-t border-border pt-6">
+                                                <Heading
+                                                    variant="small"
+                                                    title="Privacy"
+                                                    description="Hide a section from other visitors. You always see your own profile in full."
+                                                />
+
+                                                <div className="flex items-start gap-2.5">
+                                                    <Checkbox
+                                                        id="hide_resources"
+                                                        name="hide_resources"
+                                                        className="mt-0.5"
+                                                        defaultChecked={Boolean(
+                                                            auth.user
+                                                                .hide_resources,
+                                                        )}
+                                                    />
+                                                    <div className="grid gap-1">
+                                                        <Label htmlFor="hide_resources">
+                                                            Keep my resources
+                                                            private
+                                                        </Label>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Your contributed
+                                                            resources tab is
+                                                            hidden from other
+                                                            visitors.
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start gap-2.5">
+                                                    <Checkbox
+                                                        id="hide_favorites"
+                                                        name="hide_favorites"
+                                                        className="mt-0.5"
+                                                        defaultChecked={Boolean(
+                                                            auth.user
+                                                                .hide_favorites,
+                                                        )}
+                                                    />
+                                                    <div className="grid gap-1">
+                                                        <Label htmlFor="hide_favorites">
+                                                            Keep my favorites
+                                                            private
+                                                        </Label>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Your favorites tab
+                                                            is hidden from other
+                                                            visitors.
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             {props.mustVerifyEmail &&

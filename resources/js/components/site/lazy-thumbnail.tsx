@@ -13,6 +13,11 @@ type Props = {
     priority?: boolean;
     /** How the image fills its box. Prefer `contain` when the full art should stay visible. */
     fit?: 'cover' | 'contain';
+    /**
+     * Fill the letterbox with a blurred, oversized copy of the same artwork.
+     * Only meaningful with `fit="contain"`; the browser reuses the cached file.
+     */
+    ambient?: boolean;
 };
 
 /**
@@ -31,6 +36,7 @@ export function LazyThumbnail({
     className,
     priority = false,
     fit = 'cover',
+    ambient = false,
 }: Props) {
     const {
         imageRef,
@@ -48,12 +54,22 @@ export function LazyThumbnail({
                     aria-hidden="true"
                 />
             ) : null}
+            {ambient ? (
+                <div
+                    aria-hidden="true"
+                    className="absolute inset-0 scale-110 bg-cover bg-center opacity-60 blur-2xl brightness-75 saturate-125"
+                    style={{ backgroundImage: `url("${displaySrc}")` }}
+                />
+            ) : null}
             <img
                 ref={imageRef}
                 src={displaySrc}
                 alt={alt}
                 className={cn(
-                    'size-full transition-opacity duration-300 ease-out',
+                    // `relative` keeps the artwork above the ambient layer: absolutely
+                    // positioned siblings paint after static content, which put the
+                    // blurred copy in front of the image (a foggy veil).
+                    'relative size-full transition-opacity duration-300 ease-out',
                     fit === 'contain' ? 'object-contain' : 'object-cover',
                     loaded ? 'opacity-100' : 'opacity-0',
                     className,

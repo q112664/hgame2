@@ -109,12 +109,16 @@ export function ResourceCard({
                 target={openInNewWindow ? '_blank' : undefined}
                 rel={openInNewWindow ? 'noopener noreferrer' : undefined}
             >
-                <div className="relative aspect-[16/10] overflow-hidden rounded-t-md bg-muted">
+                {/* 4:3 is the shape of most covers (560x420); the rest letterbox
+                    onto a blurred copy of their own artwork. */}
+                <div className="relative aspect-[4/3] overflow-hidden rounded-t-md bg-muted">
                     <LazyThumbnail
                         src={resource.thumbnail}
                         fallbackSrc={resource.thumbnailFallback}
                         alt={resource.title}
                         priority={priority}
+                        fit="contain"
+                        ambient
                     />
 
                     {/* Category and platforms share the left edge; the top-right

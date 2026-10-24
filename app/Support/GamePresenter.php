@@ -111,7 +111,7 @@ class GamePresenter
         bool $includeTags = true,
     ): array {
         $description = $includeDescription
-            ? str($game->description ?? '')->sanitizeHtml()->toString()
+            ? DescriptionHtml::render($game->description)
             : '';
 
         return [
@@ -161,7 +161,7 @@ class GamePresenter
                         'version' => $release->version,
                         'fileSize' => $release->file_size,
                         'downloads' => $release->downloads_count,
-                        'description' => str($release->description ?? '')->sanitizeHtml()->toString(),
+                        'description' => DescriptionHtml::render($release->description),
                         'publishedAt' => self::dateString($release->published_at),
                         'downloadsUpdatedAt' => self::dateString($release->downloads_updated_at),
                         'contributor' => $release->relationLoaded('contributor') && $release->contributor !== null
@@ -258,7 +258,7 @@ class GamePresenter
                 $versions[] = [
                     'code' => $language->code,
                     'name' => $language->name,
-                    'html' => str($translation->description ?? '')->sanitizeHtml()->toString(),
+                    'html' => DescriptionHtml::render($translation->description),
                     'isDefault' => false,
                 ];
             }

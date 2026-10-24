@@ -542,10 +542,8 @@ test('search and favorite results use detailed card grids', function () {
         ->toContain('lg:grid-cols-3')
         ->toContain('xl:grid-cols-4');
 
-    // Favorites have their own slim card: cover, title, listed date, update flag
-    // and a remove control — no taxonomy chips, no reuse of the catalogue card.
+    // Favorites reuse the catalogue card, plus the update and remove affordances.
     expect($favorites)
-        // Favorites reuse the catalogue card, plus the update and remove affordances.
         ->toContain('<ResourceCard')
         ->toContain('grid grid-cols-1 gap-3 sm:grid-cols-2')
         ->toContain('lg:grid-cols-3')
@@ -560,6 +558,11 @@ test('search and favorite results use detailed card grids', function () {
         // The remove control lives in the corner the platforms used to take.
         ->toContain('Remove from favorites?')
         ->toContain('hasDownloadUpdate')
+        // 4:3 frame (the shape of most covers) with the whole artwork contained on
+        // top of a blurred copy of itself.
+        ->toContain('aspect-[4/3]')
+        ->toContain('fit="contain"')
+        ->toContain('ambient')
         ->toContain('ring-info/45')
         ->toContain('bg-info px-1.5 py-0.5')
         ->toContain('Updated')

@@ -94,15 +94,13 @@ test('the publish command writes the files nginx serves', function () {
 
     $written = app(FaviconIcons::class)->publish($directory);
 
-    expect($written)->toHaveCount(4)
+    // nginx answers /favicon.ico itself; the PNG paths stay virtual on purpose.
+    expect($written)->toHaveCount(1)
         ->and(is_file($directory.'/favicon.ico'))->toBeTrue()
-        ->and(is_file($directory.'/apple-touch-icon.png'))->toBeTrue();
+        ->and(is_file($directory.'/favicon-192.png'))->toBeFalse();
 
     $ico = file_get_contents($directory.'/favicon.ico');
     expect(substr($ico, 0, 4))->toBe("\x00\x00\x01\x00");
-
-    $touch = getimagesizefromstring(file_get_contents($directory.'/apple-touch-icon.png'));
-    expect($touch[0])->toBe(180)->and($touch[1])->toBe(180);
 
     array_map('unlink', glob($directory.'/*') ?: []);
     rmdir($directory);

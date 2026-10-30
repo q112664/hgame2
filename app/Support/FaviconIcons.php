@@ -19,12 +19,14 @@ final class FaviconIcons
     /** ICO frames: browsers pick whichever they need. */
     private const IcoSizes = [16, 32, 48];
 
-    /** Static files nginx serves without waking PHP. */
+    /**
+     * Only the .ico is written to disk: nginx answers `location = /favicon.ico`
+     * itself and never reaches PHP. The PNG paths stay virtual so their
+     * `Cache-Control` comes from the controller (an hour, not a year) and a new
+     * upload shows up without purging anything.
+     */
     private const Published = [
         'favicon.ico' => 'ico',
-        'favicon-32.png' => 'png-32',
-        'favicon-192.png' => 'png-192',
-        'apple-touch-icon.png' => 'apple',
     ];
 
     /**

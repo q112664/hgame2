@@ -1008,3 +1008,23 @@ test('social login buttons include telegram', function () {
 
     expect($providers)->toContain("'google' | 'discord' | 'telegram'");
 });
+
+test('tab switches never add a history entry', function () {
+    $tabs = app(Filesystem::class)->get(resource_path('js/lib/resource-tabs.ts'));
+    $routeTabs = app(Filesystem::class)->get(resource_path('js/components/site/route-tabs.tsx'));
+    $entry = app(Filesystem::class)->get(resource_path('js/app.tsx'));
+
+    // A click that lands before hydration must not navigate: the guard replaces the
+    // URL instead, so Back leaves the page rather than stepping to the details tab.
+    expect($tabs)
+        ->toContain('installResourceTabClickGuard')
+        ->toContain('RESOURCE_TAB_ATTRIBUTE')
+        ->toContain("window.history.replaceState(window.history.state, '', next)");
+
+    expect($routeTabs)
+        ->toContain('RESOURCE_TAB_ATTRIBUTE')
+        ->toContain('onSelect');
+
+    // Installed at module scope, i.e. before React hydrates.
+    expect($entry)->toContain('installResourceTabClickGuard();');
+});

@@ -11,8 +11,12 @@ import { useFlashToast } from '@/hooks/use-flash-toast';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import AuthModalLayout from '@/layouts/auth-modal-layout';
+import { installResourceTabClickGuard } from '@/lib/resource-tabs';
 
 const fallbackSiteTitle = import.meta.env.VITE_APP_NAME || 'hgame';
+
+// Runs before hydration so a tab click cannot add a history entry by navigating.
+installResourceTabClickGuard();
 
 declare global {
     interface Window {

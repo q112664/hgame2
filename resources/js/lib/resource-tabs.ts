@@ -67,6 +67,72 @@ export function nextResourceTabUrl(href: string, tab: ResourceTab): string {
     return `${url.pathname}${url.search}`;
 }
 
+/** Marks tab anchors so the early click guard can recognise them. */
+export const RESOURCE_TAB_ATTRIBUTE = 'data-resource-tab';
+
+let clickGuardInstalled = false;
+
+/**
+ * Tab anchors are plain links so they still work before JavaScript boots. The
+ * catch: a click that lands before React hydrates follows the href natively and
+ * pushes a history entry, so Back walks through the tab before leaving the page.
+ *
+ * This listener runs from the moment the bundle executes (well before hydration)
+ * and turns such a click into the same replace-in-place the hydrated handler does.
+ * The server-rendered panel catches up as soon as hydration reads the URL.
+ */
+export function installResourceTabClickGuard(): void {
+    if (clickGuardInstalled || typeof document === 'undefined') {
+        return;
+    }
+
+    clickGuardInstalled = true;
+
+    document.addEventListener(
+        'click',
+        (event) => {
+            if (
+                event.defaultPrevented ||
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+            ) {
+                return;
+            }
+
+            const target = event.target;
+
+            const anchor =
+                target instanceof Element
+                    ? target.closest(`a[${RESOURCE_TAB_ATTRIBUTE}]`)
+                    : null;
+
+            if (!(anchor instanceof HTMLAnchorElement)) {
+                return;
+            }
+
+            const tab = anchor.getAttribute(RESOURCE_TAB_ATTRIBUTE);
+
+            if (!isResourceTab(tab)) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const next = nextResourceTabUrl(window.location.href, tab);
+
+            if (next !== currentLocation()) {
+                window.history.replaceState(window.history.state, '', next);
+            }
+
+            window.dispatchEvent(new Event(RESOURCE_TAB_LOCATION_EVENT));
+        },
+        true,
+    );
+}
+
 export function resourceTabHref(resourceId: string, tab: ResourceTab): string {
     return resourceDetails.url(resourceId, {
         query: tab === 'details' ? {} : { tab },

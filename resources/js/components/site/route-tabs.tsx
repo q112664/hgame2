@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { MutableRefObject, RefObject } from 'react';
+import { RESOURCE_TAB_ATTRIBUTE } from '@/lib/resource-tabs';
 import { cn } from '@/lib/utils';
 
 export type RouteTab<Value extends string> = {
@@ -115,6 +116,7 @@ export function RouteTabs<Value extends string>({
                                 key={tab.value}
                                 ref={assignRef}
                                 href={tab.href}
+                                {...{ [RESOURCE_TAB_ATTRIBUTE]: tab.value }}
                                 aria-current={
                                     activeValue === tab.value
                                         ? 'page'

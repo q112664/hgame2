@@ -85,3 +85,28 @@ test('a signed url validates once the cloudflare scheme is trusted', function ()
 
     expect($request->hasValidSignature())->toBeTrue();
 });
+
+test('the forwarded origin port is dropped when the scheme is upgraded', function () {
+    config(['app.url' => 'https://eroga.me']);
+
+    $request = Request::create(
+        'http://eroga.me/livewire-abc/upload-file',
+        'POST',
+        server: [
+            'REMOTE_ADDR' => '127.0.0.1',
+            'SERVER_PORT' => '8080',
+            'HTTP_HOST' => 'eroga.me',
+            'HTTP_X_FORWARDED_PORT' => '80',
+            'HTTP_X_FORWARDED_PROTO' => 'http',
+        ],
+    );
+    $request->setTrustedProxies(['127.0.0.1'], Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO);
+
+    expect($request->getPort())->toBe(80);
+
+    (new TrustCloudflareScheme)->handle($request, fn () => response('ok'));
+
+    // https://eroga.me:80/... can never match a signature made for https://eroga.me/...
+    expect($request->getPort())->toBe(443)
+        ->and($request->url())->toBe('https://eroga.me/livewire-abc/upload-file');
+});

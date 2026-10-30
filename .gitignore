@@ -27,3 +27,9 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Generated from the uploaded favicon by `php artisan icons:publish`
+/public/favicon.ico
+/public/favicon-32.png
+/public/favicon-192.png
+/public/apple-touch-icon.png

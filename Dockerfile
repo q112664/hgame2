@@ -82,6 +82,8 @@ WORKDIR /var/www/html
 COPY --from=build --chown=www-data:www-data /var/www/html /var/www/html
 
 COPY --chmod=755 docker/ensure-storage.sh /etc/entrypoint.d/99-ensure-storage.sh
+# After migrations: icon files derive from the favicon stored in the database.
+COPY --chmod=755 docker/publish-icons.sh /etc/entrypoint.d/99-publish-icons.sh
 
 RUN mkdir -p \
         storage/framework/cache/data \

@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\Setting;
+use App\Support\FaviconIcons;
 use App\Support\MediaDeletionService;
 use App\Support\MediaUpload;
 use BackedEnum;
@@ -544,6 +545,12 @@ class ManageSiteSettings extends Page
         }
         Setting::set('seo_gtm_container_id', null);
         Setting::set('site_favicon_path', $nextFaviconPath);
+
+        // nginx answers /favicon.ico straight from public/, so the files have to be
+        // rebuilt the moment the artwork changes.
+        if ($previousFaviconPath !== $nextFaviconPath) {
+            app(FaviconIcons::class)->publishQuietly();
+        }
         Setting::set('site_logo_mode', $mode);
         Setting::set('site_logo_text', $logoText);
         Setting::setBoolean(

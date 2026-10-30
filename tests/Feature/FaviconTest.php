@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Setting;
+use App\Support\FaviconIcons;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 
 function fakeFaviconPng(): string
@@ -84,4 +86,32 @@ test('the endpoints 404 when no favicon is configured', function () {
 
     $this->get('/favicon.ico')->assertNotFound();
     $this->get('/apple-touch-icon.png')->assertNotFound();
+});
+
+test('the publish command writes the files nginx serves', function () {
+    $directory = sys_get_temp_dir().'/hgame-icons-'.uniqid();
+    mkdir($directory);
+
+    $written = app(FaviconIcons::class)->publish($directory);
+
+    expect($written)->toHaveCount(4)
+        ->and(is_file($directory.'/favicon.ico'))->toBeTrue()
+        ->and(is_file($directory.'/apple-touch-icon.png'))->toBeTrue();
+
+    $ico = file_get_contents($directory.'/favicon.ico');
+    expect(substr($ico, 0, 4))->toBe("\x00\x00\x01\x00");
+
+    $touch = getimagesizefromstring(file_get_contents($directory.'/apple-touch-icon.png'));
+    expect($touch[0])->toBe(180)->and($touch[1])->toBe(180);
+
+    array_map('unlink', glob($directory.'/*') ?: []);
+    rmdir($directory);
+});
+
+test('saving website settings republishes the icons', function () {
+    $page = app(Filesystem::class)->get(app_path('Filament/Pages/ManageSiteSettings.php'));
+
+    expect($page)
+        ->toContain('publishQuietly()')
+        ->toContain('FaviconIcons');
 });

@@ -13,7 +13,9 @@ export function SiteSeo() {
     const ogImageUrl = seo.ogImageUrl?.trim() || null;
     const customFavicon = seo.faviconUrl?.trim() || null;
     const faviconHref = customFavicon || '/favicon.ico';
-    const appleTouchHref = customFavicon || '/apple-touch-icon.png';
+    // Always the generated 180x180 icon: iOS ignores sizes it cannot use and paints
+    // transparent pixels black.
+    const appleTouchHref = '/apple-touch-icon.png';
     const googleVerification = seo.googleSiteVerification.trim();
 
     return (

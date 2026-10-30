@@ -1027,4 +1027,11 @@ test('tab switches never add a history entry', function () {
 
     // Installed at module scope, i.e. before React hydrates.
     expect($entry)->toContain('installResourceTabClickGuard();');
+
+    // Back/forward rewrites the URL before the router swaps pages: the tab must hold
+    // its last value, otherwise the details panel repaints for a frame on the way out.
+    expect($tabs)
+        ->toContain('locationRef')
+        ->toContain('path !== cached.path')
+        ->toContain('return cached.tab;');
 });

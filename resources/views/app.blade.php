@@ -60,7 +60,8 @@
             @php($seo = \App\Models\Setting::seo())
             @php($siteTitle = \App\Models\Setting::siteTitle())
             @php($faviconHref = filled($seo['faviconUrl']) ? $seo['faviconUrl'] : '/favicon.ico')
-            @php($appleTouchHref = filled($seo['faviconUrl']) ? $seo['faviconUrl'] : '/apple-touch-icon.png')
+            {{-- iOS wants 180x180 with an opaque background; the route renders that. --}}
+            @php($appleTouchHref = '/apple-touch-icon.png')
             <title>{{ $siteTitle }}</title>
             <link data-inertia="favicon" rel="icon" href="{{ $faviconHref }}" sizes="any">
             <link data-inertia="apple-touch-icon" rel="apple-touch-icon" href="{{ $appleTouchHref }}">

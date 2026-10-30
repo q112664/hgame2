@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { useSyncExternalStore } from 'react';
+import { useCallback, useRef, useSyncExternalStore } from 'react';
 import { show as resourceDetails } from '@/routes/resources';
 
 export type ResourceTab = 'details' | 'downloads' | 'screenshots';
@@ -143,10 +143,6 @@ function currentLocation(): string {
     return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
-function resourceLocationSnapshot(): ResourceTab {
-    return parseResourceTab(window.location.hash, window.location.search);
-}
-
 /**
  * The tab the server rendered, so hydration starts from the markup it is
  * hydrating instead of repainting the default panel first. A legacy `#`-anchor
@@ -183,9 +179,42 @@ export function useResourceTab(initialTab: ResourceTab = 'details'): {
     activeTab: ResourceTab;
     selectTab: (tab: ResourceTab) => void;
 } {
+    /**
+     * The tab this page last rendered. Back and forward update the URL before the
+     * router swaps components, so re-reading a URL that now points at another page
+     * would repaint the details panel for the moment the next page takes to arrive —
+     * the "it jumps to the detail page first" flicker.
+     */
+    const locationRef = useRef<{ path: string; tab: ResourceTab }>({
+        path: typeof window === 'undefined' ? '' : window.location.pathname,
+        tab: initialTab,
+    });
+
+    const getSnapshot = useCallback((): ResourceTab => {
+        if (typeof window === 'undefined') {
+            return initialTab;
+        }
+
+        const path = window.location.pathname;
+        const cached = locationRef.current;
+
+        if (cached.path !== '' && path !== cached.path) {
+            return cached.tab;
+        }
+
+        const tab = parseResourceTab(
+            window.location.hash,
+            window.location.search,
+        );
+
+        locationRef.current = { path, tab };
+
+        return tab;
+    }, [initialTab]);
+
     const resolvedTab = useSyncExternalStore(
         subscribeResourceLocation,
-        resourceLocationSnapshot,
+        getSnapshot,
         resourceLocationServerSnapshot(initialTab),
     );
 

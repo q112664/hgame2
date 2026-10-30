@@ -3,6 +3,7 @@
 use App\Http\Controllers\DocController;
 use App\Http\Controllers\DownloadLinkContinueController;
 use App\Http\Controllers\DownloadLinkController;
+use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\IndexNowKeyController;
@@ -22,6 +23,12 @@ Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('/{indexNowKey}.txt', IndexNowKeyController::class)
     ->where('indexNowKey', '[A-Za-z0-9-]{8,128}')
     ->name('indexnow.key');
+
+// Classic icon paths, generated from the favicon uploaded in the admin.
+Route::get('/favicon.ico', [FaviconController::class, 'ico'])->name('favicon.ico');
+Route::get('/favicon-32.png', [FaviconController::class, 'png'])->name('favicon.32')->defaults('size', 32);
+Route::get('/favicon-192.png', [FaviconController::class, 'png'])->name('favicon.192')->defaults('size', 192);
+Route::get('/apple-touch-icon.png', [FaviconController::class, 'appleTouch'])->name('favicon.apple-touch');
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/search', SearchController::class)->name('search');

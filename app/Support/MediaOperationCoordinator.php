@@ -12,7 +12,14 @@ final class MediaOperationCoordinator
 
     private const CutoverLock = 'media-storage:cutover';
 
-    private const LockSeconds = 900;
+    /** Long-running storage migrations: keep the lock for the whole operation. */
+    private const OperationLockSeconds = 900;
+
+    /**
+     * File writes are sub-second, so a crashed request must not block uploads and
+     * saves for a quarter of an hour; the lock expires quickly instead.
+     */
+    private const CutoverLockSeconds = 120;
 
     private const WaitSeconds = 5;
 
@@ -24,7 +31,7 @@ final class MediaOperationCoordinator
      */
     public function operation(\Closure $callback): mixed
     {
-        return $this->run(self::OperationLock, $callback);
+        return $this->run(self::OperationLock, self::OperationLockSeconds, $callback);
     }
 
     /**
@@ -35,7 +42,7 @@ final class MediaOperationCoordinator
      */
     public function cutover(\Closure $callback): mixed
     {
-        return $this->run(self::CutoverLock, $callback);
+        return $this->run(self::CutoverLock, self::CutoverLockSeconds, $callback);
     }
 
     /**
@@ -44,9 +51,9 @@ final class MediaOperationCoordinator
      * @param  \Closure(): T  $callback
      * @return T
      */
-    private function run(string $name, \Closure $callback): mixed
+    private function run(string $name, int $seconds, \Closure $callback): mixed
     {
-        $lock = Cache::lock($name, self::LockSeconds);
+        $lock = Cache::lock($name, $seconds);
 
         try {
             $lock->block(self::WaitSeconds);

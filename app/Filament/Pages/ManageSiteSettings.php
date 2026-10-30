@@ -28,6 +28,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Str;
+use RuntimeException;
 use UnitEnum;
 
 /**
@@ -464,7 +465,20 @@ class ManageSiteSettings extends Page
 
     public function save(): void
     {
-        $data = $this->form->getState();
+        try {
+            $data = $this->form->getState();
+        } catch (RuntimeException $exception) {
+            // A crashed request can leave the media cutover lock behind; say so
+            // instead of letting the Livewire request die with a 500.
+            Notification::make()
+                ->danger()
+                ->title('Could not save settings')
+                ->body($exception->getMessage())
+                ->send();
+
+            return;
+        }
+
         $previousLogoPath = Setting::siteLogoPath();
         $nextLogoPath = $this->normalizeUploadPath($data['site_logo_path'] ?? null);
         $previousFaviconPath = Setting::faviconPath();

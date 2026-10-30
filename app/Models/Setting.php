@@ -174,6 +174,14 @@ class Setting extends Model
         return $url !== '' ? $url : null;
     }
 
+    /** Short digest of the current icon, used to bust caches on the generated paths. */
+    public static function faviconVersion(): ?string
+    {
+        $path = static::faviconPath();
+
+        return $path === null ? null : substr(sha1($path), 0, 8);
+    }
+
     public static function seoOgImageUrl(): ?string
     {
         $path = static::seoOgImagePath();
@@ -226,6 +234,7 @@ class Setting extends Model
      *     robots: string,
      *     ogImageUrl: string|null,
      *     faviconUrl: string|null,
+     *     faviconVersion: string|null,
      *     googleSiteVerification: string
      * }
      */
@@ -237,6 +246,7 @@ class Setting extends Model
             'robots' => static::seoRobots(),
             'ogImageUrl' => static::seoOgImageUrl(),
             'faviconUrl' => static::faviconUrl(),
+            'faviconVersion' => static::faviconVersion(),
             'googleSiteVerification' => static::seoGoogleSiteVerification(),
         ];
     }

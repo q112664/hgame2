@@ -19,6 +19,7 @@ export type SiteSeo = {
     robots: string;
     ogImageUrl: string | null;
     faviconUrl: string | null;
+    faviconVersion?: string | null;
     googleSiteVerification: string;
 };
 

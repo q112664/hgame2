@@ -18,6 +18,7 @@ export type GameSource = {
     id: string | null;
     url: string | null;
     faviconUrl: string | null;
+    faviconVersion?: string | null;
 };
 
 export type GameCard = {

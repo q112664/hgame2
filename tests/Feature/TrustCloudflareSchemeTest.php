@@ -5,6 +5,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 
 test('a cloudflare https visitor is treated as a secure request', function () {
+    config(['app.url' => 'https://eroga.me']);
+
     $request = Request::create(
         'http://eroga.me/livewire-abc/upload-file',
         'POST',
@@ -22,7 +24,9 @@ test('a cloudflare https visitor is treated as a secure request', function () {
         ->and($request->header('X-Forwarded-Proto'))->toBe('https');
 });
 
-test('requests without cloudflare headers are untouched', function () {
+test('requests are untouched while the app url is http', function () {
+    config(['app.url' => 'http://hgame.test']);
+
     $request = Request::create('http://hgame.test/games', 'GET');
 
     (new TrustCloudflareScheme)->handle($request, fn () => response('ok'));
@@ -31,7 +35,18 @@ test('requests without cloudflare headers are untouched', function () {
         ->and($request->root())->toBe('http://hgame.test');
 });
 
-test('a plain http cloudflare request stays http when the app url is http', function () {
+test('a proxied http request is upgraded when the app url is https', function () {
+    config(['app.url' => 'https://eroga.me']);
+
+    $request = Request::create('http://eroga.me/games', 'GET');
+
+    (new TrustCloudflareScheme)->handle($request, fn () => response('ok'));
+
+    expect($request->isSecure())->toBeTrue()
+        ->and($request->root())->toBe('https://eroga.me');
+});
+
+test('a plain http request stays http when the app url is http', function () {
     config(['app.url' => 'http://eroga.me']);
 
     $request = Request::create(
@@ -50,6 +65,7 @@ test('a plain http cloudflare request stays http when the app url is http', func
 
 test('a signed url validates once the cloudflare scheme is trusted', function () {
     // Mirrors Setting::applySiteUrl() in production: absolute https urls.
+    config(['app.url' => 'https://eroga.me']);
     URL::forceRootUrl('https://eroga.me');
     URL::forceScheme('https');
 

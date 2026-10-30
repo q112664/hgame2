@@ -13,24 +13,19 @@ use Symfony\Component\HttpFoundation\Response;
  * URLs are generated from APP_URL (https) but validated against the http request,
  * so the HMAC never matches (Livewire uploads answer 401, verification links fail).
  *
- * When Cloudflare says the visitor used https, mark the request as secure so URL
- * generation and signature validation agree again.
+ * When the app is configured for https, mark the request as secure so URL generation
+ * and signature validation agree again.
  */
 class TrustCloudflareScheme
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->isSecure() && $request->headers->has('CF-Ray')) {
-            /** @var array<string, mixed> $visitor */
-            $visitor = json_decode((string) $request->headers->get('CF-Visitor'), true) ?: [];
-
-            $visitorIsSecure = ($visitor['scheme'] ?? null) === 'https';
-            $appIsSecure = str_starts_with((string) config('app.url'), 'https://');
-
-            if ($visitorIsSecure || $appIsSecure) {
-                $request->server->set('HTTPS', 'on');
-                $request->headers->set('X-Forwarded-Proto', 'https');
-            }
+        // The site is https-only when APP_URL says so, so an http request can only be
+        // the proxy hop. Trusting the header alone is not enough: Cloudflare sends
+        // `X-Forwarded-Proto: http` in Flexible mode and may drop CF-Visitor.
+        if (! $request->isSecure() && str_starts_with((string) config('app.url'), 'https://')) {
+            $request->server->set('HTTPS', 'on');
+            $request->headers->set('X-Forwarded-Proto', 'https');
         }
 
         return $next($request);

@@ -291,11 +291,12 @@ final class FaviconIcons
             return [17, 17, 19];
         }
 
-        // Slightly darker than the artwork so the icon edge still reads.
+        // Deep tint of the artwork: bright enough to read as "of this icon", dark
+        // enough that it does not turn into a grey box on a home screen.
         return [
-            (int) max(0, ($red / $samples) * 0.45),
-            (int) max(0, ($green / $samples) * 0.45),
-            (int) max(0, ($blue / $samples) * 0.45),
+            (int) max(0, ($red / $samples) * 0.22),
+            (int) max(0, ($green / $samples) * 0.22),
+            (int) max(0, ($blue / $samples) * 0.22),
         ];
     }
 }

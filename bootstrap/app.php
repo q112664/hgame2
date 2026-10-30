@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RememberIntendedUrl;
+use App\Http\Middleware\TrustCloudflareScheme;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -21,6 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // 1Panel / reverse proxies terminate TLS and forward HTTP with
         // X-Forwarded-Proto; trust them so asset() and url() stay on HTTPS.
         $middleware->trustProxies(at: '*');
+
+        // Must run before routing: signed URLs are validated against the request
+        // scheme, which Cloudflare reports as http on a Flexible-SSL origin.
+        $middleware->prepend(TrustCloudflareScheme::class);
 
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 

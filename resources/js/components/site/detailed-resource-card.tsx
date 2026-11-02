@@ -21,7 +21,6 @@ import {
     abbreviateCategory,
     abbreviateVersion,
     formatDate,
-    formatRelativeDate,
     formatViews,
 } from '@/lib/resource-formatters';
 import { cn } from '@/lib/utils';
@@ -153,17 +152,9 @@ export function DetailedResourceCard({
                         resourceCardMetaClassName,
                     )}
                 >
-                    <time
-                        dateTime={resource.publishedAt ?? undefined}
-                        title={
-                            resource.publishedAt
-                                ? formatDate(resource.publishedAt)
-                                : undefined
-                        }
-                        suppressHydrationWarning
-                    >
+                    <time dateTime={resource.publishedAt ?? undefined}>
                         {resource.publishedAt
-                            ? formatRelativeDate(resource.publishedAt)
+                            ? formatDate(resource.publishedAt)
                             : 'Unscheduled'}
                     </time>
                     <span className="inline-flex items-center gap-1">

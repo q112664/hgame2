@@ -230,18 +230,21 @@ export function ResourceCard({
                                 </span>
                             </span>
                         ) : null}
-                        {/* Machine-readable date stays in `datetime`; the
-                            visible label is relative and the absolute date
-                            rides along in `title`. */}
-                        <time
-                            dateTime={displayDate ?? undefined}
-                            title={formattedDate ?? undefined}
-                            suppressHydrationWarning
-                        >
-                            {displayDate
-                                ? formatRelativeDate(displayDate)
-                                : 'Unscheduled'}
-                        </time>
+                        {/* Only download updates read as relative time; the
+                            listing date stays absolute. */}
+                        {showsUpdateDate && displayDate ? (
+                            <time
+                                dateTime={displayDate}
+                                title={formattedDate ?? undefined}
+                                suppressHydrationWarning
+                            >
+                                {formatRelativeDate(displayDate)}
+                            </time>
+                        ) : (
+                            <time dateTime={displayDate ?? undefined}>
+                                {formattedDate ?? 'Unscheduled'}
+                            </time>
+                        )}
                     </span>
                     <span className="inline-flex shrink-0 items-center gap-1">
                         <Eye className="size-3.5 shrink-0 opacity-70" />

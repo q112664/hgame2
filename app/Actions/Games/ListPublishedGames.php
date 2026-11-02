@@ -207,10 +207,12 @@ class ListPublishedGames
             self::SORT_OLDEST => $query->orderBy('published_at', self::DIR_ASC)->orderBy('id'),
             self::SORT_TITLE => $query->orderBy('title', $direction)->orderByDesc('published_at'),
             self::SORT_VIEWS => $query->orderBy('views_count', $direction)->orderByDesc('published_at'),
-            // Resources without a package change fall back to their listed date,
-            // so the ordering covers the whole catalog on one timeline.
+            // Only resources whose download package actually changed. New listings
+            // have their own timeline (published_at); letting them fall back onto
+            // this one would bury every real update under the daily uploads.
             self::SORT_UPDATED => $query
-                ->orderByRaw('coalesce(downloads_updated_at, published_at) '.$direction)
+                ->whereNotNull('downloads_updated_at')
+                ->orderBy('downloads_updated_at', $direction)
                 ->orderByDesc('id'),
             // Default “Latest” = newest listed on this site (not download updates).
             default => $query->orderByDesc('published_at')->orderByDesc('id'),

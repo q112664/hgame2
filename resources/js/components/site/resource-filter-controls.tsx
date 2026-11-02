@@ -91,10 +91,14 @@ export const filterControlActiveClassName = cn(
     'dark:focus-visible:border-primary/30',
 );
 
+/**
+ * The three catalog views, in menu form: the listing timeline, the re-pack
+ * timeline, then heat. Direction still flips each one.
+ */
 const SORT_FIELDS: Array<{ value: SortField; label: string }> = [
-    { value: 'published', label: 'Published date' },
-    { value: 'updated', label: 'Last updated' },
-    { value: 'views', label: 'Views' },
+    { value: 'published', label: 'New' },
+    { value: 'updated', label: 'Updated' },
+    { value: 'views', label: 'Popular' },
 ];
 
 /** Legacy ordering from old links; shown only while it is the active sort. */
@@ -169,8 +173,7 @@ export function SortFieldMenu({
     const options =
         value === 'title' ? [LEGACY_TITLE_FIELD, ...SORT_FIELDS] : SORT_FIELDS;
     const selectedLabel =
-        options.find((option) => option.value === value)?.label ??
-        'Published date';
+        options.find((option) => option.value === value)?.label ?? 'New';
     const isActive = value !== 'published';
 
     return (

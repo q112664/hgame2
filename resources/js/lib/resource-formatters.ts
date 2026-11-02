@@ -83,6 +83,51 @@ export function formatReleaseDate(date: string): string {
  * Numeric calendar date, e.g. 9/8/2026, with the full year. Used in thumbnail
  * chips where a written month would crowd the artwork.
  */
+/**
+ * Relative label for card dates ("3 days ago"). Cards keep a machine-readable
+ * `<time dateTime>` and the absolute date as a `title`, so search engines and
+ * screen readers still get an exact date.
+ */
+export function formatRelativeDate(
+    date: string,
+    now: Date = new Date(),
+): string {
+    const parsed = parseCalendarDate(date);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return date;
+    }
+
+    const divisions: Array<{
+        amount: number;
+        unit: Intl.RelativeTimeFormatUnit;
+    }> = [
+        { amount: 60, unit: 'second' },
+        { amount: 60, unit: 'minute' },
+        { amount: 24, unit: 'hour' },
+        { amount: 7, unit: 'day' },
+        { amount: 4.348, unit: 'week' },
+        { amount: 12, unit: 'month' },
+        { amount: Number.POSITIVE_INFINITY, unit: 'year' },
+    ];
+
+    const formatter = new Intl.RelativeTimeFormat(SITE_LOCALE, {
+        numeric: 'auto',
+    });
+
+    let duration = (parsed.getTime() - now.getTime()) / 1000;
+
+    for (const division of divisions) {
+        if (Math.abs(duration) < division.amount) {
+            return formatter.format(Math.round(duration), division.unit);
+        }
+
+        duration /= division.amount;
+    }
+
+    return formatDate(date);
+}
+
 export function formatCompactDate(date: string): string {
     const parsed = parseCalendarDate(date);
 

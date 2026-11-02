@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { ArrowRight, ChevronRight, Library, Sparkles } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { ResourceCard } from '@/components/site/resource-card';
 import { SiteEmptyState } from '@/components/site/site-empty-state';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,8 @@ type Props = {
     dateField?: 'publishedAt' | 'releaseDate' | 'downloadsUpdatedAt';
     viewAllHref?: string | null;
     nextPageHref?: string | null;
+    /** Section glyph; defaults to the “new arrival” spark. */
+    icon?: LucideIcon;
 };
 
 export function LatestResources({
@@ -24,6 +27,7 @@ export function LatestResources({
     dateField = 'publishedAt',
     viewAllHref = resourcesIndex().url,
     nextPageHref = null,
+    icon: Icon = Sparkles,
 }: Props) {
     return (
         <section
@@ -34,7 +38,7 @@ export function LatestResources({
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                        <Sparkles
+                        <Icon
                             className="size-4 text-primary sm:size-5"
                             aria-hidden
                         />

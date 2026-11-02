@@ -1,3 +1,4 @@
+import { RefreshCw } from 'lucide-react';
 import { LatestResources } from '@/components/site/latest-resources';
 import { PageSeo } from '@/components/site/page-seo';
 import type { PageSeoData } from '@/components/site/page-seo';
@@ -11,6 +12,8 @@ type Props = {
     popular: PopularCard[];
     resources: GameCard[];
     hasMoreResources: boolean;
+    /** The other timeline: titles whose download package changed. */
+    updated?: GameCard[];
     pageSeo?: PageSeoData | null;
 };
 
@@ -18,6 +21,7 @@ export default function Welcome({
     popular = [],
     resources,
     hasMoreResources = false,
+    updated = [],
     pageSeo,
 }: Props) {
     return (
@@ -37,6 +41,19 @@ export default function Welcome({
                             : null
                     }
                 />
+                {updated.length > 0 ? (
+                    <LatestResources
+                        id="updated"
+                        title="Recently updated"
+                        icon={RefreshCw}
+                        resources={updated}
+                        dateField="downloadsUpdatedAt"
+                        emptyMessage="No updates yet."
+                        viewAllHref={
+                            resourcesIndex({ query: { sort: 'updated' } }).url
+                        }
+                    />
+                ) : null}
             </div>
         </SiteLayout>
     );

@@ -44,9 +44,9 @@ test('resource filter controls keep the inline dropdowns, tag modal, and standal
         ->toContain(
             "type SortOption = 'latest' | 'oldest' | 'updated' | 'title' | 'views'",
         )
-        ->toContain("label: 'Published date'")
-        ->toContain("label: 'Last updated'")
-        ->toContain("label: 'Views'")
+        ->toContain("label: 'New'")
+        ->toContain("label: 'Updated'")
+        ->toContain("label: 'Popular'")
         ->not->toContain('Newest listed')
         ->not->toContain('Oldest listed')
         ->not->toContain('Most viewed');
@@ -86,8 +86,9 @@ test('resource filter controls keep the inline dropdowns, tag modal, and standal
         ->toContain('openInNewWindow = false')
         ->toContain("dateField === 'downloadsUpdatedAt'")
         ->toContain('showsUpdateDate')
-        // The update cue sits on the thumbnail, next to the version chip.
-        ->toContain('{formatCompactDate(updatedAt)}')
+        // The update cue sits on the thumbnail, next to the version chip, and
+        // reads as relative time while the exact date stays in the tooltip.
+        ->toContain('{formatRelativeDate(updatedAt)}')
         ->toContain('Downloads last updated ${formatDate(updatedAt)}')
         ->toContain('<RefreshCw')
         ->toContain("target={openInNewWindow ? '_blank' : undefined}");

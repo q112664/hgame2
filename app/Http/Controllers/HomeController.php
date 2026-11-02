@@ -47,6 +47,18 @@ class HomeController extends Controller
                 $latestGames->take(self::HomeSectionLimit),
             ),
             'hasMoreResources' => $latestGames->count() > self::HomeSectionLimit,
+            // The other timeline: resources whose download package changed, so an
+            // old title that was re-packed still gets discovered.
+            'updated' => $this->presentCards(
+                Game::query()
+                    ->published()
+                    ->withCardData()
+                    ->whereNotNull('downloads_updated_at')
+                    ->orderByDesc('downloads_updated_at')
+                    ->orderByDesc('id')
+                    ->limit(self::HomeSectionLimit)
+                    ->get(),
+            ),
         ]);
     }
 

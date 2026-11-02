@@ -289,7 +289,7 @@ test('resources index rejects unknown filter values', function () {
     ]))->assertSessionHasErrors('category');
 });
 
-test('resources index last updated ordering covers updated and untouched games', function () {
+test('the updated view lists only resources that were re-packaged', function () {
     $staleUpdate = Game::factory()->create([
         'title' => 'Stale Update',
         'published_at' => now()->subDays(5),
@@ -306,6 +306,7 @@ test('resources index last updated ordering covers updated and untouched games',
         'downloads_updated_at' => null,
     ]);
 
+    // The default view keeps every published resource on the listing timeline.
     $this->get(route('resources.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
@@ -314,22 +315,22 @@ test('resources index last updated ordering covers updated and untouched games',
             ->where('resources.data.0.id', $neverUpdated->slug)
         );
 
-    // `?sort=updated` orders the whole catalog by last change and hides nothing.
+    // `?sort=updated` is the other timeline: only re-packaged resources, so the
+    // daily uploads cannot bury a title that was just re-released.
     $this->get(route('resources.index', ['sort' => 'updated']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('filters.sort', 'updated')
             ->where('filters.dir', 'desc')
-            ->where('resources.total', 3)
+            ->where('resources.total', 2)
             ->where('resources.data.0.id', $freshUpdate->slug)
             ->where('resources.data.1.id', $staleUpdate->slug)
-            ->where('resources.data.2.id', $neverUpdated->slug)
         );
 });
 
-test('resources index last updated ordering keeps every resource on one timeline', function () {
-    // Listed half an hour ago and never re-packaged: still the most recent change.
-    $recentlyListed = Game::factory()->create([
+test('the updated view ignores fresh listings that were never re-packaged', function () {
+    // Listed half an hour ago and never re-packaged: still not an update.
+    Game::factory()->create([
         'title' => 'Recently Listed',
         'published_at' => now()->subMinutes(30),
         'downloads_updated_at' => null,
@@ -343,9 +344,8 @@ test('resources index last updated ordering keeps every resource on one timeline
     $this->get(route('resources.index', ['sort' => 'updated']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('resources.total', 2)
-            ->where('resources.data.0.id', $recentlyListed->slug)
-            ->where('resources.data.1.id', $olderUpdate->slug)
+            ->where('resources.total', 1)
+            ->where('resources.data.0.id', $olderUpdate->slug)
         );
 
     $this->get(route('resources.index', ['sort' => 'updated', 'dir' => 'asc']))
@@ -354,7 +354,6 @@ test('resources index last updated ordering keeps every resource on one timeline
             ->where('filters.sort', 'updated')
             ->where('filters.dir', 'asc')
             ->where('resources.data.0.id', $olderUpdate->slug)
-            ->where('resources.data.1.id', $recentlyListed->slug)
         );
 });
 

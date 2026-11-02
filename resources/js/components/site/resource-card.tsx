@@ -28,8 +28,8 @@ import {
 import {
     abbreviateCategory,
     abbreviateVersion,
-    formatCompactDate,
     formatDate,
+    formatRelativeDate,
     formatReleaseDate,
     formatViews,
 } from '@/lib/resource-formatters';
@@ -175,7 +175,9 @@ export function ResourceCard({
                                         className="size-3 shrink-0"
                                         aria-hidden
                                     />
-                                    {formatCompactDate(updatedAt)}
+                                    <span suppressHydrationWarning>
+                                        {formatRelativeDate(updatedAt)}
+                                    </span>
                                     <span className="sr-only">
                                         Downloads last updated
                                     </span>
@@ -228,8 +230,17 @@ export function ResourceCard({
                                 </span>
                             </span>
                         ) : null}
-                        <time dateTime={displayDate ?? undefined}>
-                            {formattedDate ?? 'Unscheduled'}
+                        {/* Machine-readable date stays in `datetime`; the
+                            visible label is relative and the absolute date
+                            rides along in `title`. */}
+                        <time
+                            dateTime={displayDate ?? undefined}
+                            title={formattedDate ?? undefined}
+                            suppressHydrationWarning
+                        >
+                            {displayDate
+                                ? formatRelativeDate(displayDate)
+                                : 'Unscheduled'}
                         </time>
                     </span>
                     <span className="inline-flex shrink-0 items-center gap-1">

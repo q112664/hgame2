@@ -73,7 +73,7 @@ final class TaxonomyDirectory
         Cache::forget(self::TagsIndexCacheKey);
     }
 
-    public const string TagsIndexCacheKey = 'taxonomy.directory.tags-index.v1';
+    public const string TagsIndexCacheKey = 'taxonomy.directory.tags-index.v2';
 
     /**
      * Full tag directory for the dedicated Tags index page (all tags with counts).
@@ -102,6 +102,8 @@ final class TaxonomyDirectory
         return array_values(Tag::query()
             ->whereHas('games', $publishedGames)
             ->withCount(['games' => $publishedGames])
+            // Busiest tags first; alphabetical only breaks ties.
+            ->orderByDesc('games_count')
             ->orderBy('name')
             ->get(['name', 'slug'])
             ->map(fn (Tag $tag): array => [

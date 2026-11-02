@@ -50,6 +50,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { SiteLayout } from '@/layouts/site-layout';
 import {
     formatDate,
+    formatRelativeDate,
     formatReleaseDate,
     formatViews,
 } from '@/lib/resource-formatters';
@@ -608,11 +609,18 @@ export default function ResourceShow({
                                     <span className="text-muted-foreground">
                                         Updated
                                     </span>
+                                    {/* Recency is the question here, so the
+                                        label is relative; the exact date stays
+                                        in `datetime` and the tooltip. */}
                                     <time
                                         dateTime={resource.downloadsUpdatedAt}
+                                        title={formatDate(
+                                            resource.downloadsUpdatedAt,
+                                        )}
                                         className="text-foreground/85"
+                                        suppressHydrationWarning
                                     >
-                                        {formatDate(
+                                        {formatRelativeDate(
                                             resource.downloadsUpdatedAt,
                                         )}
                                     </time>

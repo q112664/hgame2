@@ -38,6 +38,7 @@ import { UserAvatar } from '@/components/user-avatar';
 import { useImageLoadState } from '@/hooks/use-image-load-state';
 import {
     formatDate,
+    formatRelativeDate,
     formatVersion,
     formatViews,
 } from '@/lib/resource-formatters';
@@ -475,9 +476,11 @@ export function ResourceTabContent({
                                     </span>
                                     <time
                                         dateTime={releaseUpdatedAt}
+                                        title={formatDate(releaseUpdatedAt)}
                                         className="min-w-0 truncate tabular-nums"
+                                        suppressHydrationWarning
                                     >
-                                        {formatDate(releaseUpdatedAt)}
+                                        {formatRelativeDate(releaseUpdatedAt)}
                                     </time>
                                 </span>
                             ) : null;

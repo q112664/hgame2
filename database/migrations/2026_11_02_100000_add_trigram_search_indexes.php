@@ -2,15 +2,16 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Tpetry\PostgresqlEnhanced\Schema\Blueprint;
-use Tpetry\PostgresqlEnhanced\Support\Facades\Schema;
 
 /**
  * Trigram support for catalog search.
  *
- * Search tokenises the query and matches substrings, so the indexes exist to keep
- * `ILIKE '%token%'` and the similarity fallback fast as the catalog grows. Only
- * PostgreSQL gets them; the SQLite test database keeps the plain column scans.
+ * Search tokenises the query and matches substrings, so these GIN indexes keep
+ * `ILIKE '%token%'` and the `<%` similarity fallback fast as the catalog grows.
+ * Only PostgreSQL gets them; the SQLite test database keeps plain scans.
+ *
+ * Written as raw statements because a GIN index needs an operator class
+ * (`gin_trgm_ops`) and Laravel's index builder cannot express that portably.
  */
 return new class extends Migration
 {
@@ -23,15 +24,15 @@ return new class extends Migration
             return;
         }
 
-        Schema::createExtensionIfNotExists('pg_trgm');
+        DB::statement('CREATE EXTENSION IF NOT EXISTS pg_trgm');
 
-        Schema::table('games', function (Blueprint $table): void {
-            foreach ($this->indexedColumns as $column) {
-                $table->index("{$column} gin_trgm_ops")
-                    ->algorithm('gin')
-                    ->name("games_{$column}_trgm_index");
-            }
-        });
+        foreach ($this->indexedColumns as $column) {
+            DB::statement(sprintf(
+                'CREATE INDEX IF NOT EXISTS %s ON games USING gin (%s gin_trgm_ops)',
+                "games_{$column}_trgm_index",
+                $column,
+            ));
+        }
     }
 
     public function down(): void
@@ -40,10 +41,8 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('games', function (Blueprint $table): void {
-            foreach ($this->indexedColumns as $column) {
-                $table->dropIndex("games_{$column}_trgm_index");
-            }
-        });
+        foreach ($this->indexedColumns as $column) {
+            DB::statement("DROP INDEX IF EXISTS games_{$column}_trgm_index");
+        }
     }
 };

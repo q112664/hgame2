@@ -297,47 +297,125 @@ class Game extends Model
             ->where('published_at', '<=', now());
     }
 
+    /** Maximum tokens a single query may contribute, so a long paste stays cheap. */
+    private const int SearchTokenLimit = 5;
+
+    /** Shortest token that the PostgreSQL trigram fallback can meaningfully index. */
+    private const int MinimumTrigramTokenLength = 3;
+
     /**
-     * Match title, subtitle, developer, category, tags, platforms, or languages.
+     * Match the query against every searchable field, token by token.
      *
-     * Uses whereLike() so the match is case-insensitive on every driver: plain
-     * LIKE is case-sensitive on PostgreSQL (production), which SQLite (local and
-     * tests) does not reproduce.
+     * Words are ANDed and fields are ORed, so "room massage" finds
+     * "Room 404: Erotic Massage" even though the phrase never appears verbatim.
+     * On PostgreSQL a trigram similarity pass catches typos and partial words;
+     * SQLite (local and tests) keeps the substring-only path.
+     *
+     * `whereLike()` is used instead of plain `like` so matching stays
+     * case-insensitive on every driver.
      *
      * @param  Builder<Game>  $query
      * @return Builder<Game>
      */
     public function scopeMatchingSearch(Builder $query, string $term): Builder
     {
-        $like = '%'.addcslashes($term, '%_\\').'%';
+        $tokens = self::searchTokens($term);
 
-        return $query->where(function (Builder $builder) use ($like): void {
-            $builder
-                ->whereLike('title', $like)
-                ->orWhereLike('subtitle', $like)
-                ->orWhereLike('developer', $like)
-                ->orWhereHas(
-                    'category',
-                    fn (Builder $category): Builder => $category
-                        ->whereLike('name', $like)
-                        ->orWhereLike('slug', $like),
-                )
-                ->orWhereHas(
-                    'tags',
-                    fn (Builder $tags): Builder => $tags->whereLike('name', $like),
-                )
-                ->orWhereHas(
-                    'releases.platforms',
-                    fn (Builder $platforms): Builder => $platforms
-                        ->whereLike('name', $like)
-                        ->orWhereLike('slug', $like),
-                )
-                ->orWhereHas(
-                    'releases.languages',
-                    fn (Builder $languages): Builder => $languages
-                        ->whereLike('name', $like)
-                        ->orWhereLike('code', $like),
+        if ($tokens === []) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $builder) use ($tokens): void {
+            foreach ($tokens as $token) {
+                $builder->where(
+                    fn (Builder $tokenQuery): Builder => self::applySearchToken($tokenQuery, $token),
                 );
+            }
         });
+    }
+
+    /**
+     * Split a raw query into the words that must each match somewhere.
+     *
+     * @return list<string>
+     */
+    private static function searchTokens(string $term): array
+    {
+        $normalised = trim((string) preg_replace('/\s+/u', ' ', $term));
+
+        if ($normalised === '') {
+            return [];
+        }
+
+        $tokens = preg_split('/\s+/u', $normalised) ?: [];
+
+        return array_slice(
+            array_values(array_unique(array_filter($tokens, fn (string $token): bool => $token !== ''))),
+            0,
+            self::SearchTokenLimit,
+        );
+    }
+
+    /**
+     * @param  Builder<Game>  $query
+     * @return Builder<Game>
+     */
+    private static function applySearchToken(Builder $query, string $token): Builder
+    {
+        $like = '%'.addcslashes($token, '%_\\').'%';
+
+        $query
+            ->whereLike('title', $like)
+            ->orWhereLike('subtitle', $like)
+            ->orWhereLike('developer', $like)
+            ->orWhereLike('source_name', $like)
+            ->orWhereLike('slug', $like)
+            ->orWhereHas(
+                'category',
+                fn (Builder $category): Builder => $category
+                    ->whereLike('name', $like)
+                    ->orWhereLike('slug', $like),
+            )
+            ->orWhereHas(
+                'tags',
+                fn (Builder $tags): Builder => $tags
+                    ->whereLike('name', $like)
+                    ->orWhereLike('slug', $like),
+            )
+            ->orWhereHas(
+                'releases.platforms',
+                fn (Builder $platforms): Builder => $platforms
+                    ->whereLike('name', $like)
+                    ->orWhereLike('slug', $like),
+            )
+            ->orWhereHas(
+                'releases.languages',
+                fn (Builder $languages): Builder => $languages
+                    ->whereLike('name', $like)
+                    ->orWhereLike('code', $like),
+            )
+            ->orWhereHas(
+                'releases',
+                fn (Builder $releases): Builder => $releases->whereLike('title', $like),
+            );
+
+        if (mb_strlen($token) < self::MinimumTrigramTokenLength) {
+            return $query;
+        }
+
+        if ($query->getConnection()->getDriverName() !== 'pgsql') {
+            return $query;
+        }
+
+        // `<%` compares the token against the best matching word of the column,
+        // which is what a search box needs (`errotic` still finds `Erotic`) and
+        // is backed by the gin_trgm_ops indexes.
+        $query
+            ->orWhereRaw('? <% title', [$token])
+            ->orWhereRaw('? <% subtitle', [$token])
+            ->orWhereRaw('? <% developer', [$token])
+            ->orWhereRaw('? <% source_name', [$token]);
+
+        return $query;
     }
 }

@@ -369,35 +369,69 @@ class Game extends Model
             ->orWhereLike('subtitle', $like)
             ->orWhereLike('developer', $like)
             ->orWhereLike('source_name', $like)
-            ->orWhereLike('slug', $like)
-            ->orWhereHas(
-                'category',
-                fn (Builder $category): Builder => $category
-                    ->whereLike('name', $like)
-                    ->orWhereLike('slug', $like),
-            )
-            ->orWhereHas(
+            ->orWhereLike('slug', $like);
+
+        // Taxonomy tables are tiny, so they are resolved into ids first: a plain
+        // `orWhereHas` would run a correlated subquery for every catalog row and
+        // turned a two-word search into a ~600ms query.
+        $categoryIds = Category::query()
+            ->where(fn (Builder $category): Builder => $category
+                ->whereLike('name', $like)
+                ->orWhereLike('slug', $like))
+            ->pluck('id');
+
+        if ($categoryIds->isNotEmpty()) {
+            $query->orWhereIn('category_id', $categoryIds);
+        }
+
+        $tagIds = Tag::query()
+            ->where(fn (Builder $tags): Builder => $tags
+                ->whereLike('name', $like)
+                ->orWhereLike('slug', $like))
+            ->pluck('id');
+
+        if ($tagIds->isNotEmpty()) {
+            $query->orWhereHas(
                 'tags',
-                fn (Builder $tags): Builder => $tags
-                    ->whereLike('name', $like)
-                    ->orWhereLike('slug', $like),
-            )
-            ->orWhereHas(
-                'releases.platforms',
-                fn (Builder $platforms): Builder => $platforms
-                    ->whereLike('name', $like)
-                    ->orWhereLike('slug', $like),
-            )
-            ->orWhereHas(
-                'releases.languages',
-                fn (Builder $languages): Builder => $languages
-                    ->whereLike('name', $like)
-                    ->orWhereLike('code', $like),
-            )
-            ->orWhereHas(
-                'releases',
-                fn (Builder $releases): Builder => $releases->whereLike('title', $like),
+                fn (Builder $tags): Builder => $tags->whereIn('tags.id', $tagIds),
             );
+        }
+
+        $platformIds = Platform::query()
+            ->where(fn (Builder $platforms): Builder => $platforms
+                ->whereLike('name', $like)
+                ->orWhereLike('slug', $like))
+            ->pluck('id');
+
+        if ($platformIds->isNotEmpty()) {
+            $query->orWhereHas(
+                'releases.platforms',
+                fn (Builder $platforms): Builder => $platforms->whereIn('platforms.id', $platformIds),
+            );
+        }
+
+        $languageIds = Language::query()
+            ->where(fn (Builder $languages): Builder => $languages
+                ->whereLike('name', $like)
+                ->orWhereLike('code', $like))
+            ->pluck('id');
+
+        if ($languageIds->isNotEmpty()) {
+            $query->orWhereHas(
+                'releases.languages',
+                fn (Builder $languages): Builder => $languages->whereIn('languages.id', $languageIds),
+            );
+        }
+
+        $releaseGameIds = GameRelease::query()
+            ->whereLike('title', $like)
+            ->distinct()
+            ->limit(500)
+            ->pluck('game_id');
+
+        if ($releaseGameIds->isNotEmpty()) {
+            $query->orWhereIn('id', $releaseGameIds);
+        }
 
         if (mb_strlen($token) < self::MinimumTrigramTokenLength) {
             return $query;

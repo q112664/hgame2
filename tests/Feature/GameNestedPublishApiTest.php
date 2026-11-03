@@ -422,6 +422,9 @@ test('nested release updates bump downloads only when touch_downloads is true', 
 
     $data = publishGameViaApi();
     $releaseId = $data['releases'][0]['id'];
+    $game = Game::query()->where('slug', $data['id'])->firstOrFail();
+    $fan = User::factory()->create();
+    $fan->favoritedGames()->attach($game->id);
 
     $sibling = $this->postJson("/api/v1/games/{$data['id']}/releases", [
         'title' => 'Mac English package',
@@ -437,7 +440,6 @@ test('nested release updates bump downloads only when touch_downloads is true', 
         'touch_downloads' => false,
     ])->assertOk();
 
-    $game = Game::query()->where('slug', $data['id'])->firstOrFail();
     expect($game->downloads_updated_at)->toBeNull()
         ->and($game->releases()->find($releaseId)?->downloads_updated_at)->toBeNull()
         ->and($game->releases()->find($siblingId)?->downloads_updated_at)->toBeNull();
@@ -450,7 +452,8 @@ test('nested release updates bump downloads only when touch_downloads is true', 
 
     expect($game->downloads_updated_at)->not->toBeNull()
         ->and($game->releases()->find($releaseId)?->downloads_updated_at)->not->toBeNull()
-        ->and($game->releases()->find($siblingId)?->downloads_updated_at)->toBeNull();
+        ->and($game->releases()->find($siblingId)?->downloads_updated_at)->toBeNull()
+        ->and($fan->fresh()->unreadNotifications)->toHaveCount(1);
 });
 
 test('deleting a release leaves other packages', function () {

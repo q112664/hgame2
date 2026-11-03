@@ -18,9 +18,15 @@ class MarkFavoriteDownloadsSeen
         ]);
 
         // Keep the general notification center in sync with favorites badges.
-        $user->unreadNotifications()
-            ->where('type', 'favorite.downloads_updated')
-            ->where('data->game_id', $gameId)
-            ->update(['read_at' => $seenAt ?? now()]);
+        $notifications = $user->unreadNotifications()
+            ->where('type', 'favorite.downloads_updated');
+
+        if ($notifications->getQuery()->getConnection()->getDriverName() === 'pgsql') {
+            $notifications->whereRaw("(data::jsonb ->> 'game_id') = ?", [(string) $gameId]);
+        } else {
+            $notifications->where('data->game_id', $gameId);
+        }
+
+        $notifications->update(['read_at' => $seenAt ?? now()]);
     }
 }

@@ -255,6 +255,8 @@ test('updating a game bumps downloads only when touch_downloads is true', functi
 
     $slug = createGameViaApi();
     $game = Game::query()->where('slug', $slug)->firstOrFail();
+    $fan = User::factory()->create();
+    $fan->favoritedGames()->attach($game->id);
 
     expect($game->downloads_updated_at)->toBeNull();
 
@@ -275,7 +277,8 @@ test('updating a game bumps downloads only when touch_downloads is true', functi
         'touch_downloads' => true,
     ])->assertOk();
 
-    expect($game->fresh()->downloads_updated_at)->not->toBeNull();
+    expect($game->fresh()->downloads_updated_at)->not->toBeNull()
+        ->and($fan->fresh()->unreadNotifications)->toHaveCount(1);
 });
 
 test('updating screenshots replaces previous screenshots', function () {

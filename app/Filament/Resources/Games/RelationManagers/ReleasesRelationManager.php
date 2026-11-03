@@ -68,11 +68,7 @@ class ReleasesRelationManager extends RelationManager
                 Repeater::make('downloadLinks')
                     ->relationship()
                     ->simple(
-                        TextInput::make('url')
-                            ->label('Download URL')
-                            ->required()
-                            ->maxLength(2048)
-                            ->url(),
+                        GameForm::downloadUrlInput(allowLegacyPlaceholder: true),
                     )
                     ->orderColumn('sort_order')
                     ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
@@ -162,6 +158,13 @@ class ReleasesRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make()
+                    ->mutateRecordDataUsing(function (array $data): array {
+                        if (blank($data['title'] ?? null)) {
+                            $data['title'] = (string) ($this->getOwnerRecord()->getAttribute('title') ?: 'Download package');
+                        }
+
+                        return $data;
+                    })
                     ->mutateDataUsing(fn (array $data, EditAction $action): array => $this->rememberDownloadUpdateFlag($data, $action))
                     ->after(function (GameRelease $record): void {
                         $this->markReleaseDownloadUpdate($record);

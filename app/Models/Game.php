@@ -250,11 +250,17 @@ class Game extends Model
         $gameId = $this->id;
 
         foreach ($favoriters as $user) {
-            $user->notifications()
+            $notifications = $user->notifications()
                 ->where('type', 'favorite.downloads_updated')
-                ->whereNull('read_at')
-                ->where('data->game_id', $gameId)
-                ->delete();
+                ->whereNull('read_at');
+
+            if ($notifications->getQuery()->getConnection()->getDriverName() === 'pgsql') {
+                $notifications->whereRaw("(data::jsonb ->> 'game_id') = ?", [(string) $gameId]);
+            } else {
+                $notifications->where('data->game_id', $gameId);
+            }
+
+            $notifications->delete();
         }
 
         Notification::send(

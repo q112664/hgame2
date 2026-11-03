@@ -272,11 +272,7 @@ class GameForm
                                 Repeater::make('downloadLinks')
                                     ->relationship()
                                     ->simple(
-                                        TextInput::make('url')
-                                            ->label('Download URL')
-                                            ->required()
-                                            ->maxLength(2048)
-                                            ->url(),
+                                        self::downloadUrlInput(),
                                     )
                                     ->orderColumn('sort_order')
                                     ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
@@ -378,5 +374,27 @@ class GameForm
         $data['is_active'] = true;
 
         return $data;
+    }
+
+    public static function downloadUrlInput(bool $allowLegacyPlaceholder = false): TextInput
+    {
+        $input = TextInput::make('url')
+            ->label('Download URL')
+            ->required()
+            ->maxLength(2048);
+
+        if ($allowLegacyPlaceholder) {
+            // Releases imported before URL validation was introduced used '#'
+            // as a placeholder. Keep those records editable so an administrator
+            // can replace the placeholder without first losing the package.
+            return $input->url(
+                fn (?string $state, string $operation): bool => ! (
+                    $operation === 'edit'
+                    && trim((string) $state) === '#'
+                ),
+            );
+        }
+
+        return $input->url();
     }
 }

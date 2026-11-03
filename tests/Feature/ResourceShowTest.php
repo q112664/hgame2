@@ -331,10 +331,10 @@ test('only the marked download package exposes an update date', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->has('resource.releases', 2)
             ->where('resource.releases.0.id', $marked->id)
-            ->where('resource.releases.0.downloadsUpdatedAt', $markedAt->toDateString())
+            ->where('resource.releases.0.downloadsUpdatedAt', $markedAt->toISOString())
             ->where('resource.releases.1.id', $sibling->id)
             ->where('resource.releases.1.downloadsUpdatedAt', null)
-            ->where('resource.downloadsUpdatedAt', $gameUpdatedAt->toDateString())
+            ->where('resource.downloadsUpdatedAt', $gameUpdatedAt->toISOString())
         );
 });
 
@@ -510,7 +510,7 @@ test('home omits card version when no release version is filled', function () {
 });
 
 test('recent resource updates only include games with download updates and order by that time', function () {
-    $updatedAt = now()->subHour();
+    $updatedAt = now()->subHour()->startOfSecond();
     $this->game->updateQuietly([
         'downloads_updated_at' => now()->subDays(2),
     ]);
@@ -527,7 +527,7 @@ test('recent resource updates only include games with download updates and order
 
     expect($updates)->toHaveCount(2)
         ->and($updates[0]['id'])->toBe($newer->slug)
-        ->and($updates[0]['downloadsUpdatedAt'])->toBe($updatedAt->toDateString())
+        ->and($updates[0]['downloadsUpdatedAt'])->toBe($updatedAt->toISOString())
         ->and(collect($updates)->pluck('id')->all())->toBe([
             $newer->slug,
             $this->game->slug,

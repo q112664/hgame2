@@ -62,7 +62,7 @@ class GamePresenter
                 : [],
             'releaseDate' => self::dateString($game->release_date),
             'publishedAt' => self::dateString($game->published_at),
-            'downloadsUpdatedAt' => self::dateString($game->downloads_updated_at),
+            'downloadsUpdatedAt' => self::dateTimeString($game->downloads_updated_at),
             'views' => $game->views_count,
         ];
     }
@@ -163,7 +163,7 @@ class GamePresenter
                         'downloads' => $release->downloads_count,
                         'description' => DescriptionHtml::render($release->description),
                         'publishedAt' => self::dateString($release->published_at),
-                        'downloadsUpdatedAt' => self::dateString($release->downloads_updated_at),
+                        'downloadsUpdatedAt' => self::dateTimeString($release->downloads_updated_at),
                         'contributor' => $release->relationLoaded('contributor') && $release->contributor !== null
                             ? $release->contributor->toPublicProfile()
                             : null,
@@ -294,5 +294,18 @@ class GamePresenter
         return $date instanceof Carbon
             ? $date->toDateString()
             : Carbon::parse((string) $date)->toDateString();
+    }
+
+    private static function dateTimeString(mixed $date): ?string
+    {
+        if ($date === null || $date === '') {
+            return null;
+        }
+
+        $dateTime = $date instanceof Carbon
+            ? $date
+            : Carbon::parse((string) $date);
+
+        return $dateTime->toISOString();
     }
 }

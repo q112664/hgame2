@@ -48,7 +48,7 @@ test('gallery dark theme uses warm oklch tokens and default radius', function ()
         ->toContain('--background: oklch(0.145 0.008 45);')
         ->toContain('--primary: oklch(0.62 0.175 27);')
         ->toContain('--accent: oklch(0.28 0.035 27);')
-        ->toContain('--font-sans:')
+        ->toContain("--font-sans: 'Inter Variable', sans-serif;")
         ->toContain('--radius-sm: calc(var(--radius) - 4px);')
         ->not->toContain('#3498db')
         ->not->toContain('#3a4d73')
@@ -68,13 +68,12 @@ test('brand and auth alias the primary accent instead of duplicating it', functi
         ->not->toContain('--auth: oklch(');
 });
 
-test('headings inherit the default system sans stack', function () {
+test('headings use the preloaded instrument sans face', function () {
     $stylesheet = app(Filesystem::class)->get(resource_path('css/app.css'));
 
-    expect($stylesheet)
-        ->toContain('--font-heading: var(--font-sans);')
-        ->not->toContain('Instrument Sans')
-        ->not->toContain('Inter Variable');
+    expect($stylesheet)->toContain(
+        "--font-heading: 'Instrument Sans', 'Inter Variable', sans-serif;",
+    );
 });
 
 test('the inertia progress bar follows the theme primary color', function () {
@@ -103,23 +102,17 @@ test('the image lightbox is code-split instead of loaded on every detail view', 
         ->toContain('{lightboxIndex >= 0 ? (');
 });
 
-test('the app ships no webfonts', function () {
-    $filesystem = app(Filesystem::class);
-    $stylesheet = $filesystem->get(resource_path('css/app.css'));
+test('instrument sans declares latin faces without preloading them', function () {
     $config = app(Filesystem::class)->get(base_path('vite.config.ts'));
-    $blade = $filesystem->get(resource_path('views/app.blade.php'));
 
-    expect($stylesheet)
-        ->not->toContain('@fontsource')
-        ->not->toContain('@font-face')
-        ->not->toContain('Instrument Sans')
-        ->not->toContain('Inter Variable');
-
+    // The plugin declares a legacy `woff` face after each `woff2` one with the
+    // same unicode-range, so the browser renders the woff and preloading the
+    // woff2 only added downloads that nothing ever used.
     expect($config)
-        ->not->toContain('bunny(')
-        ->not->toContain('fonts: [');
-
-    expect($blade)->not->toContain('@fonts');
+        ->toContain("bunny('Instrument Sans'")
+        ->toContain("subsets: ['latin']")
+        ->toContain('weights: [400, 500, 600]')
+        ->toContain('preload: false');
 });
 
 test('auth forms use the flat auth button variant', function () {

@@ -603,7 +603,9 @@ test('resource and detailed cards keep translucent thumbnail chips with a light 
         // The update cue rides inside the meta line, so it stays chromeless.
         ->toContain('resourceCardUpdateBadgeClassName')
         ->not->toContain('bg-info')
-        ->toContain('font-semibold tracking-tight text-foreground');
+        // Chips carry the emphasis; card titles stay regular weight.
+        ->toContain('font-semibold whitespace-nowrap text-white/90')
+        ->toContain('font-normal tracking-tight text-foreground');
 
     expect($resourceCard)
         ->toContain('resourceCardTitleClassName')

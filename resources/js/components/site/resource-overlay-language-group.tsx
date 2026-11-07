@@ -17,7 +17,7 @@ export function ResourceOverlayLanguageGroup({ languages }: Props) {
 
     return (
         <div
-            className="flex flex-wrap justify-end gap-1"
+            className="flex shrink-0 flex-nowrap items-center justify-end gap-1"
             role="group"
             aria-label={languages.map((language) => language.name).join(', ')}
         >

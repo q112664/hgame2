@@ -46,8 +46,6 @@
             }
         </style>
 
-        @fonts
-
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx'])
         {{--

@@ -48,7 +48,7 @@ test('gallery dark theme uses warm oklch tokens and default radius', function ()
         ->toContain('--background: oklch(0.145 0.008 45);')
         ->toContain('--primary: oklch(0.62 0.175 27);')
         ->toContain('--accent: oklch(0.28 0.035 27);')
-        ->toContain("--font-sans: 'Inter Variable', sans-serif;")
+        ->toContain('--font-sans:')
         ->toContain('--radius-sm: calc(var(--radius) - 4px);')
         ->not->toContain('#3498db')
         ->not->toContain('#3a4d73')
@@ -68,12 +68,13 @@ test('brand and auth alias the primary accent instead of duplicating it', functi
         ->not->toContain('--auth: oklch(');
 });
 
-test('headings use the preloaded instrument sans face', function () {
+test('headings inherit the default system sans stack', function () {
     $stylesheet = app(Filesystem::class)->get(resource_path('css/app.css'));
 
-    expect($stylesheet)->toContain(
-        "--font-heading: 'Instrument Sans', 'Inter Variable', sans-serif;",
-    );
+    expect($stylesheet)
+        ->toContain('--font-heading: var(--font-sans);')
+        ->not->toContain('Instrument Sans')
+        ->not->toContain('Inter Variable');
 });
 
 test('the inertia progress bar follows the theme primary color', function () {
@@ -102,17 +103,23 @@ test('the image lightbox is code-split instead of loaded on every detail view', 
         ->toContain('{lightboxIndex >= 0 ? (');
 });
 
-test('instrument sans declares latin faces without preloading them', function () {
+test('the app ships no webfonts', function () {
+    $filesystem = app(Filesystem::class);
+    $stylesheet = $filesystem->get(resource_path('css/app.css'));
     $config = app(Filesystem::class)->get(base_path('vite.config.ts'));
+    $blade = $filesystem->get(resource_path('views/app.blade.php'));
 
-    // The plugin declares a legacy `woff` face after each `woff2` one with the
-    // same unicode-range, so the browser renders the woff and preloading the
-    // woff2 only added downloads that nothing ever used.
+    expect($stylesheet)
+        ->not->toContain('@fontsource')
+        ->not->toContain('@font-face')
+        ->not->toContain('Instrument Sans')
+        ->not->toContain('Inter Variable');
+
     expect($config)
-        ->toContain("bunny('Instrument Sans'")
-        ->toContain("subsets: ['latin']")
-        ->toContain('weights: [400, 500, 600]')
-        ->toContain('preload: false');
+        ->not->toContain('bunny(')
+        ->not->toContain('fonts: [');
+
+    expect($blade)->not->toContain('@fonts');
 });
 
 test('auth forms use the flat auth button variant', function () {
@@ -552,10 +559,12 @@ test('search and favorite results use detailed card grids', function () {
         ->toContain('onRemove={');
 
     expect($resourceCard)
-        // Category and platform icons share the left edge of the artwork.
-        ->toContain('flex min-w-0 flex-wrap items-center gap-1')
-        ->toContain('p-1.5 pr-9')
-        // The remove control lives in the corner the platforms used to take.
+        // Taxonomy, platform icons, and version share one strip along the
+        // bottom edge of the artwork; languages sit opposite them.
+        ->toContain('flex min-w-0 flex-nowrap items-center gap-1')
+        ->toContain('absolute inset-x-0 bottom-0 flex items-center justify-between')
+        // The remove control keeps the top-right corner clear of the
+        // bottom taxonomy strip.
         ->toContain('Remove from favorites?')
         ->toContain('hasDownloadUpdate')
         // 4:3 frame (the shape of most covers) with the whole artwork contained on
@@ -564,7 +573,8 @@ test('search and favorite results use detailed card grids', function () {
         ->toContain('fit="contain"')
         ->toContain('ambient')
         ->toContain('ring-info/45')
-        ->toContain('bg-info px-1.5 py-0.5')
+        ->toContain('absolute top-1.5 left-1.5')
+        ->toContain('bg-info/90')
         ->toContain('Updated')
         ->toContain('absolute top-1.5 right-1.5');
 });
@@ -579,7 +589,7 @@ test('detailed resource cards avoid decorative hover motion and shadows', functi
         ->not->toContain('group-hover:scale-');
 });
 
-test('resource and detailed cards keep translucent thumbnail chips without backdrop blur', function () {
+test('resource and detailed cards keep translucent thumbnail chips with a light backdrop blur', function () {
     $filesystem = app(Filesystem::class);
     $styles = $filesystem->get(resource_path('js/components/site/resource-card-styles.ts'));
     $resourceCard = $filesystem->get(resource_path('js/components/site/resource-card.tsx'));
@@ -589,7 +599,7 @@ test('resource and detailed cards keep translucent thumbnail chips without backd
         ->toContain('overlayChipClassName')
         ->toContain('resourceCardTitleClassName')
         ->toContain('bg-black/50')
-        ->not->toContain('backdrop-blur')
+        ->toContain('backdrop-blur-[3px]')
         // The update cue rides inside the meta line, so it stays chromeless.
         ->toContain('resourceCardUpdateBadgeClassName')
         ->not->toContain('bg-info')
